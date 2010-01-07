@@ -1,7 +1,10 @@
 // Copyright (c) 2006-2009 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
+//
+// Created by compact_lang_det_test --scoreany --v25 --line
+// from input file /export/hda3/cld/20080409/b0123a_900_samp_prune_2k.utf8
+//
 #ifndef I18N_ENCODINGS_COMPACT_LANG_DET_COMPACT_LANG_DET_GENERATED_MEANSCORE_H__
 #define I18N_ENCODINGS_COMPACT_LANG_DET_COMPACT_LANG_DET_GENERATED_MEANSCORE_H__
 
@@ -48,6 +51,7 @@ static const short kMeanScore[256 * 4] = {
   // There are a lot of Afar false hits on lines with "radar" or "radares"
   // Also lines with "libdata" and related
   // So I artifically removed Afar from _rada, _libd etc. in quads table.
+  // This raised the mean score here from 956 to 1762. dsites 2008.09.05
 
   // 1308, 0, 0, 0,  1031, 0, 0, 0,  0, 1022, 0, 0,  0, 0, 0, 0,    // original
   1308, 0, 0, 0,  1031, 0, 0, 0,  0, 1022, 0, 0,  1762, 0, 0, 0,    // Afar[131] 2008.09.05

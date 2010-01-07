@@ -1,10 +1,12 @@
-// Copyright (c) 2006-2009 The Chromium Authors. All rights reserved.
+// Copyright (c) 2009 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
+//
+// Created by postproc-shortwords 1.8 on 2009-03-22 11:11:34
+// From input file /tmp/good_quad_input4567_sort.utf8
 // See compact_lang_det.cc for usage
-
-#include "third_party/cld/bar/toolbar/cld/i18n/encodings/compact_lang_det/cldutil.h"
+//
+#include "bar/toolbar/cld/i18n/encodings/compact_lang_det/cldutil.h"
 
 // Suppressed:
 //      ms-Latn gl-Latn mt-Latn af-Latn eu-Latn mk-Cyrl fa-Arab
@@ -36440,11 +36442,11 @@ static const uint32 kQuadTableInd[11326] = {
 
 COMPILE_ASSERT(11326 < (1 << 16), k_indirectbits_too_small);
 
-extern cld::CLDTableSummary kQuadTable_obj = {
+extern const cld::CLDTableSummary kQuadTable_obj = {
   kQuadTable,
   kQuadTableInd,
   kQuadTableSize,
-  ARRAYSIZE(kQuadTableInd),
+  arraysize(kQuadTableInd),
   kQuadTableKeyMask,
   kQuadTableBuildDate,
 };

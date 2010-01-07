@@ -1,14 +1,19 @@
 // Copyright (c) 2006-2009 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include "third_party/cld/bar/toolbar/cld/i18n/encodings/compact_lang_det/cldutil.h"
+//
+// Created by postproc-shortwords 1.7 on 2009-01-29 16:13:04
+// From input file /tmp/langdet_v25_12cjk_sort.utf8
+// See compact_lang_det.cc for usage
+//
+#include "bar/toolbar/cld/i18n/encodings/compact_lang_det/cldutil.h"
 
 // Suppressed:
 //      az-Arab az-Cyrl ku-Latn tg-Arab za-Hani zzb-Latn zze-Latn zzh-Latn ru-Latn
 
 // Remapped:
 //      xxx-Latn=>ut-Latn sh-Latn=>hr-Latn sh-Cyrl=>sr-Cyrl
+
 
 static const int kCjkBiTableBuildDate = 20090129;    // yyyymmdd
 static const int kCjkBiTableSize = 1;    // Bucket count
@@ -35,9 +40,10 @@ extern const cld::CLDTableSummary kCjkBiTable_obj = {
   kCjkBiTable,
   kCjkBiTableInd,
   kCjkBiTableSize,
-  ARRAYSIZE(kCjkBiTableInd),
+  arraysize(kCjkBiTableInd),
   kCjkBiTableKeyMask,
   kCjkBiTableBuildDate,
 };
 
 // End of generated tables
+

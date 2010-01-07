@@ -1,7 +1,12 @@
 // Copyright (c) 2006-2009 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
+//
+// Created by utf8tablebuilder version 2.8
+// See util/utf8/utf8statetable.h for usage
+//
+//  Maps properties of all codes from file:
+//    compact_lang_det_generated_ctjkvz.txt
 //  Accepts all other UTF-8 codes 0000..10FFFF
 //  Space optimized
 //
@@ -11,7 +16,7 @@
 //  multiplied by 16; offsets for 3-of-3 and 4-of-4 are
 //  relative +/-127 from previous state.
 
-#include "third_party/cld/bar/toolbar/cld/i18n/encodings/compact_lang_det/win/cld_utf8statetable.h"
+#include "bar/toolbar/cld/i18n/encodings/compact_lang_det/win/cld_utf8statetable.h"
 
 #define X__ (kExitIllegalStructure)
 #define RJ_ (kExitReject)
@@ -7079,7 +7084,7 @@ static const RemapEntry compact_lang_det_generated_ctjkvz_b1_remap_base[] = {
 static const unsigned char compact_lang_det_generated_ctjkvz_b1_remap_string[] = {
 0 };
 
-extern UTF8PropObj compact_lang_det_generated_ctjkvz_b1_obj = {
+extern const UTF8PropObj compact_lang_det_generated_ctjkvz_b1_obj = {
   compact_lang_det_generated_ctjkvz_b1_STATE0,
   compact_lang_det_generated_ctjkvz_b1_STATE0_SIZE,
   compact_lang_det_generated_ctjkvz_b1_TOTAL_SIZE,
@@ -7111,3 +7116,4 @@ extern UTF8PropObj compact_lang_det_generated_ctjkvz_b1_obj = {
 #undef RJA
 
 // Table has 75008 bytes, Hash = E40D-2DFE
+
