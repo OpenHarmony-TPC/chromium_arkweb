@@ -10871,6 +10871,16 @@ SQLITE_PRIVATE int sqlite3CantopenError(int);
 #endif
 
 /*
+** The CoreServices.h and CoreFoundation.h headers are needed for excluding a
+** -journal file from Time Machine backups when its associated database has
+** previously been excluded by the client code.
+*/
+#if defined(__APPLE__)
+#include <CoreServices/CoreServices.h>
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+/*
 ** The following macros mimic the standard library functions toupper(),
 ** isspace(), isalnum(), isdigit() and isxdigit(), respectively. The
 ** sqlite versions only work for ASCII characters, regardless of locale.
@@ -41551,6 +41561,20 @@ SQLITE_PRIVATE void sqlite3PagerUnref(DbPage *pPg){
   }
 }
 
+#if defined(__APPLE__)
+/*
+** Create and return a CFURLRef given a cstring containing the path to a file.
+*/
+static CFURLRef create_cfurl_from_cstring(const char* filePath){
+  CFStringRef urlString = CFStringCreateWithFileSystemRepresentation(
+      kCFAllocatorDefault, filePath);
+  CFURLRef urlRef = CFURLCreateWithFileSystemPath(kCFAllocatorDefault,
+      urlString, kCFURLPOSIXPathStyle, FALSE);
+  CFRelease(urlString);
+  return urlRef;
+}
+#endif
+
 /*
 ** This function is called at the start of every write transaction.
 ** There must already be a RESERVED or EXCLUSIVE lock on the database 
@@ -41610,6 +41634,21 @@ static int pager_open_journal(Pager *pPager){
   #else
         rc = sqlite3OsOpen(pVfs, pPager->zJournal, pPager->jfd, flags, 0);
   #endif
+#if defined(__APPLE__)
+        /* Set the TimeMachine exclusion metadata for the journal if it has
+        ** been set for the database. */
+        if( rc==SQLITE_OK && pPager->zFilename!=NULL
+         && strlen(pPager->zFilename)>0 ){
+          CFURLRef database = create_cfurl_from_cstring(pPager->zFilename);
+          if( CSBackupIsItemExcluded(database, NULL) ){
+            CFURLRef journal = create_cfurl_from_cstring(pPager->zJournal);
+            /* Ignore errors from the following exclusion call. */
+            CSBackupSetItemExcluded(journal, TRUE, FALSE);
+            CFRelease(journal);
+          }
+          CFRelease(database);
+        }
+#endif
       }
       assert( rc!=SQLITE_OK || isOpen(pPager->jfd) );
     }
@@ -116631,7 +116670,7 @@ static int porterClose(sqlite3_tokenizer_cursor *pCursor){
 /*
 ** Vowel or consonant
 */
-static const char cType[] = {
+static const char vOrCType[] = {
    0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0,
    1, 1, 1, 2, 1
 };
@@ -116655,7 +116694,7 @@ static int isConsonant(const char *z){
   char x = *z;
   if( x==0 ) return 0;
   assert( x>='a' && x<='z' );
-  j = cType[x-'a'];
+  j = vOrCType[x-'a'];
   if( j<2 ) return j;
   return z[1]==0 || isVowel(z + 1);
 }
@@ -116664,7 +116703,7 @@ static int isVowel(const char *z){
   char x = *z;
   if( x==0 ) return 0;
   assert( x>='a' && x<='z' );
-  j = cType[x-'a'];
+  j = vOrCType[x-'a'];
   if( j<2 ) return 1-j;
   return isConsonant(z + 1);
 }
