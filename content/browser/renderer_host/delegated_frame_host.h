@@ -32,6 +32,9 @@
 #include "ui/compositor/layer.h"
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/rect_conversions.h"
+#if BUILDFLAG(IS_OHOS) && defined(OHOS_PERFORMANCE_JITTER)
+#include "third_party/ohos_ndk/includes/ohos_adapter/adapter_base.h"
+#endif
 
 namespace content {
 

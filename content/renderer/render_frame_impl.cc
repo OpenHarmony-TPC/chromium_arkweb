@@ -989,6 +989,9 @@ void FillMiscNavigationParams(
   navigation_params->is_cross_site_cross_browsing_context_group =
       commit_params.is_cross_site_cross_browsing_context_group;
 
+  navigation_params->should_have_sticky_user_activation =
+      commit_params.should_have_sticky_user_activation;
+
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_OHOS)
   // Only android webview uses this.
   navigation_params->grant_load_local_resources =
@@ -2055,6 +2058,7 @@ void RenderFrameImpl::BindFrameBindingsControl(
 
 void RenderFrameImpl::BindNavigationClient(
     mojo::PendingAssociatedReceiver<mojom::NavigationClient> receiver) {
+  LOG(DEBUG) << "RenderFrameImpl::BindNavigationClient";
   navigation_client_impl_ = std::make_unique<NavigationClient>(this);
   navigation_client_impl_->Bind(std::move(receiver));
 }
@@ -2371,6 +2375,12 @@ void RenderFrameImpl::MouseSelectMenuShow(bool show) {
     GetFrameHost()->MouseSelectMenuShow(show);
   }
 }
+
+void RenderFrameImpl::ChangeVisibilityOfQuickMenu() {
+  if (GetFrameHost()) {
+    GetFrameHost()->ChangeVisibilityOfQuickMenu();
+  }
+}
 #endif
 
 void RenderFrameImpl::AddMessageToConsole(
@@ -2565,6 +2575,7 @@ void RenderFrameImpl::CommitNavigation(
     mojom::CookieManagerInfoPtr cookie_manager_info,
     mojom::StorageInfoPtr storage_info,
     mojom::NavigationClient::CommitNavigationCallback commit_callback) {
+  LOG(INFO) << "RenderFrameImpl::CommitNavigation " << devtools_navigation_token.ToString();
   DCHECK(navigation_client_impl_);
   DCHECK(!blink::IsRendererDebugURL(common_params->url));
   DCHECK(!NavigationTypeUtils::IsSameDocument(common_params->navigation_type));
@@ -3969,14 +3980,26 @@ void RenderFrameImpl::DidFinishLoad() {
                          frame_->IsOutermostMainFrame());
   }
 
-  for (auto& observer : observers_)
+  for (auto& observer : observers_) {
     observer.DidFinishLoad();
+  }
 }
 
 void RenderFrameImpl::DidFinishLoadForPrinting() {
   for (auto& observer : observers_)
     observer.DidFinishLoadForPrinting();
 }
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+void RenderFrameImpl::DidSubresourceFiltered() {
+  TRACE_EVENT1("navigation, benchmark, rail",
+               "RenderFrameImpl::DidSubresourceFiltered", "id", routing_id_);
+  for (auto& observer : observers_){
+    observer.DidSubresourceFiltered();
+  }
+}
+
+#endif // OHOS_ARKWEB_ADBLOCK
 
 void RenderFrameImpl::DidFinishSameDocumentNavigation(
     blink::WebHistoryCommitType commit_type,
@@ -6508,6 +6531,19 @@ void RenderFrameImpl::SetOverscrollMode(int mode) {
   }
   web_frame_widget->SetOverscrollMode(mode);
 }
+
+#if defined(OHOS_GET_SCROLL_OFFSET)
+gfx::Vector2dF RenderFrameImpl::GetOverScrollOffset() {
+  gfx::Vector2dF overscroll_offset;
+  overscroll_offset.set_x(0.0f);
+  overscroll_offset.set_y(0.0f);
+  auto web_frame_widget = GetLocalRootWebFrameWidget();
+  if (!web_frame_widget) {
+    return overscroll_offset;
+  }
+  return web_frame_widget->GetOverScrollOffset();
+}
+#endif
 #endif  // defined(OHOS_INPUT_EVENTS)
 
 }  // namespace content

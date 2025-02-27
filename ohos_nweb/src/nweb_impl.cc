@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,16 +35,20 @@
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/trace_event/trace_event.h"
 #include "cef_delegate/nweb_download_handler_delegate.h"
+#include "content/renderer/host_proxy.h"
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
 #include "ndk/arkweb_native_object.h"
 #include "nweb_delegate_adapter.h"
 #include "nweb_export.h"
 #include "nweb_handler.h"
 #include "nweb_hilog.h"
 #include "nweb_hit_test_result_impl.h"
+#include "ohos_adapter_helper.h"
 #include "res_sched_client_adapter.h"
 #include "nweb_resize_helper.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #include "components/web_cache/browser/web_cache_manager.h"
+#include "ui/base/clipboard/ohos/clipboard_ohos.h"
 
 #if defined(REPORT_SYS_EVENT)
 #include "event_reporter.h"
@@ -129,8 +133,26 @@
 #include "url/origin.h"
 #endif // defined(OHOS_WARMUP_SERVICEWORKER)
 
+#if OHOS_URL_TRUST_LIST
+#include "cef/libcef/browser/ohos_safe_browsing/ohos_url_trust_list_interface.h"
+#endif
+
 #if defined(OHOS_SITE_ISOLATION)
 extern bool g_siteIsolationMode;
+#endif
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+#include "components/subresource_filter/content/browser/ohos_adblock_config.h"
+#include "cef/libcef/browser/subresource_filter/adblock_list.h"
+#endif
+
+#ifdef OHOS_NETWORK_LOAD
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
+#endif
+
+#ifdef OHOS_WEB_LTPO
+#include "content/browser/gpu/gpu_process_host.h"
 #endif
 
 namespace {
@@ -161,6 +183,14 @@ static double default_zoom_factor = 1.0;
 const int NWebPlaybackState_NONE = 0;
 #endif
 
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+static bool enable_whole_web_page_drawing = false;
+#endif
+
+#if defined(OHOS_CRASHPAD)
+static std::string g_crashpad_target_location = "/data/storage/el2/crashpad";
+#endif
+
 bool GetWebOptimizationValue() {
   auto& system_properties_adapter = OHOS::NWeb::OhosAdapterHelper::GetInstance()
                                         .GetSystemPropertiesInstance();
@@ -179,10 +209,10 @@ static std::string GetNetlogMode() {
   return system_properties_adapter.GetNetlogMode();
 }
 
-static bool GetOOPGPUEnable() {
+static std::string GetOOPGPUStatus() {
   auto& system_properties_adapter = OHOS::NWeb::OhosAdapterHelper::GetInstance()
                                     .GetSystemPropertiesInstance();
-  return system_properties_adapter.GetOOPGPUEnable();
+  return system_properties_adapter.GetOOPGPUStatus();
 }
 
 #if defined(OHOS_SITE_ISOLATION)
@@ -239,23 +269,28 @@ bool GetIsPopup(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   return init_args ? init_args->GetIsPopup() : false;
 }
 
-std::string GetDumpPath(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+std::string GetDumpPath(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   return init_args ? init_args->GetDumpPath() : "";
 }
 
-bool GetIsFrameInfoDump(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+bool GetIsFrameInfoDump(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   return init_args ? init_args->GetIsFrameInfoDump() : false;
 }
 
-bool GetIsEnhanceSurface(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+bool GetIsEnhanceSurface(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   return init_args ? init_args->GetIsEnhanceSurface() : false;
 }
 
-bool GetIsMultiRendererProcess(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+bool GetIsMultiRendererProcess(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   return init_args ? init_args->GetIsMultiRendererProcess() : false;
 }
 
-std::list<std::string> GetArgsToAdd(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+std::list<std::string> GetArgsToAdd(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   if (!init_args) {
     std::list<std::string> temp;
     return temp;
@@ -264,7 +299,8 @@ std::list<std::string> GetArgsToAdd(std::shared_ptr<OHOS::NWeb::NWebEngineInitAr
   return init_args->GetArgsToAdd();
 }
 
-std::list<std::string> GetArgsToDelete(std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+std::list<std::string> GetArgsToDelete(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   if (!init_args) {
     std::list<std::string> temp;
     return temp;
@@ -273,9 +309,17 @@ std::list<std::string> GetArgsToDelete(std::shared_ptr<OHOS::NWeb::NWebEngineIni
   return init_args->GetArgsToDelete();
 }
 
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+std::string GetSharedRenderProcessToken(
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+  return init_args ? init_args->GetSharedRenderProcessToken() : "";
+}
+#endif
+
 #if defined(OHOS_API_INIT_WEB_ENGINE)
-void InitialWebEngineArgs(std::list<std::string>& web_engine_args,
-                          std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
+void InitialWebEngineArgs(
+    std::list<std::string>& web_engine_args,
+    std::shared_ptr<OHOS::NWeb::NWebEngineInitArgs> init_args) {
   web_engine_args.clear();
 
   web_engine_args.emplace_back("/system/bin/web_render");
@@ -326,18 +370,30 @@ void InitialWebEngineArgs(std::list<std::string>& web_engine_args,
   }
 
   auto args_to_delete = GetArgsToDelete(init_args);
+  bool xml_gpu = false;
   for (auto arg : args_to_delete) {
     auto it = std::find(web_engine_args.begin(), web_engine_args.end(), arg);
     if (it != web_engine_args.end()) {
+      if (*it == "--in-process-gpu") {
+        xml_gpu = true;
+        continue;
+      }
       web_engine_args.erase(it);
     }
   }
+
   auto args_to_add = GetArgsToAdd(init_args);
   for (auto arg : args_to_add) {
     web_engine_args.emplace_back(arg);
   }
 
-  if (!GetOOPGPUEnable()) {
+  std::string oop_gpu_enable = GetOOPGPUStatus();
+  if ((xml_gpu && oop_gpu_enable != "false") || (!xml_gpu && oop_gpu_enable == "true")) {
+    auto it = std::find(web_engine_args.begin(), web_engine_args.end(), "--in-process-gpu");
+    if (it != web_engine_args.end()) {
+      web_engine_args.erase(it);
+    }
+  } else {
     web_engine_args.emplace_back("--disable-canvas-oop-gpu-rasterization");
   }
 
@@ -356,8 +412,8 @@ void InitialWebEngineArgs(std::list<std::string>& web_engine_args,
 namespace OHOS::NWeb {
 
 // static
-std::shared_ptr<NWeb>
-NWebImpl::CreateNWeb(std::shared_ptr<NWebCreateInfo> create_info) {
+std::shared_ptr<NWeb> NWebImpl::CreateNWeb(
+    std::shared_ptr<NWebCreateInfo> create_info) {
   if (!create_info) {
     return nullptr;
   }
@@ -369,7 +425,8 @@ NWebImpl::CreateNWeb(std::shared_ptr<NWebCreateInfo> create_info) {
   TRACE_EVENT1("NWebImpl", "NWebImpl | CreateNWeb", "nweb_id", nweb_id);
   WVLOG_I("creating nweb %{public}u, size %{public}u*%{public}u", nweb_id,
           create_info->GetWidth(), create_info->GetHeight());
-  bool is_enhance_surface = GetIsEnhanceSurface(create_info->GetEngineInitArgs());
+  bool is_enhance_surface =
+      GetIsEnhanceSurface(create_info->GetEngineInitArgs());
   WVLOG_I("creating nweb use enhance surface %{public}d", is_enhance_surface);
   std::shared_ptr<NWebImpl> nweb = std::make_shared<NWebImpl>(nweb_id);
   if (nweb == nullptr) {
@@ -393,6 +450,25 @@ NWebImpl::CreateNWeb(std::shared_ptr<NWebCreateInfo> create_info) {
 #endif
   return nweb;
 }
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+void NWebImpl::UpdateAdblockEasyListRules(long adBlockEasyListVersion) {
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("fail to register ark js function");
+    return;
+  }
+
+  OHOS::adblock::AdBlockConfig::GetInstance()->ReadFromPrefService();
+  bool replace_switch = OHOS::adblock::AdBlockConfig::GetInstance()
+                            ->GetUserEasylistReplaceSwitch();
+  if (replace_switch) {
+    WVLOG_D("[adblock] replace switch is true, not update cloud easylist");
+    return;
+  }
+
+  return nweb_delegate_->UpdateAdblockEasyListRules(adBlockEasyListVersion);
+}
+#endif
 
 #if defined(OHOS_COOKIE)
 // static
@@ -469,15 +545,18 @@ static constexpr int32_t SOC_PERF_MOUSEWHEEL_CONFIG_ID = 10071;
 typedef std::unordered_map<int32_t, std::weak_ptr<NWebImpl>> NWebMap;
 base::LazyInstance<NWebMap>::DestructorAtExit g_nweb_map =
     LAZY_INSTANCE_INITIALIZER;
+base::Lock OHOS::NWeb::NWebImpl::nweb_map_lock_;
 
 void NWebImpl::AddNWebToMap(uint32_t id, std::shared_ptr<NWebImpl>& nweb) {
   if (nweb) {
+    base::AutoLock lock_scope(nweb_map_lock_);
     std::weak_ptr<NWebImpl> nweb_weak(nweb);
     g_nweb_map.Get().emplace(id, nweb_weak);
   }
 }
 
 NWebImpl* NWebImpl::FromID(int32_t nweb_id) {
+  base::AutoLock lock_scope(nweb_map_lock_);
   NWebMap* map = g_nweb_map.Pointer();
   if (auto it = map->find(nweb_id); it != map->end()) {
     auto nweb = it->second.lock();
@@ -489,6 +568,7 @@ NWebImpl* NWebImpl::FromID(int32_t nweb_id) {
 }
 
 std::shared_ptr<NWebImpl> NWebImpl::GetNWebSharedPtr(int32_t nweb_id) {
+  base::AutoLock lock_scope(nweb_map_lock_);
   NWebMap *map = g_nweb_map.Pointer();
   if (auto it = map->find(nweb_id); it != map->end()) {
     if (auto nweb = it->second.lock()) {
@@ -506,6 +586,7 @@ NWebImpl::~NWebImpl() {
   ResSchedClientAdapter::ReportNWebInit(ResSchedStatusAdapter::WEB_SCENE_EXIT, nweb_id_);
   ReportLossFrame::GetInstance()->Reset();
   ReportLossFrame::GetInstance()->SetScrollState(ScrollMode::STOP);
+  base::AutoLock lock_scope(nweb_map_lock_);
   g_nweb_map.Get().erase(nweb_id_);
 }
 
@@ -565,6 +646,9 @@ bool NWebImpl::Init(std::shared_ptr<NWebCreateInfo> create_info) {
 void NWebImpl::OnDestroy() {
   WVLOG_I("NWebImpl::OnDestroy, nweb_id = %{public}u", nweb_id_);
 
+  ResSchedClientAdapter::ReportScene(
+    ResSchedStatusAdapter::WEB_SCENE_ENTER, ResSchedSceneAdapter::KEY_TASK);
+
   if (destroyCallback_ != nullptr) {
     WVLOG_I("NWebImpl::OnDestroy destroyCallback_ webName_ is %{public}s", webName_.c_str());
     (destroyCallback_)(webName_.c_str());
@@ -582,11 +666,22 @@ void NWebImpl::OnDestroy() {
   EnableIntelligentTrackingPrevention(false);
 #endif
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+  EnableAdsBlock(false);
+#endif  // OHOS_ARKWEB_ADBLOCK
+
   bool is_close_all = (--g_nweb_count) == 0 ? true : false;
   WVLOG_D("NWebImpl::OnDestroy, nweb_id = %{public}u, number = %{public}u", nweb_id_, g_nweb_count);
+#ifdef OHOS_WEB_LTPO
   if (is_close_all) {
-    OHOS::NWeb::OhosAdapterHelper::GetInstance().GetVSyncAdapter().SetFrameRateLinkerEnable(false);
+    // base::ohos::DynamicFrameRateDecision::GetInstance().SetVisible(false);
+    if (auto* host = GpuProcessHost::Get()) {
+      if (auto* host_impl = host->gpu_host()) {
+        host_impl->SetVisible(false);
+      }
+    }
   }
+#endif
 
   if (nweb_delegate_ != nullptr) {
     nweb_delegate_->OnDestroy(is_close_all);
@@ -641,12 +736,7 @@ bool NWebImpl::SetVirtualDeviceRatio() {
       // Created a richtext component
       device_pixel_ratio_ = richtextDisplayRatio;
     } else {
-#if BUILDFLAG(IS_OHOS)
-      device_pixel_ratio_ = display->GetVirtualPixelRatio() *
-                            nweb_delegate_->GetBaseDisplayRatio();
-#else
       device_pixel_ratio_ = display->GetVirtualPixelRatio();
-#endif
     }
     if (device_pixel_ratio_ <= 0) {
       WVLOG_E("invalid ratio.");
@@ -694,6 +784,7 @@ bool NWebImpl::InitWebEngine(std::shared_ptr<NWebCreateInfo> create_info) {
     return false;
   }
 
+  window_ = reinterpret_cast<EGLNativeWindowType>(window);
   int32_t ret =
       OHOS::NWeb::OhosAdapterHelper::GetInstance()
           .GetWindowAdapterInstance()
@@ -707,16 +798,26 @@ bool NWebImpl::InitWebEngine(std::shared_ptr<NWebCreateInfo> create_info) {
   }
 
   bool is_popup = GetIsPopup(init_args);
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  std::string shared_render_process_token =
+      GetSharedRenderProcessToken(init_args);
+#endif
   WVLOG_D("nweb create_info.init_args.is_popup: %{public}d", is_popup);
   nweb_delegate_ = NWebDelegateAdapter::CreateNWebDelegate(
       argc, argv, is_enhance_surface_, window, is_popup
 #if defined(OHOS_EX_DOWNLOAD)
-      , nweb_id_
+      ,
+      nweb_id_
 #endif
 #if defined(OHOS_INCOGNITO_MODE)
-      , create_info->GetIsIncognitoMode()
+      ,
+      create_info->GetIsIncognitoMode()
 #endif
-      );
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+      ,
+      shared_render_process_token
+#endif
+  );
   WVLOG_D("nweb create_info.incognito_mode: %{public}d",
           create_info->GetIsIncognitoMode());
   if (nweb_delegate_ == nullptr) {
@@ -735,20 +836,13 @@ bool NWebImpl::InitWebEngine(std::shared_ptr<NWebCreateInfo> create_info) {
     return false;
   }
 
-  std::weak_ptr<NWebOutputHandler> output_handler_weak(output_handler_);
-  auto render_update_cb = [output_handler_weak](const char* buffer) -> void {
-    if (!output_handler_weak.expired()) {
-      output_handler_weak.lock()->OnRenderUpdate(buffer);
-    }
-  };
-
   uint32_t width, height;
   output_handler_->GetWindowInfo(width, height);
   nweb_delegate_->Resize(width, height);
-  nweb_delegate_->RegisterRenderCb(render_update_cb);
 
   inputmethod_handler_ = new NWebInputMethodHandler();
   if (!inputmethod_handler_) {
+    delete[] argv;
     WVLOG_E("inputmethod_handler_ is nullptr");
     return false;
   }
@@ -757,6 +851,13 @@ bool NWebImpl::InitWebEngine(std::shared_ptr<NWebCreateInfo> create_info) {
   inputmethod_handler_->SetVirtualDeviceRatio(device_pixel_ratio_);
 
   nweb_delegate_->SetNWebId(nweb_id_);
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  if (enable_whole_web_page_drawing) {
+    nweb_delegate_->EnableWholeWebPageDrawing();
+  }
+#endif
+
 
 #ifdef OHOS_I18N
   UpdateAcceptLanguageInternal();
@@ -806,6 +907,22 @@ void NWebImpl::Resize(uint32_t width, uint32_t height, bool isKeyboard) {
   }
   nweb_delegate_->Resize(width, height, isKeyboard);
   output_handler_->Resize(width, height);
+}
+
+void NWebImpl::ResizeVisibleViewport(uint32_t width, uint32_t height, bool isKeyboard) {
+#if defined(OHOS_INPUT_EVENTS)
+  if (width > kSurfaceMaxWidth || height > kSurfaceMaxHeight) {
+    if (draw_mode_ == 0) {
+      WVLOG_E("size too large in surface mode (%{public}u , %{public}u)", width, height);
+      return;
+    }
+  }
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("resize failed, nweb delegate is nullptr, nweb_id = %{public}u", nweb_id_);
+    return;
+  }
+  nweb_delegate_->ResizeVisibleViewport(width, height, isKeyboard);
+#endif
 }
 
 void NWebImpl::DragResize(uint32_t width, uint32_t height, uint32_t pre_height, uint32_t pre_width) {
@@ -859,7 +976,7 @@ void NWebImpl::SetDrawRect(int x, int y, int width, int height) {
 }
 
 void NWebImpl::SetDrawMode(int mode) {
-  WVLOG_D("NWebImpl::SetDrawMode %{public}d", mode);
+  WVLOG_I("NWebImpl::SetDrawMode %{public}d, nweb_id = %{public}u", mode, nweb_id_);
   if (draw_mode_ != mode) {
     draw_mode_ = mode;
     if (nweb_delegate_) {
@@ -876,7 +993,7 @@ bool NWebImpl::GetPendingSizeStatus() {
 }
 
 void NWebImpl::SetFitContentMode(int mode) {
-  WVLOG_D("NWebImpl::SetFitContentMode %{public}d", mode);
+  WVLOG_I("NWebImpl::SetFitContentMode %{public}d, nweb_id = %{public}u", mode, nweb_id_);
   if (nweb_delegate_) {
     nweb_delegate_->SetFitContentMode(mode);
   }
@@ -885,8 +1002,8 @@ void NWebImpl::SetFitContentMode(int mode) {
 void NWebImpl::OnTouchPress(int32_t id, double x, double y, bool from_overlay) {
   WVLOG_D(
       "NWebImpl::OnTouchPress id=%{public}d, x=%{public}f, y=%{public}f, "
-      "from_overlay=%{public}d",
-      id, x, y, from_overlay);
+      "from_overlay=%{public}d, nweb_id = %{public}u",
+      id, x, y, from_overlay, nweb_id_);
   if (input_handler_ == nullptr) {
     return;
   }
@@ -894,6 +1011,10 @@ void NWebImpl::OnTouchPress(int32_t id, double x, double y, bool from_overlay) {
   ResSchedClientAdapter::ReportScene(
     ResSchedStatusAdapter::WEB_SCENE_ENTER, ResSchedSceneAdapter::CLICK, nweb_id_);
   input_handler_->OnTouchPress(id, x, y, from_overlay);
+
+  if (nweb_delegate_) {
+    nweb_delegate_->RefreshAccessibilityManagerClickEvent();
+  }
 }
 
 void NWebImpl::OnTouchRelease(int32_t id,
@@ -902,8 +1023,8 @@ void NWebImpl::OnTouchRelease(int32_t id,
                               bool from_overlay) {
   WVLOG_D(
       "NWebImpl::OnTouchRelease id=%{public}d, x=%{public}f, y=%{public}f, "
-      "from_overlay=%{public}d",
-      id, x, y, from_overlay);
+      "from_overlay=%{public}d, nweb_id = %{public}u",
+      id, x, y, from_overlay, nweb_id_);
   if (input_handler_ == nullptr) {
     return;
   }
@@ -1153,6 +1274,12 @@ void NWebImpl::OnPause() {
     return;
   }
   nweb_delegate_->OnPause();
+
+  if (nweb_delegate_->IsCustomKeyboard()) {
+    LOG(INFO) << "WebCustomKeyboard NWebImpl::OnPause";
+    nweb_delegate_->GetCustomKeyboardHandler()->CloseFromWebStateChange(WebCustomKeyboardState::FROM_ONPAUSE);
+  }
+
   if (inputmethod_handler_ == nullptr) {
     LOG(ERROR) << "inputmethod_handler_ is nullptr.";
     return;
@@ -1167,6 +1294,15 @@ void NWebImpl::OnContinue() {
     return;
   }
   nweb_delegate_->OnContinue();
+
+  if (nweb_delegate_->IsCustomKeyboard()) {
+    LOG(INFO) << "WebCustomKeyboard NWebImpl::OnContinue and focus";
+    auto handler = nweb_delegate_->GetCustomKeyboardHandler();
+    if (handler && handler->AttachFromWebStateChange(WebCustomKeyboardState::FROME_ONCONTINUE)) {
+      nweb_delegate_->OnFocus();
+    }
+  }
+
   if (inputmethod_handler_ == nullptr) {
     LOG(ERROR) << "inputmethod_handler_ is nullptr.";
     return;
@@ -1247,6 +1383,15 @@ void NWebImpl::ExecuteJavaScriptExt(
   nweb_delegate_->ExecuteJavaScriptExt(fd, scriptLength, callback, extention);
 }
 
+void NWebImpl::ExecuteCreatePDFExt(
+    std::shared_ptr<NWebPDFConfigArgs> pdfConfig,
+    std::shared_ptr<NWebArrayBufferValueCallback> callback) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  nweb_delegate_->ExecuteCreatePDFExt(pdfConfig, callback);
+}
+
 #if defined(OHOS_MSGPORT)
 void NWebImpl::ExecuteJavaScript(
     const std::string& code,
@@ -1304,6 +1449,32 @@ void NWebImpl::SetPortMessageCallback(
   nweb_delegate_->SetPortMessageCallback(portHandle, callback);
 }
 #endif  // defined(OHOS_MSGPORT)
+
+void NWebImpl::SetAutofillCallback(std::shared_ptr<NWebMessageValueCallback> callback) {
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("JSAPI nweb_delegate_ its null");
+    return;
+  }
+  nweb_delegate_->SetAutofillCallback(callback);
+}
+
+void NWebImpl::FillAutofillData(std::shared_ptr<NWebMessage> data) {
+  LOG(INFO) << "NWebImpl::FillAutofillData";
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("JSAPI nweb_delegate_ its null");
+    return;
+  }
+  nweb_delegate_->FillAutofillData(data);
+}
+
+void NWebImpl::OnAutofillCancel(const std::string& fillContent) {
+  LOG(INFO) << "NWebImpl::OnAutofillCancel";
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("JSAPI nweb_delegate_ its null");
+    return;
+  }
+  nweb_delegate_->ProcessAutofillCancel(fillContent);
+}
 
 uint32_t NWebImpl::GetWebId() {
   return nweb_id_;
@@ -1392,10 +1563,11 @@ void NWebImpl::RegisterNativeArkJSFunction(
     const std::string& objName,
     const std::vector<std::string>& methodName,
     std::vector<NativeJSProxyCallbackFunc>&& callback,
-    bool isAsync) {
+    bool isAsync,
+    const std::string& permission) {
   if (nweb_delegate_ != nullptr) {
     nweb_delegate_->RegisterNativeJSProxy(objName, methodName,
-                                          std::move(callback), isAsync);
+                                          std::move(callback), isAsync, permission);
   } else {
     LOG(ERROR) << "nweb_delegate_ is nullptr";
   }
@@ -1450,7 +1622,7 @@ void NWebImpl::RegisterArkJSfunction(
     return;
   }
   return nweb_delegate_->RegisterArkJSfunction(object_name, method_list,
-                                               std::vector<std::string>(), object_id);
+                                               std::vector<std::string>(), object_id, "");
 }
 
 void NWebImpl::RegisterArkJSfunction(
@@ -1463,7 +1635,21 @@ void NWebImpl::RegisterArkJSfunction(
     return;
   }
   return nweb_delegate_->RegisterArkJSfunction(object_name, method_list,
-                                               async_method_list, object_id);
+                                               async_method_list, object_id, "");
+}
+
+void NWebImpl::RegisterArkJSfunction(
+    const std::string& object_name,
+    const std::vector<std::string>& method_list,
+    const std::vector<std::string>& async_method_list,
+    const int32_t object_id,
+    const std::string& permission) {
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("fail to register ark js function");
+    return;
+  }
+  return nweb_delegate_->RegisterArkJSfunction(object_name, method_list,
+                                               async_method_list, object_id, permission);
 }
 
 void NWebImpl::UnregisterArkJSfunction(
@@ -1516,6 +1702,11 @@ void NWebImpl::OnFocus(const FocusReason& focusReason) {
     return;
   }
 
+  if (nweb_delegate_->IsCustomKeyboard()) {
+    LOG(INFO) << "WebCustomKeyboard NWebImpl::OnFocus";
+    nweb_delegate_->GetCustomKeyboardHandler()->AttachFromWebStateChange(WebCustomKeyboardState::FROME_ONFOCUS);
+  }
+
   if (inputmethod_handler_ == nullptr) {
     LOG(ERROR) << "inputmethod_handler_ is nullptr.";
     return;
@@ -1532,6 +1723,12 @@ void NWebImpl::OnBlur(const BlurReason& blurReason) {
     return;
   }
   nweb_delegate_->OnBlur();
+
+  if (nweb_delegate_->IsCustomKeyboard()) {
+    LOG(INFO) << "WebCustomKeyboard NWebImpl::OnBlur";
+    nweb_delegate_->GetCustomKeyboardHandler()->CloseFromWebStateChange(WebCustomKeyboardState::FROM_ONBLUR);
+  }
+
   if (inputmethod_handler_ == nullptr) {
     LOG(ERROR) << "inputmethod_handler_ is nullptr.";
     return;
@@ -1542,8 +1739,14 @@ void NWebImpl::OnBlur(const BlurReason& blurReason) {
     return;
   }
 #endif  // #ifdef OHOS_FOCUS
-  inputmethod_handler_->HideTextInput(
-      nweb_id_, NWebInputMethodClient::HideTextinputType::FROM_ONBLUR);
+  if (blurReason == OHOS::NWeb::BlurReason::CLEAR_FOCUS) {
+    inputmethod_handler_->HideTextInputForce();
+  } else if (blurReason == OHOS::NWeb::BlurReason::FOCUS_SWITCH) {
+    inputmethod_handler_->SetNeedReattachOnfocus();
+  } else {
+    inputmethod_handler_->HideTextInput(
+        nweb_id_, NWebInputMethodClient::HideTextinputType::FROM_ONBLUR);
+  }
   inputmethod_handler_->SetFocusStatus(false);
 }
 
@@ -1720,6 +1923,34 @@ void NWebImpl::PageDown(bool bottom) {
   }
   return nweb_delegate_->PageDown(bottom);
 }
+
+#ifdef OHOS_GET_SCROLL_OFFSET
+void NWebImpl::GetScrollOffset(float* offset_x, float* offset_y) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  float scroll_offset_x = 0;
+  float scroll_offset_y = 0;
+  float overscroll_offset_x = 0;
+  float overscroll_offset_y = 0;
+  float finalOffset_x = 0;
+  float finalOffset_y = 0;
+  nweb_delegate_->GetScrollOffset(&scroll_offset_x, &scroll_offset_y);
+  #if defined(OHOS_INPUT_EVENTS)
+  nweb_delegate_->GetOverScrollOffset(&overscroll_offset_x,
+                                      &overscroll_offset_y);
+  #endif
+  finalOffset_x = scroll_offset_x + std::round(overscroll_offset_x);
+  finalOffset_y = scroll_offset_y + std::round(overscroll_offset_y);
+
+  if ((nullptr == offset_x) || (nullptr == offset_y)) {
+    LOG(ERROR) << "offset_x or offset_y is nullptr";
+    return;
+  }
+  *offset_x = finalOffset_x;
+  *offset_y = finalOffset_y;
+}
+#endif
 #endif  // #ifdef OHOS_PAGE_UP_DOWN
 
 #if defined(OHOS_INPUT_EVENTS)
@@ -1749,6 +1980,79 @@ void NWebImpl::SlideScroll(float vx, float vy) {
     return;
   }
   return nweb_delegate_->SlideScroll(vx, vy);
+}
+
+bool NWebImpl::WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
+                               const std::vector<int32_t>& pressedCodes) {
+  if (input_handler_ == nullptr) {
+    return false;
+  }
+  return input_handler_->WebSendKeyEvent(keyCode, keyAction, pressedCodes);
+}
+
+void NWebImpl::WebSendMouseWheelEvent(double x,
+                                      double y,
+                                      double deltaX,
+                                      double deltaY,
+                                      const std::vector<int32_t>& pressedCodes) {
+  if (input_handler_ == nullptr) {
+    return;
+  }
+
+  ResSchedClientAdapter::ReportScene(
+    ResSchedStatusAdapter::WEB_SCENE_ENTER, ResSchedSceneAdapter::SLIDE);
+
+#if defined(OHOS_PERFORMANCE_INC_FREQ)
+  OHOS::NWeb::OhosAdapterHelper::GetInstance()
+      .CreateSocPerfClientAdapter()
+      ->ApplySocPerfConfigById(SOC_PERF_MOUSEWHEEL_CONFIG_ID);
+#endif
+  input_handler_->WebSendMouseWheelEvent(x, y, deltaX, deltaY, pressedCodes);
+}
+
+void NWebImpl::WebSendTouchpadFlingEvent(double x,
+                                         double y,
+                                         double vx,
+                                         double vy,
+                                         const std::vector<int32_t>& pressedCodes) {
+  if (input_handler_ == nullptr) {
+    return;
+  }
+
+  input_handler_->WebSendTouchpadFlingEvent(x, y, vx, vy, pressedCodes);
+}
+
+void NWebImpl::ScrollToWithAnime(float x, float y, int32_t duration) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  return nweb_delegate_->ScrollToWithAnime(x, y, duration);
+}
+
+void NWebImpl::ScrollByWithAnime(float delta_x, float delta_y, int32_t duration) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  return nweb_delegate_->ScrollByWithAnime(delta_x, delta_y, duration);
+}
+
+bool NWebImpl::ScrollByWithResult(float delta_x, float delta_y) {
+  if (nweb_delegate_ == nullptr) {
+    return false;
+  }
+  return nweb_delegate_->ScrollByWithResult(delta_x, delta_y);
+}
+
+void NWebImpl::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent) {
+  if (!input_handler_ || !mouseEvent) {
+    return;
+  }
+
+  if (mouseEvent->GetAction() == MouseAction::PRESS) {
+    ResSchedClientAdapter::ReportScene(
+      ResSchedStatusAdapter::WEB_SCENE_ENTER, ResSchedSceneAdapter::CLICK, nweb_id_);
+  }
+  input_handler_->WebSendMouseEvent(mouseEvent);
 }
 #endif  // defined(OHOS_INPUT_EVENTS)
 
@@ -1906,20 +2210,19 @@ void NWebImpl::SetEnableBlankTargetPopupIntercept(
 #endif
 
 void NWebImpl::OnWebviewHide() {
-#if defined(OHOS_WEBRTC)
-  StopCameraSession();
-#endif
+  WVLOG_D("NWebImpl::OnWebviewHide");
 }
 
 void NWebImpl::OnWebviewShow() {
-#if defined(OHOS_WEBRTC)
-  RestartCameraSession();
-#endif
+  WVLOG_D("NWebImpl::OnWebviewShow");
 }
 
 void NWebImpl::OnRenderToBackground() {
   TRACE_EVENT0("base", "OnRenderToBackground");
   WVLOG_D("NWebImpl::OnRenderToBackground");
+#if defined(OHOS_WEBRTC)
+  StopCameraSession();
+#endif
   if (nweb_delegate_ == nullptr) {
     WVLOG_E("OnRenderToBackground nweb delegate is null");
     return;
@@ -1930,6 +2233,9 @@ void NWebImpl::OnRenderToBackground() {
 void NWebImpl::OnRenderToForeground() {
   TRACE_EVENT0("base", "OnRenderToForeground");
   WVLOG_D("NWebImpl::OnRenderToForeground");
+#if defined(OHOS_WEBRTC)
+  RestartCameraSession();
+#endif
   if (nweb_delegate_ == nullptr) {
     WVLOG_E("OnRenderToForeground nweb delegate is null");
     return;
@@ -1945,6 +2251,16 @@ void NWebImpl::OnOnlineRenderToForeground() {
     return;
   }
   nweb_delegate_->OnOnlineRenderToForeground();
+}
+
+void NWebImpl::NotifyForNextTouchEvent() {
+  TRACE_EVENT0("base", "NotifyForNextTouchEvent");
+  WVLOG_D("NWebImpl::NotifyForNextTouchEvent");
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("NotifyForNextTouchEvent nweb delegate is null");
+    return;
+  }
+  nweb_delegate_->NotifyForNextTouchEvent();
 }
 
 #if BUILDFLAG(IS_OHOS)
@@ -2182,6 +2498,104 @@ bool NWebImpl::ShouldShowFreeCopy() const {
 
 #endif  // OHOS_EX_FREE_COPY
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+// static
+void NWebImpl::SetAdsBlockRules(const std::string& rulesFiles,
+                                const bool replace) {
+  LOG(DEBUG) << "[adblock] SetAdsBlockRules called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->SetAdsBlockRules(rulesFiles,
+                                                                replace);
+  ::adblock::AdBlockList::UpdateUserEasyListRules(rulesFiles);
+}
+
+// static
+void NWebImpl::AddAdsBlockDisallowList(
+    const std::vector<std::string>& domainSuffixes) {
+  LOG(DEBUG) << "[adblock] AddAdsBlockDisallowList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->AddAdsBlockDisallowList(
+      domainSuffixes);
+}
+
+// static
+void NWebImpl::AddAdsBlockAllowList(
+    const std::vector<std::string>& domainSuffixes) {
+  LOG(DEBUG) << "[adblock] AddAdsBlockAllowList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->AddAdsBlockAllowList(
+      domainSuffixes);
+}
+
+// static
+void NWebImpl::RemoveAdsBlockDisallowedList(
+    const std::vector<std::string>& domainSuffixes) {
+  LOG(DEBUG) << "[adblock] RemoveAdsBlockDisallowedList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->RemoveAdsBlockDisallowedList(
+      domainSuffixes);
+}
+
+// static
+void NWebImpl::RemoveAdsBlockAllowedList(
+    const std::vector<std::string>& domainSuffixes) {
+  LOG(DEBUG) << "[adblock] RemoveAdsBlockAllowedList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->RemoveAdsBlockAllowedList(
+      domainSuffixes);
+}
+
+// static
+void NWebImpl::ClearAdsBlockDisallowedList() {
+  LOG(DEBUG) << "[adblock] ClearAdsBlockDisallowedList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->ClearAdsBlockDisallowedList();
+}
+
+// static
+void NWebImpl::ClearAdsBlockAllowedList() {
+  LOG(DEBUG) << "[adblock] ClearAdsBlockAllowedList called from ui";
+  OHOS::adblock::AdBlockConfig::GetInstance()->ClearAdsBlockAllowedList();
+}
+
+bool NWebImpl::IsAdsBlockEnabledForCurPage() {
+  if (nweb_delegate_ == nullptr) {
+    return false;
+  }
+  LOG(DEBUG) << "[adblock] IsAdsBlockEnabledForCurPage called from ui";
+  return nweb_delegate_->IsAdsBlockEnabledForCurPage();
+}
+
+bool NWebImpl::IsAdsBlockEnabled() {
+  if (nweb_delegate_ == nullptr) {
+    return false;
+  }
+  LOG(DEBUG) << "[adblock] IsAdsBlockEnabled called from ui";
+  return nweb_delegate_->IsAdsBlockEnabled();
+}
+
+void NWebImpl::EnableAdsBlock(bool enable) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  LOG(DEBUG) << "[adblock] EnableAdsBlock called from ui";
+  nweb_delegate_->EnableAdsBlock(enable);
+}
+
+// static
+bool NWebImpl::IsAnyNWebAdblockEnabled() {
+  NWebMap* map = g_nweb_map.Pointer();
+
+  OHOS::adblock::AdBlockConfig::GetInstance()->ReadFromPrefService();
+  bool replace_switch = OHOS::adblock::AdBlockConfig::GetInstance()
+                            ->GetUserEasylistReplaceSwitch();
+  for (auto it = map->begin(); it != map->end(); it++) {
+    auto nweb_weak_ptr = it->second.lock();
+    if (nweb_weak_ptr) {
+      auto nweb = nweb_weak_ptr.get();
+      if (nweb && nweb->IsAdsBlockEnabled() && !replace_switch) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+#endif
+
 #ifdef OHOS_EX_PASSWORD
 bool NWebImpl::GetSavePasswordAutomatically() const {
   if (nweb_delegate_ == nullptr) {
@@ -2283,6 +2697,19 @@ NWebDownloadItemState NWebImpl::GetDownloadItemState(long item_id) {
 
   return nweb_delegate_->GetDownloadItemState(item_id);
 }
+
+// static
+NWebDownloadItemState NWebImpl::GetDownloadItemStateByGuid(const std::string& guid) {
+  LOG(DEBUG) << "get download item state " << guid;
+  CefRefPtr<CefDownloadItem> download_item = CefGetDownloadItem(guid);
+  if(!download_item){
+    LOG(ERROR) << "GetDownloadItemState failed, for download_item is nullptr, "
+               << "guid" << guid;
+    return NWebDownloadItemState::MAX_DOWNLOAD_STATE;
+  }
+
+  return NWebDownloadItem::GetNWebState(download_item);
+}
 #endif
 
 void NWebImpl::PutAccessibilityEventCallback(
@@ -2296,9 +2723,7 @@ void NWebImpl::PutAccessibilityEventCallback(
 
 void NWebImpl::PutAccessibilityIdGenerator(
     const AccessibilityIdGenerateFunc accessibilityIdGenerator) {
-  if (nweb_delegate_ != nullptr) {
-    nweb_delegate_->RegisterAccessibilityIdGenerator(accessibilityIdGenerator);
-  }
+	// Deprecated due to new accessibility architecture
 }
 
 void NWebImpl::ExecuteAction(int64_t accessibilityId, uint32_t action) {
@@ -2342,14 +2767,34 @@ void NWebImpl::SetAccessibilityState(bool state) {
   }
 }
 
+#ifdef OHOS_CRASHPAD
+void NWebImpl::SetDefaultCrashpadLogPath(const std::string& crashpad_log_path) {
+  LOG(INFO) << "g_crashpad_target_location is" << g_crashpad_target_location
+            << "crashpad_log_path is" << crashpad_log_path;
+  g_crashpad_target_location = crashpad_log_path;
+}
+const std::string NWebImpl::GetDefaultCrashpadLogPath() {
+  return g_crashpad_target_location;
+}
+#endif
+
 bool NWebImpl::Discard() {
    if (nweb_delegate_ == nullptr) {
     WVLOG_E("Discard failed, nweb delegate is nullptr, nweb_id = %{public}u", nweb_id_);
     return false;
    }
 
-   return nweb_delegate_->Discard();
+  if (!nweb_delegate_->Discard()) {
+    return false;
+  }
+
+  WVLOG_D("Discard: Notify the bufferq to clean all caches");
+  OHOS::NWeb::OhosAdapterHelper::GetInstance()
+      .GetWindowAdapterInstance()
+      .NativeWindowSurfaceCleanCacheWithPara(reinterpret_cast<void*>(window_), true);
+  return true;
 }
+
 bool NWebImpl::Restore() {
    if (nweb_delegate_ == nullptr) {
     WVLOG_E("Restore failed, nweb delegate is nullptr, nweb_id = %{public}u", nweb_id_);
@@ -2435,6 +2880,7 @@ bool NWebImpl::NeedSoftKeyboard() {
 
 // static
 std::shared_ptr<NWeb> NWebImpl::GetNWeb(int32_t nweb_id) {
+  base::AutoLock lock_scope(nweb_map_lock_);
   NWebMap* map = OHOS::NWeb::g_nweb_map.Pointer();
   if (auto it = map->find(nweb_id); it != map->end()) {
     return it->second.lock();
@@ -2448,12 +2894,16 @@ std::shared_ptr<NWeb> NWebImpl::GetNWeb(int32_t nweb_id) {
 void NWebImpl::SetWebTag(int32_t nweb_id, const char* web_tag) {
   OHOS::NWeb::NWebImpl* nweb = OHOS::NWeb::NWebImpl::FromID(nweb_id);
   OHOS::NWeb::ArkWebNativeObject::BindWebTagToWebInstance(nweb_id, web_tag);
-  if (!nweb) {
-    WVLOG_E("fail to find a valid nweb with %{public}d", nweb_id);
+  if (nweb) {
+    nweb->SetWebTag(std::string(web_tag));
     return;
   }
 
-  nweb->SetWebTag(std::string(web_tag));
+  if (nweb_id == -1) {
+    WVLOG_D("fail to find a valid nweb with id:%{public}d Tag:%{public}s", nweb_id, web_tag ? web_tag : " ");
+  } else {
+    WVLOG_E("fail to find a valid nweb with id:%{public}d Tag:%{public}s", nweb_id, web_tag ? web_tag : " ");
+  }
 }
 #endif
 
@@ -2462,6 +2912,7 @@ void NWebImpl::PrepareForPageLoad(const std::string &url,
                                   bool preconnectable,
                                   int32_t num_sockets) {
 #if defined(OHOS_NO_STATE_PREFETCH)
+  WVLOG_I("PrepareForPageLoad start.");
   predictor::PreconnectUrlInfo preconnectUrlInfo;
   preconnectUrlInfo.url = url;
   preconnectUrlInfo.num_sockets = num_sockets;
@@ -2601,6 +3052,7 @@ bool NWebImpl::IsIntelligentTrackingPreventionEnabled() const {
 
 //static
 bool NWebImpl::IsAnyNWebIntelligentTrackingPreventionEnabled() {
+  base::AutoLock lock_scope(nweb_map_lock_);
   NWebMap* map = g_nweb_map.Pointer();
   for (auto it = map->begin(); it != map->end(); it++) {
     auto nweb_weak_ptr = it->second.lock();
@@ -2675,8 +3127,12 @@ int NWebImpl::ScaleGestureChange(double scale, double centerX, double centerY) {
 // static
 void NWebImpl::SetRenderProcessMode(RenderProcessMode mode) {
   LOG(INFO) << "SetRenderProcessMode mode:" << (int)mode;
-  content::RenderProcessHost::SetRenderProcessMode(
-      static_cast<content::RenderProcessMode>(mode));
+  content::RenderProcessMode render_process_mode =
+      content::RenderProcessMode::SINGLE_MODE;
+  if (mode == RenderProcessMode::MULTIPLE_MODE) {
+    render_process_mode = content::RenderProcessMode::MULTIPLE_MODE;
+  }
+  content::RenderProcessHost::SetRenderProcessMode(render_process_mode);
 
 #if defined(OHOS_SITE_ISOLATION)
   g_siteIsolationMode = ShouldEnableSiteIsolation();
@@ -2688,10 +3144,22 @@ void NWebImpl::SetRenderProcessMode(RenderProcessMode mode) {
 
 // static
 RenderProcessMode NWebImpl::GetRenderProcessMode() {
-  return static_cast<RenderProcessMode>(
-      content::RenderProcessHost::render_process_mode());
+  content::RenderProcessMode render_process_mode =
+      content::RenderProcessHost::render_process_mode();
+  if (render_process_mode == content::RenderProcessMode::SINGLE_MODE) {
+    return RenderProcessMode::SINGLE_MODE;
+  }
+  return RenderProcessMode::MULTIPLE_MODE;
 }
 #endif // OHOS_RENDER_PROCESS_MODE
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+// static
+void NWebImpl::EnableWholeWebPageDrawing() {
+  enable_whole_web_page_drawing = true;
+}
+#endif
+
 }  // namespace OHOS::NWeb
 
 using namespace OHOS::NWeb;
@@ -2868,6 +3336,10 @@ void NWebImpl::SuggestionSelected(int index) {
   nweb_delegate_->SuggestionSelected(index);
 }
 
+void NWebImpl::PutSpanstringConvertHtmlCallback(std::shared_ptr<NWebSpanstringConvertHtmlCallback> callback) {
+  ui::ClipboardOHOS::SetConvertHtmlCallback(callback);
+}
+
 #ifdef OHOS_DISPLAY_CUTOUT
 void NWebImpl::OnSafeInsetsChange(int left, int top, int right, int bottom) {
   if (nweb_delegate_ == nullptr) {
@@ -2884,3 +3356,207 @@ void NWebImpl::OnSafeInsetsChange(int left, int top, int right, int bottom) {
   nweb_delegate_->OnSafeInsetsChange(left, top, right, bottom);
 }
 #endif
+
+#ifdef OHOS_AI
+void NWebImpl::OnTextSelected() {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  nweb_delegate_->OnTextSelected();
+}
+#endif
+
+#ifdef OHOS_SOFTWARE_COMPOSITOR
+bool NWebImpl::WebPageSnapshot(const char* id,
+                       PixelUnit type,
+                       int width,
+                       int height,
+                       const WebSnapshotCallback callback) {
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E( "WebPageSnapshot failed, nweb delegate is nullptr");
+    return false;
+  }
+  return nweb_delegate_->WebPageSnapshot(id, type, width, height, callback);
+}
+#endif
+
+#ifdef OHOS_NETWORK_LOAD
+void NWebImpl::SetPathAllowingUniversalAccess(
+    const std::vector<std::string>& pathList,
+    const std::vector<std::string>& moduleName,
+    std::string& errorPath) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  if (pathList.empty()) {
+    LOG(INFO) << "SetPathAllowingUniversalAccess empty";
+    nweb_delegate_->SetPathAllowingUniversalAccess(pathList);
+    return;
+  }
+  std::vector<base::FilePath> res_dir_path_list;
+  std::vector<base::FilePath> file_dir_path_list;
+  for (auto& name: moduleName) {
+    res_dir_path_list.push_back(base::FilePath(
+      "/data/storage/el1/bundle/" + name + "/resources/resfile"));
+    file_dir_path_list.push_back(base::FilePath(
+      "/data/storage/el2/base/haps/" + name + "/files"));
+  }
+  file_dir_path_list.push_back(base::FilePath("/data/storage/el2/base/files"));
+
+  for (auto& p: pathList) {
+    base::FilePath path(p);
+    auto real_path = base::MakeAbsoluteFilePathNoResolveSymbolicLinks(path).value_or(base::FilePath());
+    if (real_path.empty()) {
+      errorPath = p;
+      return;
+    }
+    bool valid = false;
+    for (auto& res_dir: res_dir_path_list) {
+      if (res_dir.IsParent(real_path) || res_dir == real_path) {
+        valid = true;
+        break;
+      }
+    }
+    if (valid) {
+      continue;
+    }
+    for (auto& file_dir: file_dir_path_list) {
+      if (file_dir.IsParent(real_path)) {
+        valid = true;
+        break;
+      }
+    }
+    if (!valid) {
+      errorPath = p;
+      return;
+    }
+  }
+  nweb_delegate_->SetPathAllowingUniversalAccess(pathList);
+}
+#endif
+
+int NWebImpl::SetUrlTrustList(const std::string& urlTrustList) {
+  return 0;
+}
+
+int NWebImpl::SetUrlTrustListWithErrMsg(
+  const std::string& urlTrustList, std::string& detailErrMsg) {
+#if OHOS_URL_TRUST_LIST
+  if (nweb_delegate_ == nullptr) {
+    return static_cast<int>(ohos_safe_browsing::UrlListSetResult::INIT_ERROR);
+  }
+
+  return nweb_delegate_->SetUrlTrustListWithErrMsg(urlTrustList, detailErrMsg);
+#else
+  return -1;
+#endif
+}
+
+#ifdef OHOS_MIXED_CONTENT
+void NWebImpl::EnableMixedContentAutoUpgrades(bool enable){
+  if(nweb_delegate_ == nullptr){
+    LOG(ERROR) << "EnableMixedContentAutoUpgrades failed,"
+                  "for nweb_delegate_ is nullptr.";
+    return;
+  }
+  nweb_delegate_->EnableMixedContentAutoUpgrades(enable);
+}
+
+bool NWebImpl::IsMixedContentAutoUpgradesEnabled(){
+  if(nweb_delegate_ == nullptr){
+    LOG(ERROR) << "IsMixedContentAutoUpgradesEnabled failed"
+                  "for nweb_delegate_ is nullptr.";
+    return false;
+  }
+
+  return nweb_delegate_->IsMixedContentAutoUpgradesEnabled();
+}
+#endif
+
+void NWebImpl::PerformAction(int64_t accessibilityId, uint32_t action,
+  const std::map<std::string, std::string>& actionArguments) {
+  if (nweb_delegate_ != nullptr) {
+    nweb_delegate_->ExecuteAction(accessibilityId, action, actionArguments);
+  }
+}
+
+void NWebImpl::SendAccessibilityHoverEvent(int32_t x, int32_t y) {
+  if (nweb_delegate_ != nullptr) {
+    nweb_delegate_->SendAccessibilityHoverEvent(x, y);
+  }
+}
+
+void NWebImpl::SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) {
+#ifdef OHOS_BFCACHE
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E("fail to set back forward cache options. nweb_delegate is nullptr.");
+    return;
+  }
+
+  nweb_delegate_->SetBackForwardCacheOptions(size, timeToLive);
+#endif
+}
+
+void NWebImpl::TrimMemoryByPressureLevel(int32_t memoryLevel) {
+#ifdef OHOS_PERFORMANCE_MEMORY_THRESHOLD
+  using MemoryPressureLevel = base::MemoryPressureListener::MemoryPressureLevel;
+  static constexpr int32_t kMemoryLevelModerate = 0;
+  static constexpr base::TimeDelta kNotifyGapTime = base::Seconds(3);
+  static MemoryPressureLevel last_memory_level =
+      MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE;
+  static base::Time last_notify_time;
+
+  base::Time now = base::Time::Now();
+  MemoryPressureLevel memory_pressure_level;
+  if (memoryLevel == kMemoryLevelModerate) {
+    memory_pressure_level = MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE;
+  } else {
+    memory_pressure_level = MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL;
+  }
+
+  if (memory_pressure_level == last_memory_level &&
+      (now - last_notify_time < kNotifyGapTime)) {
+    LOG(INFO) << "The same memory level has been notified within three seconds";
+    return;
+  }
+  last_memory_level = memory_pressure_level;
+  last_notify_time = std::move(now);
+
+  LOG(INFO) << "NWebImpl::NotifyMemoryLevel "
+            << (memoryLevel == kMemoryLevelModerate
+                    ? "MEMORY_PRESSURE_LEVEL_MODERATE"
+                    : "MEMORY_PRESSURE_LEVEL_CRITICAL");
+  base::MemoryPressureListener::NotifyMemoryPressure(memory_pressure_level);
+#endif  // OHOS_PERFORMANCE_MEMORY_THRESHOLD
+}
+
+void NWebImpl::SetPopupSurface(void* popupSurface) {
+
+  uint32_t width, height;
+  if (nweb_delegate_ == nullptr) {
+    WVLOG_E(
+        "SetPopupSurface failed,nweb_delegate is nullptr.");
+    return;
+  }
+
+  if (output_handler_ == nullptr) {
+    WVLOG_E("SetPopupSurface failed, NWeb output handler is not ready");
+    return;
+  }
+  output_handler_->GetWindowInfo(width, height);
+  void* popup_window = nullptr;
+  popup_window = output_handler_->GetNativeWindowFromSurface(popupSurface);
+
+  int32_t ret = OHOS::NWeb::OhosAdapterHelper::GetInstance()
+                    .GetWindowAdapterInstance()
+                    .NativeWindowSetBufferGeometry(
+                        reinterpret_cast<void*>(popup_window), width,height);
+  if (ret == OHOS::NWeb::GSErrorCode::GSERROR_OK) {
+    WVLOG_I("popup window opt for emulator in init, result = %{public}d", ret);
+  } else {
+    WVLOG_W(
+        "popup window opt for emulator in init failed, result = %{public}d",
+        ret);
+  }
+  nweb_delegate_->SetPopupSurface(popup_window);
+}

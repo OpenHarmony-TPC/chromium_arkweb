@@ -19,6 +19,7 @@
 #include "gpu/config/gpu_finch_features.h"
 #include "gpu/ipc/common/gpu_client_ids.h"
 #include "gpu/ipc/service/gpu_channel_manager.h"
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
 #include "gpu/vulkan/buildflags.h"
 #include "ui/gl/gl_bindings.h"
 #include "ui/gl/gl_context.h"
@@ -35,6 +36,7 @@
 #include "base/process/process_handle.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/common/content_switches.h"
 #include "res_sched_client_adapter.h"
 #endif
 
@@ -114,12 +116,21 @@ CompositorGpuThread::CompositorGpuThread(
 CompositorGpuThread::~CompositorGpuThread() {
 #if BUILDFLAG(IS_OHOS)
   using namespace OHOS::NWeb;
-  task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
-          ResSchedStatusAdapter::THREAD_DESTROYED, base::GetCurrentRealPid(),
-          GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  auto type = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+      switches::kProcessType);
+  if (type == switches::kGpuProcess) {
+    NWebNativeWindowTracker::Get()->g_browser_client_->ReportThread(
+        ResSchedStatusAdapter::THREAD_DESTROYED,
+        base::GetCurrentRealPid(), GetThreadRealId(),
+        ResSchedRoleAdapter::IMPORTANT_DISPLAY);
+  } else {
+    task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
+            ResSchedStatusAdapter::THREAD_DESTROYED, base::GetCurrentRealPid(),
+            GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  }
 #endif
 
   base::Thread::Stop();
@@ -223,8 +234,8 @@ CompositorGpuThread::GetSharedContextState() {
 
   // Initialize Skia.
   if (!shared_context_state->InitializeSkia(
-          gpu_preferences, workarounds, gpu_channel_manager_->gr_shader_cache(),
-          /*activity_flags=*/nullptr, /*progress_reporter=*/nullptr)) {
+      gpu_preferences, workarounds, gpu_channel_manager_->gr_shader_cache(),
+      /*activity_flags=*/nullptr, /*progress_reporter=*/nullptr)) {
     LOG(ERROR) << "Failed to Initialize Skia for DrDC SharedContextState";
   }
   shared_context_state_ = std::move(shared_context_state);
@@ -243,12 +254,21 @@ bool CompositorGpuThread::Initialize() {
 
 #if BUILDFLAG(IS_OHOS)
   using namespace OHOS::NWeb;
-  task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(
-          base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
-          ResSchedStatusAdapter::THREAD_CREATED, base::GetCurrentRealPid(),
-          GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  auto type = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+      switches::kProcessType);
+  if (type == switches::kGpuProcess) {
+    NWebNativeWindowTracker::Get()->g_browser_client_->ReportThread(
+        ResSchedStatusAdapter::THREAD_CREATED,
+        base::GetCurrentRealPid(), GetThreadRealId(),
+        ResSchedRoleAdapter::IMPORTANT_DISPLAY);
+  } else {
+    task_runner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
+            ResSchedStatusAdapter::THREAD_CREATED, base::GetCurrentRealPid(),
+            GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  }
 #endif
   return init_succeeded_;
 }

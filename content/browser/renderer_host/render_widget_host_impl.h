@@ -840,7 +840,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   void RendererIsUnresponsive(
       base::RepeatingClosure restart_hang_monitor_timeout
 #if defined(OHOS_RENDERER_ANR_DUMP)
-      ,
+,
       content::RenderProcessNotRespondingReason reason
 #endif
   );
@@ -916,6 +916,14 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   void GetWordSelection(const std::string& text,
                         int8_t offset,
                         GetWordSelectionCallback callback) override;
+#endif
+
+#ifdef OHOS_AI
+  void CreateOverlay(const SkBitmap& bitmap,
+                     const gfx::Rect& image_rect,
+                     const gfx::Point& touch_point) override;
+  gfx::Rect GetScreenRect();
+  void OnTextSelected(bool flag);
 #endif
 
  protected:
@@ -1095,6 +1103,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   void DecrementInFlightEventCount(
       blink::mojom::InputEventResultSource ack_source) override;
   void DidOverscroll(const ui::DidOverscrollParams& params) override;
+  void DynamicFrameLossEvent(const std::string& sceneId, bool isStart) override;
 
 #if BUILDFLAG(IS_OHOS)
   void DidNativeEmbedEvent(blink::mojom::NativeEmbedTouchEventPtr touchEvent) override;

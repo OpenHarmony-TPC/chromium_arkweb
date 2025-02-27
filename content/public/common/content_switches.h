@@ -303,6 +303,10 @@ CONTENT_EXPORT extern const char kOhosHttpCacheSimple[];
 CONTENT_EXPORT extern const char kCalcTabletMode[];
 CONTENT_EXPORT extern const char kDisableNonAdvancedSecurityMode[];
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+CONTENT_EXPORT extern const char kOhosSubresourceFilter[];
+#endif
+
 #ifdef OHOS_NETWORK_LOAD
 CONTENT_EXPORT extern const char kOhosCustomScheme[];
 #endif
@@ -333,6 +337,12 @@ CONTENT_EXPORT extern const char kAudioProcessHighPriority[];
 #if defined(ENABLE_IPC_FUZZER)
 extern const char kIpcDumpDirectory[];
 extern const char kIpcFuzzerTestcase[];
+#endif
+
+#ifdef OHOS_BFCACHE
+extern const char kEnableBFCache[];
+extern const char kEnableCacheNativeEmbed[];
+extern const char kEnableCacheMediaTakeOver[];
 #endif
 
 // DON'T ADD RANDOM STUFF HERE. Put it in the main section above in

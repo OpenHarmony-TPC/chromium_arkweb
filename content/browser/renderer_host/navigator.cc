@@ -47,6 +47,7 @@
 #include "content/public/common/content_constants.h"
 #include "content/public/common/url_utils.h"
 #include "net/base/net_errors.h"
+#include "net/base/schemeful_site.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
@@ -56,6 +57,10 @@
 #include "third_party/blink/public/mojom/navigation/navigation_params.mojom.h"
 #include "url/gurl.h"
 #include "url/url_util.h"
+
+#if BUILDFLAG(IS_OHOS)
+#include "services/network/public/mojom/network_context.mojom.h"
+#endif
 
 namespace content {
 
@@ -334,7 +339,15 @@ Navigator::Navigator(
     : controller_(browser_context, frame_tree, navigation_controller_delegate),
       delegate_(delegate) {}
 
-Navigator::~Navigator() = default;
+Navigator::~Navigator() {
+#if BUILDFLAG(IS_OHOS)
+  network::mojom::NetworkContext* network_context = controller_.GetBrowserContext()
+    ->GetDefaultStoragePartition()->GetNetworkContext();
+  if (network_context != nullptr) {
+    network_context->StopMainPage(reinterpret_cast<int64_t>(this));
+  }
+#endif
+}
 
 // static
 bool Navigator::CheckWebUIRendererDoesNotDisplayNormalURL(
@@ -461,13 +474,21 @@ void Navigator::DidNavigate(
     bool was_within_same_document) {
   DCHECK(navigation_request);
   FrameTreeNode* frame_tree_node = render_frame_host->frame_tree_node();
+#if BUILDFLAG(IS_OHOS)
+  network::mojom::NetworkContext* network_context = frame_tree_node->current_frame_host()
+    ->GetStoragePartition()->GetNetworkContext();
+  if (network_context != nullptr) {
+    network_context->StartMainPage(params.url.possibly_invalid_spec(),
+                                   reinterpret_cast<int64_t>(this));
+  }
+#endif
   FrameTree& frame_tree = frame_tree_node->frame_tree();
   DCHECK_EQ(&frame_tree, &controller_.frame_tree());
   base::WeakPtr<RenderFrameHostImpl> old_frame_host =
       frame_tree_node->render_manager()->current_frame_host()->GetWeakPtr();
 
   // Save the activation status of the previous page here before it gets reset
-  // in FrameTreeNode::ResetForNavigation.
+  // in FrameTreeNode::UpdateUserActivationState.
   bool previous_document_was_activated =
       frame_tree.root()->HasStickyUserActivation();
 
@@ -493,6 +514,9 @@ void Navigator::DidNavigate(
     delegate_->DidNavigateMainFramePreCommit(frame_tree_node,
                                              was_within_same_document);
   }
+  
+  // Store this information before DidNavigateFrame() potentially swaps RFHs.
+  url::Origin old_frame_origin = old_frame_host->GetLastCommittedOrigin();
 
   // DidNavigateFrame() must be called before replicating the new origin and
   // other properties to proxies.  This is because it destroys the subframes of
@@ -506,6 +530,29 @@ void Navigator::DidNavigate(
           .ShouldClearProxiesOnCommit(),
       navigation_request->commit_params().frame_policy);
 
+  // The main frame, same site, and cross-site navigation checks for user
+  // activation mirror the checks in DocumentLoader::CommitNavigation() (note:
+  // CommitNavigation() is not called for same-document navigations, which is
+  // why we have the !was_within_same_document check). This is done to prevent
+  // newly navigated pages from re-using the sticky user activation state from
+  // the previously navigated page in the frame. We persist user activation
+  // across same-site navigations for compatibility reasons with user
+  // activation, and does not need to match the same-site checks used in the
+  // process model. See: crbug.com/736415, and crbug.com/40228985 for the
+  // specific regression that resulted in this requirement.
+  if (!was_within_same_document) {
+    if (!navigation_request->commit_params()
+             .should_have_sticky_user_activation) {
+      frame_tree_node->UpdateUserActivationState(
+          blink::mojom::UserActivationUpdateType::kClearActivation,
+          blink::mojom::UserActivationNotificationType::kNone);
+    } else {
+      frame_tree_node->UpdateUserActivationState(
+          blink::mojom::UserActivationUpdateType::kNotifyActivationStickyOnly,
+          blink::mojom::UserActivationNotificationType::kNone);
+    }
+  }
+
   // Save the new page's origin and other properties, and replicate them to
   // proxies, including the proxy created in DidNavigateFrame() to replace the
   // old frame in cross-process navigation cases.
@@ -515,12 +562,6 @@ void Navigator::DidNavigate(
       params.insecure_request_policy);
   render_frame_host->browsing_context_state()->SetInsecureNavigationsSet(
       params.insecure_navigations_set);
-
-  if (!was_within_same_document) {
-    // Navigating to a new location means a new, fresh set of http headers
-    // and/or <meta> elements - we need to reset Permissions Policy.
-    frame_tree_node->ResetForNavigation();
-  }
 
   // If the committing URL requires the SiteInstance's site to be assigned,
   // that site assignment should've already happened at ReadyToCommit time. We
@@ -696,6 +737,15 @@ void Navigator::Navigate(std::unique_ptr<NavigationRequest> request,
 
   FrameTreeNode* frame_tree_node = request->frame_tree_node();
   DCHECK_EQ(&(frame_tree_node->frame_tree()), &controller_.frame_tree());
+
+#if BUILDFLAG(IS_OHOS)
+  network::mojom::NetworkContext* network_context = frame_tree_node->current_frame_host()
+    ->GetStoragePartition()->GetNetworkContext();
+  if (network_context != nullptr) {
+    network_context->StartMainPage(request->common_params().url.spec(),
+                                   reinterpret_cast<int64_t>(this));
+  }
+#endif
 
   metrics_data_ = std::make_unique<NavigationMetricsData>(
       request->common_params().navigation_start, request->common_params().url,
@@ -981,6 +1031,15 @@ void Navigator::OnBeginNavigation(
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener) {
   TRACE_EVENT0("navigation", "Navigator::OnBeginNavigation");
+
+#if BUILDFLAG(IS_OHOS)
+  network::mojom::NetworkContext* network_context = frame_tree_node->current_frame_host()
+    ->GetStoragePartition()->GetNetworkContext();
+  if (network_context != nullptr) {
+    network_context->StartMainPage(common_params->url.spec(),
+                                   reinterpret_cast<int64_t>(this));
+  }
+#endif
 
   if (common_params->is_history_navigation_in_new_child_frame) {
     // Try to find a FrameNavigationEntry that matches this frame instead, based

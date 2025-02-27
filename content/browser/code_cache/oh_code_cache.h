@@ -25,6 +25,7 @@
 #include "net/disk_cache/simple/simple_util.h"
 #include "cef/libcef/browser/net_service/stream_reader_url_loader.h"
 #include "base/trace_event/trace_event.h"
+#include "third_party/bounds_checking_function/include/securec.h"
 
 namespace oh_code_cache {
 
@@ -72,7 +73,7 @@ class TaskRunner {
   static scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner();
 
  private:
-  static scoped_refptr<base::SingleThreadTaskRunner> task_runner_; 
+  static scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 };
 
 class ResponseCacheMetadata {
@@ -82,7 +83,7 @@ class ResponseCacheMetadata {
   ResponseCacheMetadata(const std::string& url,
                         const std::string& response_body,
                         const std::map<std::string, std::string>& response_headers);
-    
+
   ~ResponseCacheMetadata() = default;
 
   std::string ToString();
@@ -143,7 +144,7 @@ class ResourceResponse : public net_service::ResourceResponse {
   bool OpenInputStream(int32_t request_id,
                        const network::ResourceRequest& request,
                        OpenCallback callback);
-    
+
   void GetResponseHeaders(int32_t request_id,
                           int* status_code,
                           std::string* reason_phrase,
@@ -154,7 +155,7 @@ class ResourceResponse : public net_service::ResourceResponse {
 
 #if BUILDFLAG(IS_OHOS)
   const std::string& GetResponseData() {static const std::string data; return data;}
-  size_t GetResponseDataBuffer(char* data) {return 0;}
+  size_t GetResponseDataBuffer(char* data, size_t dest_size) {return 0;}
   size_t GetResponseDataBufferSize() {return 0;}
 #endif
 

@@ -334,11 +334,17 @@ void FeatureList::InitializeFromSharedMemory(
 }
 
 bool FeatureList::IsFeatureOverridden(const std::string& feature_name) const {
+#ifdef OHOS_SCROLLAR
+  AutoLock lock(overrides_lock_);
+#endif
   return overrides_.count(feature_name);
 }
 
 bool FeatureList::IsFeatureOverriddenFromCommandLine(
     const std::string& feature_name) const {
+#ifdef OHOS_SCROLLAR
+  AutoLock lock(overrides_lock_);
+#endif
   auto it = overrides_.find(feature_name);
   return it != overrides_.end() && !it->second.overridden_by_field_trial;
 }
@@ -346,6 +352,9 @@ bool FeatureList::IsFeatureOverriddenFromCommandLine(
 bool FeatureList::IsFeatureOverriddenFromCommandLine(
     const std::string& feature_name,
     OverrideState state) const {
+#ifdef OHOS_SCROLLAR
+  AutoLock lock(overrides_lock_);
+#endif
   auto it = overrides_.find(feature_name);
   return it != overrides_.end() && !it->second.overridden_by_field_trial &&
          it->second.overridden_state == state;
@@ -360,6 +369,20 @@ void FeatureList::AssociateReportingFieldTrial(
 
   // Only one associated field trial is supported per feature. This is generally
   // enforced server-side.
+#ifdef OHOS_SCROLLBAR
+  {
+    AutoLock lock(overrides_lock_);
+    OverrideEntry* entry = &overrides_.find(feature_name)->second;
+    if (entry->field_trial) {
+      NOTREACHED() << "Feature " << feature_name
+                 << " already has trial: " << entry->field_trial->trial_name()
+                 << ", associating trial: " << field_trial->trial_name();
+      return;
+    }
+
+    entry->field_trial = field_trial;
+  }
+#else
   OverrideEntry* entry = &overrides_.find(feature_name)->second;
   if (entry->field_trial) {
     NOTREACHED() << "Feature " << feature_name
@@ -369,6 +392,7 @@ void FeatureList::AssociateReportingFieldTrial(
   }
 
   entry->field_trial = field_trial;
+#endif
 }
 
 void FeatureList::RegisterFieldTrialOverride(const std::string& feature_name,
@@ -398,6 +422,9 @@ void FeatureList::RegisterExtraFeatureOverrides(
 void FeatureList::AddFeaturesToAllocator(PersistentMemoryAllocator* allocator) {
   DCHECK(initialized_);
 
+#if defined(OHOS_SCROLLBAR)
+  AutoLock lock(overrides_lock_);
+#endif
   for (const auto& override : overrides_) {
     Pickle pickle;
     pickle.WriteString(override.first);
@@ -418,6 +445,51 @@ void FeatureList::AddFeaturesToAllocator(PersistentMemoryAllocator* allocator) {
     allocator->MakeIterable(entry);
   }
 }
+
+#if defined(OHOS_SCROLLBAR)
+void FeatureList::ModifyFeaturesToAllocator(PersistentMemoryAllocator* allocator) {
+  DCHECK(initialized_);
+  LOG(INFO) << "modify features";
+  PersistentMemoryAllocator::Iterator iter(allocator);
+  const FeatureEntry* entry;
+  while ((entry = iter.GetNextOfObject<FeatureEntry>()) != nullptr) {
+    StringPiece feature_name;
+    StringPiece trial_name;
+    if (!entry->GetFeatureAndTrialName(&feature_name, &trial_name))
+      continue;
+    if (feature_name == "OverlayScrollbar" || feature_name == "ForceScrollbar") {
+      allocator->Delete(entry);
+    }
+  }
+  AddFeatureToField(allocator, "");
+}
+
+void FeatureList::AddFeatureToField(PersistentMemoryAllocator* allocator, std::string feature_name) {
+  AutoLock lock(overrides_lock_);
+  for (const auto& override : overrides_) {
+    if (override.first != "OverlayScrollbar" && override.first != "ForceScrollbar") {
+      continue;
+    }
+    Pickle pickle;
+    pickle.WriteString(override.first);
+    if (override.second.field_trial)
+      pickle.WriteString(override.second.field_trial->trial_name());
+
+    size_t total_size = sizeof(FeatureEntry) + pickle.size();
+    FeatureEntry* entry = allocator->New<FeatureEntry>(total_size);
+    if (!entry)
+      return;
+
+    entry->override_state = override.second.overridden_state;
+    entry->pickle_size = pickle.size();
+
+    char* dst = reinterpret_cast<char*>(entry) + sizeof(FeatureEntry);
+    memcpy(dst, pickle.data(), pickle.size());
+
+    allocator->MakeIterable(entry);
+  }
+}
+#endif
 
 void FeatureList::GetFeatureOverrides(std::string* enable_overrides,
                                       std::string* disable_overrides,
@@ -445,6 +517,23 @@ bool FeatureList::IsEnabled(const Feature& feature) {
 bool FeatureList::IsValidFeatureOrFieldTrialName(StringPiece name) {
   return IsStringASCII(name) && name.find_first_of(",<*") == std::string::npos;
 }
+
+#if defined(OHOS_SCROLLBAR)
+// static
+void FeatureList::SetScrollbarEnable(bool enable) {
+  if (g_feature_list_instance) {
+    OverrideState state = OVERRIDE_ENABLE_FEATURE;
+    if (enable) {
+      state = OVERRIDE_DISABLE_FEATURE;
+    }
+    LOG(INFO) << "set Scrollbar:" << enable << " state:" << state;
+    g_feature_list_instance->SetOverrideStateByFeatureName("OverlayScrollbar", state);
+    g_feature_list_instance->SetOverrideStateByFeatureName("ForceScrollbar", state);
+  } else {
+    LOG(ERROR) << "set Scrollbar error";
+  }
+}
+#endif
 
 // static
 absl::optional<bool> FeatureList::GetStateIfOverridden(const Feature& feature) {
@@ -628,7 +717,16 @@ void FeatureList::FinalizeInitialization() {
 
 bool FeatureList::IsFeatureEnabled(const Feature& feature) const {
   OverrideState overridden_state = GetOverrideState(feature);
-
+#if defined(OHOS_SCROLLBAR)
+  if (std::string(feature.name) == "OverlayScrollbar") {
+    LOG(DEBUG) << "Overlay Scrollbar:" << overridden_state << " : " << (overridden_state == OVERRIDE_ENABLE_FEATURE);
+    // OverlayScrollbar using native process.
+  }
+  if (std::string(feature.name) == "ForceScrollbar") {
+    LOG(DEBUG) << "Force Scrollbar:" << overridden_state << " : " << (overridden_state == OVERRIDE_DISABLE_FEATURE);
+    return overridden_state == OVERRIDE_DISABLE_FEATURE;
+  }
+#endif
   // If marked as OVERRIDE_USE_DEFAULT, simply return the default state below.
   if (overridden_state != OVERRIDE_USE_DEFAULT)
     return overridden_state == OVERRIDE_ENABLE_FEATURE;
@@ -687,6 +785,9 @@ FeatureList::OverrideState FeatureList::GetOverrideStateByFeatureName(
   DCHECK(initialized_);
   DCHECK(IsValidFeatureOrFieldTrialName(feature_name)) << feature_name;
 
+#ifdef OHOS_SCROLLAR
+  AutoLock lock(overrides_lock_);
+#endif
   auto it = overrides_.find(feature_name);
   if (it != overrides_.end()) {
     const OverrideEntry& entry = it->second;
@@ -703,6 +804,20 @@ FeatureList::OverrideState FeatureList::GetOverrideStateByFeatureName(
   return OVERRIDE_USE_DEFAULT;
 }
 
+#if defined(OHOS_SCROLLBAR)
+void FeatureList::SetOverrideStateByFeatureName(
+    StringPiece feature_name, OverrideState state) {
+  DCHECK(initialized_);
+  DCHECK(IsValidFeatureOrFieldTrialName(feature_name)) << feature_name;
+  AutoLock lock(overrides_lock_);
+  auto it = overrides_.find(feature_name);
+  if (it == overrides_.end()) {
+    overrides_.emplace(std::string(feature_name),
+                   OverrideEntry(state, nullptr));
+  }
+}
+#endif
+
 FieldTrial* FeatureList::GetAssociatedFieldTrial(const Feature& feature) const {
   DCHECK(initialized_);
   DCHECK(CheckFeatureIdentity(feature)) << feature.name;
@@ -715,6 +830,9 @@ FeatureList::GetOverrideEntryByFeatureName(StringPiece name) const {
   DCHECK(initialized_);
   DCHECK(IsValidFeatureOrFieldTrialName(name)) << name;
 
+#ifdef OHOS_SCROLLBAR
+  AutoLock lock(overrides_lock_);
+#endif
   auto it = overrides_.find(name);
   if (it != overrides_.end()) {
     const OverrideEntry& entry = it->second;
@@ -737,6 +855,9 @@ FieldTrial* FeatureList::GetAssociatedFieldTrialByFeatureName(
 
 bool FeatureList::HasAssociatedFieldTrialByFeatureName(StringPiece name) const {
   DCHECK(!initialized_);
+#ifdef OHOS_SCROLLBAR
+  AutoLock lock(overrides_lock_);
+#endif
   auto entry = overrides_.find(name);
   return entry != overrides_.end() && entry->second.field_trial != nullptr;
 }
@@ -826,6 +947,9 @@ void FeatureList::GetFeatureOverridesImpl(std::string* enable_overrides,
   enable_overrides->clear();
   disable_overrides->clear();
 
+#if defined(OHOS_SCROLLBAR)
+  AutoLock lock(overrides_lock_);
+#endif
   // Note: Since |overrides_| is a std::map, iteration will be in alphabetical
   // order. This is not guaranteed to users of this function, but is useful for
   // tests to assume the order.

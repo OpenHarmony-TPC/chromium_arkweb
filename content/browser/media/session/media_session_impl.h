@@ -16,6 +16,7 @@
 #include "base/containers/id_map.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ptr_exclusion.h"
+#include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "content/browser/media/session/audio_focus_delegate.h"
@@ -352,6 +353,9 @@ class MediaSessionImpl : public MediaSession,
   // Returns the Audio Focus request ID associated with this media session.
   const base::UnguessableToken& GetRequestId() const;
 
+  // Returns a WeakPtr to `this`.
+  base::WeakPtr<MediaSessionImpl> GetWeakPtr();
+
   CONTENT_EXPORT bool HasImageCacheForTest(const GURL& image_url) const;
 
 #if defined(OHOS_MEDIA_POLICY)
@@ -359,11 +363,13 @@ class MediaSessionImpl : public MediaSession,
   enum NWebPlaybackState { NONE, PLAYING, PAUSED, STOP };
 
   NWebPlaybackState NWebGetState();
+  void SetWebviewShow(bool show);
+  void SetWebviewShowForAudio(bool show);
+  bool IsEndOfMedia();
 
   std::unordered_set<media::OHOSAudioOutputStream*> activeAudioStream_;
   int audioResumeInterval_ = 0;
   bool audioExclusive_ = true;
-  bool isStreamSuspended_ = false;
   base::WeakPtrFactory<content::MediaSessionImpl> weakMediaSessionFactory_;
 #endif // defined(OHOS_MEDIA_POLICY)
 
@@ -653,6 +659,8 @@ class MediaSessionImpl : public MediaSession,
   absl::optional<PlayerIdentifier> guarding_player_id_;
 
   media_session::mojom::RemotePlaybackMetadataPtr remote_playback_metadata_;
+
+  base::WeakPtrFactory<MediaSessionImpl> weak_factory_{this};
 
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };

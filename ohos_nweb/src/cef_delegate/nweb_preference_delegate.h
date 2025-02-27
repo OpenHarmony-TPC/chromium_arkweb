@@ -130,7 +130,19 @@ class NWebPreferenceDelegate : public NWebPreference {
   int GetDrawMode() const;
   void PutTextAutosizingEnabled(bool enable) override;
   bool IsTextAutosizingEnabled() const;
+  void SetFitContent(bool value);
+  bool IsFitContent() const;
 #endif
+
+#if defined(OHOS_MULTI_WINDOW)
+  float GetVirtualPixelRatio() {
+    return virtual_pixel_ratio_;
+  }
+  void SetVirtualPixelRatio(float ratio) {
+    virtual_pixel_ratio_ = ratio;
+  }
+#endif
+
 #if defined(OHOS_PRINT)
   void PutPrintToken(void* token) { token_ = token; }
   void* GetPrintToken() { return token_; }
@@ -143,6 +155,7 @@ class NWebPreferenceDelegate : public NWebPreference {
   void PutOverscrollMode(int overScrollMode) override;
   int GetOverscrollMode() override;
   void SetScrollable(bool enable) override;
+  void SetScrollable(bool enable, int32_t scrollType) override;
   bool GetScrollable() override;
 #endif  // defined(OHOS_INPUT_EVENTS)
   void SetNativeEmbedMode(bool flag) override;
@@ -171,12 +184,35 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool IsBlankTargetPopupInterceptEnabled();
 #endif
   void SetNativeVideoPlayerConfig(bool enable, bool shouldOverlay) override;
+#if defined(OHOS_SCROLLBAR)
+  void PutOverlayScrollbarEnabled(bool enable) override;
+#endif
 
 #if defined(OHOS_JSPROXY)
   void PutJavaScriptOnDocumentStart(const ScriptItems& scriptItems);
   ScriptItems GetJavaScriptOnDocumentStart();
   void PutJavaScriptOnDocumentEnd(const ScriptItems& scriptItems);
   ScriptItems GetJavaScriptOnDocumentEnd();
+#endif
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  void EnableWholeWebPageDrawing();
+  bool GetEnableWholeWebPageDrawing();
+#endif
+
+#if BUILDFLAG(IS_OHOS)
+  std::string GetSurfaceId() override;
+  void SetSurfaceId(const std::string& surfaceId) override;
+#endif
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  CefRefPtr<CefWebMessageReceiver> GetAutofillCallback();
+  void SetAutofillCallback(CefRefPtr<CefWebMessageReceiver> callback);
+#endif
+
+#ifdef OHOS_MIXED_CONTENT
+  void EnableMixedContentAutoUpgrades(bool enable);
+  bool IsMixedContentAutoUpgradesEnabled();
 #endif
 
  private:
@@ -225,6 +261,9 @@ class NWebPreferenceDelegate : public NWebPreference {
 #ifdef OHOS_SCROLLBAR
   uint32_t scrollbar_color_{0};
 #endif // OHOS_SCROLLBAR
+#if defined(OHOS_MULTI_WINDOW)
+  float virtual_pixel_ratio_ = 2.0;
+#endif
 #if defined(OHOS_PRINT)
   void* token_ = nullptr;
 #endif
@@ -240,6 +279,8 @@ class NWebPreferenceDelegate : public NWebPreference {
 #if BUILDFLAG(IS_OHOS)
   int draw_mode_{0};
   bool text_autosizing_enabled_{true};
+  std::string surface_id_{""};
+  bool fit_content_{false};
 #endif
   bool enable_embed_mode_{false};
   std::string embed_tag_{"embed"};
@@ -263,6 +304,19 @@ class NWebPreferenceDelegate : public NWebPreference {
   ScriptItems script_items_start_{};
   ScriptItems script_items_end_{};
 #endif
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  bool record_whole_document_{false};
+#endif
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  CefRefPtr<CefWebMessageReceiver> autofill_callback_ = nullptr;
+#endif
+
+#ifdef OHOS_MIXED_CONTENT
+  bool enable_mixed_content_auto_upgrades_{false};
+#endif
+
 };
 }  // namespace OHOS::NWeb
 

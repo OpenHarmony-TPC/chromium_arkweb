@@ -111,6 +111,9 @@ struct AXEventNotificationDetails;
 struct AXLocationChangeNotificationDetails;
 struct ContextMenuParams;
 struct GlobalRequestID;
+#if BUILDFLAG(IS_OHOS)
+struct GlobalRenderFrameHostId;
+#endif
 
 namespace mojom {
 class CreateNewWindowParams;
@@ -194,6 +197,7 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
 
 #if defined(OHOS_CLIPBOARD)
   virtual void MouseSelectMenuShow(bool show) {}
+  virtual void ChangeVisibilityOfQuickMenu() {}
 #endif
 
   // A JavaScript alert, confirmation or prompt dialog should be shown.
@@ -274,6 +278,9 @@ class CONTENT_EXPORT RenderFrameHostDelegate {
   virtual void OnNativeEmbedStatusUpdate(
       const NativeEmbedInfo& native_embed_info,
       NativeEmbedInfo::TagState state) {}
+
+  virtual void OnRenderFrameHostEnterBackForwardCache(const GlobalRenderFrameHostId& id) {}
+  virtual void OnRenderFrameHostLeaveBackForwardCache(const GlobalRenderFrameHostId& id) {}
 #endif
 
   // The render frame has requested access to media devices listed in

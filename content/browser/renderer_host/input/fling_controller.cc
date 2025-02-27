@@ -8,15 +8,16 @@
 #include "base/trace_event/trace_event.h"
 #include "content/browser/renderer_host/input/gesture_event_queue.h"
 #include "content/public/browser/content_browser_client.h"
+#include "content/public/browser/browser_thread.h"
 #include "content/public/common/content_client.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/gestures/blink/web_gesture_curve_impl.h"
 #if BUILDFLAG(IS_OHOS)
 #include "base/ohos/dynamic_frame_loss_monitor.h"
+#include "base/ohos/ltpo/include/sliding_observer.h"
 #include "content/browser/gpu/gpu_process_host.h"
 #include "base/report_loss_frame.h"
 #include "ohos_adapter_helper.h"
-#include "base/ohos/ltpo/include/sliding_observer.h"
 #endif
 
 using blink::WebInputEvent;
@@ -63,7 +64,24 @@ FlingController::FlingController(
   DCHECK(scheduler_client);
 }
 
+
+#if BUILDFLAG(IS_OHOS)
+FlingController::~FlingController() {
+  if (!fling_curve_) {
+    return;
+  }
+  LOG(DEBUG) << "stop web page fling";
+  base::ohos::SlidingObserver::GetInstance().StopSliding();
+  if (auto* host = GpuProcessHost::Get()) {
+    if (auto* host_impl = host->gpu_host()) {
+      host_impl->StopMonitor();
+      host_impl->ReportSlidingFrameRate(0);
+    }
+  }
+}
+#else
 FlingController::~FlingController() = default;
+#endif
 
 bool FlingController::ObserveAndFilterForTapSuppression(
     const GestureEventWithLatencyInfo& gesture_event) {
@@ -102,6 +120,11 @@ bool FlingController::ObserveAndFilterForTapSuppression(
     default:
       return false;
   }
+}
+
+void FlingController::DynamicFrameLossEvent(const std::string& sceneId, bool isStart)
+{
+  event_sender_client_->DynamicFrameLossEvent(sceneId, isStart);
 }
 
 bool FlingController::ObserveAndMaybeConsumeGestureEvent(
@@ -144,12 +167,13 @@ bool FlingController::ObserveAndMaybeConsumeGestureEvent(
   // touchscreen and autoscroll) which are handled normally.
   if (gesture_event.event.GetType() ==
       WebInputEvent::Type::kGestureFlingStart) {
+    std::string fling_string = "WEB_LIST_FLING";
     ProcessGestureFlingStart(gesture_event);
 #if BUILDFLAG(IS_OHOS)
     ReportLossFrame::GetInstance()->SetScrollState(ScrollMode::START);
     OHOS::NWeb::OhosAdapterHelper::GetInstance()
         .GetHiTraceAdapterInstance()
-        .StartAsyncTrace("WEB_LIST_FLING", 0);
+        .StartAsyncTrace(fling_string, 0);
     OHOS::NWeb::OhosAdapterHelper::GetInstance()
         .CreateSocPerfClientAdapter()
         ->ApplySocPerfConfigByIdEx(OHOS::NWeb::SocPerfClientAdapter::SOC_PERF_WEB_GESTURE_ID, true);
@@ -158,6 +182,11 @@ bool FlingController::ObserveAndMaybeConsumeGestureEvent(
     if (auto* host = GpuProcessHost::Get()) {
       if (auto* host_impl = host->gpu_host()) {
         host_impl->StartMonitor();
+        TRACE_EVENT0("input", "DynamicFrameLossEvent Start");
+        GetUIThreadTaskRunner({})->PostTask(
+          FROM_HERE,
+          base::BindOnce(&FlingController::DynamicFrameLossEvent,
+                        weak_ptr_factory_.GetWeakPtr(), fling_string, true));
       }
     }
     base::ohos::SlidingObserver::GetInstance().StartFling();
@@ -261,7 +290,20 @@ void FlingController::ProgressFling(base::TimeTicks current_time) {
   bool fling_is_active = fling_curve_->Advance(
       (current_time - current_fling_parameters_.start_time).InSecondsF(),
       current_fling_parameters_.velocity, delta_to_scroll);
-
+#if BUILDFLAG(IS_OHOS)
+  if ((current_time - current_fling_parameters_.start_time).InSecondsF() > 0) {
+    int32_t preferred_frame_rate = base::ohos::SlidingObserver::GetInstance().OnFlingUpdate(
+      current_fling_parameters_.velocity.x(),
+      current_fling_parameters_.velocity.y());
+    if (auto* host = content::GpuProcessHost::Get()) {
+      if (auto* host_impl = host->gpu_host()) {
+        if (preferred_frame_rate >= 0) {
+            host_impl->ReportSlidingFrameRate(preferred_frame_rate);
+        }
+      }
+    }
+  }
+#endif
   if (!fling_is_active && current_fling_parameters_.source_device !=
                               blink::WebGestureDevice::kSyntheticAutoscroll) {
     fling_booster_.Reset();
@@ -385,22 +427,26 @@ void FlingController::GenerateAndSendFlingEndEvents(
 
 void FlingController::EndCurrentFling(base::TimeTicks current_time) {
   last_progress_time_ = base::TimeTicks();
+  std::string fling_string = "WEB_LIST_FLING";
 
   GenerateAndSendFlingEndEvents(current_time);
 #if BUILDFLAG(IS_OHOS)
   ReportLossFrame::GetInstance()->SetScrollState(ScrollMode::STOP);
   ReportLossFrame::GetInstance()->Report();
   OHOS::NWeb::OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
-      .FinishAsyncTrace("WEB_LIST_FLING", 0);
+      .FinishAsyncTrace(fling_string, 0);
 
   LOG(DEBUG) << "stop web page fling";
   if (auto* host = GpuProcessHost::Get()) {
     if (auto* host_impl = host->gpu_host()) {
       host_impl->StopMonitor();
+      TRACE_EVENT0("input", "DynamicFrameLossEvent End");
+      GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE,
+        base::BindOnce(&FlingController::DynamicFrameLossEvent,
+        weak_ptr_factory_.GetWeakPtr(), fling_string, false));
     }
   }
-
-  base::ohos::SlidingObserver::GetInstance().StopSliding();
 #endif
   current_fling_parameters_ = ActiveFlingParameters();
 

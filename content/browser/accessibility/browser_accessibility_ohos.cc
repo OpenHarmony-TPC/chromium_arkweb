@@ -26,8 +26,9 @@
 
 namespace content {
 using namespace OHOS::NWeb;
-using AccessibilityIdMap =
-    std::unordered_map<int64_t, BrowserAccessibilityOHOS*>;
+
+using AccessibilityIdMap = std::unordered_map<int64_t, BrowserAccessibilityOHOS*>;
+
 base::LazyInstance<AccessibilityIdMap>::Leaky g_accessibility_id_map =
     LAZY_INSTANCE_INITIALIZER;
 
@@ -42,8 +43,7 @@ BrowserAccessibilityOHOS::BrowserAccessibilityOHOS(
     BrowserAccessibilityManager* manager,
     ui::AXNode* node)
     : BrowserAccessibility(manager, node) {
-  accessibility_id_ =
-      BrowserAccessibilityManagerOHOS::GenerateAccessibilityId();
+  accessibility_id_ = static_cast<int64_t>(GetUniqueId().Get());
   g_accessibility_id_map.Get()[accessibility_id_] = this;
 }
 
@@ -53,6 +53,16 @@ BrowserAccessibilityOHOS::~BrowserAccessibilityOHOS() {
 
 int64_t BrowserAccessibilityOHOS::GetAccessibilityId() const {
   return accessibility_id_;
+}
+
+BrowserAccessibilityOHOS* BrowserAccessibilityOHOS::GetFromAccessibilityId(
+    int64_t accessibility_id) {
+  AccessibilityIdMap* unique_ids = g_accessibility_id_map.Pointer();
+  auto iter = unique_ids->find(accessibility_id);
+  if (iter != unique_ids->end())
+    return iter->second;
+
+  return nullptr;
 }
 
 bool BrowserAccessibilityOHOS::IsEnabled() const {
@@ -379,22 +389,28 @@ bool BrowserAccessibilityOHOS::IsHierarchical() const {
   return (GetRole() == ax::mojom::Role::kTree || IsHierarchicalList());
 }
 
-BrowserAccessibilityOHOS* BrowserAccessibilityOHOS::GetFromAccessibilityId(
-    int64_t accessibility_id) {
-  AccessibilityIdMap* accessibility_ids = g_accessibility_id_map.Pointer();
-  auto iter = accessibility_ids->find(accessibility_id);
-  if (iter != accessibility_ids->end())
-    return iter->second;
-
-  return nullptr;
-}
-
 bool BrowserAccessibilityOHOS::HasOnlyTextChildren() const {
-  for (auto it = InternalChildrenBegin(); it != InternalChildrenEnd(); ++it) {
-    if (!it->IsText())
+  std::vector<int64_t> childrenIds;
+  GetChildrenIds(childrenIds);
+  for (auto& childId : childrenIds) {
+    BrowserAccessibilityOHOS* child = GetFromAccessibilityId(childId);
+    if (!child->IsText() && child->GetRole() != ax::mojom::Role::kStrong) {
       return false;
+    }
   }
   return true;
+}
+
+bool BrowserAccessibilityOHOS::HasClickableChildren() const {
+  std::vector<int64_t> childrenIds;
+  GetChildrenIds(childrenIds);
+  for (auto& childId : childrenIds) {
+    BrowserAccessibilityOHOS* child = GetFromAccessibilityId(childId);
+    if (child->IsClickable()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 const BrowserAccessibilityOHOS*
@@ -851,11 +867,11 @@ std::u16string BrowserAccessibilityOHOS::GetSubstringTextContentUTF16(
 }
 
 bool BrowserAccessibilityOHOS::HasOnlyTextAndImageChildren() const {
-  // This is called from IsLeaf, so don't call PlatformChildCount
-  // from within this!
-  for (auto it = InternalChildrenBegin(); it != InternalChildrenEnd(); ++it) {
-    BrowserAccessibility* child = it.get();
-    if (!child->IsText() && !ui::IsImageOrVideo(child->GetRole())) {
+  std::vector<int64_t> childrenIds;
+  GetChildrenIds(childrenIds);
+  for (auto& childId : childrenIds) {
+    BrowserAccessibilityOHOS* child = GetFromAccessibilityId(childId);
+    if (!child->IsText() && child->GetRole() != ax::mojom::Role::kStrong && !ui::IsImageOrVideo(child->GetRole())) {
       return false;
     }
   }
@@ -922,4 +938,103 @@ bool BrowserAccessibilityOHOS::IsFocusable() const {
 bool BrowserAccessibilityOHOS::IsTableHeader() const {
   return ui::IsTableHeader(GetRole());
 }
+
+bool BrowserAccessibilityOHOS::HasNonEmptyValue() const {
+  return IsTextField() && !GetValueForControl().empty();
+}
+
+bool BrowserAccessibilityOHOS::IsScrollSupported() const {
+  if (GetRole() == ax::mojom::Role::kSlider) {
+    const std::string& html_tag =
+        GetStringAttribute(ax::mojom::StringAttribute::kHtmlTag);
+    if (html_tag != "input") {
+      return false;
+    }
+    return true;
+  } else {
+    return IsScrollable();
+  }
+}
+
+void BrowserAccessibilityOHOS::Scroll(const ax::mojom::Action& action) const {
+  if (GetRole() == ax::mojom::Role::kSlider) {
+    if (!IsEnabled()) {
+      return;
+    }
+    float slider_value = GetFloatAttribute(ax::mojom::FloatAttribute::kValueForRange);
+    float slider_min = GetFloatAttribute(ax::mojom::FloatAttribute::kMinValueForRange);
+    float slider_max = GetFloatAttribute(ax::mojom::FloatAttribute::kMaxValueForRange);
+    if (slider_max <= slider_min) {
+      return;
+    }
+    float slider_step = (slider_max - slider_min) / kDefaultStepTicksForSliders;
+    if (HasFloatAttribute(ax::mojom::FloatAttribute::kStepValueForRange)) {
+      slider_step = GetFloatAttribute(ax::mojom::FloatAttribute::kStepValueForRange);
+    }
+    float update_value;
+    if (ax::mojom::Action::kScrollForward == action) {
+      update_value = slider_value + slider_step;
+    } else if (ax::mojom::Action::kScrollBackward == action) {
+      update_value = slider_value - slider_step;
+    } else {
+      return;
+    }
+    update_value = std::clamp(update_value, slider_min, slider_max);
+    if (update_value != slider_value) {
+      manager()->SetValue(*this, base::NumberToString(update_value));
+    }
+  } else {
+    manager()->Scroll(*this, action);
+  }
+}
+
+bool BrowserAccessibilityOHOS::IsAccessibilityGroup() const {
+  if (ui::IsLink(GetRole())) {
+    return true;
+  }
+  if (GetRole() == ax::mojom::Role::kHeading) {
+    return true;
+  }
+  if (GetRole() == ax::mojom::Role::kParagraph) {
+    return HasOnlyTextChildren();
+  }
+  return false;
+}
+
+bool BrowserAccessibilityOHOS::IsIgnoredContainer() const {
+  if (GetRole() != ax::mojom::Role::kGenericContainer) {
+    return false;
+  }
+  if (IsClickable() && !HasClickableChildren()) {
+    return false;
+  }
+  if (!PlatformChildCount()) {
+    return false;
+  }
+  return true;
+}
+
+int64_t BrowserAccessibilityOHOS::GetParentId() const {
+  BrowserAccessibilityOHOS* parent = static_cast<content::BrowserAccessibilityOHOS*>(PlatformGetParent());
+  while (parent && parent->IsIgnoredContainer()) {
+    parent = static_cast<content::BrowserAccessibilityOHOS*>(parent->PlatformGetParent());
+  }
+  if (parent) {
+    return parent->GetAccessibilityId();
+  }
+  return -1;
+}
+
+void BrowserAccessibilityOHOS::GetChildrenIds(std::vector<int64_t>& childrenIds) const {
+  for (const auto& childNode : PlatformChildren()) {
+    const content::BrowserAccessibilityOHOS& childNodeOHOS =
+        static_cast<const content::BrowserAccessibilityOHOS&>(childNode);
+    if (!childNodeOHOS.IsIgnoredContainer()) {
+      childrenIds.emplace_back(childNodeOHOS.GetAccessibilityId());
+    } else {
+      childNodeOHOS.GetChildrenIds(childrenIds);
+    }
+  }
+}
+
 }  // namespace content

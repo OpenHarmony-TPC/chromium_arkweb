@@ -485,11 +485,7 @@ InterfaceEndpointClient::InterfaceEndpointClient(
 }
 
 InterfaceEndpointClient::~InterfaceEndpointClient() {
-#if defined(OHOS_BUGFIX_CRASH)
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-#else
   CHECK(sequence_checker_.CalledOnValidSequence());
-#endif
   if (controller_)
     handle_.group_controller()->DetachEndpointClient(handle_);
 }
@@ -575,11 +571,8 @@ bool InterfaceEndpointClient::AcceptWithResponder(
 bool InterfaceEndpointClient::SendMessage(Message* message,
                                           bool is_control_message) {
   
-#if defined(OHOS_BUGFIX_CRASH)
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-#else
   CHECK(sequence_checker_.CalledOnValidSequence());
-#endif
+
   DCHECK(!message->has_flag(Message::kFlagExpectsResponse));
   DCHECK(!handle_.pending_association());
 
@@ -615,11 +608,7 @@ bool InterfaceEndpointClient::SendMessageWithResponder(
     bool is_control_message,
     SyncSendMode sync_send_mode,
     std::unique_ptr<MessageReceiver> responder) {
-#if defined(OHOS_BUGFIX_CRASH)
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-#else
   CHECK(sequence_checker_.CalledOnValidSequence());
-#endif
   DCHECK(message->has_flag(Message::kFlagExpectsResponse));
   DCHECK(!handle_.pending_association());
 
@@ -872,8 +861,10 @@ void InterfaceEndpointClient::ForgetAsyncRequest(uint64_t request_id) {
 
 void InterfaceEndpointClient::InitControllerIfNecessary() {
 #ifdef OHOS_BUGFIX_CRASH
-  if (controller_ || handle_.pending_association() || !handle_.group_controller())
+  if (controller_ || handle_.pending_association() || !handle_.group_controller()) {
+    LOG(ERROR) << "InitControllerIfNecessary returned";
     return;
+  }
 #else
   if (controller_ || handle_.pending_association())
     return;

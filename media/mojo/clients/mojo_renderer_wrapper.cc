@@ -57,6 +57,9 @@ void MojoRendererWrapper::SetMuted(bool muted) {
 void MojoRendererWrapper::SetSurfaceId(int surface_id, const gfx::Rect& rect) {
   mojo_renderer_->SetSurfaceId(surface_id, rect);
 }
+void MojoRendererWrapper::SetMediaPlayerState(bool is_suspend, int suspend_type) {
+  mojo_renderer_->SetMediaPlayerState(is_suspend, suspend_type);
+}
 void MojoRendererWrapper::SetMediaSourceList(
     const std::vector<MediaSourceInfo>& source_infos) {
   mojo_renderer_->SetMediaSourceList(source_infos);
@@ -77,6 +80,10 @@ void MojoRendererWrapper::SetReferrer(const std::string& referrer) {
 }
 void MojoRendererWrapper::SetIsAudio(bool is_audio) {
   mojo_renderer_->SetIsAudio(is_audio);
+}
+void MojoRendererWrapper::SetPlaybackRateWithReason(double playback_rate,
+    ActionReason reason) {
+  mojo_renderer_->SetPlaybackRateWithReason(playback_rate, reason);
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 

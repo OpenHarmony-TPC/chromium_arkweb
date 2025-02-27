@@ -163,6 +163,7 @@
 
 #if BUILDFLAG(IS_OHOS)
 #include "base/ohos/ltpo/include/sliding_observer.h"
+#include "content/browser/gpu/gpu_process_host.h"
 #endif
 
 using blink::DragOperationsMask;
@@ -347,6 +348,13 @@ class UnboundWidgetInputHandler : public blink::mojom::WidgetInputHandler {
       mojo::PendingAssociatedRemote<blink::mojom::SynchronousCompositorHost>
           host,
       mojo::PendingAssociatedReceiver<blink::mojom::SynchronousCompositor>
+          compositor_request) override {
+    NOTREACHED() << "Input request on unbound interface";
+  }
+#endif
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  void AttachSoftwareCompositorOhos(
+      mojo::PendingReceiver<blink::mojom::SoftwareCompositorOhos>
           compositor_request) override {
     NOTREACHED() << "Input request on unbound interface";
   }
@@ -1608,14 +1616,27 @@ void RenderWidgetHostImpl::ForwardGestureEventWithLatencyInfo(
                WebInputEvent::GetName(gesture_event.GetType()));
 
 #if BUILDFLAG(IS_OHOS)
+  int32_t preferred_frame_rate = 0;
   if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollBegin) {
-    base::ohos::SlidingObserver::GetInstance().StartSliding();
-  } else if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollEnd
-    || gesture_event.GetType() == WebInputEvent::Type::kGestureScrollEnd) {
-    base::ohos::SlidingObserver::GetInstance().StopSliding();
-  } else if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
-    base::ohos::SlidingObserver::GetInstance().OnScrollUpdate(gesture_event.data.scroll_update.delta_x,
-      gesture_event.data.scroll_update.delta_y);
+      base::ohos::SlidingObserver::GetInstance().StartSliding();
+    } else if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollEnd) {
+      base::ohos::SlidingObserver::GetInstance().StopSliding();
+    } else if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
+      preferred_frame_rate = base::ohos::SlidingObserver::GetInstance().OnScrollUpdate(gesture_event.data.scroll_update.delta_x,
+        gesture_event.data.scroll_update.delta_y);
+  }
+
+  auto* host = GpuProcessHost::Get();
+  viz::GpuHostImpl* host_impl = nullptr;
+  if (host) {
+    host_impl = host->gpu_host();
+  }
+
+  if (host_impl && preferred_frame_rate >= 0) {
+    if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollEnd
+      || gesture_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
+      host_impl->ReportSlidingFrameRate(preferred_frame_rate);
+    }
   }
 #endif
 
@@ -2704,6 +2725,27 @@ void RenderWidgetHostImpl::GetWordSelection(const std::string& text,
 }
 #endif
 
+#ifdef OHOS_AI
+void RenderWidgetHostImpl::CreateOverlay(const SkBitmap& bitmap,
+                    const gfx::Rect& image_rect,
+                    const gfx::Point& touch_point) {
+  RenderViewHostDelegateView* view = delegate_->GetDelegateView();
+  float scale = GetScaleFactorForView(GetView());
+  gfx::ImageSkia image = gfx::ImageSkia::CreateFromBitmap(bitmap, scale);
+  view->CreateOverlay(image, image_rect, touch_point, GetScreenRect());
+}
+
+gfx::Rect RenderWidgetHostImpl::GetScreenRect() {
+  gfx::Rect screen_rect;
+  blink_frame_widget_->GetScreenRect(&screen_rect);
+  return screen_rect;
+}
+
+void RenderWidgetHostImpl::OnTextSelected(bool flag) {
+  blink_frame_widget_->OnTextSelected(flag);
+}
+#endif
+
 // static
 bool RenderWidgetHostImpl::DidVisualPropertiesSizeChange(
     const blink::VisualProperties& old_visual_properties,
@@ -3225,6 +3267,11 @@ void RenderWidgetHostImpl::DidOverscroll(
     const ui::DidOverscrollParams& params) {
   if (view_)
     view_->DidOverscroll(params);
+}
+
+void RenderWidgetHostImpl::DynamicFrameLossEvent(const std::string& sceneId, bool isStart) {
+  if (view_)
+    view_->DynamicFrameLossEvent(sceneId, isStart);
 }
 
 #if BUILDFLAG(IS_OHOS)

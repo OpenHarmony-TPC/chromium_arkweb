@@ -20,6 +20,10 @@
 #include "content/browser/accessibility/browser_accessibility.h"
 
 namespace content {
+namespace {
+constexpr int kDefaultStepTicksForSliders = 20;
+}
+
 class BrowserAccessibilityManager;
 
 // A `BrowserAccessibility` object represents one node in the accessibility tree
@@ -94,9 +98,6 @@ class CONTENT_EXPORT BrowserAccessibilityOHOS : public BrowserAccessibility {
 
   bool IsLink() const;
 
-  static BrowserAccessibilityOHOS* GetFromAccessibilityId(
-      int64_t accessibility_id);
-
   const BrowserAccessibilityOHOS* GetAccessibilityNodeByFocusMove(
       int32_t direction) const;
 
@@ -120,6 +121,23 @@ class CONTENT_EXPORT BrowserAccessibilityOHOS : public BrowserAccessibility {
 
   bool IsTableHeader() const;
 
+  bool HasNonEmptyValue() const;
+
+  bool IsScrollSupported() const;
+
+  void Scroll(const ax::mojom::Action& action) const;
+
+  static BrowserAccessibilityOHOS* GetFromAccessibilityId(
+      int64_t accessibility_id);
+
+  bool IsAccessibilityGroup() const;
+
+  bool IsIgnoredContainer() const;
+
+  int64_t GetParentId() const;
+
+  void GetChildrenIds(std::vector<int64_t>& childrenIds) const;
+
  protected:
   BrowserAccessibilityOHOS(BrowserAccessibilityManager* manager,
                            ui::AXNode* node);
@@ -132,6 +150,8 @@ class CONTENT_EXPORT BrowserAccessibilityOHOS : public BrowserAccessibility {
   bool HasOnlyTextChildren() const;
 
   bool HasOnlyTextAndImageChildren() const;
+
+  bool HasClickableChildren() const;
 
   bool HasListMarkerChild() const;
 

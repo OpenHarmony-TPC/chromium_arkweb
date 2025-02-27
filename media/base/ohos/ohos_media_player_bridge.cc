@@ -14,6 +14,7 @@
 
 namespace media {
 
+constexpr int QUEUE_SIZE = 3;
 static constexpr int PLAYER_INIT_OK = 0;
 static constexpr int PLAYER_INIT_ERROR = -1;
 
@@ -30,9 +31,11 @@ OHOSMediaPlayerBridge::OHOSMediaPlayerBridge(
       url_(url),
       prepared_(false),
       pending_play_(false),
+      seek_complete_(true),
       should_seek_on_prepare_(false),
       should_set_volume_on_prepare_(false),
-      seeking_on_playback_complete_(false) {
+      seeking_on_playback_complete_(false),
+      seeking_back_complete_(false) {
 #if defined(RK3568)
   is_hls_ = is_hls;
 #endif
@@ -114,7 +117,7 @@ void OHOSMediaPlayerBridge::Prepare() {
   consumer_surface_->SetUserData(
       surfaceFormat,
       std::to_string(OHOS::NWeb::PixelFormatAdapter::PIXEL_FMT_RGBA_8888));
-  consumer_surface_->SetQueueSize(3);
+  consumer_surface_->SetQueueSize(QUEUE_SIZE);
   ret = player_->SetVideoSurface(consumer_surface_);
   if (ret != 0) {
     LOG(ERROR) << "SetVideoSurface error::ret=" << ret;
@@ -130,12 +133,23 @@ void OHOSMediaPlayerBridge::Prepare() {
 
 void OHOSMediaPlayerBridge::StartInternal() {
   if (player_ && prepared_) {
-    player_->Play();
+    if (!pause_when_prepared_) {
+      player_->Play();
+    } else {
+      LOG(INFO) << "OHOSMediaPlayerBridge StartInternal start canceled, because of paused when perpared";
+      pause_when_prepared_ = false;
+    }
   }
 }
 
 void OHOSMediaPlayerBridge::Pause() {
-  if (player_ && player_state_ == OHOS::NWeb::PlayerAdapter::PLAYER_STARTED) {
+  if ((player_ && player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STARTED &&
+       player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PLAYBACK_COMPLETE) || pending_play_) {
+    LOG(INFO) << "OHOSMediaPlayerBridge Pause when perpared!!";
+    pause_when_prepared_ = true;
+  }
+  if (player_ && player_state_ == OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STARTED) {
+    LOG(INFO) << "OHOSMediaPlayerBridge Pause successful!!";
     int32_t ret = player_->Pause();
     if (ret != 0) {
       LOG(ERROR) << "Pause error::ret=" << ret;
@@ -149,8 +163,10 @@ void OHOSMediaPlayerBridge::Pause() {
 
 void OHOSMediaPlayerBridge::SeekTo(base::TimeDelta time) {
   pending_seek_ = time;
+  seeking_back_complete_ = false;
 
-  if (player_state_ == OHOS::NWeb::PlayerAdapter::PLAYER_PLAYBACK_COMPLETE) {
+  LOG(INFO) << "OHOSMediaPlayerBridge::SeekTo time=" << time.InMilliseconds();
+  if (player_state_ == OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PLAYBACK_COMPLETE) {
     seeking_on_playback_complete_ = true;
     return;
   }
@@ -159,7 +175,6 @@ void OHOSMediaPlayerBridge::SeekTo(base::TimeDelta time) {
     should_seek_on_prepare_ = true;
     return;
   }
-
   SeekInternal(time);
 }
 
@@ -169,7 +184,7 @@ void OHOSMediaPlayerBridge::SeekInternal(base::TimeDelta time) {
   if (ret != 0) {
     LOG(ERROR) << "Seek error::ret=" << ret;
   } else {
-    ++seek_done_count_;
+    seek_complete_ = false;
   }
 }
 
@@ -217,18 +232,39 @@ base::TimeDelta OHOSMediaPlayerBridge::GetDuration() {
 
 base::TimeDelta OHOSMediaPlayerBridge::GetMediaTime() {
   if (!player_ || !prepared_ || seeking_on_playback_complete_ ||
-      seek_done_count_) {
+      !seek_complete_) {
     return pending_seek_;
   }
 
   int32_t time = -1;
-  (void)player_->GetCurrentTime(time);
+  int32_t ret = player_->GetCurrentTime(time);
+  if (ret == 0 && time == -1) {
+    //if is livestream, return system time
+    time = static_cast<int32_t>(base::Time::Now().ToInternalValue() / base::Time::kMicrosecondsPerMillisecond);
+  }
   return base::Milliseconds(time);
 }
 
 void OHOSMediaPlayerBridge::SeekDone() {
-  if (seek_done_count_ > 0) {
-    --seek_done_count_;
+  LOG(INFO) << "OHOSMediaPlayerBridge::SeekDone()";
+  seek_complete_ = true;
+}
+
+void OHOSMediaPlayerBridge::OnSeekBack(base::TimeDelta extra_time) {
+  extra_time_ = extra_time;
+  if (!player_ || pending_seek_ == base::Milliseconds(0)) {
+    return;
+  }
+  if (seeking_back_complete_) {
+    return;
+  }
+
+  if ((pending_seek_ - extra_time_) > base::Milliseconds(1)) {
+    seeking_back_complete_ = true;
+    if (client_) {
+      client_->OnPlayerSeekBack(extra_time_);
+    }
+    LOG(INFO) << "OHOSMediaPlayerBridge::OnSeekBack() back_time=" << extra_time_;
   }
 }
 
@@ -253,7 +289,9 @@ void OHOSMediaPlayerBridge::FinishPaint(int fd) {
   } else {
     LOG(ERROR) << "cached_buffers_.front() is nullptr";
   }
-  cached_buffers_.pop_front();
+  if (!cached_buffers_.empty()) {
+    cached_buffers_.pop_front();
+  }
 }
 
 void OHOSMediaPlayerBridge::SetPlaybackSpeed(
@@ -279,11 +317,13 @@ void OHOSMediaPlayerBridge::OnPlayerStateUpdate(
   if (!player_) {
     return;
   }
-
+  LOG(INFO) << "OHOSMediaPlayerBridge OnPlayerStateUpdate: from: " << static_cast<int32_t>(player_state_)
+    << ", to: " << static_cast<int32_t>(player_state);
   if (player_state_ ==
           OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PLAYBACK_COMPLETE &&
       player_state != player_state_) {
     seeking_on_playback_complete_ = false;
+    pause_when_prepared_ = false;
   }
 
   if (player_state ==

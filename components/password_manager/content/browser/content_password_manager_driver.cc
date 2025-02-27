@@ -64,6 +64,11 @@ bool HasValidURL(content::RenderFrameHost* render_frame_host) {
   if (!url.is_valid())
     return false;
 
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  if(!url.SchemeIsHTTPOrHTTPS())
+    return false;
+#endif
+
   return password_manager::bad_message::CheckChildProcessSecurityPolicyForURL(
       render_frame_host, url,
       password_manager::BadMessageReason::CPMD_BAD_ORIGIN_FORM_SUBMITTED);
@@ -137,6 +142,16 @@ void ContentPasswordManagerDriver::SetPasswordFillData(
     agent->SetPasswordFillData(autofill::MaybeClearPasswordValues(form_data));
   }
 }
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+void ContentPasswordManagerDriver::SendParsedPasswordFormToRenderer(
+    const autofill::PasswordFormFillData& parsed_form_data_without_password) {
+  if (const auto& agent = GetPasswordAutofillAgent()) {
+    LOG(INFO) << "Set parsed password form.";
+    agent->SetParsedPasswordForm(parsed_form_data_without_password);
+  }
+}
+#endif
 
 void ContentPasswordManagerDriver::InformNoSavedCredentials(
     bool should_show_popup_without_passwords) {
@@ -234,6 +249,44 @@ PasswordAutofillManager*
 ContentPasswordManagerDriver::GetPasswordAutofillManager() {
   return &password_autofill_manager_;
 }
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+void ContentPasswordManagerDriver::OnRequestAutofill(
+    autofill::FormRendererId form_id,
+    const autofill::mojom::OhosPasswordFormAutofillState state,
+    const autofill::InputFillRequestData& username_data,
+    const autofill::InputFillRequestData& password_data) {
+  if (!password_manager::bad_message::CheckFrameNotPrerendering(
+          render_frame_host_))
+    return;
+
+  // Remove sensitive information before sending to external systems.
+  GURL page_origin = url::Origin::Create(GetLastCommittedURL()).GetURL();
+  client_->OnRequestAutofill(this, page_origin, form_id, state,
+                             username_data, password_data);
+}
+
+void ContentPasswordManagerDriver::FillAccountSuggestion(
+    const GURL& page_url,
+    const std::u16string& username,
+    const std::u16string& password) {
+  password_autofill_manager_.FillAccountSuggestion(
+      page_url, username, password);
+}
+
+void ContentPasswordManagerDriver::FillAccountSuggestion(
+    const std::u16string& username,
+    const std::u16string& password) {
+  GetAutofillAgent()->FillAccountSuggestion(username, password);
+}
+
+void ContentPasswordManagerDriver::AutofillSurfaceClosed(
+    bool show_virtual_keyboard) {
+  if (const auto& agent = GetPasswordAutofillAgent()) {
+    agent->AutofillSurfaceClosed(show_virtual_keyboard);
+  }
+}
+#endif
 
 void ContentPasswordManagerDriver::SendLoggingAvailability() {
   if (const auto& agent = GetPasswordAutofillAgent()) {

@@ -11,10 +11,16 @@
 #include "base/containers/fixed_flat_map.h"
 #include "base/no_destructor.h"
 #include "base/notreached.h"
+#if defined(OHOS_SCROLLBAR)
+#include "base/ohos/sys_info_utils.h"
+#endif
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "cc/paint/paint_canvas.h"
 #include "cc/paint/paint_flags.h"
+#if defined(OHOS_SCROLLBAR)
+#include "ohos_adapter_helper.h"
+#endif
 #include "third_party/skia/include/core/SkPath.h"
 #include "ui/base/layout.h"
 #include "ui/base/ui_base_features.h"
@@ -44,9 +50,16 @@ namespace {
 constexpr int kOverlayScrollbarMinimumLength = 48;
 constexpr int kOverlayScrollbarBorderPatchWidth = 0;
 //Scrollbar's width,include hot zone(24) + visible width(8) + marginRight(4)
-constexpr int kOverlayScrollbarCenterPatchSize = 36;
-constexpr int kOverlayScrollbarHotSize = 24;
-constexpr int kOverlayScrollbarMargin = 4;
+constexpr int kOverlayScrollbarHotSize = 20;
+constexpr int kOverlayScrollbarHotSizePc = 0;
+int scrollbar_hot_size_ = kOverlayScrollbarHotSize;
+// 1 vp = 1.5 * px
+constexpr int kForceScrollbarActiveWidth = 12;      // 8 * 1.5
+constexpr int kForceScrollbarInactiveWidth = 6;     // 4 * 1.5
+constexpr int kForceScrollbarActiveOffset = 6;      // 4 * 1.5
+constexpr int kForceScrollbarInactiveOffset = 12;   // 8 * 1.5
+constexpr int kForceScrollbarActiveRadius = 6;      // 4 * 1.5
+constexpr int kForceScrollbarInactiveRadius = 3;    // 2 * 1.5
 #else
 // Constants for painting overlay scrollbars. Other properties needed outside
 // this painting code are defined in overlay_scrollbar_constants_aura.h.
@@ -103,8 +116,32 @@ NativeThemeAura::NativeThemeAura(bool use_overlay_scrollbars,
 #endif
 
   if (use_overlay_scrollbars_) {
+#ifdef OHOS_SCROLLBAR
+    if (base::ohos::IsPcDevice()) {
+      scrollbar_width_ = kOverlayScrollbarThumbWidthPressedPc;
+      scrollbar_hot_size_ = kOverlayScrollbarHotSizePc;
+    } else {
+      scrollbar_width_ = kOverlayScrollbarThumbWidthPressed;
+    }
+    auto display_manager_adapter =
+        OHOS::NWeb::OhosAdapterHelper::GetInstance().CreateDisplayMgrAdapter();
+    if (display_manager_adapter == nullptr) {
+      LOG(ERROR) << "display_manager_adapter is nullptr";
+      return;
+    }
+    std::shared_ptr<OHOS::NWeb::DisplayAdapter> display =
+        display_manager_adapter->GetDefaultDisplay();
+    if (display == nullptr) {
+      LOG(ERROR) << "display is nullptr";
+      return;
+    }
+
+    virtual_pixel_ratio_ = display->GetVirtualPixelRatio();
+    LOG(DEBUG) << "GetVirtualPixelRatio ratio:" << virtual_pixel_ratio_;
+#else
     scrollbar_width_ =
         kOverlayScrollbarThumbWidthPressed + kOverlayScrollbarStrokeWidth;
+#endif
   }
 
   // Images and alphas declarations assume the following order.
@@ -233,9 +270,9 @@ void NativeThemeAura::PaintArrowButton(
       lower_right_radius = kScrollRadius * zoom;
     }
   }
+
   DrawPartiallyRoundRect(canvas, rect, upper_left_radius, upper_right_radius,
                          lower_right_radius, lower_left_radius, flags);
-
   PaintArrow(canvas, rect, direction, arrow_color);
 }
 
@@ -253,6 +290,7 @@ void NativeThemeAura::PaintScrollbarTrack(
   const SkColor track_color =
       GetControlColor(kScrollbarTrack, color_scheme, color_provider);
   flags.setColor(track_color);
+
   canvas->drawIRect(gfx::RectToSkIRect(rect), flags);
 }
 
@@ -287,14 +325,18 @@ void NativeThemeAura::PaintScrollbarThumb(cc::PaintCanvas* canvas,
     flags.setColor(aroundColor);
     flags.setAntiAlias(true);
     gfx::Rect aroundRRect; // Draw rect on aroundRRect's position.
-    int drawThumbThickness = kOverlayScrollbarCenterPatchSize -
-                             kOverlayScrollbarHotSize - kOverlayScrollbarMargin;
+    bool isPcDevice = base::ohos::IsPcDevice();
+    int drawThumbThickness = scrollbar_width_ * virtual_pixel_ratio_ - scrollbar_hot_size_* virtual_pixel_ratio_;
     if (part == kScrollbarHorizontalThumb) {
-      aroundRRect = gfx::Rect(0, kOverlayScrollbarHotSize, thumb_rect.height(),
-                              drawThumbThickness);
+      int horizontalX = isPcDevice ? thumb_rect.x() : 0;
+      int horizontalY = isPcDevice ? thumb_rect.y() + scrollbar_hot_size_ : scrollbar_hot_size_;
+      aroundRRect = gfx::Rect(horizontalX * virtual_pixel_ratio_, horizontalY * virtual_pixel_ratio_,
+                              thumb_rect.width(), drawThumbThickness);
     } else {
-      aroundRRect = gfx::Rect(kOverlayScrollbarHotSize, 0, drawThumbThickness,
-                              thumb_rect.height());
+      int verticalX = isPcDevice ? thumb_rect.x() + scrollbar_hot_size_ : scrollbar_hot_size_;
+      int verticalY = isPcDevice ? thumb_rect.y() : 0;
+      aroundRRect = gfx::Rect(verticalX * virtual_pixel_ratio_, verticalY * virtual_pixel_ratio_,
+                              drawThumbThickness, thumb_rect.height());
     }
 
     SkScalar radius = SkIntToScalar(drawThumbThickness/4*3);
@@ -358,6 +400,38 @@ void NativeThemeAura::PaintScrollbarThumb(cc::PaintCanvas* canvas,
     thumb_rect.Inset(fill_insets + edge_adjust_insets);
 #endif // OHOS_SCROLLBAR
   } else {
+#if defined(OHOS_SCROLLBAR)
+      cc::PaintFlags overflags;
+      SkScalar radius;
+      thumb_color = SkColorSetA(scrollbar_color, 102);
+      overflags.setColor(thumb_color);
+      if (state == kHovered || state == kPressed) {
+        radius = SkIntToScalar(kForceScrollbarActiveRadius);
+        if (part == kScrollbarVerticalThumb) {
+          thumb_rect.set_x(thumb_rect.x() + thumb_rect.width()
+           - kForceScrollbarActiveWidth - kForceScrollbarActiveOffset);
+          thumb_rect.set_width(kForceScrollbarActiveWidth);
+        } else {
+          thumb_rect.set_y(thumb_rect.y() + thumb_rect.height()
+           - kForceScrollbarActiveWidth -kForceScrollbarActiveOffset);
+          thumb_rect.set_height(kForceScrollbarActiveWidth);
+        }
+      } else {
+        radius = SkIntToScalar(kForceScrollbarInactiveRadius);
+        if (part == kScrollbarVerticalThumb) {
+          thumb_rect.set_x(thumb_rect.x() + thumb_rect.width()
+           - kForceScrollbarInactiveOffset);
+          thumb_rect.set_width(kForceScrollbarInactiveWidth);
+        } else {
+          thumb_rect.set_y(thumb_rect.y() + thumb_rect.height()
+           - kForceScrollbarInactiveOffset);
+          thumb_rect.set_height(kForceScrollbarInactiveWidth);
+        }
+      }
+      SkRRect r_rect = SkRRect::MakeRectXY(gfx::RectToSkRect(thumb_rect), radius, radius);
+      canvas->drawRRect(r_rect, overflags);
+      return;
+#else
     ControlColorId color_id = kScrollbarThumb;
     switch (state) {
       case NativeTheme::kDisabled:
@@ -384,6 +458,7 @@ void NativeThemeAura::PaintScrollbarThumb(cc::PaintCanvas* canvas,
       thumb_rect.Inset(gfx::Insets::VH(kThumbPadding, extra_padding));
 
     thumb_color = GetControlColor(color_id, color_scheme, color_provider);
+#endif
   }
 
   cc::PaintFlags flags;
@@ -426,6 +501,20 @@ gfx::Size NativeThemeAura::GetPartSize(Part part,
         // crbug.com/657159.
         break;
     }
+  } else {
+    switch (part) {
+      case kScrollbarDownArrow:
+      case kScrollbarUpArrow:
+         return gfx::Size(scrollbar_width_, 0);
+      case kScrollbarLeftArrow:
+      case kScrollbarRightArrow:
+        return gfx::Size(0, scrollbar_width_);
+      default:
+        // TODO(bokan): We should probably make sure code using overlay
+        // scrollbars isn't asking for part sizes that don't exist.
+        // crbug.com/657159.
+        break;
+    }
   }
 
   return NativeThemeBase::GetPartSize(part, state, extra);
@@ -457,25 +546,23 @@ gfx::Size NativeThemeAura::GetNinePatchCanvasSize(Part part) const {
   DCHECK(SupportsNinePatch(part));
 
   return gfx::Size(
-      kOverlayScrollbarBorderPatchWidth * 2 + kOverlayScrollbarCenterPatchSize,
-      kOverlayScrollbarBorderPatchWidth * 2 + kOverlayScrollbarCenterPatchSize);
+      (kOverlayScrollbarBorderPatchWidth * 2 + kOverlayScrollbarThumbWidthPressed) * virtual_pixel_ratio_,
+      (kOverlayScrollbarBorderPatchWidth * 2 + kOverlayScrollbarThumbWidthPressed) * virtual_pixel_ratio_);
 }
 
 gfx::Rect NativeThemeAura::GetNinePatchAperture(Part part) const {
   DCHECK(SupportsNinePatch(part));
 #ifdef OHOS_SCROLLBAR
-  int drawThumbThickness = kOverlayScrollbarCenterPatchSize -
-                           kOverlayScrollbarHotSize - kOverlayScrollbarMargin;
   if (part == kScrollbarHorizontalThumb) {
-    return gfx::Rect(kOverlayScrollbarBorderPatchWidth + drawThumbThickness,
-                     kOverlayScrollbarBorderPatchWidth,
-                     kOverlayScrollbarCenterPatchSize - drawThumbThickness * 2,
-                     kOverlayScrollbarCenterPatchSize);
+    return gfx::Rect(kOverlayScrollbarThumbWidthPressed * virtual_pixel_ratio_ / 2,
+                     kOverlayScrollbarBorderPatchWidth * virtual_pixel_ratio_,
+                     (int)virtual_pixel_ratio_,
+                     scrollbar_width_ * virtual_pixel_ratio_);
   } else {
-    return gfx::Rect(kOverlayScrollbarBorderPatchWidth,
-                     kOverlayScrollbarBorderPatchWidth + drawThumbThickness,
-                     kOverlayScrollbarCenterPatchSize,
-                     kOverlayScrollbarCenterPatchSize - drawThumbThickness * 2);
+    return gfx::Rect(kOverlayScrollbarBorderPatchWidth* virtual_pixel_ratio_,
+                     kOverlayScrollbarThumbWidthPressed * virtual_pixel_ratio_ / 2,
+                     scrollbar_width_ * virtual_pixel_ratio_,
+                     (int)virtual_pixel_ratio_);
   }
 #else
   return gfx::Rect(

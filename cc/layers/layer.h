@@ -665,9 +665,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer>,
     return native_.Read(*this);
   }
 
-  void SetNativeEmbedId(int embedId) {
-    native_embed_id_.Write(*this) = embedId;
-  }
+  void SetNativeEmbedId(int embedId);
 
   int native_embed_id() const {
     return native_embed_id_.Read(*this);
@@ -866,6 +864,8 @@ class CC_EXPORT Layer : public base::RefCounted<Layer>,
 
 #if BUILDFLAG(IS_OHOS)
   virtual void OnLayerRectUpdate(const gfx::Rect& rect) {}
+
+  virtual void OnLayerRectVisibilityChange(bool visibility) {}
 #endif
 
   void SetShouldInterceptTouchEvent(bool intercept) {
@@ -1216,6 +1216,7 @@ class CC_EXPORT Layer : public base::RefCounted<Layer>,
 #endif
 
   ProtectedSequenceReadable<int> native_embed_id_{0};
+
   gfx::RectF native_rect_;
   ProtectedSequenceWritable<std::unique_ptr<LayerDebugInfo>> debug_info_;
 

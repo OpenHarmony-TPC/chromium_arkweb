@@ -121,6 +121,12 @@ bool AsyncLayerTreeFrameSink::BindToClient(LayerTreeFrameSinkClient* client) {
       thread_ids, base::GetCurrentRealPid(), is_created);
 #endif
 
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  if (software_renderer_ohos_) {
+    software_renderer_ohos_->BindToClient(client, begin_frame_source_.get());
+  }
+#endif
+
   return true;
 }
 
@@ -135,6 +141,13 @@ void AsyncLayerTreeFrameSink::DetachFromClient() {
   compositor_frame_sink_ptr_ = nullptr;
   compositor_frame_sink_.reset();
   compositor_frame_sink_associated_.reset();
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  if (software_renderer_ohos_) {
+    software_renderer_ohos_->DetachFromClient();
+  }
+#endif
+
   LayerTreeFrameSink::DetachFromClient();
 }
 
@@ -190,6 +203,14 @@ void AsyncLayerTreeFrameSink::SubmitCompositorFrame(
     last_hit_test_data_ = *hit_test_region_list;
   }
 
+#if BUILDFLAG(IS_OHOS)
+  if (is_first_submit_) {
+    is_first_submit_ = false;
+    LOG(INFO) << "web render log: first call SubmitCompositorFrame, local_surface_id = "
+      << local_surface_id_.ToString();
+  }
+#endif
+
   if (last_submitted_local_surface_id_ != local_surface_id_) {
     last_submitted_local_surface_id_ = local_surface_id_;
     last_submitted_device_scale_factor_ = frame.device_scale_factor();
@@ -224,6 +245,12 @@ void AsyncLayerTreeFrameSink::SubmitCompositorFrame(
   power_mode_voter_.OnFrameProduced(frame.render_pass_list.back()->damage_rect,
                                     frame.device_scale_factor());
 
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  if (software_renderer_ohos_ && software_renderer_ohos_->InSoftwareDraw()) {
+    software_renderer_ohos_->DrawAndSwapOnRenderer(std::move(frame));
+    return;
+  }
+#endif
   compositor_frame_sink_ptr_->SubmitCompositorFrame(
       local_surface_id_, std::move(frame), std::move(hit_test_region_list), 0);
 }
@@ -268,9 +295,6 @@ void AsyncLayerTreeFrameSink::OnBeginFrame(
     const viz::FrameTimingDetailsMap& timing_details,
     bool frame_ack,
     std::vector<viz::ReturnedResource> resources) {
-  if (compositor_frame_sink_ptr_) {
-    compositor_frame_sink_ptr_->OnVsyncReceived();
-  }
   if (features::IsOnBeginFrameAcksEnabled()) {
     if (frame_ack) {
       DidReceiveCompositorFrameAck(std::move(resources));
@@ -354,5 +378,28 @@ void AsyncLayerTreeFrameSink::SetDrawRect(const gfx::Rect& new_rect) {
   client_->SetExternalTilePriorityConstraints(new_rect, gfx::Transform());
 }
 
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+void AsyncLayerTreeFrameSink::InitSoftwareCompositorRender(
+    SoftwareCompositorRegistryOhos* registry) {
+  software_renderer_ohos_ =
+      std::make_unique<SoftwareCompositorRendererOhos>(this, registry);
+}
+#endif
+
+#if BUILDFLAG(IS_OHOS)
+void AsyncLayerTreeFrameSink::TriggerVsyncImplTask() {
+  TRACE_EVENT1("cc", "AsyncLayerTreeFrameSink::TriggerVsyncImplTask",
+    "res", !compositor_frame_sink_ptr_);
+  DCHECK(compositor_frame_sink_ptr_);
+
+  compositor_frame_sink_ptr_->TriggerVsyncImplTask();
+}
+
+void AsyncLayerTreeFrameSink::SetHandledTouchEvent(bool handledTouchEvent) {
+  DCHECK(compositor_frame_sink_ptr_);
+
+  compositor_frame_sink_ptr_->SetHandledTouchEvent(handledTouchEvent);
+}
+#endif
 }  // namespace mojo_embedder
 }  // namespace cc

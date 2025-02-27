@@ -104,6 +104,7 @@
 #endif
 
 #if BUILDFLAG(IS_OHOS)
+#include "content/browser/renderer_host/render_process_host_impl.h"
 #include "res_sched_client_adapter.h"
 #endif
 
@@ -242,10 +243,14 @@ static const char* const kSwitchNames[] = {
     switches::kDisableHighResTimer,
     switches::kRaiseTimerFrequency,
 #endif  // BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_OHOS)
+    switches::kDisableCanvasOopRasterization,
+    switches::kEnableCanvasOopRasterization,
+    switches::kOhosEnableDrDc,
+#endif
     switches::kEnableANGLEFeatures,
     switches::kDisableANGLEFeatures,
     switches::kDisableBreakpad,
-    switches::kDisableCanvasOopRasterization,
     switches::kDisableGpuRasterization,
     switches::kDisableGLExtensions,
     switches::kDisableLogging,
@@ -255,7 +260,6 @@ static const char* const kSwitchNames[] = {
     switches::kDisableWebRtcHWEncoding,
     switches::kDRMVirtualConnectorIsExternal,
     switches::kEnableBackgroundThreadPool,
-    switches::kEnableCanvasOopRasterization,
     switches::kEnableGpuRasterization,
     switches::kEnableLogging,
     switches::kDoubleBufferCompositing,
@@ -939,6 +943,12 @@ bool GpuProcessHost::Init() {
   ca_transaction_gpu_coordinator_ = CATransactionGPUCoordinator::Create(this);
 #endif
 
+#if BUILDFLAG(IS_OHOS)
+  if (gpu_crash_count_ != 0) {
+    RenderProcessHostImpl::Refresh();
+  }
+#endif
+
   return true;
 }
 
@@ -1319,6 +1329,8 @@ int GpuProcessHost::GetFallbackCrashLimit() const {
 #elif BUILDFLAG(IS_CHROMEOS)
   // Chrome OS does not use software compositing and fallback crashes the
   // browser process. So use larger maximum crash count limit.
+  return 6;
+#elif BUILDFLAG(IS_OHOS)
   return 6;
 #else
   // Maximum number of times the GPU process can crash before we try something

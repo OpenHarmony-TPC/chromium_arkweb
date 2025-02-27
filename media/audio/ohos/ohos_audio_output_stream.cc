@@ -9,6 +9,7 @@
 #include "media/base/audio_timestamp_helper.h"
 #include "ohos_adapter_helper.h"
 #include "ohos_nweb/src/sysevent/event_reporter.h"
+#include "third_party/bounds_checking_function/include/securec.h"
 
 namespace media {
 
@@ -43,8 +44,9 @@ int32_t AudioRendererOptions::GetRenderFlags() {
 }
 
 AudioRendererCallback::AudioRendererCallback(
-    content::MediaSessionImpl* media_session)
-    : media_session_(media_session) {}
+    content::MediaSessionImpl* media_session,
+    const scoped_refptr<base::SingleThreadTaskRunner>& task_runner)
+    : media_session_(media_session), main_task_runner_(task_runner) {}
 
 AudioRendererCallback::~AudioRendererCallback() {}
 
@@ -70,7 +72,14 @@ void AudioRendererCallback::OnResume() {
       std::time(nullptr) - intervalSinceLastSuspend_ <=
           static_cast<double>(media_session_->audioResumeInterval_) &&
       media_session_->IsSuspended()) {
-    media_session_->Resume(content::MediaSession::SuspendType::kSystem);
+    if (!main_task_runner_) {
+      return;
+    }
+    main_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&content::MediaSessionImpl::Resume,
+                       media_session_->weakMediaSessionFactory_.GetWeakPtr(),
+                       content::MediaSession::SuspendType::kSystem));
   }
 }
 
@@ -80,6 +89,74 @@ bool AudioRendererCallback::GetSuspendFlag() {
 
 void AudioRendererCallback::SetSuspendFlag(bool flag) {
   suspendFlag_ = flag;
+}
+
+AudioOutputChangeCallback::AudioOutputChangeCallback(
+    const scoped_refptr<base::SingleThreadTaskRunner>& main_task_runner,
+    AudioParameters params,
+    bool isCommunication)
+    : main_task_runner_(main_task_runner),
+      params_(params),
+      isCommunication_(isCommunication) {}
+
+AudioOutputChangeCallback::~AudioOutputChangeCallback() {}
+
+void AudioOutputChangeCallback::OnOutputDeviceChange(int32_t reason) {
+  LOG(INFO) << "AudioOutputChangeCallback::OnOutputDeviceChange reason: "
+            << reason;
+  if (reason ==
+          (int32_t)AudioAdapterDeviceChangeReason::OLD_DEVICE_UNAVALIABLE &&
+      !isCommunication_) {
+    LOG(INFO)
+        << "AudioOutputChangeCallback::OnOutputDeviceChange need stop session";
+    auto OutputDeviceChangeFunc = [](AudioParameters params) {
+      content::RenderFrameHost* renderFrameHost =
+          content::RenderFrameHost::FromID(params.render_process_id(),
+                                           params.render_frame_id());
+      if (!renderFrameHost) {
+        LOG(ERROR) << "AudioOutputStream get renderhost failed.";
+        return;
+      }
+      auto webContent =
+          content::WebContents::FromRenderFrameHost(renderFrameHost);
+      if (!webContent) {
+        LOG(ERROR) << "AudioOutputStream get webContent failed.";
+        return;
+      }
+      content::MediaSessionImpl* mediaSession =
+          content::MediaSessionImpl::Get(webContent);
+      if (!mediaSession) {
+        LOG(ERROR) << "AudioOutputStream get mediaSession failed.";
+        return;
+      }
+      auto weakMediaSession =
+          mediaSession->weakMediaSessionFactory_.GetWeakPtr();
+      if (!weakMediaSession) {
+        LOG(ERROR) << "OHOSAudioOutputStream::OHOSAudioOutputStream "
+                      "weakMediaSession get failed";
+        return;
+      }
+
+      if (weakMediaSession.get()->IsActive()) {
+        LOG(INFO) << "MediaSession is suspending the audio";
+        weakMediaSession.get()->Suspend(
+            content::MediaSession::SuspendType::kSystem);
+      } else {
+        LOG(INFO) << "MediaSession is suspended";
+      }
+    };
+
+    if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
+      if (!main_task_runner_) {
+        LOG(INFO) << "main_task_runner is nullptr";
+        return;
+      }
+      main_task_runner_->PostTask(
+          FROM_HERE, base::BindOnce(OutputDeviceChangeFunc, params_));
+    } else {
+      OutputDeviceChangeFunc(params_);
+    }
+  }
 }
 
 static std::set<content::WebContents*> WEBCONTENT_SET = {};
@@ -174,16 +251,19 @@ void OHOSAudioOutputStream::Start(AudioSourceCallback* callback) {
   if (ret != AudioAdapterCode::AUDIO_OK) {
     LOG(ERROR)
         << "OHOSAudioOutputStream::Start Set audio renderer callback failed.";
-    rendererCallback_.reset();
+    return;
+  }
+  ret = audio_renderer_->SetAudioOutputChangeCallback(outputChangeCallback_);
+  if (ret != AudioAdapterCode::AUDIO_OK) {
+    LOG(ERROR) << "OHOSAudioOutputStream::Start Set audio output change "
+                  "callback failed.";
     return;
   }
   Prepare(weakMediaSession_);
 
   auto it = WEBCONTENT_SET.begin();
   while (it != WEBCONTENT_SET.end()) {
-    auto otherWeakMediaSession = content::MediaSessionImpl::Get(*it)
-                                     ->weakMediaSessionFactory_.GetWeakPtr();
-    auto otherMediaSession = otherWeakMediaSession.get();
+    auto otherMediaSession = content::MediaSessionImpl::FromWebContents(*it);
     if (!otherMediaSession) {
       it = WEBCONTENT_SET.erase(it);
       continue;
@@ -195,7 +275,10 @@ void OHOSAudioOutputStream::Start(AudioSourceCallback* callback) {
     }
     if (GetInterruptMode() && otherMediaSession->IsActive()) {
       LOG(INFO) << "MediaSession is suspending the audio in other web.";
-      otherMediaSession->Suspend(content::MediaSession::SuspendType::kSystem);
+      main_task_runner_->PostTask(
+          FROM_HERE,
+          base::BindOnce(&content::MediaSessionImpl::Suspend, otherMediaSession->weakMediaSessionFactory_.GetWeakPtr(),
+                         content::MediaSession::SuspendType::kSystem));
     }
     it++;
   }
@@ -203,7 +286,11 @@ void OHOSAudioOutputStream::Start(AudioSourceCallback* callback) {
   WEBCONTENT_SET.insert(webContent_);
   if (StartRender()) {
     callback_ = callback;
-    memset(audio_data_[active_buffer_index_], 0, buffer_size_bytes_);
+    if (memset_s(audio_data_[active_buffer_index_],
+        buffer_size_bytes_, 0, buffer_size_bytes_) != EOK) {
+      LOG(ERROR) << "audio data memset_s failed.";
+      return;
+    }
     active_buffer_index_ = (active_buffer_index_ + 1) % kMaxNumOfBuffersInQueue;
     if (callback_) {
       DCHECK(!timer_.IsRunning());
@@ -267,31 +354,39 @@ base::TimeTicks OHOSAudioOutputStream::GetCurrentStreamTime() {
 
 bool OHOSAudioOutputStream::InitRender(
     const std::shared_ptr<AudioRendererOptionsAdapter> rendererOptions) {
-    int32_t ret = audio_renderer_->Create(rendererOptions);
-if (ret != 0) {
-  if (!audio_renderer_->Release()) {
-    LOG(ERROR) << "ohos audio render release failed.";
+  int32_t ret = audio_renderer_->Create(rendererOptions);
+  if (ret != 0) {
+    if (!audio_renderer_->Release()) {
+      LOG(ERROR) << "ohos audio render release failed.";
+    }
+    return false;
   }
-  return false;
-}
-if (!weakMediaSession_) {
-  LOG(ERROR) << "OHOSAudioOutputStream::InitRender Get mediaSession failed.";
-  return false;
-}
-rendererCallback_ =
-    std::make_shared<AudioRendererCallback>(weakMediaSession_.get());
-if (!rendererCallback_) {
-  LOG(ERROR)
-      << "OHOSAudioOutputStream::InitRender Get rendererCallback failed.";
-  return false;
-}
-if (ret != AudioAdapterCode::AUDIO_OK) {
-  LOG(ERROR) << "OHOSAudioOutputStream::InitRender Set audio renderer "
-                "callback failed.";
-  rendererCallback_.reset();
-  return false;
-}
-return true;
+  if (!weakMediaSession_) {
+    LOG(ERROR) << "OHOSAudioOutputStream::InitRender Get mediaSession failed.";
+    return false;
+  }
+  rendererCallback_ = std::make_shared<AudioRendererCallback>(
+      weakMediaSession_.get(), main_task_runner_);
+  if (!rendererCallback_) {
+    LOG(ERROR)
+        << "OHOSAudioOutputStream::InitRender Get rendererCallback failed.";
+    return false;
+  }
+  outputChangeCallback_ = std::make_shared<AudioOutputChangeCallback>(
+      main_task_runner_, parameters_, isCommunication_);
+  if (!outputChangeCallback_) {
+    LOG(ERROR) << "OHOSAudioOutputStream::InitRender Get outputChangeCallback_ "
+                  "failed.";
+    return false;
+  }
+  if (ret != AudioAdapterCode::AUDIO_OK) {
+    LOG(ERROR) << "OHOSAudioOutputStream::InitRender Set audio renderer "
+                  "callback failed.";
+    rendererCallback_.reset();
+    outputChangeCallback_.reset();
+    return false;
+  }
+  return true;
 }
 
 bool OHOSAudioOutputStream::StartRender() {
@@ -399,9 +494,10 @@ void OHOSAudioOutputStream::PumpSamples() {
             break;
           }
           LOG(INFO) << "MediaSession is suspending the audio";
-          weakMediaSession_.get()->Suspend(
-              content::MediaSession::SuspendType::kSystem);
-          weakMediaSession_.get()->isStreamSuspended_ = true;
+          main_task_runner_->PostTask(
+              FROM_HERE,
+              base::BindOnce(&content::MediaSessionImpl::Suspend, weakMediaSession_,
+                             content::MediaSession::SuspendType::kSystem));
         } else {
           LOG(INFO) << "MediaSession is suspended";
           isSuspended_ = true;
@@ -430,7 +526,14 @@ void OHOSAudioOutputStream::PumpSamples() {
 }
 
 void OHOSAudioOutputStream::SchedulePumpSamples(base::TimeTicks now) {
-  timer_.Start(FROM_HERE, GetCurrentStreamTime() - now,
+  // the audio syterm also have a schedule to read the data,
+  // so we need to write it faster to solve underrun problem.
+  auto maxSleepTime = base::Microseconds(10); 
+  auto sleepTime = GetCurrentStreamTime() - now;
+  if (sleepTime > maxSleepTime) {
+    sleepTime = maxSleepTime;
+  }
+  timer_.Start(FROM_HERE, sleepTime,
                base::BindOnce(&OHOSAudioOutputStream::PumpSamples,
                               base::Unretained(this)));
 }

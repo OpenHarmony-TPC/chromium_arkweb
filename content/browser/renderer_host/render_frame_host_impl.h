@@ -2383,6 +2383,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const blink::UntrustworthyContextMenuParams& params) override;
 #if defined(OHOS_CLIPBOARD)
   void MouseSelectMenuShow(bool show) override;
+  void ChangeVisibilityOfQuickMenu() override;
 #endif
   void DidLoadResourceFromMemoryCache(
       const GURL& url,
@@ -2893,7 +2894,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void ClearUserActivation();
   void ConsumeTransientUserActivation();
   void ActivateUserActivation(
-      blink::mojom::UserActivationNotificationType notification_type);
+      blink::mojom::UserActivationNotificationType notification_type,
+      bool sticky_only = false);
 
   // These are called only when RenderFrameHostOwner is iterating over all
   // frames, not directly from the renderer.

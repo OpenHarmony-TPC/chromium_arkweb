@@ -1052,6 +1052,10 @@ const char kOhosHttpCacheSimple[] = "ohos-enable-http-cache-simple";
 const char kCalcTabletMode[] = "ohos-enable-calc-tablet-mode";
 const char kDisableNonAdvancedSecurityMode[] = "disable-non-advanced-security-mode";
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+const char kOhosSubresourceFilter[] = "ohos-subresource-filter";
+#endif
+
 #if defined(OHOS_BUGFIX_CRASH)
 const char kOhosHanceSurface[] = "ohos-enhance-surface";
 #endif // defined(OHOS_BUGFIX_CRASH)
@@ -1131,5 +1135,11 @@ const char kIpcFuzzerTestcase[] = "ipc-fuzzer-testcase";
 #endif
 
 // Don't dump stuff here, follow the same order as the header.
+
+#ifdef OHOS_BFCACHE
+const char kEnableBFCache[] = "enable-bfcache";
+const char kEnableCacheNativeEmbed[] = "enable-cache-native-embed";
+const char kEnableCacheMediaTakeOver[] = "enable-cache-media-take-over";
+#endif
 
 }  // namespace switches

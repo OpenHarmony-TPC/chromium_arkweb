@@ -40,6 +40,7 @@
 #include "ohos_adapter_helper.h"
 #if BUILDFLAG(IS_OHOS)
 #include "base/ohos/ltpo/include/sliding_observer.h"
+#include "content/browser/gpu/gpu_process_host.h"
 #endif
 namespace content {
 
@@ -169,7 +170,12 @@ void InputRouterImpl::SendGestureEvent(
       .CreateSocPerfClientAdapter()
       ->ApplySocPerfConfigByIdEx(SOC_PERF_SLIDE_NORMAL_CONFIG_ID, false);
     prePerfTimeStamp_ = 0;
-    base::ohos::SlidingObserver::GetInstance().StopSliding();
+
+    if (auto* host = GpuProcessHost::Get()) {
+      if (auto* host_impl = host->gpu_host()) {
+        host_impl->StopMonitor();
+      }
+    }
 #endif
   }
 #endif
@@ -561,6 +567,10 @@ gfx::Size InputRouterImpl::GetRootWidgetViewportSize() {
   return client_->GetRootWidgetViewportSize();
 }
 
+void InputRouterImpl::DynamicFrameLossEvent(const std::string& sceneId, bool isStart) {
+  return client_->DynamicFrameLossEvent(sceneId, isStart);
+}
+
 void InputRouterImpl::SendMouseWheelEventImmediately(
     const MouseWheelEventWithLatencyInfo& wheel_event,
     MouseWheelEventQueueClient::MouseWheelEventHandledCallback
@@ -626,6 +636,12 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
                                            LegacyEvent::FLOW_INOUT,
                                        latency_info.trace_id());
               });
+  if (!(input_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate ||
+      input_event.GetType() == WebInputEvent::Type::kTouchMove ||
+      input_event.GetType() == WebInputEvent::Type::kGesturePinchUpdate)) {
+    LOG(INFO) << "InputRouterImpl::FilterAndSendWebInputEvent type=" <<
+                 WebInputEvent::GetName(input_event.GetType());
+  }
 
   if (input_event.GetType() == WebInputEvent::Type::kGestureScrollUpdate) {
     OHOS::NWeb::ResSchedClientAdapter::ReportScene(

@@ -6,6 +6,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "content/browser/web_contents/web_contents_impl.h"
+#include "content/browser/gpu/gpu_process_host.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
@@ -14,6 +15,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_client.h"
 #include "media/base/timestamp_constants.h"
+#include "net/http/http_request_headers.h"
 
 #include "gpu/ipc/common/gpu_surface_id_tracker.h"
 #include "content/browser/child_process_security_policy_impl.h"
@@ -235,9 +237,11 @@ OHOSCustomMediaPlayerRenderer::OHOSCustomMediaPlayerRenderer(
 OHOSCustomMediaPlayerRenderer::~OHOSCustomMediaPlayerRenderer() {
   WebContentsImpl* web_contents_impl =
       static_cast<WebContentsImpl*>(web_contents());
-  if (web_contents_impl && media_player_) {
-    web_contents_impl->RemoveCustomMediaPlayer(
-        media_player_id_, media_player_.get());
+  if (media_player_) {
+    if (web_contents_impl) {
+      web_contents_impl->RemoveCustomMediaPlayer(
+          media_player_id_, media_player_.get());
+    }
     media_player_->Release();
   }
 }
@@ -291,6 +295,7 @@ void OHOSCustomMediaPlayerRenderer::GetCookies() {
   RenderProcessHost* host = RenderProcessHost::FromID(
       media_player_id_.frame_routing_id.child_id);
   if (!host) {
+    LOG(ERROR) << "GetCookies failed";
     return;
   }
 
@@ -344,8 +349,14 @@ void OHOSCustomMediaPlayerRenderer::CreateMediaPlayer() {
     return;
   }
 
-  std::string surface_id_string = gpu::GpuSurfaceIdTracker::Get()
-      ->AcquireNativeImageSurfaceId(surface_id_);
+  content::GpuProcessHost* gpu_process_host = content::GpuProcessHost::Get();
+  if (!gpu_process_host || !gpu_process_host->gpu_host()) {
+    LOG(ERROR) << "CreateMediaPlayer failed, no gpu host";
+    std::move(init_cb_).Run(media::PIPELINE_ERROR_INITIALIZATION_FAILED);
+    return;
+  }
+  std::string surface_id_string =
+      gpu_process_host->gpu_host()->GetSurfaceId(surface_id_);
 
   MediaInfo media_info;
   media_info.embed_id = std::to_string(surface_id_);
@@ -370,16 +381,19 @@ void OHOSCustomMediaPlayerRenderer::CreateMediaPlayer() {
   media_info.preload = ConvertTo(
       media_resource_->GetMediaUrlParams().custom_media_url_params.preload_type);
   if (!cookies_->empty()) {
-    media_info.https_headers.insert(std::make_pair("Cookie",
+    media_info.https_headers.insert(std::make_pair(
+        net::HttpRequestHeaders::kCookie,
         std::move(cookies_.value())));
   }
   if (!referrer_.empty()) {
-    media_info.https_headers.insert(std::make_pair("Referrer",
+    media_info.https_headers.insert(std::make_pair(
+        net::HttpRequestHeaders::kReferer,
         std::move(referrer_)));
   }
   std::string user_agent = GetContentClient()->browser()->GetUserAgent();
   if (!user_agent.empty()) {
-    media_info.https_headers.insert(std::make_pair("User-Agent",
+    media_info.https_headers.insert(std::make_pair(
+        net::HttpRequestHeaders::kUserAgent,
         std::move(user_agent)));
   }
   media_info.attributes = std::move(attributes_);
@@ -517,6 +531,29 @@ void OHOSCustomMediaPlayerRenderer::SetSurfaceId(int surface_id,
   TryCreateMediaPlayer();
 }
 
+void OHOSCustomMediaPlayerRenderer::SetMediaPlayerState(bool is_suspend,
+                                                        int suspend_type) {
+  DVLOG(1) << __func__;
+  if (!media_player_) {
+    return;
+  }
+
+  if (is_suspend) {
+    if (is_media_player_suspend_) {
+      return;
+    }
+
+    is_media_player_suspend_ = true;
+    media_player_->SuspendMediaPlayer(suspend_type);
+    return;
+  }
+
+  if (is_media_player_suspend_) {
+    is_media_player_suspend_ = false;
+    media_player_->ResumeMediaPlayer();
+  }
+}
+
 void OHOSCustomMediaPlayerRenderer::SetMediaSourceList(
     const std::vector<MediaSourceInfo>& source_infos) {
   source_infos_ = source_infos;
@@ -548,6 +585,15 @@ void OHOSCustomMediaPlayerRenderer::SetReferrer(
 
 void OHOSCustomMediaPlayerRenderer::SetIsAudio(bool is_audio) {
   is_audio_ = is_audio;
+}
+
+void OHOSCustomMediaPlayerRenderer::SetPlaybackRateWithReason(
+    double playback_rate, media::ActionReason reason) {
+  DVLOG(1) << __func__ << "(" << playback_rate << ", " << static_cast<int>(reason) << ")";
+  if (reason != media::ActionReason::kNormal) {
+    return;
+  }
+  SetPlaybackRate(playback_rate);
 }
 
 void OHOSCustomMediaPlayerRenderer::OnTimeUpdate(base::TimeDelta media_time) {

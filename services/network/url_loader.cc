@@ -739,6 +739,11 @@ URLLoader::URLLoader(
 
   url_request_->set_has_storage_access(request.has_storage_access);
 
+#if BUILDFLAG(IS_OHOS)
+  url_request_->set_allow_preload_record(request.allow_preload_record);
+  url_request_->set_main_page(request.main_page);
+#endif
+
   url_request_->cookie_setting_overrides().PutAll(cookie_setting_overrides);
   if (request.is_outermost_main_frame &&
       network::cors::IsCorsEnabledRequestMode(request_mode_)) {
@@ -758,6 +763,11 @@ URLLoader::URLLoader(
     return;
   }
 
+#if BUILDFLAG(IS_OHOS)
+  if (url_request_) {
+    TRACE_EVENT2("loading", "URLLoader::URLLoader", "url", url_request_->url().spec(), "id", request_id_);
+  }
+#endif
   BeginTrustTokenOperationIfNecessaryAndThenScheduleStart(request);
 }
 
@@ -1083,10 +1093,15 @@ void URLLoader::ScheduleStart() {
         base::BindOnce(&URLLoader::ResumeStart, base::Unretained(this)));
     resource_scheduler_request_handle_->WillStartRequest(&defer);
   }
-  if (defer)
+  if (defer) {
     url_request_->LogBlockedBy("ResourceScheduler");
-  else
+  }
+  else {
+#if BUILDFLAG(IS_OHOS)
+    TRACE_EVENT1("net", "URLLoader::ScheduleStart", "id", request_id_);
     url_request_->Start();
+#endif
+  }
 }
 
 URLLoader::~URLLoader() {
@@ -1309,6 +1324,25 @@ mojom::URLResponseHeadPtr URLLoader::BuildResponseHead() const {
   response->headers = url_request_->response_headers();
   response->parsed_headers =
       PopulateParsedHeaders(response->headers.get(), url_request_->url());
+
+#if BUILDFLAG(IS_OHOS)
+  std::string http_version;
+  if (url_request_->was_fetched_via_spdy()) {
+    http_version = "http/2.0";
+  } else {
+    net::HttpVersion request_http_version = url_request_->response_headers()->GetHttpVersion();
+    if (request_http_version == net::HttpVersion(0, 9)) {
+      http_version = "http/0.9";
+    } else if (request_http_version == net::HttpVersion(1, 0)) {
+      http_version = "http/1.0";
+    } else if (request_http_version == net::HttpVersion(1, 1)) {
+      http_version = "http/1.1";
+    } else if (request_http_version == net::HttpVersion(2, 0)) {
+      http_version = "http/2.0";
+    }
+  }
+  TRACE_EVENT2("net", "URLLoader::BuildResponseHead", "http", http_version, "id", request_id_);
+#endif
 
   url_request_->GetCharset(&response->charset);
   response->content_length = url_request_->GetExpectedContentSize();
@@ -2147,10 +2181,70 @@ void URLLoader::NotifyCompleted(int error_code) {
       memory_cache_writer_->OnCompleted(status);
 
     url_loader_client_.Get()->OnComplete(status);
+#if BUILDFLAG(IS_OHOS)
+    if (url_request_) {
+      if (url_request_->response_headers()) {
+        TRACE_EVENT2("net", "URLLoader::NotifyCompleted",
+                     "response_code", url_request_->response_headers()->response_code(),
+                     "id", request_id_);
+      }
+      PrintNetworkTimingInfo();
+    }
+    if (response_ && response_->headers) {
+      PrintNetworkCacheInfo();
+    }
+#endif
   }
 
   DeleteSelf();
 }
+
+#if BUILDFLAG(IS_OHOS)
+std::string URLLoader::InMilliseconds(base::TimeTicks time) {
+  return std::to_string(time.since_origin().InMilliseconds());
+}
+
+void URLLoader::PrintNetworkTimingInfo() {
+  using namespace std;
+  net::LoadTimingInfo metrics;
+  url_request_->GetLoadTimingInfo(&metrics);
+  TRACE_EVENT2(TRACE_DISABLED_BY_DEFAULT("network"), "URLLoader::PrintNetworkTimingInfo", "info",
+               "socket_reused: " + to_string(metrics.socket_reused) +
+               ";dns_start: " + InMilliseconds(metrics.connect_timing.domain_lookup_start) +
+               ";dns_end: " + InMilliseconds(metrics.connect_timing.domain_lookup_end) +
+               ";connect_start: " + InMilliseconds(metrics.connect_timing.connect_start) +
+               ";connect_end: " + InMilliseconds(metrics.connect_timing.connect_end) +
+               ";ssl_start: " + InMilliseconds(metrics.connect_timing.ssl_start) +
+               ";ssl_end: " + InMilliseconds(metrics.connect_timing.ssl_end) +
+               ";request_start: " + InMilliseconds(metrics.request_start) +
+               ";send_start: " + InMilliseconds(metrics.send_start) +
+               ";receive_headers_start: " + InMilliseconds(metrics.receive_headers_start) +
+               ";request_end: " + InMilliseconds(base::TimeTicks::Now()) +
+               ";decoded_size: " + to_string(total_written_bytes_) +
+               ";encoded_size: " + to_string(url_request_->GetRawBodyBytes()) +
+               ";idempotency: " + to_string(url_request_->GetIdempotency()),
+               "id", request_id_);
+}
+
+void URLLoader::PrintNetworkCacheInfo() {
+  using namespace std;
+  using namespace base;
+  TimeDelta age;
+  Time last_modified;
+  Time expires;
+  string cache_control;
+  string etag;
+  TRACE_EVENT2(TRACE_DISABLED_BY_DEFAULT("network"), "URLLoader::PrintNetworkCacheInfo", "info",
+               "age: " + (response_->headers->GetAgeValue(&age) ? to_string(age.InMilliseconds()) : "unset") +
+               ";last_modified: " + (response_->headers->GetLastModifiedValue(&last_modified) ? Time::ToUTCTimeString(last_modified) : "unset") +
+               ";expires: " + (response_->headers->GetExpiresValue(&expires) ? Time::ToUTCTimeString(expires) : "unset") +
+               ";cache_control: " + (response_->headers->GetNormalizedHeader("Cache-Control", &cache_control) ? cache_control : "unset") + 
+               ";etag: " + (response_->headers->GetNormalizedHeader("ETag", &etag) ? etag : "unset") +
+               ";is_zero: " + to_string(response_->headers->GetFreshnessLifetimes(response_->response_time).freshness.is_zero()) +
+               ";load_flags: " + to_string(url_request_->load_flags()),
+               "id", request_id_);
+}
+#endif
 
 void URLLoader::OnMojoDisconnect() {
   NotifyCompleted(net::ERR_FAILED);
@@ -2215,13 +2309,15 @@ void URLLoader::NotifyEarlyResponse(
   // Calculate IP address space.
   mojom::ParsedHeadersPtr parsed_headers =
       PopulateParsedHeaders(headers.get(), url_request_->url());
-  std::vector<GURL> url_list_via_service_worker;
   net::IPEndPoint transaction_endpoint;
   bool has_endpoint =
       url_request_->GetTransactionRemoteEndpoint(&transaction_endpoint);
   DCHECK(has_endpoint);
-  CalculateClientAddressSpaceParams params(
-      url_list_via_service_worker, parsed_headers, transaction_endpoint);
+  CalculateClientAddressSpaceParams params{
+      .client_address_space_inherited_from_service_worker = std::nullopt,
+      .parsed_headers = &parsed_headers,
+      .remote_endpoint = &transaction_endpoint,
+  };
   mojom::IPAddressSpace ip_address_space =
       CalculateClientAddressSpace(url_request_->url(), params);
 
@@ -2404,6 +2500,9 @@ bool URLLoader::HasDataPipe() const {
 
 void URLLoader::ResumeStart() {
   url_request_->LogUnblocked();
+#if BUILDFLAG(IS_OHOS)
+  TRACE_EVENT1("net", "URLLoader::ScheduleStart", "id", request_id_);
+#endif
   url_request_->Start();
 }
 

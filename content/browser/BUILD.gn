@@ -50,6 +50,7 @@ source_set("browser") {
     "//content/test/fuzzer:first_party_set_parser_fuzzer_support",
     "//content/test/fuzzer:indexed_db_fuzzer_support",
     "//content/test/fuzzer:media_stream_dispatcher_host_mojolpm_fuzzer",
+    "//ohos_test:clipboard_fuzzer",
   ]
 
   configs += [
@@ -2322,6 +2323,13 @@ source_set("browser") {
     "worker_host/worker_script_loader_factory.h",
   ]
 
+  if (defined(ohos_software_compositor) && ohos_software_compositor) {
+    sources += [
+      "ohos/software_compositor_host_ohos.cc",
+      "ohos/software_compositor_host_ohos.h",
+    ]
+  }
+
   if (report_sys_event) {
     defines += [ "REPORT_SYS_EVENT" ]
   }
@@ -2533,6 +2541,10 @@ source_set("browser") {
       "code_cache/oh_code_cache.h",
       "media/ohos/native_web_contents_observer.cc",
       "media/ohos/native_web_contents_observer.h",
+    ]
+
+    deps += [
+      "//third_party:huawei_securec"
     ]
   }
 

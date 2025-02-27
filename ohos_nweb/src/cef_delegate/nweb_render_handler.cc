@@ -30,6 +30,9 @@
 
 #include "content/public/common/content_switches.h"
 #include "ohos_adapter_helper.h"
+
+#include "third_party/bounds_checking_function/include/securec.h"
+
 #include "res_sched_client_adapter.h"
 #include "nweb_gesture_event_result_impl.h"
 #ifdef OHOS_DRAG_DROP
@@ -40,8 +43,15 @@
 #include "nweb_drag_data.h"
 #include "nweb_drag_data_impl.h"
 #endif  // #ifdef OHOS_DRAG_DROP
+#ifdef OHOS_AI
+#include "cef/libcef/browser/image_impl.h"
+#include "ui/gfx/image/image_skia.h"
+#endif  // #ifdef OHOS_AI
 
 namespace {
+#ifdef OHOS_EX_FREE_COPY
+constexpr size_t kWordSelectionOffsetSize = 2;
+#endif // OHOS_EX_FREE_COPY
 cef_screen_orientation_type_t ConvertOrientationType(
     OHOS::NWeb::DisplayOrientation type,
     bool default_portrait) {
@@ -67,20 +77,27 @@ cef_screen_orientation_type_t ConvertOrientationType(
   }
 }
 
+enum RotationAngels {
+  ROTATION_0 = 0,
+  ROTATION_90 = 90,
+  ROTATION_180 = 180,
+  ROTATION_270 = 270,
+};
+
 uint16_t ConvertRotationAngel(OHOS::NWeb::RotationType type) {
   // Notice: 90 and 270 is reverse.
 
   switch (type) {
     case OHOS::NWeb::RotationType::ROTATION_0:
-      return 0;
+      return RotationAngels::ROTATION_0;
     case OHOS::NWeb::RotationType::ROTATION_90:
-      return 90;
+      return RotationAngels::ROTATION_90;
     case OHOS::NWeb::RotationType::ROTATION_180:
-      return 180;
+      return RotationAngels::ROTATION_180;
     case OHOS::NWeb::RotationType::ROTATION_270:
-      return 270;
+      return RotationAngels::ROTATION_270;
     default:
-      return 0;
+      return RotationAngels::ROTATION_0;
   }
 }
 }  // namespace
@@ -275,6 +292,14 @@ void NWebRenderHandler::SetInputMethodClient(
   inputmethod_client_ = client;
 }
 
+void NWebRenderHandler::SendDynamicFrameLossEvent(CefRefPtr<CefBrowser> browser,
+                                                  const CefString& sceneId,
+                                                  bool isStart) {
+  if (auto handler = handler_.lock()) {
+    handler->ReportDynamicFrameLossEvent(sceneId, isStart);
+  }
+}
+
 #if defined(OHOS_INPUT_EVENTS)
 void NWebRenderHandler::SetNWebDelegateInterface(
     std::shared_ptr<NWebDelegateInterface> client) {
@@ -305,6 +330,12 @@ void NWebRenderHandler::OnCursorUpdate(CefRefPtr<CefBrowser> browser,
     return;
   }
   inputmethod_client_->OnCursorUpdate(rect);
+  if (auto handler = handler_.lock()) {
+    handler->OnCursorUpdate(rect.x * screen_info_.display_ratio,
+                            rect.y * screen_info_.display_ratio,
+                            rect.width * screen_info_.display_ratio,
+                            rect.height * screen_info_.display_ratio);
+  }
 }
 
 void NWebRenderHandler::SetFocusStatus(bool focus_status) {
@@ -312,6 +343,16 @@ void NWebRenderHandler::SetFocusStatus(bool focus_status) {
     inputmethod_client_->SetFocusStatus(focus_status);
   }
 }
+
+void NWebRenderHandler::OnUpdateTextInputStateCalled(CefRefPtr<CefBrowser> browser,
+                                  const CefString& text,
+                                  const CefRange& selected_range,
+                                  const CefRange& compositon_range) {
+  if (inputmethod_client_) {
+    inputmethod_client_->OnUpdateTextInputStateCalled(browser, text, selected_range, compositon_range);
+  }
+}
+
 #endif  // defined(OHOS_INPUT_EVENTS)
 
 #if BUILDFLAG(IS_OHOS)
@@ -330,6 +371,43 @@ void NWebRenderHandler::Resize(uint32_t width, uint32_t height) {
   height_ = height;
 }
 
+#if defined(OHOS_INPUT_EVENTS)
+void NWebRenderHandler::ResizeVisibleViewport(uint32_t width, uint32_t height) {
+  visible_width_ = width;
+  visible_height_ = height;
+}
+#endif
+
+#if BUILDFLAG(IS_OHOS)
+void NWebRenderHandler::SetContentSize(int width, int height) {
+  content_width_ = width;
+  content_height_ = height;
+}
+
+gfx::Size NWebRenderHandler::GetSize() {
+  return gfx::Size(width_, height_);
+}
+
+void NWebRenderHandler::GetDevicePixelSize(CefRefPtr<CefBrowser> browser, CefSize& size) {
+  size.width = width_;
+  size.height = height_;
+}
+
+void NWebRenderHandler::SetGestureEventResult(bool result) {
+  gesture_event_result_ = result;
+}
+
+bool NWebRenderHandler::GetGestureEventResult() {
+  return gesture_event_result_;
+}
+
+void NWebRenderHandler::StartVibraFeedback(const std::string& vibratorType) {
+  if (auto handler = handler_.lock()) {
+    handler->StartVibraFeedback(vibratorType);
+  }
+}
+#endif
+
 void NWebRenderHandler::GetViewRect(CefRefPtr<CefBrowser> browser,
                                     CefRect& rect) {
   rect.x = 0;
@@ -339,8 +417,8 @@ void NWebRenderHandler::GetViewRect(CefRefPtr<CefBrowser> browser,
     rect.height = height_;
   } else {
     // Surface greater than Web compoment in case show black line.
-    rect.width = std::ceil(width_ / screen_info_.display_ratio);
-    rect.height = std::ceil(height_ / screen_info_.display_ratio);
+    rect.width = std::round(width_ / screen_info_.display_ratio);
+    rect.height = std::round(height_ / screen_info_.display_ratio);
   }
 
   if (rect.width <= 0) {
@@ -350,6 +428,57 @@ void NWebRenderHandler::GetViewRect(CefRefPtr<CefBrowser> browser,
     rect.height = 1;
   }
 }
+
+#if defined(OHOS_INPUT_EVENTS)
+void NWebRenderHandler::SetNeedFocusViewport(bool need) {
+  LOG(INFO) << "NWebRenderHandler::SetNeedFocusViewport needFocusViewport:" << need;
+  needFocusViewport_ = need;
+}
+
+void NWebRenderHandler::OnResizeScrollableViewport(CefRefPtr<CefBrowser> browser) {
+  LOG(INFO) << "NWebRenderHandler::OnResizeScrollableViewport needFocusViewport:" << needFocusViewport_;
+    if (inputmethod_client_ && inputmethod_client_->IsAttached()) {
+      LOG(INFO) << "system keyboard is attached, scroll focused node into view";
+      browser->GetHost()->ScrollFocusedEditableNodeIntoView();
+    } else if (custom_keyboard_handler_ && custom_keyboard_handler_->IsAttached()) {
+      LOG(INFO) << "custom keyboard is attached, scroll focused node into view";
+      browser->GetHost()->ScrollFocusedEditableNodeIntoView();
+    }
+}
+
+void NWebRenderHandler::GetVisibleViewportRect(CefRefPtr<CefBrowser> browser,
+                                               CefRect& rect) {
+  if (visible_width_ == 0 && visible_height_ == 0) {
+    GetViewRect(browser, rect);
+    return;
+  }
+  rect.x = 0;
+  rect.y = 0;
+  if (screen_info_.display_ratio <= 0) {
+    rect.width = visible_width_;
+    rect.height = visible_height_;
+  } else {
+    // Surface greater than Web compoment in case show black line.
+    rect.width = std::round(visible_width_ / screen_info_.display_ratio);
+    rect.height = std::round(visible_height_ / screen_info_.display_ratio);
+  }
+
+  if (rect.width <= 0) {
+    rect.width = 1;
+  }
+  if (rect.height <= 0) {
+    rect.height = 1;
+  }
+}
+#endif
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+void NWebRenderHandler::SetFillContent(const std::string& content) {
+  if (inputmethod_client_) {
+    inputmethod_client_->SetFillContent(content, node_id_);
+  }
+}
+#endif
 
 // #ifdef OHOS_SCREEN_ROTATION
 void NWebRenderHandler::SetScreenInfo(const NWebScreenInfo& screen_info) {
@@ -415,11 +544,24 @@ void NWebRenderHandler::OnPaint(CefRefPtr<CefBrowser> browser,
     uint32_t white_frame_size = width_ * height_ * kBitsPerPixel;
     char* white_frame = new char[white_frame_size];
     const char pixel_in_white = 0xFF;
-    (void)memset(white_frame, pixel_in_white, white_frame_size);
+    (void)memset_s(white_frame, white_frame_size, pixel_in_white, white_frame_size);
     render_update_cb_(white_frame);
     delete[] white_frame;
   } else {
     render_update_cb_(reinterpret_cast<const char*>(buffer));
+  }
+}
+
+void NWebRenderHandler::OnPopupSize(CefRefPtr<CefBrowser> browser, const CefRect& rect) {
+  if (auto handler = handler_.lock()) {
+    float ratio = GetCefDeviceRatio();
+    handler->OnPopupSize(rect.x * ratio, rect.y * ratio, rect.width * ratio, rect.height * ratio);
+  }
+}
+
+void NWebRenderHandler::OnPopupShow(CefRefPtr<CefBrowser> browser, bool show) {
+  if (auto handler = handler_.lock()) {
+    handler->OnPopupShow(show);
   }
 }
 
@@ -458,7 +600,9 @@ void NWebRenderHandler::OnImeCompositionRangeChanged(
     CefRefPtr<CefBrowser> browser,
     const CefRange& selected_range,
     const RectList& character_bounds) {
-  LOG(INFO) << "NWebRenderHandler::OnImeCompositionRangeChanged";
+  if (inputmethod_client_) {
+    inputmethod_client_->OnImeCompositionRangeChanged(browser, selected_range);
+  }
 }
 
 void NWebRenderHandler::OnTextSelectionChanged(CefRefPtr<CefBrowser> browser,
@@ -472,25 +616,89 @@ void NWebRenderHandler::OnTextSelectionChanged(CefRefPtr<CefBrowser> browser,
 
 void NWebRenderHandler::OnVirtualKeyboardRequested(
     CefRefPtr<CefBrowser> browser,
-    TextInputMode input_mode,
-    TextInputType input_type,
-    bool show_keyboard) {
-  LOG(INFO) << "NWebRenderHandler::OnVirtualKeyboardRequested input_mode = "
-            << input_mode << ", input_type = " << input_type
-            << ", show_keyboard = " << show_keyboard;
+    TextInputInfo text_input_info,
+    bool is_need_reset_listener,
+    const AttributesMap& attributes) {
+  LOG(INFO) << "NWebRenderHandler::OnVirtualKeyboardRequested"
+            << ", node_id = " << text_input_info.node_id
+            << ", input_mode = " << text_input_info.input_mode
+            << ", input_type = " << text_input_info.input_type
+            << ", input_action = " << text_input_info.input_action
+            << ", input_flags = " << text_input_info.input_flags
+            << ", show_keyboard = " << text_input_info.show_keyboard
+            << ", always_hide_ime = " << text_input_info.always_hide_ime;
+
+  std::map<std::string, std::string> attributesMap;
+  for (const auto& item : attributes) {
+    LOG(DEBUG) << "WebCustomKeyboard OnVirtualKeyboardRequested attributes, key = "
+                << item.first.ToString() << ", value = " << item.second.ToString();
+    attributesMap.insert({item.first.ToString(), item.second.ToString()});
+  }
 #if defined(OHOS_INPUT_EVENTS)
   if (!inputmethod_client_) {
     LOG(ERROR) << "inputmethod_client_ is nullptr.";
     return;
   }
+  if (text_input_info.node_id > 0) {
+    node_id_ = text_input_info.node_id;
+  }
 
-  if (input_mode != CEF_TEXT_INPUT_MODE_NONE) {
+  bool is_hide = (text_input_info.input_mode == CEF_TEXT_INPUT_MODE_NONE) ||
+                 text_input_info.always_hide_ime;
+  if (!is_hide) {
     auto delegate = delegate_interface_.lock();
     if (delegate && delegate->OnFocus()) {
-      inputmethod_client_->Attach(browser, show_keyboard, input_mode, input_type);
+      bool useSystemKeyboard = true;
+      int32_t enterKeyType = -1;
+      auto handler = handler_.lock();
+      if (handler && !custom_keyboard_handler_) {
+        custom_keyboard_handler_ = std::make_shared<NWebCustomKeyboardHandlerImpl>(handler_.lock());
+      }
+      if (handler && text_input_info.show_keyboard) {
+        handler->OnInterceptKeyboardAttach(custom_keyboard_handler_,
+                                            attributesMap, useSystemKeyboard,
+                                            enterKeyType);
+        LOG(INFO) << "WebCustomKeyboard OnInterceptKeyboardAttach return, "
+                      "useSystemKeyboard = "
+                  << useSystemKeyboard << ", enterKeyType = " << enterKeyType;
+      }
+
+      if (useSystemKeyboard) {
+        if (!isSystemKeyboard_ && custom_keyboard_handler_) {
+          LOG(INFO) << "WebCustomKeyboard before use system keyboard, need to close custom keyboard";
+          custom_keyboard_handler_->Close();
+        }
+        LOG(INFO) << "WebCustomKeyboard attach system keyboard";
+        inputmethod_client_->Attach(browser, text_input_info,
+                                    is_need_reset_listener, enterKeyType);
+      } else {
+        if (isSystemKeyboard_) {
+          LOG(INFO) << "WebCustomKeyboard before use custom keyboard, need to close system keyboard";
+          inputmethod_client_->HideTextInput();
+        }
+        // need to colse system forcely from native input change to custom keyboard input
+        inputmethod_client_->HideTextInputForce();
+
+        if (custom_keyboard_handler_) {
+          LOG(INFO) << "WebCustomKeyboard attach custom keyboard";
+          custom_keyboard_handler_->Attach(
+              browser, text_input_info.show_keyboard,
+              static_cast<int32_t>(text_input_info.input_flags));
+        }
+      }
+
+      isSystemKeyboard_ = useSystemKeyboard;
     }
   } else {
-    inputmethod_client_->HideTextInput();
+    if (isSystemKeyboard_) {
+      LOG(INFO) << "WebCustomKeyboard close system keyboard";
+      inputmethod_client_->HideTextInput();
+    } else {
+      if (custom_keyboard_handler_) {
+        LOG(INFO) << "WebCustomKeyboard close custom keyboard";
+        custom_keyboard_handler_->Close();
+      }
+    }
   }
 #endif  // defined(OHOS_INPUT_EVENTS)
 }
@@ -661,11 +869,11 @@ bool NWebRenderHandler::StartDragging(CefRefPtr<CefBrowser> browser,
   }
 
   auto fragment = drag_data->GetFragmentText();
-  LOG(INFO) << "DragDrop drag data GetFragmentText:" << fragment.ToString();
+  LOG(INFO) << "DragDrop drag data GetFragmentText:" << fragment.length();
   auto link_url = drag_data->GetLinkURL();
-  LOG(INFO) << "DragDrop drag data GetLinkURL:" << link_url.ToString();
+  LOG(INFO) << "DragDrop drag data GetLinkURL:" << link_url.length();
   auto link_html = drag_data->GetFragmentHtml();
-  LOG(INFO) << "DragDrop drag data GetFragmentHtml:" << link_html.ToString();
+  LOG(INFO) << "DragDrop drag data GetFragmentHtml:" << link_html.length();
 
   ImageDragForFileUri(drag_data);
   CefPoint drag_touch_point(x, y);
@@ -690,9 +898,18 @@ bool NWebRenderHandler::StartDragging(CefRefPtr<CefBrowser> browser,
   } else {
     usefull_selection = is_irregular_drag_background_;
   }
+
+  // default value false
+  bool dark_mode_enable = false;
+  auto delegete = delegate_interface_.lock();
+  if (delegete) {
+    dark_mode_enable = delegete->DarkModeEnabled();
+  }
+  LOG(DEBUG) << "DragDrop StartDragging darkModeEnable:" << dark_mode_enable;
+
   nweb_drag_data_ = std::make_shared<NWebDragDataImpl>(
       drag_data, drag_touch_point, start_edge, end_edge,
-      screen_info_.display_ratio, usefull_selection);
+      screen_info_.display_ratio, usefull_selection, dark_mode_enable);
 
   auto handler = handler_.lock();
   if (handler == nullptr) {
@@ -814,16 +1031,24 @@ void NWebRenderHandler::OnNativeEmbedGestureEvent(
     info->SetScreenY(touchEvent.screenY);
     info->SetType(static_cast<OHOS::NWeb::TouchType>(touchEvent.type));
     std::shared_ptr<NWebGestureEventResult> result = std::make_shared<NWebGestureEventResultImpl>(callback);
+
     info->SetResult(result);
     handler->OnNativeEmbedGestureEvent(info);
   }
 }
-std::shared_ptr<NWebNativeEmbedDataInfo> CefEmbedDataToWeb(
+std::shared_ptr<NWebNativeEmbedDataInfo> NWebRenderHandler::CefEmbedDataToWeb(
     const CefRenderHandler::CefNativeEmbedData& embedData) {
   auto info = embedData.info;
+  std::string url;
+  if (auto delegate = delegate_interface_.lock()) {
+    url = delegate->GetUrl();
+  } else {
+    url = info.url;
+  }
+  LOG(DEBUG)<<"GetUrl CefEmbedDataToWeb url is "<<url;
   std::shared_ptr<NWebNativeEmbedInfoImpl> embedinfo =
       std::make_shared<NWebNativeEmbedInfoImpl>(
-          info.width, info.height, info.id, info.src, info.url, info.type,
+          info.width, info.height, info.id, info.src, url, info.type,
           info.tag, info.params, info.x, info.y);
 
   std::shared_ptr<NWebNativeEmbedDataInfoImpl> datainfo =
@@ -838,8 +1063,20 @@ std::shared_ptr<NWebNativeEmbedDataInfo> CefEmbedDataToWeb(
 void NWebRenderHandler::OnNativeEmbedLifecycleChange(
     CefRefPtr<CefBrowser> browser,
     const CefNativeEmbedData& info) {
+  auto nativeEmbedDataInfo = CefEmbedDataToWeb(info);
+  if (auto delegate = delegate_interface_.lock()) {
+    delegate->UpdateNativeEmbedInfo(nativeEmbedDataInfo);
+  }
   if (auto handler = handler_.lock()) {
-    handler->OnNativeEmbedLifecycleChange(CefEmbedDataToWeb(info));
+    handler->OnNativeEmbedLifecycleChange(nativeEmbedDataInfo);
+  }
+}
+
+void NWebRenderHandler::OnNativeEmbedVisibilityChange(
+    const std::string& embed_id, 
+    bool visibility) {
+  if (auto handler = handler_.lock()) {
+    handler->OnNativeEmbedVisibilityChange(embed_id, visibility);
   }
 }
 #endif
@@ -856,10 +1093,71 @@ void NWebRenderHandler::GetWordSelection(CefRefPtr<CefBrowser> browser,
                << static_cast<int>(offset);
     std::vector<int8_t> vec =
         handler->GetWordSelection(text.ToString(), offset);
-    if (vec.size() == 2) {
+    if (vec.size() == kWordSelectionOffsetSize) {
       select.x = vec[0];
       select.y = vec[1];
     }
+  }
+}
+#endif
+
+#ifdef OHOS_AI
+void NWebRenderHandler::CreateOverlay(CefRefPtr<CefBrowser> browser,
+                                      CefRefPtr<CefImage> cef_image,
+                                      const CefRect& cef_image_rect,
+                                      const CefPoint& cef_touch_point,
+                                      const CefRect& cef_screen_rect) {
+  if (auto handler = handler_.lock()) {
+    gfx::ImageSkia image_skia = static_cast<CefImageImpl*>(cef_image.get())->AsImageSkia();
+    int width = cef_image->GetWidth();
+    int height = cef_image->GetHeight();
+    auto bitmap = cef_image->GetAsBitmap(1, CEF_COLOR_TYPE_RGBA_8888, CEF_ALPHA_TYPE_OPAQUE, width, height);
+    if (!bitmap) {
+      LOG(ERROR) << "NWebRenderHandler::CreateOverlay, bitmap invalid";
+      return;
+    }
+    size_t data_size = bitmap->GetSize();
+    void* buffer = calloc(1, data_size);
+    if (!buffer) {
+      LOG(ERROR) << "NWebRenderHandler::CreateOverlay, calloc failed";
+      return;
+    }
+    size_t read_size = bitmap->GetData(buffer, data_size, 0);
+    if (read_size != data_size) {
+      free(buffer);
+      LOG(ERROR) << "NWebRenderHandler::CreateOverlay, get data from bitmap failed";
+      return;
+    }
+
+    cef_image_rect_ = cef_image_rect;
+    float scale = browser->GetHost()->GetPageScaleFactor();
+    auto view_port_height = browser->GetHost()->GetShrinkViewportHeight();
+    view_port_height += view_port_height > 0 ? browser->GetHost()->GetTopControlsOffset() : 0;
+    handler->CreateOverlay(
+        buffer,
+        read_size,
+        width,
+        height,
+        (cef_image_rect.x - cef_screen_rect.y) * scale,
+        (cef_image_rect.y - cef_screen_rect.y) * scale + view_port_height * screen_info_.display_ratio,
+        cef_image_rect.width * scale,
+        cef_image_rect.height * scale,
+        cef_touch_point.x * scale,
+        cef_touch_point.y * scale);
+  }
+}
+
+void NWebRenderHandler::OnOverlayStateChanged(CefRefPtr<CefBrowser> browser,
+                                              const CefRect& cef_screen_rect) {
+  if (auto handler = handler_.lock()) {
+    float scale = browser->GetHost()->GetPageScaleFactor();
+    auto view_port_height = browser->GetHost()->GetShrinkViewportHeight();
+    view_port_height += view_port_height > 0 ? browser->GetHost()->GetTopControlsOffset() : 0;
+    handler->OnOverlayStateChanged(
+        (cef_image_rect_.x - cef_screen_rect.y) * scale,
+        (cef_image_rect_.y - cef_screen_rect.y) * scale + view_port_height * screen_info_.display_ratio,
+        cef_image_rect_.width * scale,
+        cef_image_rect_.height * scale);
   }
 }
 #endif

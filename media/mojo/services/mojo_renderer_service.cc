@@ -308,6 +308,9 @@ void MojoRendererService::SetMuted(bool muted) {
 void MojoRendererService::SetSurfaceId(int surface_id, const gfx::Rect& rect) {
   renderer_->SetSurfaceId(surface_id, rect);
 }
+void MojoRendererService::SetMediaPlayerState(bool is_suspend, int suspend_type) {
+  renderer_->SetMediaPlayerState(is_suspend, suspend_type);
+}
 void MojoRendererService::SetMediaSourceList(
     std::vector<mojom::MediaSourceInfoPtr> source_infos) {
   std::vector<media::Renderer::MediaSourceInfo> infos;
@@ -333,6 +336,11 @@ void MojoRendererService::SetReferrer(const std::string& referrer) {
 }
 void MojoRendererService::SetIsAudio(bool is_audio) {
   renderer_->SetIsAudio(is_audio);
+}
+void MojoRendererService::SetPlaybackRateWithReason(double playback_rate,
+    mojom::ActionReason reason) {
+  renderer_->SetPlaybackRateWithReason(playback_rate,
+    static_cast<ActionReason>(reason));
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 }  // namespace media

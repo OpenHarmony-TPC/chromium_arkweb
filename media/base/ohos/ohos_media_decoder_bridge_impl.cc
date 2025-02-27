@@ -33,8 +33,7 @@ VideoBridgeCodecConfig::VideoBridgeCodecConfig() = default;
 VideoBridgeCodecConfig::~VideoBridgeCodecConfig() = default;
 
 // static
-std::unique_ptr<MediaCodecDecoderBridgeImpl>
-MediaCodecDecoderBridgeImpl::CreateVideoDecoder(
+std::unique_ptr<MediaCodecDecoderBridgeImpl> MediaCodecDecoderBridgeImpl::CreateVideoDecoder(
     const VideoBridgeCodecConfig& config) {
   LOG(INFO) << "MediaCodecDecoderBridgeImpl::CreateVideoDecoder.";
   auto& system_properties_adapter = OHOS::NWeb::OhosAdapterHelper::GetInstance()
@@ -59,6 +58,17 @@ MediaCodecDecoderBridgeImpl::CreateVideoDecoder(
       codec_type, config.on_buffers_available_cb));
 }
 
+DecoderAdapterCode MediaCodecDecoderBridgeImpl::PrepareForCallback() {
+  if (signal_ == nullptr) {
+    signal_ = make_shared<DecoderBridgeSignal>();
+  }
+
+  if (cb_ == nullptr) {
+    cb_ = make_shared<CodecBridgeCallback>(signal_);
+  }
+  return videoDecoder_->SetCallbackDec(cb_);
+}
+
 DecoderAdapterCode MediaCodecDecoderBridgeImpl::CreateVideoBridgeDecoderByMime(
     std::string mimetype) {
   LOG(INFO) << "MediaCodecDecoderBridgeImpl::CreateVideoBridgeDecoderByMime.";
@@ -68,19 +78,12 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::CreateVideoBridgeDecoderByMime(
   }
   DecoderAdapterCode ret = videoDecoder_->CreateVideoDecoderByMime(mimetype);
   if (ret == DecoderAdapterCode::DECODER_ERROR) {
-    LOG(ERROR) << "create decoder failed.";
+    LOG(ERROR) << "create decoder by mime failed.";
     return ret;
   }
   hasCreated_ = true;
 
-  if (signal_ == nullptr) {
-    signal_ = make_shared<DecoderBridgeSignal>();
-  }
-
-  if (cb_ == nullptr) {
-    cb_ = make_shared<CodecBridgeCallback>(signal_);
-  }
-  return videoDecoder_->SetCallbackDec(cb_);
+  return PrepareForCallback();
 }
 
 DecoderAdapterCode MediaCodecDecoderBridgeImpl::CreateVideoBridgeDecoderByName(
@@ -94,19 +97,12 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::CreateVideoBridgeDecoderByName(
   DecoderAdapterCode ret =
       videoDecoder_->CreateVideoDecoderByName(name.c_str());
   if (ret == DecoderAdapterCode::DECODER_ERROR) {
-    LOG(ERROR) << "create decoder failed.";
+    LOG(ERROR) << "create decoder by name failed.";
     return ret;
   }
   hasCreated_ = true;
 
-  if (signal_ == nullptr) {
-    signal_ = make_shared<DecoderBridgeSignal>();
-  }
-
-  if (cb_ == nullptr) {
-    cb_ = make_shared<CodecBridgeCallback>(signal_);
-  }
-  return videoDecoder_->SetCallbackDec(cb_);
+  return PrepareForCallback();
 }
 
 MediaCodecDecoderBridgeImpl::MediaCodecDecoderBridgeImpl(
@@ -267,6 +263,10 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::FlushBridgeDecoder() {
     return DecoderAdapterCode::DECODER_ERROR;
   }
 
+  if (signal_ == nullptr) {
+    return DecoderAdapterCode::DECODER_ERROR;
+  }
+
   signal_->isDecoderFlushing_.store(true);
 
   DecoderAdapterCode ret = videoDecoder_->FlushDecoder();
@@ -291,6 +291,10 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::ResetBridgeDecoder() {
   if (videoDecoder_ == nullptr) {
     LOG(ERROR)
         << "MediaCodecDecoderBridgeImpl::ResetBridgeDecoder decoder is NULL.";
+    return DecoderAdapterCode::DECODER_ERROR;
+  }
+
+  if (signal_ == nullptr) {
     return DecoderAdapterCode::DECODER_ERROR;
   }
 
@@ -329,6 +333,11 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::ReleaseBridgeDecoder() {
 
 void MediaCodecDecoderBridgeImpl::PopInqueueDec() {
   LOG(DEBUG) << "MediaCodecDecoderBridgeImpl::PopInqueueDec";
+
+  if (signal_ == nullptr || signal_->isOnError_ || signal_->inputQueue_.empty()) {
+    return;
+  }
+
   signal_->inputQueue_.pop();
 }
 
@@ -421,6 +430,11 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::ReleaseOutputBuffer(
 
 void MediaCodecDecoderBridgeImpl::PopOutqueueDec() {
   LOG(DEBUG) << "MediaCodecDecoderBridgeImpl::PopOutqueueDec.";
+
+  if (signal_ == nullptr) {
+    return;
+  }
+
   signal_->outputQueue_.pop();
 }
 
@@ -461,6 +475,11 @@ void MediaCodecDecoderBridgeImpl::DestoryNativeWindow(void* window) {
 
 void CodecBridgeCallback::OnError(ErrorType errorType, int32_t errorCode) {
   LOG(ERROR) << "CodecBridgeCallback::OnError Error errorCode=" << errorCode;
+
+  if (signal_ == nullptr) {
+    return;
+  }
+
   signal_->isOnError_ = true;
   clearInputQueue(signal_->inputQueue_);
   clearOutputQueue(signal_->outputQueue_);
@@ -483,6 +502,11 @@ void CodecBridgeCallback::OnNeedInputData(
                                   std::move(buffer)));
     return;
   }
+
+  if (signal_ == nullptr) {
+    return;
+  }
+
   TRACE_EVENT0("media", "CodecBridgeCallback::OnNeedInputData");
   LOG(DEBUG)
       << "CodecBridgeCallback::OnNeedInputData Input Buffer Available, index = "
@@ -520,6 +544,10 @@ void CodecBridgeCallback::OnNeedOutputData(
 
   if (!info) {
     LOG(ERROR) << "CodecBridgeCallback::OnNeedOutputData info is NULLL";
+    return;
+  }
+
+  if (signal_ == nullptr) {
     return;
   }
 

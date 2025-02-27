@@ -4,6 +4,7 @@
 
 #include "components/viz/service/gl/gpu_service_impl.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -134,6 +135,12 @@
 
 #if BUILDFLAG(IS_OHOS)
 #include "base/ohos/dynamic_frame_loss_monitor.h"
+#include "gpu/ipc/common/gpu_surface_id_tracker.h"
+#include "base/ohos/ltpo/include/sliding_observer.h"
+#include "base/ohos/ltpo/include/dynamic_frame_rate_decision.h"
+#if BUILDFLAG(ENABLE_HEIF_DECODER)
+#include "media/gpu/ohos/ohos_image_decode_accelerator_worker.h"
+#endif // BUILDFLAG(ENABLE_HEIF_DECODER)
 #endif
 
 namespace viz {
@@ -397,6 +404,11 @@ GpuServiceImpl::GpuServiceImpl(
   image_decode_accelerator_worker_ =
       media::VaapiImageDecodeAcceleratorWorker::Create();
 #endif  // BUILDFLAG(USE_VAAPI_IMAGE_CODECS)
+
+#if BUILDFLAG(ENABLE_HEIF_DECODER)
+  image_decode_accelerator_worker_ =
+      media::OhosImageDecodeAcceleratorWorker::Create();
+#endif
 
 #if BUILDFLAG(IS_WIN)
   if (media::SupportMediaFoundationClearPlayback()) {
@@ -1086,6 +1098,15 @@ void GpuServiceImpl::SetChannelClientPid(int32_t client_id,
   gpu_channel_manager_->SetChannelClientPid(client_id, client_pid);
 }
 
+#if BUILDFLAG(IS_OHOS)
+void GpuServiceImpl::GetSurfaceId(int32_t native_embed_id, GetSurfaceIdCallback callback)
+{
+  std::string res = gpu::GpuSurfaceIdTracker::Get()->AcquireNativeImageSurfaceId(native_embed_id);
+  LOG(DEBUG) << "GetSurfaceId native_embed_id: " << native_embed_id << ", getSurfaceId: " << res;
+  std::move(callback).Run(res);
+}
+#endif
+
 void GpuServiceImpl::SetChannelDiskCacheHandle(
     int32_t client_id,
     const gpu::GpuDiskCacheHandle& handle) {
@@ -1378,6 +1399,18 @@ void GpuServiceImpl::StartMonitor() {
 
 void GpuServiceImpl::StopMonitor() {
   base::ohos::DynamicFrameLossMonitor::GetInstance().StopMonitor();
+}
+
+void GpuServiceImpl::SetVisible(bool visible) {
+  base::ohos::DynamicFrameRateDecision::GetInstance().SetVisible(visible);
+}
+
+void GpuServiceImpl::SetHasTouchPoint(bool has_touch_point) {
+  base::ohos::DynamicFrameRateDecision::GetInstance().SetHasTouchPoint(has_touch_point);
+}
+
+void GpuServiceImpl::ReportSlidingFrameRate(int32_t frame_rate) {
+  base::ohos::DynamicFrameRateDecision::GetInstance().ReportSlidingFrameRate(frame_rate);
 }
 #endif
 

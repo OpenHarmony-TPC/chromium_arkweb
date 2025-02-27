@@ -47,6 +47,15 @@ class StubPasswordManagerDriver : public PasswordManagerDriver {
   ::ui::AXTreeID GetAxTreeId() const override;
   int GetFrameId() const override;
   const GURL& GetLastCommittedURL() const override;
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  void FillAccountSuggestion(const std::u16string& username,
+                             const std::u16string& password) override;
+  void SendParsedPasswordFormToRenderer(
+      const autofill::PasswordFormFillData& form_data) override;
+
+  void AutofillSurfaceClosed(bool show_virtual_keyboard) override;
+#endif
 };
 
 }  // namespace password_manager

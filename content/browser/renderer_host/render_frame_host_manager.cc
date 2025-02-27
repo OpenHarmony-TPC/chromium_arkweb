@@ -981,6 +981,13 @@ void RenderFrameHostManager::UnloadOldFrame(
         back_forward_cache.GetCurrentBackForwardCacheEligibility(
             old_render_frame_host.get());
     bool can_store = bfcache_eligibility.CanStore();
+
+#if BUILDFLAG(IS_OHOS)
+    LOG(INFO) << "NativeEmbed BFCache, render frame host can_store = "
+      << can_store << ", reason = " << bfcache_eligibility.flattened_reasons.ToString() << ", render frame global id = "
+      << old_render_frame_host->GetGlobalId();
+#endif
+
     if (old_page_back_forward_cache_metrics &&
         old_page_back_forward_cache_metrics->had_form_data_associated()) {
       UMA_HISTOGRAM_ENUMERATION(
@@ -996,6 +1003,10 @@ void RenderFrameHostManager::UnloadOldFrame(
                 "old_render_frame_host", old_render_frame_host,
                 "bfcache_eligibility",
                 bfcache_eligibility.flattened_reasons.ToString());
+#ifdef OHOS_BFCACHE
+    LOG(INFO) << "RenderFrameHostManager::" << __func__ << " the value of bfcache_eligibility.flattened_reasons is:"
+              << bfcache_eligibility.flattened_reasons.ToString();
+#endif
     if (can_store) {
       auto stored_page = CollectPage(std::move(old_render_frame_host));
       auto entry =
@@ -1297,6 +1308,25 @@ RenderFrameHostManager::GetFrameHostForNavigation(
       GetSiteInstanceForNavigationRequest(request, is_same_site_getter,
                                           browsing_context_group_swap, reason);
 
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  const std::string& shared_render_process_token =
+      delegate_->SharedRenderProcessToken();
+  if (!shared_render_process_token.empty()) {
+    RenderProcessHost* render_process =
+        RenderProcessHostImpl::GetProcessForSharedToken(
+            shared_render_process_token);
+    if (render_process) {
+      dest_site_instance->ReuseExistingProcessIfPossible(render_process);
+      LOG(DEBUG) << "[ReuseExistingProcessIfPossible]"
+                 << shared_render_process_token << "[isok]"
+                 << (render_process == dest_site_instance->GetProcess())
+                 << request->GetURL();
+    } else {
+      RenderProcessHostImpl::RegisteProcessForSharedToken(
+          shared_render_process_token, dest_site_instance->GetProcess());
+    }
+  }
+#endif
   // A subframe should always be in the same BrowsingInstance as the parent
   // (see also https://crbug.com/1107269).
   RenderFrameHostImpl* parent = frame_tree_node_->parent();

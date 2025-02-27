@@ -47,7 +47,9 @@
 #include "services/viz/privileged/mojom/compositing/frame_sink_video_capture.mojom.h"
 #include "services/viz/public/mojom/compositing/video_detector_observer.mojom.h"
 #include "third_party/abseil-cpp/absl/types/optional.h"
-
+#if BUILDFLAG(IS_OHOS)
+#include "third_party/ohos_ndk/includes/ohos_adapter/adapter_base.h"
+#endif
 namespace viz {
 
 class CapturableFrameSink;
@@ -293,6 +295,8 @@ class VIZ_SERVICE_EXPORT FrameSinkManagerImpl
   void SetEnableLowerFrameRate(bool enabled, const FrameSinkId& frame_sink_id) override;
   void UpdateVSyncFrequency(const FrameSinkId& frame_sink_id, uint32_t client_id) override;
   void ResetVSyncFrequency(const FrameSinkId& frame_sink_id) override;
+  void SetNeedWaitForInput(const FrameSinkId& frame_sink_id, bool need_wait_for_input) override;
+  void TriggerVsync(const FrameSinkId& frame_sink_id) override;
 #endif
 
  private:

@@ -64,6 +64,7 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   media::RendererType GetRendererType() override;
   void SetMuted(bool muted) override;
   void SetSurfaceId(int surface_id, const gfx::Rect& rect) override;
+  void SetMediaPlayerState(bool is_suspend, int suspend_type) override;
 
   void SetMediaSourceList(const std::vector<MediaSourceInfo>& source_infos) override;
   void SetMediaControls(bool show_media_controls,
@@ -72,6 +73,8 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   void SetAttributes(base::flat_map<std::string, std::string> attributes) override;
   void SetReferrer(const std::string& referrer) override;
   void SetIsAudio(bool is_audio) override;
+  void SetPlaybackRateWithReason(double playback_rate,
+      media::ActionReason reason) override;
 
   // media::OHOSMediaPlayerBridge::Client implementation
   void OnFrameAvailable(int fd, uint32_t size, int32_t coded_width, int32_t coded_height,
@@ -82,6 +85,7 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   void OnVideoSizeChanged(int width, int height) override;
   void OnPlayerInterruptEvent(int32_t value) override {}
   void OnAudioStateChanged(bool isAudible) override {}
+  void OnPlayerSeekBack(base::TimeDelta back_time) override {}
 
   // media::mojom::MediaPlayerRendererExtension implementation.
   void InitiateScopedSurfaceRequest(
@@ -148,6 +152,8 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   std::vector<MediaSourceInfo> source_infos_;
 
   bool show_media_controls_ = false;
+
+  bool is_media_player_suspend_ = false;
 
   std::vector<std::string> controls_list_;
 

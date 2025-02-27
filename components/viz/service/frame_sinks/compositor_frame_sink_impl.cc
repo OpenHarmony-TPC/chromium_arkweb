@@ -16,13 +16,18 @@
 #include "build/build_config.h"
 #include "components/viz/service/frame_sinks/frame_sink_bundle_impl.h"
 #include "components/viz/service/frame_sinks/frame_sink_manager_impl.h"
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
 #include "services/viz/public/mojom/compositing/layer_context.mojom.h"
 #include "ui/gfx/overlay_transform.h"
 
 #if BUILDFLAG(IS_OHOS)
+#include "base/command_line.h"
+#include "base/system/sys_info.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/common/content_switches.h"
 #include "res_sched_client_adapter.h"
+#include "base/ohos/input_sync/input_vsync_sync_lock.h"
 #endif
 
 #if defined(REPORT_SYS_EVENT)
@@ -32,7 +37,7 @@
 namespace viz {
 
 namespace {
-
+using base::ohos::InputSyncLock;
 // Helper class which implements the CompositorFrameSinkClient interface so it
 // can route CompositorFrameSinkSupport client messages to a local
 // FrameSinkBundleImpl for batching, rather than having them go directly to the
@@ -243,22 +248,30 @@ void CompositorFrameSinkImpl::ReportKeyThreadIds(
   ResSchedStatusAdapter status = is_created
                                      ? ResSchedStatusAdapter::THREAD_CREATED
                                      : ResSchedStatusAdapter::THREAD_DESTROYED;
-  for (auto thread_id : thread_ids) {
-    content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE,
-        base::BindOnce(
-            base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread), status,
-            process_id, thread_id, ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  auto type = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+    switches::kProcessType);
+  if (type == switches::kGpuProcess) {
+    for (auto thread_id : thread_ids) {
+      NWebNativeWindowTracker::Get()->g_browser_client_->ReportThread(
+        status, process_id, thread_id, ResSchedRoleAdapter::IMPORTANT_DISPLAY);
+    }
+  } else {
+    for (auto thread_id : thread_ids) {
+      content::GetUIThreadTaskRunner({})->PostTask(
+          FROM_HERE,
+          base::BindOnce(
+              base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread), status,
+              process_id, thread_id, ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+    }
   }
 }
 
-void CompositorFrameSinkImpl::OnVsyncReceived() {
-  if (!support_ || !support_->frame_sink_manager()) {
-    DLOG(ERROR) << "Compositor frame support or frame sink manager is not exist";
+void CompositorFrameSinkImpl::SetHandledTouchEvent(bool handledTouchEvent) {
+  if (!support_ || !support_->begin_frame_source()) {
+    DLOG(ERROR) << "Compositor frame support or begin frame souce is not exist";
     return;
   }
-  FrameSinkId frame_sink_id = support_->frame_sink_id();
-  support_->frame_sink_manager()->OnVsyncReceived(frame_sink_id);
+  InputSyncLock::GetInstance().SetHandledTouchEvent(handledTouchEvent);
 }
 
 int CompositorFrameSinkImpl::GetFrameRate() {
@@ -266,6 +279,14 @@ int CompositorFrameSinkImpl::GetFrameRate() {
     return support_->GetFrameRate();
   }
   return 0;
+}
+
+void CompositorFrameSinkImpl::TriggerVsyncImplTask() {
+  if (!support_ || !support_->begin_frame_source()) {
+    DLOG(ERROR) << "Compositor frame support or begin frame souce is not exist";
+    return;
+  }
+  support_->begin_frame_source()->TriggerVsync();
 }
 #endif
 

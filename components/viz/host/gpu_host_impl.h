@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_VIZ_HOST_GPU_HOST_IMPL_H_
 #define COMPONENTS_VIZ_HOST_GPU_HOST_IMPL_H_
 
+#include <cstdint>
 #include <map>
 #include <queue>
 #include <set>
@@ -186,6 +187,9 @@ class VIZ_HOST_EXPORT GpuHostImpl : public mojom::GpuHost
                            bool sync,
                            EstablishChannelCallback callback);
   void SetChannelClientPid(int client_id, base::ProcessId client_pid);
+#if BUILDFLAG(IS_OHOS)
+  std::string GetSurfaceId(int32_t native_embed_id);
+#endif
   void SetChannelDiskCacheHandle(int client_id,
                                  const gpu::GpuDiskCacheHandle& handle);
   void RemoveChannelDiskCacheHandles(int client_id);
@@ -220,6 +224,9 @@ class VIZ_HOST_EXPORT GpuHostImpl : public mojom::GpuHost
 #if BUILDFLAG(IS_OHOS)
   void StartMonitor();
   void StopMonitor();
+  void SetVisible(bool visible);
+  void SetHasTouchPoint(bool has_touch_point);
+  void ReportSlidingFrameRate(int32_t frame_rate);
 #endif
 
  private:

@@ -15,6 +15,7 @@
 
 #include "nweb_resource_handler.h"
 #include <unistd.h>
+#include <securec.h>
 #include "base/logging.h"
 #include "base/command_line.h"
 #include "content/public/common/content_switches.h"
@@ -98,7 +99,9 @@ bool NWebResourceHandler::ReadStringData(void* data_out,
     // Copy the next block of data into the buffer.
     int transfer_size =
         std::min(bytes_to_read, static_cast<int>(data_.length() - offset_));
-    memcpy(data_out, data_.c_str() + offset_, transfer_size);
+    if (memcpy_s(data_out, static_cast<size_t>(bytes_to_read), data_.c_str() + offset_, transfer_size) != EOK) {
+      LOG(WARNING) << "intercept NWebResourceHandler::ReadStringData memcpy failed";
+    }
     offset_ += transfer_size;
 
     bytes_read = transfer_size;
@@ -197,7 +200,10 @@ bool NWebResourceHandler::ReadResourceData(void* data_out,
     int transfer_size =
         std::min(bytes_to_read,
                  static_cast<int>(resource_data_len_ - resource_data_offset_));
-    memcpy(data_out, dataPtr + resource_data_offset_, transfer_size);
+    if (memcpy_s(data_out, static_cast<size_t>(bytes_to_read),
+      dataPtr + resource_data_offset_, transfer_size) != EOK) {
+      LOG(WARNING) << "intercept NWebResourceHandler::ReadResourceData memcpy failed";
+    }
     resource_data_offset_ += transfer_size;
     bytes_read = transfer_size;
     has_data = true;
@@ -240,12 +246,15 @@ bool NWebResourceHandler::Read(void* data_out,
     return false;
   }
 #ifdef OHOS_NETWORK_LOAD
+  LOG(DEBUG) << "intercept NWebResourceHandler::Read, responseDataType:"
+    << static_cast<int32_t>(response_->ResponseDataType());
   switch (response_->ResponseDataType()) {
     case NWebResponseDataType::NWEB_RESOURCE_URL_TYPE:
       return ReadResourceData(data_out, bytes_to_read, bytes_read);
     case NWebResponseDataType::NWEB_FILE_TYPE:
       return ReadFileData(data_out, bytes_to_read, bytes_read);
     case NWebResponseDataType::NWEB_STRING_TYPE:
+    case NWebResponseDataType::NWEB_BUFFER_TYPE:
       return ReadStringData(data_out, bytes_to_read, bytes_read);
     default:
       break;
@@ -279,6 +288,10 @@ void NWebResourceHandler::GetResponseHeaders(CefRefPtr<CefResponse> response,
 #ifdef OHOS_NETWORK_LOAD
   if (response_->ResponseDataType() == NWebResponseDataType::NWEB_STRING_TYPE) {
     response_length = data_.length();
+    LOG(DEBUG) << "intercept NWEB_STRING_TYPE response_length=" << response_length;
+  } else if (response_->ResponseDataType() == NWebResponseDataType::NWEB_BUFFER_TYPE) {
+    response_length = response_->GetResponseDataBufferSize();
+    LOG(DEBUG) << "intercept NWEB_BUFFER_TYPE response_length=" << response_length;
   } else if (response_->ResponseDataType() == NWebResponseDataType::NWEB_RESOURCE_URL_TYPE) {
     if (ReadResourceDataByHap() == false) {
       response_length = -1;
@@ -309,12 +322,15 @@ const std::string& NWebResourceHandler::GetResponseData() {
   return response_->ResponseData();
 }
 
-size_t NWebResourceHandler::GetResponseDataBuffer(char* data) {
+size_t NWebResourceHandler::GetResponseDataBuffer(char* data, size_t dest_size) {
   if (response_ == nullptr || response_->ResponseDataType() != NWebResponseDataType::NWEB_BUFFER_TYPE) {
     return 0;
   }
   size_t buffer_size = response_->GetResponseDataBufferSize();
-  memcpy(data, response_->GetResponseDataBuffer(), buffer_size);
+  if (memcpy_s(data, dest_size, response_->GetResponseDataBuffer(), buffer_size) != EOK) {
+    LOG(WARNING) << "intercept NWebResourceHandler::GetResponseDataBuffer memcpy failed";
+    return 0;
+  }
   return buffer_size;
 }
 

@@ -20,6 +20,7 @@
 #include "cef/include/cef_client.h"
 #include "cef/include/cef_dialog_handler.h"
 #include "cef/include/cef_form_handler.h"
+#include "cef/include/cef_frame_handler.h"
 #include "cef/include/cef_jsdialog_handler.h"
 #include "cef/include/cef_media_handler.h"
 #include "cef/include/cef_permission_request.h"
@@ -36,6 +37,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_set>
+#include <map>
 #include "capi/nweb_app_client_extension_callback.h"
 #include "nweb_download_callback.h"
 #include "nweb_javascript_result_callback.h"
@@ -44,6 +46,10 @@
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
 #include "custom_media_player_impl.h"
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+#include "base/cancelable_callback.h"
+#endif
 
 struct NativeWindow;
 
@@ -68,6 +74,7 @@ class NWebHandlerDelegate : public CefClient,
                             public CefKeyboardHandler,
                             public CefMediaHandler,
                             public CefFormHandler,
+                            public CefFrameHandler,
 #if defined(OHOS_PRINT)
                             public CefCookieAccessFilter,
                             public CefPrintHandler {
@@ -109,6 +116,8 @@ class NWebHandlerDelegate : public CefClient,
       const char* objName,
       const std::vector<std::shared_ptr<NWebJsProxyCallback>>& callbacks);
 
+  void SetInputMethodClient(CefRefPtr<NWebInputMethodClient> client);
+
   using NativeJSProxyCallbackFunc =
       std::function<char*(std::vector<std::vector<uint8_t>>&,
                           std::vector<size_t>&)>;
@@ -116,7 +125,8 @@ class NWebHandlerDelegate : public CefClient,
       const std::string& objName,
       const std::vector<std::string>& methodName,
       std::vector<NativeJSProxyCallbackFunc>&& callback,
-      bool isAsync);
+      bool isAsync,
+      const std::string& permission);
   void RegisterNativeLoadStartCallback(std::function<void(void)>&& callback);
   void RegisterNativeLoadEndCallback(std::function<void(void)>&& callback);
   int GetFlowbufCount(void* mem);
@@ -154,11 +164,11 @@ class NWebHandlerDelegate : public CefClient,
 
   // #if defined(OHOS_EX_PASSWORD)
   void ShowPasswordDialog(bool is_update, const CefString& url) override;
-  void OnShowAutofillPopup(
-      CefRefPtr<CefBrowser> browser,
-      const CefRect& bounds,
-      bool right_aligned,
-      const std::vector<CefAutofillPopupItem>& menu_items) override;
+  void OnShowAutofillPopup(CefRefPtr<CefBrowser> browser,
+                           const CefRect& bounds,
+                           bool right_aligned,
+                           const std::vector<CefAutofillPopupItem>& menu_items,
+                           bool is_password_popup_type) override;
   void OnHideAutofillPopup() override;
   // #endif
 
@@ -220,6 +230,8 @@ class NWebHandlerDelegate : public CefClient,
 #if defined(OHOS_PRINT)
   CefRefPtr<CefPrintHandler> GetPrintHandler() override;
 #endif  // defined(OHOS_PRINT)
+
+  CefRefPtr<CefFrameHandler> GetFrameHandler() override;
   /* CefClient methods end */
 
   /* CefLifeSpanHandler methods begin */
@@ -291,10 +303,10 @@ class NWebHandlerDelegate : public CefClient,
 
   void OnFirstContentfulPaint(int64_t navigationStartTick,
                               int64_t firstContentfulPaintMs) override;
-  
+
   void OnFirstMeaningfulPaint(
       CefRefPtr<CefFirstMeaningfulPaintDetails> details) override;
-  
+
   void OnLargestContentfulPaint(
       CefRefPtr<CefLargestContentfulPaintDetails> details) override;
 
@@ -376,6 +388,10 @@ class NWebHandlerDelegate : public CefClient,
   bool OnKeyEvent(CefRefPtr<CefBrowser> browser,
                   const CefKeyEvent& event,
                   CefEventHandle os_event) override;
+#if defined(OHOS_INPUT_EVENTS)
+  void KeyboardReDispatch(const CefKeyEvent& event,  bool isUsed) override;
+  void OnTakeFocus(CefRefPtr<CefBrowser> browser,  bool next) override;
+#endif
   /* CefKeyboardHandler methods begin */
 
   /* CefResourceRequestHandler method begin */
@@ -541,13 +557,14 @@ class NWebHandlerDelegate : public CefClient,
       const CefRect& select_bounds,
       CefContextMenuHandler::QuickMenuEditStateFlags edit_state_flags,
       CefRefPtr<CefRunQuickMenuCallback> callback,
-      bool is_mouse_trigger) override;
+      bool is_mouse_trigger,
+      bool is_long_press_actived) override;
 
   bool UpdateClippedSelectionBounds(
       CefRefPtr<CefBrowser> browser,
       CefRefPtr<CefFrame> frame,
       const CefRect& select_bounds) override;
-  
+
   bool OnQuickMenuCommand(
       CefRefPtr<CefBrowser> browser,
       CefRefPtr<CefFrame> frame,
@@ -556,6 +573,8 @@ class NWebHandlerDelegate : public CefClient,
   void OnQuickMenuDismissed(CefRefPtr<CefBrowser> browser,
                             CefRefPtr<CefFrame> frame,
                             bool is_mouse_trigger) override;
+  void HideHandleAndQuickMenuIfNecessary(bool hide) override;
+  void ChangeVisibilityOfQuickMenu() override;
   /* CefContextMenuHandler method end */
 
   /* CefFindandler methods begin */
@@ -598,6 +617,12 @@ class NWebHandlerDelegate : public CefClient,
 #endif  // defined(OHOS_PRINT)
   /* CefPrintHandler method end */
 
+  /* CefFrameHandler method begin */
+  void OnMainFrameChanged(CefRefPtr<CefBrowser> browser,
+                          CefRefPtr<CefFrame> old_frame,
+                          CefRefPtr<CefFrame> new_frame) override;
+  /* CefFrameHandler method end */
+
   const std::vector<std::string> GetVisitedHistory();
 
   void SetNWebId(uint32_t nwebId);
@@ -627,6 +652,13 @@ class NWebHandlerDelegate : public CefClient,
   void NotifyPopupWindowResult(bool result);
 #endif  // defined(OHOS_MULTI_WINDOW)
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+  void OnAdsBlocked(CefRefPtr<CefBrowser> browser,
+                    const CefString& url,
+                    const std::map<CefString, CefString>& adsBlocked,
+                    bool is_site_first_report) override;
+#endif
+
   // #if defined(OHOS_EX_TOPCONTROLS)
   void OnTopControlsChanged(float top_controls_offset,
                             float top_content_offset) override;
@@ -638,7 +670,8 @@ class NWebHandlerDelegate : public CefClient,
   void SavaArkJSFunctionForPopup(const std::string& object_name,
                                  const std::vector<std::string>& method_list,
                                  const std::vector<std::string>& async_method_list,
-                                 const int32_t object_id);
+                                 const int32_t object_id,
+                                 const std::string& permission);
 #ifdef OHOS_DRAG_DROP
   bool IsDragEnter() const { return is_drag_enter_; }
   void SetDragEnter(bool enter) { is_drag_enter_ = enter; }
@@ -691,6 +724,12 @@ class NWebHandlerDelegate : public CefClient,
                            int viewport_fit) override;
 #endif
 
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  bool IsWebPaintedForSnapshot () { return isWebPaintedForSnapshot_; }
+  void SetWebPaintedForSnapshot() { isWebPaintedForSnapshot_ = true; }
+#endif
+
+ void SetPopupSurface(void* popup_window);
  private:
   void CopyImageToClipboard(CefRefPtr<CefImage> image);
   // List of existing browser windows. Only accessed on the CEF UI thread.
@@ -716,7 +755,7 @@ class NWebHandlerDelegate : public CefClient,
   std::shared_ptr<NWebFindDelegate> find_delegate_ = nullptr;
   std::shared_ptr<NWebAppClientExtensionCallback>
       web_app_client_extension_listener_ = nullptr;
-
+  CefRefPtr<NWebInputMethodClient> input_method_client_ = nullptr;
   std::shared_ptr<NWebGeolocationCallback> callback_ = nullptr;
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
   std::shared_ptr<NWebCreateNativeMediaPlayerCallback>
@@ -725,6 +764,7 @@ class NWebHandlerDelegate : public CefClient,
 
   bool is_enhance_surface_ = false;
   void* window_ = nullptr;
+  void* popup_window_ = nullptr;
 
 #if defined(OHOS_SCREEN_LOCK)
   std::shared_ptr<NWebScreenLockCallback> screen_lock_callback_ = nullptr;
@@ -772,6 +812,10 @@ class NWebHandlerDelegate : public CefClient,
 #if defined(OHOS_CLIPBOARD)
   bool is_rich_text_ = false;
 #endif
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  bool isWebPaintedForSnapshot_ = false;
+  base::CancelableOnceClosure setWebPaintedTask_;
+#endif
   // js property name and object id
   std::unordered_map<
       std::string,
@@ -784,12 +828,19 @@ class NWebHandlerDelegate : public CefClient,
   std::unordered_map<std::string,
                      std::unordered_map<std::string, NativeJSProxyCallbackFunc>>
       asyncProxyObjMap_;
+  std::unordered_map<std::string, std::string> asyncProxyPermissionMap_;
+  std::unordered_map<std::string, std::string> syncProxyPermissionMap_;
   using MethodPair = std::pair<std::string, std::unordered_set<std::string>>;
+  using PermissionMap = std::map<int32_t, std::string>;
   using ObjectMethodMap = std::map<int32_t, MethodPair>;
   ObjectMethodMap javascript_sync_method_map_;
   ObjectMethodMap javascript_async_method_map_;
+  PermissionMap javascript_sync_permission_map_;
+  PermissionMap javascript_async_permission_map_;
   std::function<void(void)> onLoadStartCallback_ = nullptr;
   std::function<void(void)> onLoadEndCallback_ = nullptr;
+
+  base::WeakPtrFactory<NWebHandlerDelegate> weak_factory_{this};
 };
 }  // namespace OHOS::NWeb
 

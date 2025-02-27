@@ -435,6 +435,28 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
     return touch_insert_handle_menu_show_;
   }
 #endif  // #ifdef OHOS_CLIPBOARD
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  bool TrigAdBlockEnabledForSite(GURL url) override;
+
+  void EnableAdsBlock(bool enable) override {
+    LOG(INFO) << "enable adblock: " << enable;
+    base::AutoLock locker(lock_);
+    enable_adblock_ = enable;
+  }
+
+  bool IsAdsBlockEnabled() override {
+    base::AutoLock locker(lock_);
+    return enable_adblock_;
+  }
+
+  bool IsAdsBlockEnabledForCurPage() override;
+
+  void OnAdsBlocked(const std::string& main_frame_url,
+                    const std::map<std::string, int32_t>& subresource_blocked,
+                    bool is_site_first_report) override;
+#endif
+
 #if defined(OHOS_EX_PASSWORD)
   void SetSavePasswordAutomatically(bool enable) override {
     LOG(INFO) << "set save password automatically: " << enable;
@@ -457,10 +479,10 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   void SaveOrUpdatePassword(bool is_update) override;
 #endif
 #if defined(OHOS_EX_PASSWORD) || (OHOS_DATALIST)
-  void ShowAutofillPopup(
-      const gfx::RectF& element_bounds,
-      bool is_rtl,
-      const std::vector<autofill::Suggestion>& suggestions) override;
+  void ShowAutofillPopup(const gfx::RectF& element_bounds,
+                         bool is_rtl,
+                         const std::vector<autofill::Suggestion>& suggestions,
+                         bool is_password_popup_type) override;
   void HideAutofillPopup() override;
 #endif
 #if defined(OHOS_EX_FORCE_ZOOM)
@@ -730,6 +752,7 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
       const ContextMenuParams& params) override;
 #if defined(OHOS_CLIPBOARD)
   void MouseSelectMenuShow(bool show) override;
+  void ChangeVisibilityOfQuickMenu() override;
 #endif
 
   void RunJavaScriptDialog(RenderFrameHostImpl* render_frame_host,
@@ -978,6 +1001,9 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
       override;
   void OnNativeEmbedStatusUpdate(const NativeEmbedInfo& native_embed_info,
                                  NativeEmbedInfo::TagState state) override;
+  void OnRenderFrameHostEnterBackForwardCache(const GlobalRenderFrameHostId& id) override;
+  void OnLayerRectVisibilityChange(const std::string& embed_id, bool visibility);
+  void OnRenderFrameHostLeaveBackForwardCache(const GlobalRenderFrameHostId& id) override;
 #endif
   void RequestMediaAccessPermission(const MediaStreamRequest& request,
                                     MediaResponseCallback callback) override;
@@ -1527,6 +1553,9 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   void RequestEnterFullscreen(const MediaPlayerId& player_id);
   void RequestExitFullscreen(const MediaPlayerId& player_id);
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  const std::string& SharedRenderProcessToken() override;
+#endif
 
  private:
   using FrameTreeIterationCallback = base::RepeatingCallback<void(FrameTree&)>;
@@ -2069,7 +2098,9 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 
   // A scope that disallows custom cursors has expired.
   void DisallowCustomCursorScopeExpired();
-
+#ifdef OHOS_I18N
+  void UpdateRenderAcceptLanguageIfNeed(const std::string& old_accept_language);
+#endif
   // Data for core operation ---------------------------------------------------
 
   // Delegate for notifying our owner about stuff. Not owned by us.
@@ -2363,6 +2394,7 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 
 #if BUILDFLAG(IS_OHOS)
   std::unique_ptr<NativeWebContentsObserver> native_web_contents_observer_;
+  std::map<std::string, gfx::Rect> native_web_embed_rect_info_map_;
 #endif
 
 #if BUILDFLAG(ENABLE_PPAPI)
@@ -2558,6 +2590,15 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 #if defined(OHOS_USERAGENT) || defined(OHOS_EX_UA)
   std::string user_agent_{""};
 #endif  // OHOS_EX_UA
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  mutable base::Lock lock_;
+
+  bool enable_adblock_ = false;
+
+  bool enable_adblock_for_site_ = false;
+#endif
+
 #if defined(OHOS_EX_PASSWORD)
   bool save_password_ = true;
   bool save_password_automatically_ = false;
@@ -2584,6 +2625,10 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
       cc::BrowserControlsState::kBoth;
 #endif
 
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  std::string shared_render_process_token_;
+#endif
+
   // Stores the information whether last navigation was prerender activation for
   // DevTools. Set when a prerender activation completes, and cleared when
   // either DevTools is opened and consults this value or when a non-prerendered
@@ -2593,7 +2638,6 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   // Counts the number of open scopes that disallow custom cursors in this web
   // contents. Custom cursors are allowed if this is 0.
   int disallow_custom_cursor_scope_count_ = 0;
-
   base::WeakPtr<FileChooserImpl> active_file_chooser_;
 
   base::WeakPtrFactory<WebContentsImpl> loading_weak_factory_{this};

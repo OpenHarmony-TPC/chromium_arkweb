@@ -29,11 +29,15 @@
 #include "sandbox/policy/linux/sandbox_linux.h"
 
 #if BUILDFLAG(IS_OHOS)
+#include "content/renderer/host_proxy.h"
 #include "res_sched_client_adapter.h"
 #endif
 
 namespace content {
 namespace internal {
+#if BUILDFLAG(IS_OHOS)
+static bool save_browser_connect_{false};
+#endif
 
 absl::optional<mojo::NamedPlatformChannel>
 ChildProcessLauncherHelper::CreateNamedPlatformChannelOnLauncherThread() {
@@ -139,17 +143,25 @@ ChildProcessLauncherHelper::LaunchProcessOnLauncherThread(
         app_mgr_client_adapter_ =
             OHOS::NWeb::OhosAdapterHelper::GetInstance().CreateAafwkAdapter();
       }
-      int ret = app_mgr_client_adapter_->StartRenderProcess(
-          argv_ss.str(), ipc_fd, shared_fd, crash_signal_fd, render_pid);
+      if (!save_browser_connect_) {
+        auto browser_host = std::make_shared<content::HostProxy>();
+        app_mgr_client_adapter_->SaveBrowserConnect(browser_host);
+        save_browser_connect_ = true;
+      }
+
+      LOG(INFO) << "Initiate a request to AMS to create a child process, child type: " << GetProcessType();
+      int ret = app_mgr_client_adapter_->StartChildProcess(
+          argv_ss.str(), ipc_fd, shared_fd, crash_signal_fd, render_pid, GetProcessType());
       if (ret != 0) {
         LOG(ERROR) << "start render process error, ret=" << ret
-                   << ", render pid=" << render_pid;
+                   << ", render pid=" << render_pid << ", process type=" << GetProcessType();
         process.process = base::Process();
       } else {
         process.process = base::Process(render_pid);
         OHOS::NWeb::ResSchedClientAdapter::ReportKeyThread(OHOS::NWeb::ResSchedStatusAdapter::THREAD_CREATED,
           render_pid, render_pid, OHOS::NWeb::ResSchedRoleAdapter::IMPORTANT_DISPLAY);
-        LOG(DEBUG) << "report render process create event success, render pid: " << render_pid;
+        LOG(DEBUG) << "report render process create event success, render pid: " << render_pid
+                   << ", process type = " << GetProcessType();
       }
     }
 #else

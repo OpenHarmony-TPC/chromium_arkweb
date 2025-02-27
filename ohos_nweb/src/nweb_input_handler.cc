@@ -68,7 +68,6 @@ void NWebInputHandler::OnTouchRelease(int32_t id,
     y = last_y_;
   }
   nweb_delegate_->OnTouchRelease(id, x, y, from_overlay);
-  CheckSlideNavigation(last_touch_start_x_, x);
   touch_press_id_map_.erase(id);
 }
 
@@ -132,6 +131,45 @@ void NWebInputHandler::OnNavigateBack() {
     nweb_delegate_->NavigateBack();
   }
 }
+
+#if defined(OHOS_INPUT_EVENTS)
+bool NWebInputHandler::WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
+                                       const std::vector<int32_t>& pressedCodes) {
+  if (nweb_delegate_ == nullptr) {
+    return false;
+  }
+  return nweb_delegate_->WebSendKeyEvent(keyCode, keyAction, pressedCodes);
+}
+
+void NWebInputHandler::WebSendMouseWheelEvent(double x,
+                                              double y,
+                                              double deltaX,
+                                              double deltaY,
+                                              const std::vector<int32_t>& pressedCodes) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  nweb_delegate_->WebSendMouseWheelEvent(x, y, deltaX, deltaY, pressedCodes);
+}
+
+void NWebInputHandler::WebSendTouchpadFlingEvent(double x,
+                                                 double y,
+                                                 double vx,
+                                                 double vy,
+                                                 const std::vector<int32_t>& pressedCodes) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  nweb_delegate_->WebSendTouchpadFlingEvent(x, y, vx, vy, pressedCodes);
+}
+
+void NWebInputHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent) {
+  if (nweb_delegate_ == nullptr) {
+    return;
+  }
+  nweb_delegate_->WebSendMouseEvent(mouseEvent);
+}
+#endif
 
 bool NWebInputHandler::SendKeyEvent(int32_t keyCode, int32_t keyAction) {
   if (nweb_delegate_ == nullptr) {

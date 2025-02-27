@@ -129,6 +129,8 @@ class LayerTreeHostImplClient {
   virtual void SetNeedsPrepareTilesOnImplThread() = 0;
   virtual void SetVideoNeedsBeginFrames(bool needs_begin_frames) = 0;
   virtual void SetDeferBeginMainFrameFromImpl(bool defer_begin_main_frame) = 0;
+  virtual void SetDeferInvalidationForFastMainFrameFromImpl(
+                   bool defer_invalidation_for_fast_main_frame) = 0;
   virtual bool IsInsideDraw() = 0;
   virtual void RenewTreePriority() = 0;
   virtual void PostDelayedAnimationTaskOnImplThread(base::OnceClosure task,
@@ -186,6 +188,8 @@ class LayerTreeHostImplClient {
 
 #if BUILDFLAG(IS_OHOS)
   virtual void OnLayerRectUpdate(int id, const gfx::Rect& rect) {}
+
+  virtual void OnLayerRectVisibilityChange(int id, bool visibility) {}
 #endif
 
  protected:
@@ -685,6 +689,8 @@ class CC_EXPORT LayerTreeHostImpl : public TileManagerClient,
 
 #if BUILDFLAG(IS_OHOS)
   virtual void HandleScrollUpdateForInternalBeginFrame(const viz::BeginFrameArgs& args);
+  void TriggerVsyncImplTask();
+  void SetHandledTouchEvent(bool handledTouchEvent);
 #endif
 
   // Shortcuts to layers/nodes on the active tree.
@@ -927,6 +933,8 @@ class CC_EXPORT LayerTreeHostImpl : public TileManagerClient,
 
 #if BUILDFLAG(IS_OHOS)
   void OnLayerRectUpdate(int id, const gfx::Rect& rect);
+
+  void OnLayerRectVisibilityChange(int id, bool visibility);
 #endif
 
   void SetDownsampleMetricsForTesting(bool value) {

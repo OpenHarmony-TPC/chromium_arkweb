@@ -47,6 +47,10 @@ class StubLayerTreeFrameSink : public LayerTreeFrameSink {
   void DidAllocateSharedBitmap(base::ReadOnlySharedMemoryRegion region,
                                const viz::SharedBitmapId& id) override {}
   void DidDeleteSharedBitmap(const viz::SharedBitmapId& id) override {}
+  #ifdef OHOS_UNITTESTS
+  void TriggerVsyncImplTask() override {}
+  void SetHandledTouchEvent(bool handledTouchEvent) override {}
+  #endif
 };
 
 TEST(LayerTreeFrameSinkTest, ContextLossInformsClient) {

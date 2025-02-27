@@ -231,11 +231,16 @@ class GESTURE_DETECTION_EXPORT GestureConfiguration {
   bool stylus_scale_enabled_ = false;
   bool gesture_begin_end_types_enabled_ = false;
 
+#ifdef BUILDFLAG(IS_OHOS)
+  base::TimeDelta short_press_time_ = base::Milliseconds(300);
+  int long_press_time_in_ms_ = 400;
+#else
   base::TimeDelta short_press_time_ = base::Milliseconds(400);
   // TODO(https://crbug.com/1294244): All time fields here should be of type
   // |base::TimeDiff| instead of |int|.
 
   int long_press_time_in_ms_ = 500;
+#endif
   float max_distance_between_taps_for_double_tap_ = 20;
 #ifdef OHOS_DRAG_DROP
   int drag_long_press_time_in_ms_ = 800;
@@ -257,17 +262,18 @@ class GESTURE_DETECTION_EXPORT GestureConfiguration {
   float max_stylus_move_in_pixels_for_click_ = 20;
 #ifdef BUILDFLAG(IS_OHOS)
   float max_touch_move_in_pixels_for_click_ = 3;
+  // If this is too small, we currently can get single finger pinch zoom.  See
+  // https://crbug.com/376618 for details.
+  float min_scaling_span_in_pixels_ = 50;
 #else
   float max_touch_move_in_pixels_for_click_ = 15;
+  float min_scaling_span_in_pixels_ = 125;
 #endif
   float min_distance_for_pinch_scroll_in_pixels_ = 20;
   float min_fling_velocity_ = 30;
   float min_gesture_bounds_length_ = 0;
   // Only used with --compensate-for-unstable-pinch-zoom.
   float min_pinch_update_span_delta_ = 0;
-  // If this is too small, we currently can get single finger pinch zoom.  See
-  // https://crbug.com/376618 for details.
-  float min_scaling_span_in_pixels_ = 125;
   float min_swipe_velocity_ = 20;
   // TODO(https://crbug.com/353702): Disable and remove entirely when issues
   // with intermittent scroll end detection on the Pixel are resolved.

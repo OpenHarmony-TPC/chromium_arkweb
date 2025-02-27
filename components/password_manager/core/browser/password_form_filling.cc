@@ -102,6 +102,7 @@ void Autofill(PasswordManagerClient* client,
       ContainsAndroidCredentials(fill_data));
   metrics_util::LogFilledCredentialIsFromAndroidApp(
       PreferredRealmIsFromAndroid(fill_data));
+
   driver->SetPasswordFillData(fill_data);
 
   // Matches can be empty when there are only WebAuthn credentials available.
@@ -168,6 +169,7 @@ LikelyFormFilling SendFillInformationToRenderer(
     driver->InformNoSavedCredentials(should_show_popup_without_passwords);
     metrics_recorder->RecordFillEvent(
         PasswordFormMetricsRecorder::kManagerFillEventNoCredential);
+
     return LikelyFormFilling::kNoFilling;
   }
 
@@ -212,6 +214,9 @@ LikelyFormFilling SendFillInformationToRenderer(
   WaitForUsernameReason wait_for_username_reason =
       WaitForUsernameReason::kDontWait;
   if (client->IsIncognito()) {
+#ifdef OHOS_PASSWORD_AUTOFILL
+    LOG(INFO) << "[passwordSave] current tab is incognito";
+#endif
     wait_for_username_reason = WaitForUsernameReason::kIncognitoMode;
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OHOS)
   } else if (client->GetPasswordFeatureManager()
@@ -353,5 +358,31 @@ PasswordFormFillData CreatePasswordFormFillData(
 
   return result;
 }
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+PasswordFormFillData CreatePasswordFormFillDataWithoutPasswordInfo(
+    const PasswordForm& form_on_page) {
+  PasswordFormFillData result;
+
+  result.form_renderer_id = form_on_page.form_data.unique_renderer_id;
+  result.url = form_on_page.url;
+
+  if (!form_on_page.only_for_fallback &&
+      (form_on_page.HasPasswordElement() || form_on_page.IsSingleUsername())) {
+    // Fill fields identifying information only for non-fallback case when
+    // password element is found. In other cases a fill popup is shown on
+    // clicking on each password field so no need in any field identifiers.
+    result.username_element_renderer_id =
+        form_on_page.username_element_renderer_id;
+    result.username_may_use_prefilled_placeholder =
+        form_on_page.username_may_use_prefilled_placeholder;
+
+    result.password_element_renderer_id =
+        form_on_page.password_element_renderer_id;
+  }
+
+  return result;
+}
+#endif  // OHOS_PASSWORD_AUTOFILL
 
 }  // namespace password_manager

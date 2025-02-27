@@ -342,7 +342,9 @@ InputHandlerScrollResult InputHandler::ScrollUpdate(
   DCHECK(!scroll_state->data()->current_native_scrolling_element());
   OHOS_TRACE_EVENT2("cc", "InputHandler::ScrollUpdate", "dx",
                scroll_state->delta_x(), "dy", scroll_state->delta_y());
-
+#if BUILDFLAG(IS_OHOS)
+  SetHandledTouchEvent(false);
+#endif
   if (!CurrentlyScrollingNode())
     return InputHandlerScrollResult();
 
@@ -811,7 +813,7 @@ InputHandler::EventListenerTypeForTouchStartOrMoveAt(
 #if BUILDFLAG(IS_OHOS)
   LayerImpl* layer_impl = ActiveTree().FindLayerThatIsHitByPoint(device_viewport_point);
   if (layer_impl) {
-    if (layer_impl->ShouldInterceptTouchEvent()) {
+    if (layer_impl->may_contain_native()) {
        return InputHandler::TouchStartOrMoveEventListenerType::HANDLER;
     }
   }
@@ -1175,11 +1177,24 @@ void InputHandler::HandleScrollUpdateForInternalBeginFrame(const viz::BeginFrame
   }
 }
 
-LayerImpl* InputHandler::GetLayerImpl(const gfx::Point& viewport_point) {
+LayerImpl* InputHandler::GetLayerImplIsHitByPoint(const gfx::Point& viewport_point) {
   gfx::PointF device_viewport_point =
           gfx::ScalePoint(gfx::PointF(viewport_point),
                           compositor_delegate_->DeviceScaleFactor());
-  return ActiveTree().FindLayerThatIsHitByPointNative(device_viewport_point);
+  return ActiveTree().FindLayerThatIsHitByPoint(device_viewport_point);
+}
+
+void InputHandler::TriggerVsyncImplTask() {
+  TRACE_EVENT0("cc", "InputHandler::TriggerVsyncImplTask");
+  compositor_delegate_->GetImplDeprecated().TriggerVsyncImplTask();
+}
+
+LayerImpl* InputHandler::GetLayerImplById(int id) {
+  return ActiveTree().LayerById(id);
+}
+
+void InputHandler::SetHandledTouchEvent(bool handledTouchEvent) {
+  compositor_delegate_->GetImplDeprecated().SetHandledTouchEvent(handledTouchEvent);
 }
 #endif
 

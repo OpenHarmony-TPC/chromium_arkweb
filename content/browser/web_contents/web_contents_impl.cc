@@ -202,6 +202,10 @@
 #include "ui/base/device_form_factor.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
+#if defined(OHOS_I18N)
+#include "ui/base/ui_base_switches.h"
+#endif
+
 #if BUILDFLAG(ENABLE_PPAPI)
 #include "content/browser/media/session/pepper_playback_observer.h"
 #endif
@@ -230,6 +234,17 @@
 
 #ifdef OHOS_DISPLAY_CUTOUT
 #include "content/browser/display_cutout/display_cutout_host_ohos.h"
+#endif
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+#include "content/browser/renderer_host/render_process_host_impl.h"
+#endif
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+#include "components/subresource_filter/content/browser/ohos_adblock_config.h"
+#endif // OHOS_ARKWEB_ADBLOCK
+
+#if OHOS_I18N
+#include "base/ohos/locale_utils.h"
 #endif
 
 namespace content {
@@ -1198,6 +1213,9 @@ WebContentsImpl::~WebContentsImpl() {
   // destruction of the WebContents.
   ClearWebContentsAndroid();
 #endif
+#if BUILDFLAG(IS_OHOS)
+  native_web_embed_rect_info_map_.clear();
+#endif
 
   // |save_package_| is refcounted so make sure we clear the page before
   // we toss out our reference.
@@ -1982,6 +2000,9 @@ void WebContentsImpl::SetUserAgentOverride(
 
   renderer_preferences_.user_agent_override = ua_override;
 
+#ifdef OHOS_I18N
+  UpdateRenderAcceptLanguageIfNeed(renderer_preferences_.accept_languages);
+#endif
   // Send the new override string to all renderers in the current page.
   SyncRendererPrefs();
 
@@ -2012,6 +2033,7 @@ void WebContentsImpl::SetUserAgentOverride(
       frame_tree.GetMainFrame()->CancelPrerendering(PrerenderCancellationReason(
           PrerenderFinalStatus::kUaChangeRequiresReload));
     } else {
+      TRACE_EVENT0("content", "WebContentsImpl::SetUserAgentOverride");
       frame_tree.controller().Reload(ReloadType::BYPASSING_CACHE, true);
     }
   }));
@@ -3379,6 +3401,21 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
     site_instance->PreventAssociationWithSpareProcess();
   }
 
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  if (!params.shared_render_process_token.empty()) {
+    shared_render_process_token_ = params.shared_render_process_token;
+    RenderProcessHost* render_process =
+        RenderProcessHostImpl::GetProcessForSharedToken(
+            shared_render_process_token_);
+    if (render_process) {
+      site_instance->ReuseExistingProcessIfPossible(render_process);
+    } else {
+      RenderProcessHostImpl::RegisteProcessForSharedToken(
+          shared_render_process_token_, site_instance->GetProcess());
+    }
+  }
+#endif
+
   // Iniitalize the primary FrameTree.
   // Note that GetOpener() is used here to get the opener for origin
   // inheritance, instead of other similar functions:
@@ -3536,6 +3573,13 @@ void WebContentsImpl::RemoveRenderWidgetHostDestructionObserver(
 void WebContentsImpl::AddObserver(WebContentsObserver* observer) {
   OPTIONAL_TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("content.verbose"),
                         "WebContentsImpl::AddObserver");
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (!BrowserThread::CurrentlyOn(BrowserThread::UI)) {
+    GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&WebContentsImpl::AddObserver,weak_factory_.GetWeakPtr(), observer));
+    return;
+  }
+
   observers_.AddObserver(observer);
 }
 
@@ -4776,18 +4820,48 @@ void WebContentsImpl::CreateNativeBridgeHostForRenderFrameHost(
 void WebContentsImpl::OnNativeEmbedStatusUpdate(
     const NativeEmbedInfo& native_embed_info,
     NativeEmbedInfo::TagState state) {
-  std::string param_list;
-  for (auto& item : native_embed_info.params) {
-    param_list += item.first + " ";
-    param_list += item.second + ", ";
+  bool print_log = true;
+  if (native_web_embed_rect_info_map_.count(native_embed_info.embed_element_id)) {
+    gfx::Rect history_rect = native_web_embed_rect_info_map_[native_embed_info.embed_element_id];
+    if (history_rect.size() == native_embed_info.rect.size()) {
+      print_log = false;
+    }
+    native_web_embed_rect_info_map_[native_embed_info.embed_element_id] = native_embed_info.rect;
+  } else {
+    native_web_embed_rect_info_map_.insert(std::make_pair(native_embed_info.embed_element_id, native_embed_info.rect));
   }
-  LOG(INFO) << "[NativeEmbed] OnNativeEmbedStatusUpdate "
-             << " state is " << (int)state << ", "
-             << native_embed_info
-             << ", params: " << param_list;
+  if (print_log) {
+    std::string param_list;
+    for (auto& item : native_embed_info.params) {
+      param_list += item.first + " ";
+      param_list += item.second + ", ";
+    }
+    LOG(INFO) << "[NativeEmbed] OnNativeEmbedStatusUpdate "
+              << " state is " << (int)state << ", "
+              << native_embed_info
+              << ", params: " << param_list;
+  }
 
   if (delegate_) {
     delegate_->OnNativeEmbedStatusUpdate(native_embed_info, state);
+  }
+}
+
+void WebContentsImpl::OnLayerRectVisibilityChange(const std::string& embed_id, bool visibility) {
+  if (delegate_) {
+    delegate_->OnLayerRectVisibilityChange(embed_id, visibility);
+  }
+}
+
+void WebContentsImpl::OnRenderFrameHostEnterBackForwardCache(const GlobalRenderFrameHostId& id) {
+  if (native_web_contents_observer_) {
+    native_web_contents_observer_->OnRenderFrameHostEnterBackForwardCache(id);
+  }
+}
+
+void WebContentsImpl::OnRenderFrameHostLeaveBackForwardCache(const GlobalRenderFrameHostId& id) {
+  if (native_web_contents_observer_) {
+    native_web_contents_observer_->OnRenderFrameHostLeaveBackForwardCache(id);
   }
 }
 #endif
@@ -7355,6 +7429,12 @@ void WebContentsImpl::RenderFrameDeleted(
 void WebContentsImpl::MouseSelectMenuShow(bool show) {
   if (render_view_host_delegate_view_) {
     render_view_host_delegate_view_->MouseSelectMenuShow(show);
+  }
+}
+
+void WebContentsImpl::ChangeVisibilityOfQuickMenu() {
+  if (render_view_host_delegate_view_) {
+    render_view_host_delegate_view_->ChangeVisibilityOfQuickMenu();
   }
 }
 #endif
@@ -10181,6 +10261,46 @@ void WebContentsImpl::ClearContextMenu() {
 }
 #endif //OHOS_DRAG_DROP
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+bool WebContentsImpl::TrigAdBlockEnabledForSite(GURL url) {
+  if (!IsAdsBlockEnabled()) {
+    base::AutoLock locker(lock_);
+    enable_adblock_for_site_ = false;
+    return false;
+  }
+
+  if (!OHOS::adblock::AdBlockConfig::GetInstance()->IsAdblockEnabledForUrl(
+          url)) {
+    base::AutoLock locker(lock_);
+    enable_adblock_for_site_ = false;
+    return false;
+  }
+
+  base::AutoLock locker(lock_);
+  enable_adblock_for_site_ = true;
+  return true;
+}
+
+bool WebContentsImpl::IsAdsBlockEnabledForCurPage() {
+  base::AutoLock locker(lock_);
+  return enable_adblock_for_site_;
+}
+
+void WebContentsImpl::OnAdsBlocked(
+    const std::string& main_frame_url,
+    const std::map<std::string, int32_t>& subresource_blocked,
+    bool is_site_first_report) {
+  LOG(DEBUG) << "[AdBlock] subresource_blocked.size():"
+            << subresource_blocked.size();
+
+  if (delegate_) {
+    delegate_->OnAdsBlocked(main_frame_url, subresource_blocked,
+                            is_site_first_report);
+  }
+}
+
+#endif
+
 #ifdef OHOS_EX_PASSWORD
 void WebContentsImpl::PromptSaveOrUpdatePassword(
     bool is_update,
@@ -10208,9 +10328,11 @@ void WebContentsImpl::SaveOrUpdatePassword(bool is_update) {
 void WebContentsImpl::ShowAutofillPopup(
     const gfx::RectF& element_bounds,
     bool is_rtl,
-    const std::vector<autofill::Suggestion>& suggestions) {
+    const std::vector<autofill::Suggestion>& suggestions,
+    bool is_password_popup_type) {
   if (delegate_) {
-    delegate_->OnShowAutofillPopup(element_bounds, is_rtl, suggestions);
+    delegate_->OnShowAutofillPopup(element_bounds, is_rtl, suggestions,
+                                   is_password_popup_type);
   }
 }
 void WebContentsImpl::HideAutofillPopup() {
@@ -10308,6 +10430,8 @@ std::unique_ptr<CustomMediaPlayer> WebContentsImpl::CreateCustomMediaPlayer(
     const MediaInfo& media_info) {
   if (delegate_) {
     return delegate_->CreateCustomMediaPlayer(std::move(listener), media_info);
+  } else {
+    LOG(WARNING) << "CreateCustomMediaPlayer failed, no delegate_";
   }
   return nullptr;
 }
@@ -10321,6 +10445,7 @@ void WebContentsImpl::RemoveCustomMediaPlayer(const MediaPlayerId& player_id,
                                               CustomMediaPlayer* player) {
   auto iter = players_.find(player_id);
   if (iter == players_.end()) {
+    LOG(WARNING) << "RemoveCustomMediaPlayer failed";
     return;
   }
   DCHECK(iter->second == player);
@@ -10360,5 +10485,34 @@ void WebContentsImpl::RequestExitFullscreen(const MediaPlayerId& player_id) {
 
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#ifdef OHOS_I18N
+void WebContentsImpl::UpdateRenderAcceptLanguageIfNeed(
+    const std::string& old_accept_language) {
+  const base::CommandLine& command_line =
+      *base::CommandLine::ForCurrentProcess();
+  if (!command_line.HasSwitch(::switches::kLang)) {
+    return;
+  }
+  std::string lang = command_line.GetSwitchValueASCII(::switches::kLang);
+  std::regex pattern("-");
+  std::smatch match;
+  if (std::regex_search(lang, match, pattern)) {
+    std::string region = match.suffix();
+    std::string current_accept_language =
+        base::ohos::ComputeLanguageByRegion(region);
+    if (current_accept_language != "" &&
+        current_accept_language != old_accept_language) {
+      renderer_preferences_.accept_languages = current_accept_language;
+    }
+  }
+}
+#endif
+
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+const std::string& WebContentsImpl::SharedRenderProcessToken() {
+  return shared_render_process_token_;
+}
+#endif
 
 }  // namespace content

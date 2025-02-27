@@ -34,6 +34,10 @@
 #include "cef/libcef/common/net/scheme_registration.h"
 #endif
 
+#ifdef defined(OHOS_NWEB_EX) && defined(OHOS_CRASHPAD)
+#include "ohos_nweb_ex/overrides/ohos_nweb/src/cef_delegate/custom_crashpad_handler.h"
+#endif
+
 namespace {
 #if defined(OHOS_API_INIT_WEB_ENGINE)
   CefRefPtr<OHOS::NWeb::NWebApplication> g_application = nullptr;
@@ -88,6 +92,10 @@ void NWebApplication::InitializeCef(const CefMainArgs& mainargs,
   }
 }
 #endif  // defined(OHOS_API_INIT_WEB_ENGINE)
+
+#ifdef defined(OHOS_NWEB_EX) && defined(OHOS_CRASHPAD)
+OHOS::NWeb::ReportCrashpadFiles(NWebImpl::GetDefaultCrashpadLogPath());
+#endif
 
 /* CefApp methods begin */
 CefRefPtr<CefBrowserProcessHandler>
@@ -253,9 +261,15 @@ void NWebApplication::PopulateCreateSettings(
     CefRefPtr<CefCommandLine> command_line,
     CefBrowserSettings& browser_settings
 #if defined(OHOS_INCOGNITO_MODE)
-    , bool incognito_mode
+    ,
+    bool incognito_mode
 #endif
-    ) {
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+    ,
+    const std::string& shared_render_process_token
+#endif
+
+) {
   if (command_line->HasSwitch(switches::kOffScreenFrameRate)) {
     browser_settings.windowless_frame_rate =
         atoi(command_line->GetSwitchValue(switches::kOffScreenFrameRate)
@@ -265,6 +279,11 @@ void NWebApplication::PopulateCreateSettings(
 
 #if defined(OHOS_INCOGNITO_MODE)
   browser_settings.incognito_mode = incognito_mode;
+#endif
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  CefString str = CefString(shared_render_process_token);
+  cef_string_set(str.c_str(), str.length(),
+                 &(browser_settings.shared_render_process_token), true);
 #endif
 }
 
@@ -280,9 +299,14 @@ void NWebApplication::CreateBrowser(
     CefRefPtr<NWebHandlerDelegate> handler_delegate,
     void* window
 #if defined(OHOS_INCOGNITO_MODE)
-    , bool incognito_mode
+    ,
+    bool incognito_mode
 #endif
-    ) {
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+    ,
+    const std::string& shared_render_process_token
+#endif
+) {
   CefRefPtr<CefCommandLine> command_line =
       CefCommandLine::GetGlobalCommandLine();
 
@@ -290,7 +314,13 @@ void NWebApplication::CreateBrowser(
   CefBrowserSettings browser_settings;
   PopulateCreateSettings(command_line, browser_settings
 #if defined(OHOS_INCOGNITO_MODE)
-      , incognito_mode
+                         ,
+                         incognito_mode
+#endif
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+                         ,
+                         shared_render_process_token
+
 #endif
   );
   preference_delegate->ComputeBrowserSettings(browser_settings);

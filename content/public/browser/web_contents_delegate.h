@@ -304,6 +304,12 @@ class CONTENT_EXPORT WebContentsDelegate {
   // Returns true if the context menu operation was handled by the delegate.
   virtual bool HandleContextMenu(RenderFrameHost& render_frame_host,
                                  const ContextMenuParams& params);
+#ifdef OHOS_ARKWEB_ADBLOCK
+  virtual void OnAdsBlocked(
+      const std::string& main_frame_url,
+      const std::map<std::string, int32_t>& subresource_blocked,
+      bool is_site_first_report) {}
+#endif
 
 #if defined(OHOS_EX_PASSWORD)
   // notify ui show save password dialog
@@ -313,7 +319,8 @@ class CONTENT_EXPORT WebContentsDelegate {
   virtual void OnShowAutofillPopup(
       const gfx::RectF& element_bounds,
       bool is_rtl,
-      const std::vector<autofill::Suggestion>& suggestions) {}
+      const std::vector<autofill::Suggestion>& suggestions,
+      bool is_password_popup_type) {}
   virtual void OnHideAutofillPopup() {}
 #endif
   // Allows delegates to handle keyboard events before sending to the renderer.
@@ -755,6 +762,14 @@ class CONTENT_EXPORT WebContentsDelegate {
   // indication that the cache will be used.
   virtual bool IsBackForwardCacheSupported();
 
+#ifdef OHOS_BFCACHE
+  // Return back_forward_cache time to live.
+  virtual int BackForwardCacheTimeToLive() { return 600; }
+
+  // Return back_forward_cache max cache size.
+  virtual int BackForwardCacheSize() { return -1; }
+#endif
+
   // Returns PreloadingEligibility::kEligible if Prerender2 (see
   // content/browser/preloading/prerender/README.md for details) is supported.
   // If it is not supported, returns the reason.
@@ -808,6 +823,8 @@ class CONTENT_EXPORT WebContentsDelegate {
   virtual void OnNativeEmbedStatusUpdate(
       const NativeEmbedInfo& native_embed_info,
       NativeEmbedInfo::TagState state) {}
+  
+  virtual void OnLayerRectVisibilityChange(const std::string& embed_id, bool visibility) {}
 #endif
 
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)

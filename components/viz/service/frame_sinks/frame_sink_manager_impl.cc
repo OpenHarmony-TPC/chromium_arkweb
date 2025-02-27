@@ -33,6 +33,10 @@
 #include "components/viz/service/performance_hint/utils.h"
 #include "components/viz/service/surfaces/pending_copy_output_request.h"
 #include "components/viz/service/surfaces/surface.h"
+#if BUILDFLAG(IS_OHOS)
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
+#include "base/ohos/ltpo/include/sliding_observer.h"
+#endif
 
 namespace viz {
 
@@ -241,6 +245,7 @@ void FrameSinkManagerImpl::CreateCompositorFrameSink(
 void FrameSinkManagerImpl::DestroyCompositorFrameSink(
     const FrameSinkId& frame_sink_id,
     DestroyCompositorFrameSinkCallback callback) {
+  // when destroy web tab, destroy window
   sink_map_.erase(frame_sink_id);
   root_sink_map_.erase(frame_sink_id);
   std::move(callback).Run();
@@ -913,7 +918,7 @@ void FrameSinkManagerImpl::SetEnableLowerFrameRate(bool enabled, const FrameSink
 
 void FrameSinkManagerImpl::UpdateVSyncFrequency(const FrameSinkId& frame_sink_id, uint32_t client_id) {
   auto sink_it = sink_map_.begin();
-  
+
   int frame_rate = 0;
   while (sink_it != sink_map_.end()) {
     if (sink_it->first.client_id() == client_id) {
@@ -938,6 +943,18 @@ void FrameSinkManagerImpl::ResetVSyncFrequency(const FrameSinkId& frame_sink_id)
     return;
   }
   root_sink_it->second->ResetVSyncFrequency();
+}
+
+void FrameSinkManagerImpl::SetNeedWaitForInput(const FrameSinkId& frame_sink_id, bool need_wait_for_input) {
+  if (root_sink_map_[frame_sink_id]) {
+    root_sink_map_[frame_sink_id]->SetNeedWaitForInput(need_wait_for_input);
+  }
+}
+
+void FrameSinkManagerImpl::TriggerVsync(const FrameSinkId& frame_sink_id) {
+  if (root_sink_map_[frame_sink_id]) {
+    root_sink_map_[frame_sink_id]->TriggerVsync();
+  }
 }
 #endif
 

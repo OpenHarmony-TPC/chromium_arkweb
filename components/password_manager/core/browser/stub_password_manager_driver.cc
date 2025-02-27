@@ -77,4 +77,16 @@ const GURL& StubPasswordManagerDriver::GetLastCommittedURL() const {
   return GURL::EmptyGURL();
 }
 
+#if defined(OHOS_PASSWORD_AUTOFILL)
+void StubPasswordManagerDriver::FillAccountSuggestion(
+    const std::u16string& username,
+    const std::u16string& password) {}
+
+void StubPasswordManagerDriver::SendParsedPasswordFormToRenderer(
+    const autofill::PasswordFormFillData& form_data) {}
+
+void StubPasswordManagerDriver::AutofillSurfaceClosed(
+    bool show_virtual_keyboard) {}
+#endif
+
 }  // namespace password_manager

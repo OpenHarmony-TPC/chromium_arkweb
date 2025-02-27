@@ -179,6 +179,8 @@ source_set("ipc_common_sources") {
     sources += [
       "gpu_surface_id_tracker.cc",
       "gpu_surface_id_tracker.h",
+      "nweb_native_window_tracker.h",
+      "nweb_native_window_tracker.cc",
     ]
   }
 
@@ -335,6 +337,9 @@ mojom("interfaces") {
   }
   if (is_win || is_chromeos || is_chromeos_lacros) {
     enabled_features += [ "has_gpu_revision_info" ]
+  }
+  if (enable_heif_decoder) {
+    enabled_features += [ "enable_heif_decoder" ]
   }
 
   cpp_typemaps = [

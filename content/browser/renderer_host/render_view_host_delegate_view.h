@@ -25,6 +25,12 @@ namespace gfx {
 class ImageSkia;
 class Rect;
 class Vector2d;
+#ifdef OHOS_AI
+class Point;
+#endif
+#ifdef OHOS_DISPLAY_CUTOUT
+class Insets;
+#endif
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -54,6 +60,7 @@ class CONTENT_EXPORT RenderViewHostDelegateView {
 
 #if defined(OHOS_CLIPBOARD)
   virtual void MouseSelectMenuShow(bool show) {}
+  virtual void ChangeVisibilityOfQuickMenu() {}
 #endif
 
   // The user started dragging content of the specified type within the
@@ -158,7 +165,14 @@ class CONTENT_EXPORT RenderViewHostDelegateView {
 #endif
 
 #ifdef OHOS_DISPLAY_CUTOUT
-  virtual void OnSafeInsetsChange(int left, int top, int right, int bottom);
+  virtual void OnSafeInsetsChange(const gfx::Insets& safe_insets);
+#endif
+
+#ifdef OHOS_AI
+  virtual void CreateOverlay(const gfx::ImageSkia& image,
+                             const gfx::Rect& image_rect,
+                             const gfx::Point& touch_point,
+                             const gfx::Rect& screen_rect) {}
 #endif
 
  protected:

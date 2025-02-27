@@ -114,6 +114,10 @@ struct COMPONENT_EXPORT(NETWORK_CPP_BASE) ResourceRequest {
   bool SendsCookies() const;
   bool SavesCookies() const;
 
+#if BUILDFLAG(IS_OHOS)
+  int request_id_perf_stat_;
+#endif
+
   // See comments in network.mojom.URLRequest in url_request.mojom for details
   // of each field.
   std::string method = net::HttpRequestHeaders::kGetMethod;
@@ -197,6 +201,11 @@ struct COMPONENT_EXPORT(NETWORK_CPP_BASE) ResourceRequest {
       network::mojom::AttributionSupport::kWeb;
   mojom::AttributionReportingEligibility attribution_reporting_eligibility =
       mojom::AttributionReportingEligibility::kUnset;
+#if BUILDFLAG(IS_OHOS)
+  bool allow_preload_record = false;
+  GURL main_page;
+  bool is_sync_mode = false;
+#endif
 #if defined(OHOS_EX_DOWNLOAD)
   bool is_download_request = false;
 #endif  //  OHOS_EX_DOWNLOAD

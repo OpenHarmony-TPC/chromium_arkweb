@@ -71,14 +71,29 @@ public:
 
   void ClearPrefetchedResource(const std::vector<std::string>& cache_key_list) override;
 
+
   void WarmupServiceWorker(const std::string &url) override;
 
   void SetHostIP(
       const std::string &hostName, const std::string &address, int32_t aliveTime) override;
 
   void ClearHostIP(const std::string &hostName) override;
+  std::shared_ptr<NWebAdsBlockManager> GetAdsBlockManager() override;
+
+  void EnableWholeWebPageDrawing() override;
+
+  void TrimMemoryByPressureLevel(int32_t memoryLevel) override;
+
+  void SetArkWebRomApiLevel(int apiLevel) override;
+
+  int GetArkWebRomApiLevel();
+
+  int GetArkWebCoreApiLevel() override;
+
+  static bool CheckArkWebRomApiLevel(int apiLevel);
 
 private:
+  int romApiLevel_ = 0;
   std::shared_ptr<NWebDataBase> nweb_data_base_ = nullptr;
   std::shared_ptr<NWebWebStorage> nweb_web_storage_ = nullptr;
   std::shared_ptr<NWebDownloadManager> nweb_download_manager_ = nullptr;

@@ -38,6 +38,12 @@ struct MediaSourceInfo {
   string media_format;
 };
 
+[EnableIf=ohos_custom_video_player]
+enum ActionReason {
+  kNormal,
+  kCustomRenderer,
+};
+
 // A Mojo equivalent of media::Renderer. Used when audio and video decoding
 // happens outside of the sandboxed render process.
 // See media/mojo/README.md
@@ -75,6 +81,9 @@ interface Renderer {
   SetSurfaceId(int32 surface_id, gfx.mojom.Rect rect);
 
   [EnableIf=ohos_custom_video_player]
+  SetMediaPlayerState(bool is_suspend, int32 suspend_type);
+
+  [EnableIf=ohos_custom_video_player]
   SetMediaSourceList(array<MediaSourceInfo> source_infos);
 
   [EnableIf=ohos_custom_video_player]
@@ -92,6 +101,9 @@ interface Renderer {
 
   [EnableIf=ohos_custom_video_player]
   SetIsAudio(bool is_audio);
+
+  [EnableIf=ohos_custom_video_player]
+  SetPlaybackRateWithReason(double playback_rate, ActionReason reason);
 };
 
 // A Mojo equivalent of media::RendererClient. See media/mojo/README.md

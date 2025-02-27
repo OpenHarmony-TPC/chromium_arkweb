@@ -38,6 +38,9 @@ enum TimeoutEvent {
 #ifdef OHOS_DRAG_DROP
   DRAG_LONG_PRESS,
 #endif
+#ifdef OHOS_AI
+  CREATE_OVERLAY,
+#endif
   TIMEOUT_EVENT_COUNT
 };
 
@@ -55,6 +58,13 @@ class GestureDetector::TimeoutGestureHandler {
 
     timeout_callbacks_[SHOW_PRESS] = &GestureDetector::OnShowPressTimeout;
     timeout_delays_[SHOW_PRESS] = config.showpress_timeout;
+
+#ifdef OHOS_AI
+    timeout_callbacks_[CREATE_OVERLAY] =
+        &GestureDetector::OnCreateOverlayTimeout;
+    timeout_delays_[CREATE_OVERLAY] =
+        config.createoverlay_timeout + config.showpress_timeout;
+#endif
 
     timeout_callbacks_[SHORT_PRESS] = &GestureDetector::OnShortPressTimeout;
     timeout_delays_[SHORT_PRESS] =
@@ -78,6 +88,9 @@ class GestureDetector::TimeoutGestureHandler {
       timeout_timers_[TAP].SetTaskRunner(config.task_runner);
 #ifdef OHOS_DRAG_DROP
       timeout_timers_[DRAG_LONG_PRESS].SetTaskRunner(config.task_runner);
+#endif
+#ifdef OHOS_AI
+      timeout_timers_[CREATE_OVERLAY].SetTaskRunner(config.task_runner);
 #endif
     }
   }
@@ -180,6 +193,9 @@ bool GestureDetector::OnTouchEvent(const MotionEvent& ev,
       down_focus_y_ = last_focus_y_ = focus_y;
       // Cancel long press and taps.
       CancelTaps();
+#ifdef OHOS_AI
+      timeout_handler_->StopTimeout(CREATE_OVERLAY);
+#endif
 #ifdef OHOS_DRAG_DROP
       timeout_handler_->StopTimeout(DRAG_LONG_PRESS);
 #endif
@@ -288,6 +304,9 @@ bool GestureDetector::OnTouchEvent(const MotionEvent& ev,
       // ensure proper timeout ordering.
       if (showpress_enabled_)
         timeout_handler_->StartTimeout(SHOW_PRESS);
+#ifdef OHOS_AI
+      timeout_handler_->StartTimeout(CREATE_OVERLAY);
+#endif
       if (press_and_hold_enabled_) {
         timeout_handler_->StartTimeout(SHORT_PRESS);
         timeout_handler_->StartTimeout(LONG_PRESS);
@@ -410,7 +429,6 @@ bool GestureDetector::OnTouchEvent(const MotionEvent& ev,
           velocity_tracker_.ComputeCurrentVelocity(1000, max_fling_velocity_);
           const float velocity_y = velocity_tracker_.GetYVelocity(pointer_id);
           const float velocity_x = velocity_tracker_.GetXVelocity(pointer_id);
-
           if ((std::abs(velocity_y) > min_fling_velocity_) ||
               (std::abs(velocity_x) > min_fling_velocity_)) {
             handled = listener_->OnFling(*current_down_event_, ev, velocity_x,
@@ -419,13 +437,15 @@ bool GestureDetector::OnTouchEvent(const MotionEvent& ev,
 
           handled |= HandleSwipeIfNeeded(ev, velocity_x, velocity_y);
         }
-
         previous_up_event_ = ev.Clone();
 
         velocity_tracker_.Clear();
         is_double_tapping_ = false;
         defer_confirm_single_tap_ = false;
         timeout_handler_->StopTimeout(SHOW_PRESS);
+#ifdef OHOS_AI
+        timeout_handler_->StopTimeout(CREATE_OVERLAY);
+#endif
         timeout_handler_->StopTimeout(SHORT_PRESS);
         timeout_handler_->StopTimeout(LONG_PRESS);
 #ifdef OHOS_DRAG_DROP
@@ -551,8 +571,15 @@ void GestureDetector::OnLongPressTimeout() {
 
 #ifdef OHOS_DRAG_DROP
 void GestureDetector::OnDragLongPressTimeout() {
-  LOG(ERROR) << "DragDrop GestureDetector::OnDragLongPressTimeout";
+  LOG(INFO) << "DragDrop GestureDetector::OnDragLongPressTimeout";
   listener_->OnDragLongPress(*current_down_event_);
+}
+#endif
+
+#ifdef OHOS_AI
+void GestureDetector::OnCreateOverlayTimeout() {
+  LOG(INFO) << "GestureDetector::OnCreateOverlayTimeout";
+  listener_->OnCreateOverlay(*current_down_event_);
 }
 #endif
 
@@ -599,6 +626,12 @@ void GestureDetector::Cancel() {
 #ifdef OHOS_DRAG_DROP
 void GestureDetector::StopDragLongPressGesture() {
   timeout_handler_->StopTimeout(DRAG_LONG_PRESS);
+}
+#endif
+
+#ifdef OHOS_AI
+void GestureDetector::StopCreateOverlayGesture() {
+  timeout_handler_->StopTimeout(CREATE_OVERLAY);
 }
 #endif
 

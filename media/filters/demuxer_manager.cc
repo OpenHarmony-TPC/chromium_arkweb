@@ -180,6 +180,8 @@ void DemuxerManager::RestartClientForHLS() {
 void DemuxerManager::RestartClientForPrimitive() {
   if (client_) {
     client_->RestartForPrimitive();
+  } else {
+    LOG(WARNING) << "RestartClientForPrimitive failed";
   }
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
@@ -201,6 +203,10 @@ void DemuxerManager::OnPipelineError(PipelineStatus error) {
     return;
   }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#if defined(OHOS_MEDIA)
+  LOG(INFO) << "OhMedia::OnError PipelineStatus = "<< (int)error.code();
+#endif // OHOS_MEDIA
 
   if (!fallback_allowed_) {
     return client_->OnError(std::move(error));

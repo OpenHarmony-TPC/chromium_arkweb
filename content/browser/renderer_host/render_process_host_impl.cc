@@ -345,6 +345,15 @@ std::list<RenderProcessHostCreationObserver*>& GetAllCreationObservers() {
   return *s_all_creation_observers;
 }
 
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+// the global list of all renderer processes
+SharedProcessTokenToProcessMap& GetAllSharedProcessHosts() {
+  static base::NoDestructor<SharedProcessTokenToProcessMap>
+      s_all_shared_process_hosts;
+  return *s_all_shared_process_hosts;
+}
+#endif
+
 // Returns |host|'s PID if the process is valid and "no-process" otherwise.
 std::string GetRendererPidAsString(RenderProcessHost* host) {
   if (host->GetProcess().IsValid()) {
@@ -1261,7 +1270,6 @@ BASE_FEATURE(kCheckNoNewRefCountsWhenRphDeletingSoon,
 #ifdef OHOS_RENDER_PROCESS_MODE
 static constexpr char kExtensionScheme[] = "chrome-extension";
 constexpr int kSingleRenderProcessCount = 1;
-constexpr int kMinMultipleRenderProcessCount = 5;
 #endif
 }  // namespace
 
@@ -1439,8 +1447,7 @@ size_t RenderProcessHost::GetMaxRendererProcessCount() {
 
   if (g_max_renderer_count_override)
 #ifdef OHOS_RENDER_PROCESS_MODE
-    return std::max(kMinMultipleRenderProcessCount,
-                    (int)(g_max_renderer_count_override * 0.9));
+    return g_max_renderer_count_override * 0.9;
 #else
     return g_max_renderer_count_override;
 #endif
@@ -1552,7 +1559,7 @@ size_t RenderProcessHost::GetOffTheRecordRenderProcessCount() {
   while (!it.IsAtEnd()) {
     RenderProcessHost* host = it.GetCurrentValue();
     if (host->GetBrowserContext()->IsOffTheRecord() &&
-        static_cast<RenderProcessHostImpl*>(host)->IsInitializedAndNotDead()) {
+        !static_cast<RenderProcessHostImpl*>(host)->is_dead()) {
       count++;
     }
     it.Advance();
@@ -1609,6 +1616,30 @@ const unsigned int RenderProcessHostImpl::kMaxFrameDepthForPriority =
 // static
 const base::TimeDelta RenderProcessHostImpl::kKeepAliveHandleFactoryTimeout =
     base::Milliseconds(kKeepAliveHandleFactoryTimeoutInMSec);
+
+#if BUILDFLAG(IS_OHOS)
+void RenderProcessHostImpl::Refresh() {
+  RenderProcessHost::iterator it = RenderProcessHost::AllHostsIterator();
+  if (it.IsAtEnd()) {
+    return;
+  }
+  do {
+    RenderProcessHostImpl* host = static_cast<RenderProcessHostImpl*>(
+      it.GetCurrentValue());
+    if (!host) {
+      return;
+    }
+    auto temp_set = host->render_frame_host_id_set_;
+
+    for (auto rfh_id : temp_set) {
+      auto rfh = RenderFrameHostImpl::FromID(rfh_id);
+      if (rfh && rfh->IsActive()) {
+        rfh->Reload();
+      }
+    }
+  } while (0);
+}
+#endif
 
 RenderProcessHostImpl::RenderProcessHostImpl(
     BrowserContext* browser_context,
@@ -2964,10 +2995,12 @@ void RenderProcessHostImpl::CreateURLLoaderFactory(
 }
 
 bool RenderProcessHostImpl::MayReuseHost() {
-  if (!IsInitializedAndNotDead()) {
-    LOG(ERROR) << "RenderProcessHostImpl is dead or not initialized";
+#if BUILDFLAG(IS_OHOS)
+  if (is_dead_) {
+    LOG(ERROR) << "RenderProcessHostImpl is dead";
     return false;
   }
+#endif
   return GetContentClient()->browser()->MayReuseHost(this);
 }
 
@@ -3762,48 +3795,64 @@ bool RenderProcessHostImpl::FastShutdownIfPossible(size_t page_count,
                                                    bool skip_unload_handlers) {
   // Do not shut down the process if there are active or pending views other
   // than the ones we're shutting down.
-  if (page_count && page_count != (GetActiveViewCount() + pending_views_))
+  if (page_count && page_count != (GetActiveViewCount() + pending_views_)) {
+    LOG(DEBUG) << "Discard failed; there are active or pending views";
     return false;
+  }
 
-  if (run_renderer_in_process())
+  if (run_renderer_in_process()) {
+    LOG(DEBUG) << "Discard failed; Single process mode";
     return false;  // Single process mode never shuts down the renderer.
+  }
 
-  if (!child_process_launcher_.get())
+  if (!child_process_launcher_.get()) {
+    LOG(DEBUG) << "Discard failed; Render process hasn't started or is probably crashed";
     return false;  // Render process hasn't started or is probably crashed.
+  }
 
   // Test if there's an unload listener.
   // NOTE: It's possible that an onunload listener may be installed
   // while we're shutting down, so there's a small race here.  Given that
   // the window is small, it's unlikely that the web page has much
   // state that will be lost by not calling its unload handlers properly.
-  if (!skip_unload_handlers && !SuddenTerminationAllowed())
+  if (!skip_unload_handlers && !SuddenTerminationAllowed()) {
+    LOG(DEBUG) << "Discard failed; there's an unload listener";
     return false;
+  }
 
   // TODO(crbug.com/1356128): Remove this block once the migration is launched.
   if (keep_alive_ref_count_ != 0) {
     CHECK(!base::FeatureList::IsEnabled(
         blink::features::kKeepAliveInBrowserMigration));
+    LOG(DEBUG) << "Discard failed; keep_alive_ref_count_ != 0";
     return false;
   }
 
-  if (worker_ref_count_ != 0)
+  if (worker_ref_count_ != 0) {
+    LOG(DEBUG) << "Discard failed; worker_ref_count_ != 0";
     return false;
+  }
 
   if (pending_reuse_ref_count_ != 0) {
+    LOG(DEBUG) << "Discard failed; pending_reuse_ref_count_ != 0";
     return false;
   }
 
   // TODO(wjmaclean): This is probably unnecessary, but let's remove it in a
   // separate CL to be safe.
-  if (shutdown_delay_ref_count_ != 0)
+  if (shutdown_delay_ref_count_ != 0) {
+    LOG(DEBUG) << "Discard failed; shutdown_delay_ref_count_ != 0";
     return false;
+  }
 
   // Set this before ProcessDied() so observers can tell if the render process
   // died due to fast shutdown versus another cause.
   fast_shutdown_started_ = true;
 
-  ChildProcessTerminationInfo info =
-      GetChildTerminationInfo(false /* already_dead */);
+  LOG(INFO) << "Rended process: " << GetProcess().Handle() << " died due to fast shutdown versus another cause";
+  ChildProcessTerminationInfo info;
+  info.status = base::TERMINATION_STATUS_PROCESS_WAS_KILLED;
+  info.exit_code = 0;
   ProcessDied(info);
   return true;
 }
@@ -4172,21 +4221,9 @@ void RenderProcessHostImpl::Cleanup() {
     ChildProcessTerminationInfo info = GetChildTerminationInfo(false);
     info.status = base::TERMINATION_STATUS_NORMAL_TERMINATION;
     info.exit_code = 0;
-#ifndef OHOS_BUGFIX_CRASH
     for (auto& observer : observers_) {
       observer.RenderProcessExited(this, info);
     }
-#else
-    LOG(INFO)
-    << "run_renderer_in_process() value: " << run_renderer_in_process()
-    << ", within_process_died_observer_ value" << within_process_died_observer_
-    << ", (!listeners_.IsEmpty) && has_only_non_live_rfhs value: " << (!listeners_.IsEmpty()) << has_only_non_live_rfhs
-    << ", shuntdown_delay_ref_count_ value: " << shutdown_delay_ref_count_
-    << ", worker_ref_count_ value: " << worker_ref_count_
-    << ", pending_reuse_ref_count_ value: " << pending_reuse_ref_count_
-    << ", has_only_non_liv_rfhs value: " << worker_ref_count_
-    << ", IsInitializedAndNotDead() value: " << IsInitializedAndNotDead();
-#endif //OHOS_BUGFIX_CRASH
   }
   for (auto& observer : observers_)
     observer.RenderProcessHostDestroyed(this);
@@ -4346,7 +4383,9 @@ void RenderProcessHostImpl::UnregisterHost(int host_id) {
       });
 
   GetAllHosts().Remove(host_id);
-
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+  RemoveFromSharedRenderProcessMap(host);
+#endif
   // Log after updating the GetAllHosts() list but before deleting the host.
   MAYBEVLOG(3) << __func__ << "(" << host_id << ")" << std::endl
                << GetCurrentHostMapDebugString(
@@ -4634,14 +4673,16 @@ size_t RenderProcessHostImpl::GetProcessCountForLimit() {
   RenderProcessHost::iterator it = RenderProcessHost::AllHostsIterator();
   size_t count = 0;
   while (!it.IsAtEnd()) {
-    RenderProcessHost* host = static_cast<RenderProcessHostImpl*>(
+    RenderProcessHostImpl* host = static_cast<RenderProcessHostImpl*>(
           it.GetCurrentValue());
-    if (host->IsInitializedAndNotDead()) {
+    if (!host->is_dead()) {
       count++;
     }
     it.Advance();
   }
+#if BUILDFLAG(IS_OHOS)
   LOG(DEBUG) << "RenderProcessHostImpl::GetProcessCount count: " << count;
+#endif
   return count - process_count_to_ignore;
 }
 
@@ -4718,9 +4759,7 @@ RenderProcessHost* RenderProcessHostImpl::GetExistingBackgroundProcessHost(
                                       .spare_render_process_host()) {
       continue;
     }
-    if (iter.GetCurrentValue()->IsProcessBackgrounded() &&
-        static_cast<RenderProcessHostImpl*>(iter.GetCurrentValue())
-            ->AreAllRefCountsZero()) {
+    if (iter.GetCurrentValue()->IsProcessBackgrounded()) {
       base::TimeDelta background_duration = current_time -
         iter.GetCurrentValue()->ProcessBackgroundTime();
       if (background_duration >= longest_duration) {
@@ -4732,12 +4771,10 @@ RenderProcessHost* RenderProcessHostImpl::GetExistingBackgroundProcessHost(
 
   // Now pick a longest time in background renderer.
   if (longest_background_host) {
-    LOG(INFO) <<  __func__ << ": Found one background render process host.";
+    LOG(INFO) <<  __func__ << ": Found one background render host.";
     return longest_background_host;
   }
 
-  LOG(WARNING) <<  __func__
-               << ": It has no background render process host to shutdown.";
   return nullptr;
 }
 
@@ -4905,6 +4942,8 @@ RenderProcessHost* RenderProcessHostImpl::GetProcessHostForSiteInstance(
     if (render_process_host) {
       site_instance->set_process_assignment(
           SiteInstanceProcessAssignment::REUSED_EXISTING_PROCESS);
+      LOG(INFO) << "Use an existing rendering process, render_process: "
+                << render_process_host->GetProcess().Handle();
     }
   }
 
@@ -4927,6 +4966,9 @@ RenderProcessHost* RenderProcessHostImpl::GetProcessHostForSiteInstance(
     // RenderProcessHostFactory may not instantiate a StoragePartition, and
     // creating one here with GetStoragePartition() can run into cross-thread
     // issues as TestBrowserContext initialization is done on the main thread.
+    LOG(INFO) << "Request to create a new rendering process, current count: "
+              << RenderProcessHostImpl::GetProcessCountForLimit() << " Max: "
+              << RenderProcessHostImpl::GetMaxRendererProcessCount();
     render_process_host =
         CreateRenderProcessHost(browser_context, site_instance);
 
@@ -4950,7 +4992,7 @@ RenderProcessHost* RenderProcessHostImpl::GetProcessHostForSiteInstance(
 
     if (RenderProcessHost::render_process_mode() !=
             RenderProcessMode::SINGLE_MODE &&
-        (RenderProcessHostImpl::GetProcessCountForLimit() >=
+        (RenderProcessHostImpl::GetProcessCountForLimit() >
          RenderProcessHostImpl::GetMaxRendererProcessCount())) {
       // Kill the idel render process.
       RenderProcessHostImpl* render_host =
@@ -4958,6 +5000,8 @@ RenderProcessHost* RenderProcessHostImpl::GetProcessHostForSiteInstance(
               RenderProcessHostImpl::GetExistingBackgroundProcessHost(
                   site_instance));
       if (render_host) {
+        LOG(INFO) << "Try fast shutdown idle render process: "
+                  << render_host->GetProcess().Handle() << " in the background.";
         render_host->FastShutdownIfPossible(1u, true);
       }
     }
@@ -5176,7 +5220,8 @@ size_t RenderProcessHost::GetActiveViewCount() {
       RenderWidgetHost::GetRenderWidgetHosts());
   while (RenderWidgetHost* widget = widgets->GetNextHost()) {
     // Count only RenderWidgetHosts in this process.
-    if (widget->GetProcess()->GetID() == GetID())
+    // #if BUILDFLAG(IS_OHOS): GetProcess() maybe null,add protection.
+    if (widget->GetProcess() && widget->GetProcess()->GetID() == GetID())
       num_active_views++;
   }
   return num_active_views;
@@ -5771,6 +5816,38 @@ void RenderProcessHostImpl::dumpCurrentJavaScriptStackInMainThread(
       [](base::OnceCallback<void(const std::string&)> callback,
          const std::string& stack) { std::move(callback).Run(stack); },
       std::move(dump_callback)));
+}
+#endif
+
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+RenderProcessHost* RenderProcessHostImpl::GetProcessForSharedToken(
+    const std::string& shared_render_process_token) {
+  SharedProcessTokenToProcessMap& processes = GetAllSharedProcessHosts();
+  auto process = processes.find(shared_render_process_token);
+  if (process == processes.end())
+    return nullptr;
+  return process->second;
+}
+
+void RenderProcessHostImpl::RegisteProcessForSharedToken(
+    const std::string& shared_render_process_token,
+    RenderProcessHost* renderProcessHost) {
+  GetAllSharedProcessHosts().emplace(shared_render_process_token,
+                                     renderProcessHost);
+}
+
+void RenderProcessHostImpl::RemoveFromSharedRenderProcessMap(
+    RenderProcessHost* renderProcessHost) {
+  SharedProcessTokenToProcessMap& processes = GetAllSharedProcessHosts();
+  if (processes.empty())
+    return;
+  auto iter = processes.begin();
+  for (; iter != processes.end(); ++iter) {
+    if (iter->second == renderProcessHost) {
+      processes.erase(iter);
+      break;
+    }
+  }
 }
 #endif
 

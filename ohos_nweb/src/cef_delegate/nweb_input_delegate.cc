@@ -381,6 +381,61 @@ const std::unordered_map<std::string, std::unordered_map<int, int>>
         {"ohoskeyaction", ohosKeyActionConverter},
 };
 
+uint32_t NWebInputDelegate::GetWebModifiers(int32_t keyCode, int32_t keyAction,
+                                            const std::vector<int32_t>& pressedCodes) {
+  uint32_t result = 0;
+  if (!keyAction) {
+    if (keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_LEFT) ||
+        keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_RIGHT)) {
+      result |= EVENTFLAG_CONTROL_DOWN;
+    }
+    if (keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_LEFT) ||
+        keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_RIGHT)) {
+      result |= EVENTFLAG_SHIFT_DOWN;
+    }
+    if (keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_LEFT) ||
+        keyCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_RIGHT)) {
+      result |= EVENTFLAG_ALT_DOWN;
+    }
+  }
+
+  for (auto pCode : pressedCodes) {
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_RIGHT)) {
+        result |= EVENTFLAG_CONTROL_DOWN;
+      }
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_RIGHT)) {
+        result |= EVENTFLAG_SHIFT_DOWN;
+      }
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_RIGHT)) {
+        result |= EVENTFLAG_ALT_DOWN;
+      }
+  }
+  return result;
+}
+
+uint32_t NWebInputDelegate::GetWebModifiersByPressedCode(
+  const std::vector<int32_t>& pressedCodes) {
+  uint32_t result = 0;
+  for (auto pCode : pressedCodes) {
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_CTRL_RIGHT)) {
+        result |= EVENTFLAG_CONTROL_DOWN;
+      }
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_SHIFT_RIGHT)) {
+        result |= EVENTFLAG_SHIFT_DOWN;
+      }
+      if (pCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_LEFT) ||
+          pCode == static_cast<int32_t>(KeyEvent::KEYCODE_ALT_RIGHT)) {
+        result |= EVENTFLAG_ALT_DOWN;
+      }
+  }
+  return result;
+}
+
 NWebInputDelegate::NWebInputDelegate() {
   keyEventHandle_.RegistInputEvent(KeyEvent::KEYCODE_CTRL_LEFT, KEY_DOWN,
                                    false);
@@ -454,6 +509,31 @@ uint32_t NWebInputDelegate::GetModifiers() {
 uint32_t NWebInputDelegate::GetModifiers(cef_mouse_button_type_t button) {
   uint32_t result = GetModifiers();
 
+  switch (button) {
+    case MBT_LEFT:
+      result |= EVENTFLAG_LEFT_MOUSE_BUTTON;
+      break;
+    case MBT_MIDDLE:
+      result |= EVENTFLAG_MIDDLE_MOUSE_BUTTON;
+      break;
+    case MBT_RIGHT:
+      result |= EVENTFLAG_RIGHT_MOUSE_BUTTON;
+      break;
+    case MBT_BACK:
+      result |= EVENTFLAG_BACK_MOUSE_BUTTON;
+      break;
+    case MBT_FORWARD:
+      result |= EVENTFLAG_FORWARD_MOUSE_BUTTON;
+      break;
+    default:
+      break;
+  }
+  return result;
+}
+
+uint32_t NWebInputDelegate::GetWebMouseModifiersByPressedCode(cef_mouse_button_type_t button,
+                                                              const std::vector<int32_t>& pressedCodes) {
+  uint32_t result = GetWebModifiersByPressedCode(pressedCodes);
   switch (button) {
     case MBT_LEFT:
       result |= EVENTFLAG_LEFT_MOUSE_BUTTON;

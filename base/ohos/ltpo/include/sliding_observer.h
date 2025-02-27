@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <vector>
+#include "adapter_base.h"
 #include "system_properties_adapter.h"
 
 namespace base {
@@ -26,7 +27,7 @@ namespace ohos {
 class SlidingObserver {
 public:
   SlidingObserver() = default;
-  ~SlidingObserver() = default;
+  ~SlidingObserver();
 
   SlidingObserver(const SlidingObserver&) = delete;
   SlidingObserver& operator=(const SlidingObserver&) = delete;
@@ -35,28 +36,35 @@ public:
 
   void Init();
   void StartSliding();
-  void StopSliding();
+  int32_t StopSliding();
   void StartFling();
-  void OnScrollUpdate(float delta_x, float delta_y);
+  int32_t OnScrollUpdate(float delta_x, float delta_y);
+  int32_t OnFlingUpdate(float velocity_x, float velocity_y);
 
-  void SetVsyncPeriod(int64_t vsync_period);
 private:
-  float ConvertToVelocity(float delta_x, float delta_y);
+  float GetVelocity(float velocity_x, float velocity_y);
   int32_t GetPreferedFrameRate(float velocity,
     const std::vector<OHOS::NWeb::FrameRateSetting>& setting);
+  int64_t GetCurrentTimestamp();
+  void UpdateFrameRateForPC();
 
 private:
-float vsync_period_ {-1};
-  bool isInited_ {false};
-  bool isSliding_ {false};
-  bool isOffScreen_ {false};
+  bool is_inited_ {false};
+  bool is_sliding_ {false};
+  bool is_off_screen_ {false};
   int32_t dpi_ {-1};
-  std::vector<OHOS::NWeb::FrameRateSetting> onScreenSetting {};
-  std::vector<OHOS::NWeb::FrameRateSetting> offScreenSetting {};
+  std::vector<OHOS::NWeb::FrameRateSetting> on_screen_setting_ {};
+  std::vector<OHOS::NWeb::FrameRateSetting> off_screen_setting_ {};
 
   float virtual_pixel_ratio_ {-1};
+  int64_t current_timestamp_ {-1};
+  int32_t sliding_frame_rate_ {0};
+
+  bool is_pc_ {false};
+  bool is_ltpo_app_ {false};
+  bool is_web_list_fling_ {false};
 };
 }  // namespace ohos
 }  // namespace base
 
-#endif  // BASE_OHOS_SLIDING_OBSERVER_H_
+#endif  // BASE_OHOS_SLIDING_OBSERVER_H_

@@ -10,11 +10,16 @@
 #if BUILDFLAG(IS_OHOS)
 #include "base/report_loss_frame.h"
 #include "base/ohos/dynamic_frame_loss_monitor.h"
+#include "base/ohos/ltpo/include/dynamic_frame_rate_decision.h"
 #include "base/ohos/ltpo/include/sliding_observer.h"
+#include "base/ohos/input_sync/input_vsync_sync_lock.h"
+#include "base/task/thread_pool.h"
+#include "base/ohos/ltpo/include/dynamic_frame_rate_decision.h"
 #endif
 
 namespace viz {
 using namespace OHOS::NWeb;
+using base::ohos::InputSyncLock;
 
 constexpr int64_t VSYNC_PERIOD_90HZ = 11111111;
 constexpr int64_t VSYNC_PERIOD_60HZ = 16666666;
@@ -26,6 +31,8 @@ constexpr int64_t VSYNC_TIME_FOR_CALCULATION = 1000000000;
 
 constexpr int VSYNC_30HZ = 30;
 constexpr int VSYNC_60HZ = 60;
+const size_t kMaxVsyncTaskQueueSize = 20;
+constexpr int VSYNC_BLOCKED_TIMEOUT = 3;
 
 class ExternalBeginFrameSourceOHOS::VSyncUserData {
  public:
@@ -52,6 +59,9 @@ class ExternalBeginFrameSourceOHOS::VSyncUserData {
   base::WeakPtr<viz::ExternalBeginFrameSourceOHOS> weak_ptr_;
 };
 
+base::circular_deque<std::pair<int64_t, ExternalBeginFrameSourceOHOS::VSyncUserData*>>
+  ExternalBeginFrameSourceOHOS::on_vsync_impl_task_queue_ {};
+
 ExternalBeginFrameSourceOHOS::ExternalBeginFrameSourceOHOS(
     uint32_t restart_id,
 #if defined(OHOS_PERFORMANCE_JITTER)
@@ -74,6 +84,8 @@ ExternalBeginFrameSourceOHOS::ExternalBeginFrameSourceOHOS(
       base::SingleThreadTaskRunner::GetCurrentDefault(), weak_factory_.GetWeakPtr());
 #if BUILDFLAG(IS_OHOS)
   vsync_adapter_.SetOnVsyncCallback(ExternalBeginFrameSourceOHOS::OnVSyncCallback);
+  vsync_adapter_.SetOnVsyncEndCallback(ExternalBeginFrameSourceOHOS::OnVSyncEndCallback);
+  base::ohos::DynamicFrameRateDecision::GetInstance().Init();
 #endif
 }
 
@@ -113,9 +125,18 @@ void ExternalBeginFrameSourceOHOS::OnVSync(int64_t timestamp, void* data) {
     LOG(ERROR) << "OnVSync data current is nullptr";
     return;
   }
-  userData->current_->PostTask(
+  if (!InputSyncLock::GetInstance().HandledTouchEvent() && InputSyncLock::GetInstance().NeedWaitForInput()) {
+    userData->current_->PostTask(
+      FROM_HERE, base::BindOnce(&ExternalBeginFrameSourceOHOS::EmplaceVSyncImpl,
+      userData->weak_ptr_, timestamp, userData));
+    userData->current_->PostDelayedTask(
+      FROM_HERE, base::BindOnce(&ExternalBeginFrameSourceOHOS::TriggerVsyncImpl,
+                            userData->weak_ptr_), base::Milliseconds(VSYNC_BLOCKED_TIMEOUT));
+  } else {
+    userData->current_->PostTask(
       FROM_HERE, base::BindOnce(&ExternalBeginFrameSourceOHOS::OnVSyncImpl,
-                                userData->weak_ptr_, timestamp, userData));
+      userData->weak_ptr_, timestamp, userData));
+  }
 }
 
 void ExternalBeginFrameSourceOHOS::OnVSyncImpl(int64_t timestamp,
@@ -143,13 +164,22 @@ void ExternalBeginFrameSourceOHOS::OnVSyncImpl(int64_t timestamp,
   if (vsync_period_ != 0) {
     cur_vsync_frequency = (VSYNC_TIME_FOR_CALCULATION - 1) / vsync_period_ + 1;
   }
+#if defined(OHOS_PERFORMANCE_JITTER)
+  static bool isAlreadyThrottle = false;
   if (lower_frame_rate_enabled_) {
-    vsync_period_ = vsync_period_ * 2;
+    if (!isAlreadyThrottle) {
+      frame_sink_manager_->StartThrottlingAllFrameSinks(base::Hertz(0.01));
+      isAlreadyThrottle = true;
+      LOG(DEBUG) << "OnVSyncImpl StartThrottlingAllFrameSinks";
+    }
+  } else if (isAlreadyThrottle) {
+    frame_sink_manager_->StopThrottlingAllFrameSinks();
+    isAlreadyThrottle = false;
   }
+#endif
 
 #if BUILDFLAG(IS_OHOS)
 ReportLossFrame::GetInstance()->SetVsyncPeriod(vsync_period_);
-base::ohos::SlidingObserver::GetInstance().SetVsyncPeriod(vsync_period_);
 #endif
   base::TimeDelta vsync_period(base::Nanoseconds(vsync_period_));
   base::TimeTicks frame_time = base::TimeTicks() + base::Nanoseconds(timestamp);
@@ -186,14 +216,17 @@ base::ohos::SlidingObserver::GetInstance().SetVsyncPeriod(vsync_period_);
   if (update_vsync_frequency_ &&
       vsync_frequency_to_update_ != cur_vsync_frequency) {
     vsync_frequency_to_reset_ = cur_vsync_frequency;
+    LOG(DEBUG) << "ExternalBeginFrameSourceOHOS::OnVSyncImpl::UpdateVSyncFrequency vsync_frequency_to_update_: " << vsync_frequency_to_update_ << ", cur_vsync_frequency: " << cur_vsync_frequency;
     TRACE_EVENT1("viz", "ExternalBeginFrameSourceOHOS::OnVSyncImpl::UpdateVSyncFrequency", "VSyncFrequency",
             vsync_frequency_to_update_);
-    vsync_adapter_.SetFramePreferredRate(vsync_frequency_to_update_);
+
+    base::ohos::DynamicFrameRateDecision::GetInstance().ReportVideoFrameRate(vsync_frequency_to_update_);
   }
   if (reset_vsync_frequency_) {
+    LOG(DEBUG) << "ExternalBeginFrameSourceOHOS::OnVSyncImpl::ResetVSyncFrequency vsync_frequency_to_reset_: " << vsync_frequency_to_reset_ << ", cur_vsync_frequency: " << cur_vsync_frequency;
     TRACE_EVENT1("viz", "ExternalBeginFrameSourceOHOS::OnVSyncImpl::ResetVSyncFrequency", "VSync",
         vsync_frequency_to_reset_);
-    vsync_adapter_.SetFramePreferredRate(vsync_frequency_to_reset_);
+    base::ohos::DynamicFrameRateDecision::GetInstance().ReportVideoFrameRate(0);
     reset_vsync_frequency_ = false;
   }
 }
@@ -208,6 +241,7 @@ void ExternalBeginFrameSourceOHOS::SetEnabled(bool enabled) {
   }
   TRACE_EVENT1("viz", "ExternalBeginFrameSourceOHOS::SetEnabled", "enabled",
                enabled);
+  base::ohos::DynamicFrameRateDecision::GetInstance().SetVsyncEnabled(enabled);
   vsync_notification_enabled_ = enabled;
   first_vsync_since_notify_enabled_ = true;
   if (vsync_notification_enabled_ && user_data_ != nullptr) {
@@ -235,5 +269,47 @@ void ExternalBeginFrameSourceOHOS::ResetVSyncFrequency() {
 void ExternalBeginFrameSourceOHOS::OnVSyncCallback()
 {
   base::ohos::DynamicFrameLossMonitor::GetInstance().OnVsync();
+}
+
+void ExternalBeginFrameSourceOHOS::OnVSyncEndCallback()
+{
+  InputSyncLock::GetInstance().SetNeedWaitForInput(false);
+  InputSyncLock::GetInstance().SetHandledTouchEvent(false);
+}
+
+void ExternalBeginFrameSourceOHOS::SetNeedWaitForInput(bool need_wait_for_input) {
+  InputSyncLock::GetInstance().SetNeedWaitForInput(need_wait_for_input);
+}
+
+void ExternalBeginFrameSourceOHOS::TriggerVsync() {
+  if (on_vsync_impl_task_queue_.empty()) {
+    InputSyncLock::GetInstance().SetHandledTouchEvent(true);
+    return;
+  }
+  TriggerVsyncImpl();
+}
+
+void ExternalBeginFrameSourceOHOS::TriggerVsyncImpl() {
+  TRACE_EVENT0("base", "ExternalBeginFrameSourceOHOS::TriggerVsyncImpl");
+
+  while(!on_vsync_impl_task_queue_.empty()) {
+    auto& [timestamp, userData] = on_vsync_impl_task_queue_.front();
+    if (!userData || !userData->current_) {
+      LOG(ERROR) << "OnVSync data current is nullptr";
+      continue;
+    }
+    userData->current_->PostTask(
+    FROM_HERE, base::BindOnce(&ExternalBeginFrameSourceOHOS::OnVSyncImpl,
+                              userData->weak_ptr_, timestamp, userData));
+    on_vsync_impl_task_queue_.pop_front();
+  }
+}
+
+void ExternalBeginFrameSourceOHOS::EmplaceVSyncImpl(int64_t timestamp, VSyncUserData* user_data)
+{
+  on_vsync_impl_task_queue_.emplace_back(timestamp, user_data);
+  if (on_vsync_impl_task_queue_.size() > kMaxVsyncTaskQueueSize) {
+    LOG(ERROR) << "on_vsync_impl_task_queue_.size() is " << on_vsync_impl_task_queue_.size();
+  }
 }
 }  // namespace viz

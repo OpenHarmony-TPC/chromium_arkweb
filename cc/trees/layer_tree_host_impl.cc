@@ -2284,6 +2284,11 @@ void LayerTreeHostImpl::OnDraw(const gfx::Transform& transform,
     // draw as well.
     SetFullViewportDamage();
   }
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  external_transform_ = gfx::Transform();
+  external_viewport_ = gfx::Rect();
+#endif
 }
 
 void LayerTreeHostImpl::OnCompositorFrameTransitionDirectiveProcessed(
@@ -3098,6 +3103,22 @@ void LayerTreeHostImpl::HandleScrollUpdateForInternalBeginFrame(const viz::Begin
     input_delegate_->HandleScrollUpdateForInternalBeginFrame(args);
   }
 }
+
+void LayerTreeHostImpl::TriggerVsyncImplTask() {
+  if (!layer_tree_frame_sink_) {
+    return;
+  }
+
+  layer_tree_frame_sink_->TriggerVsyncImplTask();
+}
+
+void LayerTreeHostImpl::SetHandledTouchEvent(bool handledTouchEvent) {
+  if (!layer_tree_frame_sink_) {
+    return;
+  }
+
+  layer_tree_frame_sink_->SetHandledTouchEvent(handledTouchEvent);
+}
 #endif
 
 void LayerTreeHostImpl::DidFinishImplFrame(const viz::BeginFrameArgs& args) {
@@ -3424,6 +3445,19 @@ void LayerTreeHostImpl::ActivateSyncTree() {
     pending_tree_->PushPropertyTreesTo(active_tree_.get());
     active_tree_->lifecycle().AdvanceTo(
         LayerTreeLifecycle::kSyncedPropertyTrees);
+
+    bool should_defer_impl_invalidation = false;
+    for (EffectTreeLayerListIterator it(pending_tree_.get());
+        it.state() != EffectTreeLayerListIterator::State::END; ++it) {
+      if (it.state() == EffectTreeLayerListIterator::State::LAYER) {
+        LayerImpl* layer = it.current_layer();
+        if (layer->ShouldDeferImplInvalidation()) {
+          should_defer_impl_invalidation = true;
+        }
+      }
+    }
+    client_->SetDeferInvalidationForFastMainFrameFromImpl(
+                 should_defer_impl_invalidation);
 
     TreeSynchronizer::PushLayerProperties(pending_tree(), active_tree());
 
@@ -5336,6 +5370,10 @@ std::string LayerTreeHostImpl::GetHungCommitDebugInfo() const {
 #if BUILDFLAG(IS_OHOS)
 void LayerTreeHostImpl::OnLayerRectUpdate(int id, const gfx::Rect& rect) {
   client_->OnLayerRectUpdate(id, rect);
+}
+
+void LayerTreeHostImpl::OnLayerRectVisibilityChange(int id, bool visibility) {
+  client_->OnLayerRectVisibilityChange(id, visibility);
 }
 #endif
 

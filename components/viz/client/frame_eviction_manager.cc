@@ -29,6 +29,11 @@
 namespace viz {
 namespace {
 
+#if BUILDFLAG(IS_OHOS)
+constexpr int kOhosFramesMax = 10;
+constexpr int kOhosFramesBase = 2;
+constexpr int kPhysicalMemoryBlockSize = 256;
+#endif
 const int kModeratePressurePercentage = 50;
 const int kCriticalPressurePercentage = 10;
 #if (BUILDFLAG(IS_OHOS) && defined(OHOS_PERFORMANCE_DISCARD_BG_WEBPAGE))
@@ -150,6 +155,8 @@ FrameEvictionManager::FrameEvictionManager()
       // If the amount of memory on the device is >= 3.5 GB, save up to 5
       // frames.
       base::SysInfo::AmountOfPhysicalMemoryMB() < 1024 * 3.5f ? 1 : 5;
+#elif BUILDFLAG(IS_OHOS)
+      std::min(kOhosFramesMax, kOhosFramesBase + (base::SysInfo::AmountOfPhysicalMemoryMB() / kPhysicalMemoryBlockSize));
 #else
       std::min(5, 2 + (base::SysInfo::AmountOfPhysicalMemoryMB() / 256));
 #endif

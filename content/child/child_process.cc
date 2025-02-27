@@ -22,6 +22,7 @@
 #include "content/common/mojo_core_library_support.h"
 #include "content/common/process_visibility_tracker.h"
 #include "content/public/common/content_switches.h"
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
 #include "mojo/public/cpp/system/dynamic_library_support.h"
 #include "sandbox/policy/sandbox_type.h"
 #include "services/tracing/public/cpp/trace_startup.h"
@@ -33,6 +34,7 @@
 #endif
 
 #if BUILDFLAG(IS_OHOS)
+#include "base/threading/platform_thread.h"
 #include "res_sched_client_adapter.h"
 #endif
 
@@ -193,16 +195,46 @@ void ChildProcess::ReportIoThreadStatus(bool is_created) {
   using namespace OHOS::NWeb;
   ResSchedStatusAdapter status = is_created ?
     ResSchedStatusAdapter::THREAD_CREATED : ResSchedStatusAdapter::THREAD_DESTROYED;
-  
+  auto type = base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+    switches::kProcessType);
   // If this thread is in browser process, then report key thread info to RSS directly.
   // Otherwise, report key thread info to the browser process firstly.
   if (main_thread_->IsInBrowserProcess()) {
     ResSchedClientAdapter::ReportKeyThread(
       status, base::GetCurrentRealPid(), io_thread_->GetThreadRealId(), ResSchedRoleAdapter::USER_INTERACT);
+  } else if (type == switches::kGpuProcess) {
+    if (NWebNativeWindowTracker::Get() &&
+        NWebNativeWindowTracker::Get()->g_browser_client_) {
+      LOG(DEBUG) << "get native window success pid:" << base::GetCurrentRealPid()
+                 << ", tid = " << io_thread_->GetThreadRealId();
+      NWebNativeWindowTracker::Get()->g_browser_client_ -> ReportThread(
+        status, base::GetCurrentRealPid(), io_thread_->GetThreadRealId(),
+        ResSchedRoleAdapter::USER_INTERACT);
+    }
   } else {
     main_thread_->ReportKeyThread(
-      static_cast<int32_t>(status), base::GetCurrentRealPid(), io_thread_->GetThreadRealId());
+      static_cast<int32_t>(status), base::GetCurrentRealPid(), io_thread_->GetThreadRealId(),
+      static_cast<int32_t>(ResSchedRoleAdapter::USER_INTERACT));
   }
+}
+
+void ChildProcess::ReportCompositorKeyThread(bool is_created) {
+  if (!main_thread_) {
+    LOG(WARNING) << "main thread is nullptr, can not report key"
+      << base::PlatformThread::CurrentRealId() << " id created: " << is_created;
+    return;
+  }
+  if (main_thread_->IsInBrowserProcess()) {
+    return;
+  }
+  using namespace OHOS::NWeb;
+  ResSchedStatusAdapter status = is_created ?
+    ResSchedStatusAdapter::THREAD_CREATED : ResSchedStatusAdapter::THREAD_DESTROYED;
+  main_thread_->ReportKeyThread(
+    static_cast<int32_t>(status), base::GetCurrentRealPid(), base::PlatformThread::CurrentRealId(),
+    static_cast<int32_t>(ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+  LOG(DEBUG) << "child process pid: "
+      << base::GetCurrentRealPid() << ", tid: " << base::PlatformThread::CurrentRealId() << " id created: " << is_created;
 }
 #endif
 

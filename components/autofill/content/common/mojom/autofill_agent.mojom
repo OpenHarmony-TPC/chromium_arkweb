@@ -56,6 +56,12 @@ interface AutofillAgent {
   FillPasswordSuggestion(mojo_base.mojom.String16 username,
                          mojo_base.mojom.String16 password);
 
+  // Tells the renderer to fill the username and password with with given
+  // values on openharmony system.
+  [EnableIf=ohos_password_autofill]
+  FillAccountSuggestion(mojo_base.mojom.String16 username,
+                        mojo_base.mojom.String16 password);
+
   // Tells the renderer to preview the username and password with the given
   // values.
   PreviewPasswordSuggestion(mojo_base.mojom.String16 username,
@@ -111,6 +117,10 @@ interface PasswordAutofillAgent {
   // logging the decisions made about saving the password.
   SetLoggingState(bool active);
 
+  // Called when autofill is cancelled, will try to pull up the IME soft keyboard.
+  [EnableIf=ohos_password_autofill]
+  AutofillSurfaceClosed(bool show_virtual_keyboard);
+
   // Informs the renderer that the Touch To Fill sheet has been closed.
   // Indicates whether the virtual keyboard should be shown instead.
   [EnableIf=is_android]
@@ -123,6 +133,10 @@ interface PasswordAutofillAgent {
   // Annotate password related (username, password) DOM input elements with
   // corresponding HTML attributes. It is used only for debugging.
   AnnotateFieldsWithParsingResult(ParsingResult parsing_result);
+
+  // Provides parsed/infered information for a password form, which
+  [EnableIf=ohos_password_autofill]
+  SetParsedPasswordForm(PasswordFormFillData form_data);
 };
 
 // There is one instance of this interface per render frame in the render

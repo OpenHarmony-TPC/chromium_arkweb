@@ -382,6 +382,7 @@ class CONTENT_EXPORT RenderFrameImpl
                        const gfx::Range& range) override;
 #if defined(OHOS_CLIPBOARD)
   void MouseSelectMenuShow(bool show) override;
+  void ChangeVisibilityOfQuickMenu() override;
 #endif
   void AddMessageToConsole(blink::mojom::ConsoleMessageLevel level,
                            const std::string& message) override;
@@ -413,6 +414,9 @@ class CONTENT_EXPORT RenderFrameImpl
 #if defined(OHOS_INPUT_EVENTS)
   void SetZoomLevel(float magnify_delta, const gfx::Point& anchor) override;
   void SetOverscrollMode(int mode) override;
+#if defined(OHOS_GET_SCROLL_OFFSET)
+  gfx::Vector2dF GetOverScrollOffset() override;
+#endif
 #endif  // defined(OHOS_INPUT_EVENTS)
 
   // blink::mojom::AutoplayConfigurationClient implementation:
@@ -1159,6 +1163,10 @@ class CONTENT_EXPORT RenderFrameImpl
   // Resets membmers that are needed for the duration of commit (time between
   // CommitNavigation() and DidCommitNavigation().
   void ResetMembersUsedForDurationOfCommit();
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  void DidSubresourceFiltered() override;
+#endif
 
 #if BUILDFLAG(IS_OHOS)
   bool GetNewWindowWebView(const GURL& target_url,

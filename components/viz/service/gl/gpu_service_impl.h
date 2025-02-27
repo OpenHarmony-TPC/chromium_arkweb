@@ -145,6 +145,10 @@ class VIZ_SERVICE_EXPORT GpuServiceImpl
                            EstablishGpuChannelCallback callback) override;
   void SetChannelClientPid(int32_t client_id,
                            base::ProcessId client_pid) override;
+#if BUILDFLAG(IS_OHOS)
+  void GetSurfaceId(int32_t native_embed_id,
+                    GetSurfaceIdCallback callback) override;
+#endif
   void SetChannelDiskCacheHandle(
       int32_t client_id,
       const gpu::GpuDiskCacheHandle& handle) override;
@@ -382,6 +386,9 @@ class VIZ_SERVICE_EXPORT GpuServiceImpl
 #if BUILDFLAG(IS_OHOS)
   void StartMonitor() override;
   void StopMonitor() override;
+  void SetVisible(bool visible) override;
+  void SetHasTouchPoint(bool has_touch_point) override;
+  void ReportSlidingFrameRate(int32_t frame_rate) override;
 #endif
 
  private:

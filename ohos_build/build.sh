@@ -19,8 +19,9 @@ CUR_DIR=$PWD
 ROOT_DIR="${CUR_DIR%/src*}""/src"
 # Global variables.
 BUILD_TARGET_WEBVIEW="ohos_nweb_hap"
+BUILD_TARGET_V8="v8/v8_shared:v8_shared"
 BUILD_TARGET_BROWSERSHELL="ohos_browser_shell"
-BUILD_TARGET_NATIVE="libweb_engine web_render libnweb_render chrome_crashpad_handler"
+BUILD_TARGET_NATIVE="libarkweb_engine libarkweb_render arkweb_crashpad_handler libffmpeg"
 BUILD_TARGET_BROWSER_SERVICE="ohos_nweb_ex/browser_service"
 BUILD_TARGET_BROWSER_SERVICE_HAR="browser_service_har"
 TEXT_BOLD="\033[1m"
@@ -75,6 +76,7 @@ with_nweb_ex=0
 build_sysroot="use_ohos_sdk_sysroot=false"
 build_asan=0
 use_thin_lto=0
+is_heif_support="heif_support=\"true\""
 
 if [ -d "${ROOT_DIR}/ohos_nweb_ex" ]; then
   with_nweb_ex=1
@@ -116,12 +118,14 @@ while [ "$1" != "" ]; do
       buildarg_musl="use_musl=true"
       build_dir="out/rk3568/"
       build_product_name="product_name=\"rk3568\""
+      is_heif_support="heif_support=\"false\""
     ;;
     "rk3568_64")
       buildarg_cpu="target_cpu=\"arm64\""
       buildarg_musl="use_musl=true"
       build_dir="out/rk3568_64/"
       build_product_name="product_name=\"rk3568\""
+      is_heif_support="heif_support=\"false\""
     ;;
     "x86_64")
       buildarg_cpu="target_cpu=\"x64\""
@@ -182,6 +186,9 @@ fi
 case "${build_target}" in
   "w"|"${BUILD_TARGET_WEBVIEW}")
     build_target="${BUILD_TARGET_WEBVIEW}"
+    ;;
+  "v"|"${BUILD_TARGET_V8}")
+    build_target="${BUILD_TARGET_V8}"
     ;;
   "b"|"${BUILD_TARGET_BROWSERSHELL}")
     build_target="${BUILD_TARGET_BROWSERSHELL}"
@@ -324,13 +331,14 @@ else
 fi
 
 cd src
+source prepare.sh $build_dir
 
 time_start_for_build=$(date +%s)
 time_start_for_gn=$time_start_for_build
 
 if [ $buildgn = 1 ]; then
   echo "generating args list: $buildargs $GN_ARGS"
-  third_party/depot_tools/gn gen $build_dir --export-compile-commands --args="$buildargs $buildarg_cpu $buildarg_musl $build_sysroot $build_product_name $GN_ARGS symbol_level=$SYMBOL_LEVEL"
+  third_party/depot_tools/gn gen $build_dir --export-compile-commands --args="$buildargs $buildarg_cpu $buildarg_musl $build_sysroot $build_product_name $is_heif_support $GN_ARGS symbol_level=$SYMBOL_LEVEL"
 fi
 time_end_for_gn=$(date +%s)
 

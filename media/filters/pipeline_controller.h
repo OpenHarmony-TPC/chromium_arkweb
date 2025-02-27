@@ -154,6 +154,11 @@ class MEDIA_EXPORT PipelineController {
   // OnceCallback, and doesn't play nicely with gmock.
   void FireOnTrackChangeCompleteForTesting(State set_to);
 
+#if defined(OHOS_CUSTOM_VIDEO_PLAYER)
+  void SetMediaPlayerState(bool is_suspend, int suspend_type = 0);
+  void SetPlaybackRateWithReason(double playback_rate, ActionReason reason);
+#endif // OHOS_CUSTOM_VIDEO_PLAYER
+
  private:
   // Attempts to make progress from the current state to the target state.
   void Dispatch();

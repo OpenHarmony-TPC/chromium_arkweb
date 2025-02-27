@@ -195,6 +195,7 @@ class ClipboardOHOSInternal {
       // Notice: Because pasteboard observer dont notify cross device.
       // So now we always get data from system clipboard instead of cache data.
       state_ = ClipboardState::kUpToDate;
+      ClipboardOhosReadData::SetConvertHtmlCallback(convert_html_callback_);
       read_data_ = std::make_shared<ClipboardOhosReadData>(record_vector);
       return;
     }
@@ -400,7 +401,7 @@ class ClipboardOHOSInternal {
     result_vector.push_back(record);
     OhosAdapterHelper::GetInstance().GetPasteBoard().SetPasteData(result_vector
 #if defined(OHOS_CLIPBOARD)
-                                                                  ,
+,
                                                                   ChangeCopyOptionMode(copy_option)
 #endif // defined(OHOS_CLIPBOARD)
     );
@@ -434,6 +435,10 @@ class ClipboardOHOSInternal {
                                                      data->size(format));
   }
 
+  static void SetSpanstringConvertHtml(std::shared_ptr<OHOS::NWeb::NWebSpanstringConvertHtmlCallback> callback) {
+    convert_html_callback_ = callback;
+  }
+
  private:
   // True if the ClipboardData has format |format|.
   bool HasFormat(ClipboardInternalFormat format) const {
@@ -448,8 +453,8 @@ class ClipboardOHOSInternal {
       return false;
     }
     PasteRecordVector record_vector = read_data_->GetPasteRecordVector();
-    if (record_vector.size() > 0) {
-      auto& record = record_vector[0];
+    const std::string SPAN_STRING_TAG = "openharmony.styled-string";
+    for (auto& record : record_vector) {
       std::shared_ptr<std::string> html = record->GetHtmlText();
       std::shared_ptr<std::string> text = record->GetPlainText();
       std::shared_ptr<ClipBoardImageDataAdapterImpl> imgData 
@@ -457,6 +462,10 @@ class ClipboardOHOSInternal {
 
       bool imgFlag = false;
       imgFlag = record->GetImgData(imgData);
+      std::shared_ptr<PasteCustomData> pasteCustomData = record->GetCustomData();
+      if (pasteCustomData && (pasteCustomData->find(SPAN_STRING_TAG) != pasteCustomData->end())) {
+        allFormat |= static_cast<int>(ClipboardInternalFormat::kHtml);
+      }
       if (html) {
         allFormat |= static_cast<int>(ClipboardInternalFormat::kHtml);
       }
@@ -496,7 +505,10 @@ class ClipboardOHOSInternal {
   ClipboardState state_ = ClipboardState::kOutOfDate;
   std::shared_ptr<ClipboardOhosReadData> read_data_ = nullptr;
   std::unique_ptr<OHOS::NWeb::OhosResourceAdapter> resource_adapter_ = nullptr;
+  static std::shared_ptr<OHOS::NWeb::NWebSpanstringConvertHtmlCallback> convert_html_callback_;
 };
+
+std::shared_ptr<OHOS::NWeb::NWebSpanstringConvertHtmlCallback> ClipboardOHOSInternal::convert_html_callback_ = nullptr;
 
 class ClipboardDataBuilder {
  public:
@@ -514,7 +526,7 @@ class ClipboardDataBuilder {
 
   static void WriteText(const char* text_data, size_t text_len
 #if defined(OHOS_CLIPBOARD)
-                        ,
+,
                         const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
   ) {
@@ -532,7 +544,7 @@ class ClipboardDataBuilder {
                         const char* url_data,
                         size_t url_len
 #if defined(OHOS_CLIPBOARD)
-                        ,
+,
                         const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
                         ) {
@@ -593,6 +605,11 @@ ClipboardOHOS* ClipboardOHOS::GetForCurrentThread() {
   }
 
   return static_cast<ClipboardOHOS*>(clipboard);
+}
+
+// static
+void ClipboardOHOS::SetConvertHtmlCallback(std::shared_ptr<OHOS::NWeb::NWebSpanstringConvertHtmlCallback> callback) {
+  ClipboardOHOSInternal::SetSpanstringConvertHtml(callback);
 }
 
 // ClipboardOHOS implementation.
@@ -834,13 +851,13 @@ void ClipboardOHOS::WritePortableAndPlatformRepresentations(
 
 void ClipboardOHOS::WriteText(const char* text_data, size_t text_len
 #if defined(OHOS_CLIPBOARD)
-                              ,
+,
                               const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
 ) {
   ClipboardDataBuilder::WriteText(text_data, text_len
 #if defined(OHOS_CLIPBOARD)
-                                  ,
+,
                                   copy_option
 #endif // defined(OHOS_CLIPBOARD)
   );
@@ -851,13 +868,13 @@ void ClipboardOHOS::WriteHTML(const char* markup_data,
                               const char* url_data,
                               size_t url_len
 #if defined(OHOS_CLIPBOARD)
-                              ,
+,
                               const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
                               ) {
   ClipboardDataBuilder::WriteHTML(markup_data, markup_len, url_data, url_len
 #if defined(OHOS_CLIPBOARD)
-                                  ,
+,
                                   copy_option
 #endif // defined(OHOS_CLIPBOARD)
   );
@@ -868,13 +885,13 @@ void ClipboardOHOS::WriteUnsanitizedHTML(const char* markup_data,
                                          const char* url_data,
                                          size_t url_len
 #if defined(OHOS_CLIPBOARD)
-                                         ,
+,
                                          const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
                                          ) {
   ClipboardDataBuilder::WriteHTML(markup_data, markup_len, url_data, url_len
 #if defined(OHOS_CLIPBOARD)
-                                  ,
+,
                                   copy_option
 #endif // defined(OHOS_CLIPBOARD)
   );
@@ -891,7 +908,7 @@ void ClipboardOHOS::WriteBookmark(const char* title_data,
                                   const char* url_data,
                                   size_t url_len
 #if defined(OHOS_CLIPBOARD)
-                                  ,
+,
                                   const CopyOptionMode copy_option
 #endif // defined(OHOS_CLIPBOARD)
                                   ) {}

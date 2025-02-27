@@ -46,6 +46,8 @@ class MEDIA_EXPORT OHOSMediaPlayerBridge {
     virtual void OnPlayerInterruptEvent(int32_t value) = 0;
 
     virtual void OnAudioStateChanged(bool isAudible) = 0;
+
+    virtual void OnPlayerSeekBack(base::TimeDelta back_time) = 0;
   };
 
   enum MediaErrorType {
@@ -88,6 +90,7 @@ class MEDIA_EXPORT OHOSMediaPlayerBridge {
   void OnVideoSizeChanged(int32_t width, int32_t height);
   void OnPlayerInterruptEvent(int32_t value);
   void SeekDone();
+  void OnSeekBack(base::TimeDelta extra_time);
 
  private:
   int32_t SetFdSource(const std::string& path);
@@ -103,15 +106,17 @@ class MEDIA_EXPORT OHOSMediaPlayerBridge {
   std::shared_ptr<OHOS::NWeb::IConsumerSurfaceAdapter> consumer_surface_ =
       nullptr;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
-  Client* client_;
+  raw_ptr<Client> client_;
   GURL url_;
   bool prepared_;
   bool pending_play_;
+  bool seek_complete_;
   bool should_seek_on_prepare_;
   float volume_;
   float current_volume_ = 0;
   bool is_muted_ = false;
   bool should_set_volume_on_prepare_;
+  bool pause_when_prepared_ = false;
   base::TimeDelta duration_;
   base::TimeDelta pending_seek_;
   OHOS::NWeb::PlayerAdapter::PlayerStates player_state_;
@@ -119,12 +124,14 @@ class MEDIA_EXPORT OHOSMediaPlayerBridge {
   // MediaPlayer is unable to handle Seek request when playback end. We should
   // pending the SeekTo request until its playback state changed.
   bool seeking_on_playback_complete_;
+  base::TimeDelta extra_time_;
+  // It is a sign of rollback and SEEK_CLOSEST failure.
+  bool seeking_back_complete_;
 #if defined(RK3568)
   bool is_hls_;
 #endif
 
   base::WeakPtrFactory<OHOSMediaPlayerBridge> weak_factory_{this};
-  int32_t seek_done_count_ = 0;
 };
 }  // namespace media
 

@@ -53,7 +53,8 @@ class AudioRendererOptions : public AudioRendererOptionsAdapter {
 
 class AudioRendererCallback : public AudioRendererCallbackAdapter {
  public:
-  AudioRendererCallback(content::MediaSessionImpl* media_session);
+  AudioRendererCallback(content::MediaSessionImpl* media_session,
+                        const scoped_refptr<base::SingleThreadTaskRunner>& task_runner);
   ~AudioRendererCallback();
   void OnSuspend() override;
   void OnResume() override;
@@ -62,8 +63,24 @@ class AudioRendererCallback : public AudioRendererCallbackAdapter {
 
  private:
   content::MediaSessionImpl* media_session_;
+  scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_ = nullptr;
   time_t intervalSinceLastSuspend_ = 0.0;
   bool suspendFlag_ = false;
+};
+
+class AudioOutputChangeCallback : public AudioOutputChangeCallbackAdapter {
+ public:
+  AudioOutputChangeCallback(
+      const scoped_refptr<base::SingleThreadTaskRunner>& task_runner,
+      AudioParameters params,
+      bool isCommunication);
+  ~AudioOutputChangeCallback();
+  void OnOutputDeviceChange(int32_t reason) override;
+
+ private:
+  scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_ = nullptr;
+  AudioParameters params_;
+  bool isCommunication_ = false;
 };
 
 class OHOSAudioOutputStream : public AudioOutputStream {
@@ -118,7 +135,7 @@ class OHOSAudioOutputStream : public AudioOutputStream {
 
   void Prepare(base::WeakPtr<content::MediaSessionImpl> weakMediaSession);
 
-  OHOSAudioManager* manager_;
+  raw_ptr<OHOSAudioManager> manager_;
 
   AudioParameters parameters_;
 
@@ -126,7 +143,7 @@ class OHOSAudioOutputStream : public AudioOutputStream {
   // reallocating the memory every time.
   std::unique_ptr<AudioBus> audio_bus_;
 
-  AudioSourceCallback* callback_ = nullptr;
+  raw_ptr<AudioSourceCallback> callback_ = nullptr;
 
   double volume_ = 1.0;
 
@@ -162,6 +179,8 @@ class OHOSAudioOutputStream : public AudioOutputStream {
   bool isSuspended_ = false;
 
   scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_;
+
+  std::shared_ptr<AudioOutputChangeCallback> outputChangeCallback_ = nullptr;
 };
 
 }  // namespace media

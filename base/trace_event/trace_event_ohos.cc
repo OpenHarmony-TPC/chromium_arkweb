@@ -22,17 +22,17 @@
 #include "ohos_adapter_helper.h"
 
 using OHOS::NWeb::OhosAdapterHelper;
-constexpr uint64_t HITRACE_TAG_NWEB = (1ULL << 24); // nweb trace tag
-constexpr uint64_t HITRACE_TAG_OHOS = (1ULL << 30); // ohos trace tag
+constexpr char DEBUG_CATEGORY[] = "disabled-";
+static bool traceDebugStatus = false;
+
 class TraceObserver : public OHOS::NWeb::SystemPropertiesObserver {
   public:
     TraceObserver() = default;
     ~TraceObserver() override = default;
 
     void PropertiesUpdate(const char* value) override {
-      auto status = std::atol(value);
-      isHiTraceEnable = status & HITRACE_TAG_NWEB;
-      isOHOSHiTraceEnable = status & HITRACE_TAG_OHOS;
+      traceDebugStatus = OhosAdapterHelper::GetInstance().GetSystemPropertiesInstance()
+                         .GetTraceDebugEnable();
     }
 };
 std::unique_ptr<TraceObserver> traceObserver;
@@ -40,39 +40,42 @@ void StartObserveTraceEnable() {
   traceObserver = std::make_unique<TraceObserver>();
   auto& system_properties_adapter = OHOS::NWeb::OhosAdapterHelper::GetInstance()
                                     .GetSystemPropertiesInstance();
-  system_properties_adapter.AttachSysPropObserver(OHOS::NWeb::PropertiesKey::PROP_HITRACE_ENABLEFLAGS,
+  system_properties_adapter.AttachSysPropObserver(OHOS::NWeb::PropertiesKey::PROP_DEBUG_TRACE,
     traceObserver.get());
-}
 
-bool IsBytraceEnable() {
-  return isHiTraceEnable;
+  traceDebugStatus = OhosAdapterHelper::GetInstance().GetSystemPropertiesInstance()
+                      .GetTraceDebugEnable();
 }
 
 bool IsOHOSBytraceEnable() {
-  return isOHOSHiTraceEnable;
+  return OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
+         .IsHiTraceEnable() || OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
+         .IsACETraceEnable();
+}
+
+static bool IsDebugCategory(const char* a, const char* b) {
+  for (; *a != '\0' && *b != '-'; ++a, ++b) {
+    if (*a != *b) {
+      return false;
+    }
+  }
+  return *a == *b;
 }
 
 bool IsCategoryEnable(const char *category_group) {
-  bool traceDebugStatus = false;
-  traceDebugStatus = OhosAdapterHelper::GetInstance()
-                                        .GetSystemPropertiesInstance()
-                                        .GetTraceDebugEnable();
-  if (traceDebugStatus) {
-    return true;
+  if (!OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
+                      .IsHiTraceEnable()) {
+    return false;
   }
 
   if (category_group == nullptr) {
     return false;
   }
 
-  if (strlen(category_group) < strlen("disabled-by-default-")) {
+  if (traceDebugStatus || !IsDebugCategory(category_group, DEBUG_CATEGORY)) {
     return true;
   }
-
-  if (!strncmp(category_group, "disabled-by-default-", strlen("disabled-by-default-"))) {
-    return false;
-  }
-  return true;
+  return false;
 }
 
 BytraceArg GetArg(double i) {
@@ -108,93 +111,59 @@ std::string GetStringWithArgs(const std::string& name) {
 }
 
 void StartBytrace(const std::string& value) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartTrace(
-        value);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartTrace(value);
 }
 
 void FinishBytrace() {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().FinishTrace();
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().FinishTrace();
 }
 
 void StartOHOSBytrace(const std::string& value) {
-  if (IsOHOSBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartOHOSTrace(
-        value);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartOHOSTrace(value);
 }
 
 void FinishOHOSBytrace() {
-  if (IsOHOSBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().FinishOHOSTrace();
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().FinishOHOSTrace();
 }
 
 void StartAsyncBytrace(const std::string& value, int32_t taskId) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance()
-        .GetHiTraceAdapterInstance()
-        .StartAsyncTrace(value, taskId);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
+    .StartAsyncTrace(value, taskId);
 }
 
 void FinishAsyncBytrace(const std::string& value, int32_t taskId) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance()
-        .GetHiTraceAdapterInstance()
-        .FinishAsyncTrace(value, taskId);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance()
+    .FinishAsyncTrace(value, taskId);
 }
 
 void CountBytrace(const std::string& name, int64_t count) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().CountTrace(
-        name, count);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().CountTrace(name, count);
 }
 
 void CountOHOSBytrace(const std::string& name, int64_t count) {
-  if (IsOHOSBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().CountOHOSTrace(
-        name, count);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().CountOHOSTrace(name, count);
 }
 
 ScopedBytrace::ScopedBytrace(const std::string& proc) : proc_(proc) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartTrace(
-        proc_);
-  }
 }
 
 void ScopedBytrace::SendTraceEvent(const std::string& data) {
-  if (IsBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartTrace(data);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartTrace(data);
 }
 
 ScopedBytrace::ScopedBytrace() {}
 
 ScopedBytrace::~ScopedBytrace() {
-  if (IsBytraceEnable()) {
+  if (IsCategoryEnable(!proc_.empty() ? proc_.c_str() : nullptr)) {
     OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().FinishTrace();
   }
 }
 
 ScopedOHOSBytrace::ScopedOHOSBytrace(const std::string& proc) : proc_(proc) {
-  if (IsOHOSBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartOHOSTrace(
-        proc_);
-  }
 }
 
 void ScopedOHOSBytrace::SendOHOSTraceEvent(const std::string& data) {
-  if (IsOHOSBytraceEnable()) {
-    OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartOHOSTrace(data);
-  }
+  OhosAdapterHelper::GetInstance().GetHiTraceAdapterInstance().StartOHOSTrace(data);
 }
 
 ScopedOHOSBytrace::ScopedOHOSBytrace() {}

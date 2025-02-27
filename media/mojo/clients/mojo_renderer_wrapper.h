@@ -45,6 +45,7 @@ class MojoRendererWrapper : public Renderer {
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
   void SetMuted(bool muted) override;
   void SetSurfaceId(int surface_id, const gfx::Rect& rect) override;
+  void SetMediaPlayerState(bool is_suspend, int suspend_type) override;
   void SetMediaSourceList(
       const std::vector<MediaSourceInfo>& source_infos) override;
   void SetMediaControls(bool show_media_controls,
@@ -54,6 +55,8 @@ class MojoRendererWrapper : public Renderer {
       base::flat_map<std::string, std::string> attributes) override;
   void SetReferrer(const std::string& referrer) override;
   void SetIsAudio(bool is_audio) override;
+  void SetPlaybackRateWithReason(double playback_rate,
+      ActionReason reason) override;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
  private:

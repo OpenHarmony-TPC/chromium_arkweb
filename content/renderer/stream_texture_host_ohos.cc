@@ -22,6 +22,7 @@
 #include "gpu/ipc/common/gpu_channel.mojom.h"
 #include "gpu/ipc/common/vulkan_ycbcr_info.h"
 #include "ipc/ipc_message_macros.h"
+#include "ipc/ipc_mojo_bootstrap.h"
 
 namespace content {
 
@@ -55,6 +56,8 @@ bool StreamTextureHost::BindToCurrentThread(Listener* listener) {
   if (!pending_texture_)
     return false;
 
+  IPC::ScopedAllowOffSequenceChannelAssociatedBindings allow_off_thread_binding;
+
   texture_remote_.Bind(std::move(pending_texture_));
   texture_remote_->StartListening(receiver_.BindNewEndpointAndPassRemote());
   texture_remote_.set_disconnect_handler(
@@ -74,6 +77,7 @@ void StreamTextureHost::OnFrameWithInfoAvailable(
     const gfx::Size& coded_size,
     const gfx::Rect& visible_rect,
     absl::optional<gpu::VulkanYCbCrInfo> ycbcr_info) {
+  TRACE_EVENT0("base", "StreamTextureHost::OnFrameWithInfoAvailable.");
   if (listener_) {
     listener_->OnFrameWithInfoAvailable(mailbox, coded_size, visible_rect,
                                         ycbcr_info);
@@ -81,7 +85,7 @@ void StreamTextureHost::OnFrameWithInfoAvailable(
 }
 
 void StreamTextureHost::OnFrameAvailable() {
-  TRACE_EVENT0("base", "StreamTextureHost::OnFrameAvailable");
+  TRACE_EVENT0("base", "StreamTextureHost::OnFrameAvailable.");
   if (listener_)
     listener_->OnFrameAvailable();
 }

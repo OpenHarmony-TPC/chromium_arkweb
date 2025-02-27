@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,6 +42,7 @@
 
 namespace OHOS::NWeb {
 class JavaScriptResultCallbackImpl;
+class CefPdfValueCallbackImpl;
 class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
  public:
   NWebDelegate(int argc, const char* argv[]);
@@ -51,12 +52,19 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
             void* window,
             bool popup
 #if defined(OHOS_EX_DOWNLOAD)
-            , uint32_t nweb_id
+            ,
+            uint32_t nweb_id
 #endif
 #if BUILDFLAG(IS_OHOS)
-            , bool incognito_mode
+            ,
+            bool incognito_mode
 #endif
-            );
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+            ,
+            const std::string& shared_render_process_token
+#endif
+
+  );
   void OnWindowShow() override;
   void OnWindowHide() override;
   void OnOnlineRenderToForeground() override;
@@ -70,8 +78,6 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void RegisterAccessibilityEventListener(
       std::shared_ptr<NWebAccessibilityEventCallback>
           accessibility_event_listener) override;
-  void RegisterAccessibilityIdGenerator(
-      const AccessibilityIdGenerateFunc accessibilityIdGenerator) const override;
   void RegisterReleaseSurfaceListener(
       std::shared_ptr<NWebReleaseSurfaceCallback> releaseSurfaceListener)
       override;
@@ -94,6 +100,9 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void Resize(uint32_t width,
               uint32_t height,
               bool isKeyboard = false) override;
+#if defined(OHOS_INPUT_EVENTS)
+  void ResizeVisibleViewport(uint32_t width, uint32_t height, bool isKeyboard = false) override;
+#endif
   void OnTouchPress(int32_t id, double x, double y, bool from_overlay) override;
   void OnTouchRelease(int32_t id,
                       double x,
@@ -163,18 +172,23 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       const std::vector<std::string>& methodName,
       std::vector<std::function<char*(std::vector<std::vector<uint8_t>>&,
                                       std::vector<size_t>&)>>&& callback,
-      bool isAsync)
-      override;
+      bool isAsync, const std::string& permission) override;
   void UnRegisterNativeArkJSFunction(const char* objName) override;
   void RegisterNativeLoadStartCallback(
       std::function<void(void)>&& callback) override;
   void RegisterNativeLoadEndCallback(
       std::function<void(void)>&& callback) override;
 
+#ifdef OHOS_ARKWEB_ADBLOCK
+  void UpdateAdblockEasyListRules(
+      long adBlockEasyListVersion) override;
+#endif
+
   void RegisterArkJSfunction(const std::string& object_name,
                              const std::vector<std::string>& method_list,
                              const std::vector<std::string>& async_method_list,
-                             const int32_t object_id) const override;
+                             const int32_t object_id,
+                             const std::string& permission) const override;
 
   void UnregisterArkJSfunction(
       const std::string& object_name,
@@ -223,6 +237,14 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   bool IsFileProtocol(const GURL& gurl);
   bool IsUrlFileExist(const GURL& gurl, const std::string& url);
 
+  uint32_t create_pdf_value_callback_id_ = 0;
+  std::unordered_map<uint32_t, CefRefPtr<CefPdfValueCallbackImpl>>
+      create_pdf_value_callback_map_;
+  void EraseCreatePDFCallbackImpl(uint32_t id) override;
+  void ExecuteCreatePDFExt(
+      std::shared_ptr<NWebPDFConfigArgs> pdfConfig,
+      std::shared_ptr<NWebArrayBufferValueCallback> callback) override;
+
   void ExecuteJavaScriptExt(
       const int fd,
       const size_t scriptLength,
@@ -230,7 +252,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       bool extention) override;
 
   int ScaleGestureChange(double scale, double centerX, double centerY) const override;
-  
+
 #if defined(OHOS_MSGPORT)
   uint32_t runJSCallbackId_ = 0;
   std::unordered_map<uint32_t, CefRefPtr<JavaScriptResultCallbackImpl>> runJSCallbackMap_;
@@ -275,6 +297,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   std::shared_ptr<NWebDragData> GetOrCreateDragData() override;
   void ClearDragData() const;
   std::string ohos_temp_dir_;
+  bool DarkModeEnabled() override;
 #endif  // OHOS_DRAG_DROP
   void GetImages(std::shared_ptr<NWebBoolValueCallback> callback) override;
   void RemoveCache(bool include_disk_files) override;
@@ -326,11 +349,16 @@ void PrecompileJavaScript(const std::string& url,
                           const std::string& script,
                           std::shared_ptr<CacheOptions>& cacheOptions,
                           std::shared_ptr<NWebMessageValueCallback> callback) override;
+void UpdateNativeEmbedInfo(std::shared_ptr<NWebNativeEmbedDataInfo> info) override;
+bool HitNativeArea(double x, double y);
 #endif
 
 #ifdef OHOS_PAGE_UP_DOWN
   void PageUp(bool top) override;
   void PageDown(bool bottom) override;
+#ifdef OHOS_GET_SCROLL_OFFSET
+  void GetScrollOffset(float* offset_x, float* offset_y) override;
+#endif
 #endif  // #ifdef OHOS_PAGE_UP_DOWN
 
 #if defined(OHOS_INPUT_EVENTS)
@@ -340,7 +368,36 @@ void PrecompileJavaScript(const std::string& url,
   void ScrollBy(float delta_x, float delta_y) override;
   void ScrollByRefScreen(float delta_x, float delta_y, float vx, float vy) override;
   void SlideScroll(float vx, float vy) override;
+  bool WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
+                       const std::vector<int32_t>& pressedCodes) override;
+  void WebSendMouseWheelEvent(double x,
+                              double y,
+                              double deltaX,
+                              double deltaY,
+                              const std::vector<int32_t>& pressedCodes) override;
+  void WebSendTouchpadFlingEvent(double x,
+                                 double y,
+                                 double vx,
+                                 double vy,
+                                 const std::vector<int32_t>& pressedCodes) override;
+  void ScrollToWithAnime(float x, float y, int32_t duration) override;
+  void ScrollByWithAnime(float delta_x, float delta_y, int32_t duration) override;
+#if defined(OHOS_GET_SCROLL_OFFSET)
+  void GetOverScrollOffset(float* offset_x, float* offset_y) override;
+#endif
+  bool ScrollByWithResult(float delta_x, float delta_y) override;
+  void WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent) override;
 #endif  // defined(OHOS_INPUT_EVENTS)
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  void EnableAdsBlock(bool enable) override;
+  bool IsAdsBlockEnabled() override;
+  bool IsAdsBlockEnabledForCurPage() override;
+#endif
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  void ProcessAutofillCancel(const std::string& fillContent) override;
+#endif
 
 #ifdef OHOS_EX_PASSWORD
   void SetSavePasswordAutomatically(bool enable) override;
@@ -398,10 +455,6 @@ void PrecompileJavaScript(const std::string& url,
   void SetVirtualPixelRatio(float ratio) override;
 #endif // defined(OHOS_SCREEN_ROTATION)
 
-#if BUILDFLAG(IS_OHOS)
-  float GetBaseDisplayRatio() override;
-#endif
-
 #ifdef OHOS_POST_URL
   int PostUrl(const std::string& url, const std::vector<char>& postData) override;
 #endif // defined(OHOS_POST_URL)
@@ -410,7 +463,9 @@ void PrecompileJavaScript(const std::string& url,
  double GetBrowserZoomLevel() override;
 #endif
   void SetAccessibilityState(cef_state_t accessibility_state) override;
-  void ExecuteAction(int64_t accessibilityId, uint32_t action) const override;
+  void ExecuteAction(int64_t accessibilityId, uint32_t action) override;
+  void ExecuteAction(int64_t accessibilityId, uint32_t action,
+      const std::map<std::string, std::string>& actionArguments) override;
   std::shared_ptr<NWebAccessibilityNodeInfo>
   GetFocusedAccessibilityNodeInfo(int64_t accessibilityId,
                                   bool isAccessibilityFocus) override;
@@ -419,6 +474,9 @@ void PrecompileJavaScript(const std::string& url,
   std::shared_ptr<NWebAccessibilityNodeInfo>
   GetAccessibilityNodeInfoByFocusMove(int64_t accessibilityId,
                                       int32_t direction) override;
+  void RefreshAccessibilityManagerClickEvent() override;
+  void SetAutofillCallback(std::shared_ptr<NWebMessageValueCallback> callback) override;
+  void FillAutofillData(std::shared_ptr<NWebMessage> data) override;
 
 #if defined(OHOS_WEBRTC)
   void StartCamera() override;
@@ -432,6 +490,16 @@ void PrecompileJavaScript(const std::string& url,
 
 #if defined(OHOS_SECURE_JAVASCRIPT_PROXY)
   std::string GetLastJavascriptProxyCallingFrameUrl() override;
+#endif
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  void EnableWholeWebPageDrawing() override;
+
+  bool WebPageSnapshot(const char* id,
+                       PixelUnit type,
+                       int width,
+                       int height,
+                       const WebSnapshotCallback callback) override;
 #endif
 
 #ifdef OHOS_ITP
@@ -448,6 +516,33 @@ void PrecompileJavaScript(const std::string& url,
   void OnSafeInsetsChange(int left, int top, int right, int bottom) override;
 #endif
 
+void NotifyForNextTouchEvent() override;
+
+#ifdef OHOS_AI
+  void OnTextSelected() override;
+#endif
+
+#ifdef OHOS_URL_TRUST_LIST
+  int SetUrlTrustListWithErrMsg(
+    const std::string& urlTrustList, std::string& detailErrMsg) override;
+#endif
+
+#ifdef OHOS_NETWORK_LOAD
+  void SetPathAllowingUniversalAccess(
+      const std::vector<std::string>& pathList) override;
+#endif
+
+#ifdef OHOS_MIXED_CONTENT
+  void EnableMixedContentAutoUpgrades(bool enable) override;
+  bool IsMixedContentAutoUpgradesEnabled() override;
+#endif
+
+#ifdef OHOS_BFCACHE
+  void SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) override;
+#endif
+
+   void SetPopupSurface(void* popupSurface) override;
+
  public:
   int argc_;
   const char** argv_;
@@ -455,28 +550,42 @@ void PrecompileJavaScript(const std::string& url,
  private:
   void RunMessageLoop();
 
-
   void InitializeCef(std::string url,
                      bool is_enhance_surface,
                      void* window,
                      bool popup
 #if defined(OHOS_EX_DOWNLOAD)
-                     , uint32_t nweb_id
+                     ,
+                     uint32_t nweb_id
 #endif
 #if defined(OHOS_INCOGNITO_MODE)
-                     , bool incognito_mode
+                     ,
+                     bool incognito_mode
 #endif
-                     );
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+                     ,
+                     const std::string& shared_render_process_token
+#endif
+
+  );
 
   const CefRefPtr<CefBrowser> GetBrowser() const;
   void RequestVisitedHistory();
   bool HasBackgroundColorWithInit(int32_t& backgroundColor);
   void InitRichtextIdentifier();
 #if defined(OHOS_API_INIT_WEB_ENGINE)
-  void OnContextInitializeComplete(const std::string& url, void* windows
+  void OnContextInitializeComplete(
+      const std::string& url,
+      void* windows
 #if defined(OHOS_INCOGNITO_MODE)
-      , bool incognito_mode
+      ,
+      bool incognito_mode
 #endif
+#if defined(OHOS_RENDER_PROCESS_SHARE)
+      ,
+      const std::string& shared_render_process_token
+#endif
+
   );
 #endif  // defined(OHOS_API_INIT_WEB_ENGINE)
 #if defined(OHOS_MSGPORT)
@@ -492,8 +601,25 @@ void PrecompileJavaScript(const std::string& url,
   void RegisterOnCreateNativeMediaPlayerListener(
       std::shared_ptr<NWebCreateNativeMediaPlayerCallback> callback) override;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+  std::shared_ptr<NWebCustomKeyboardHandlerImpl> GetCustomKeyboardHandler() const override {
+    if (render_handler_) {
+      return render_handler_->GetCustomKeyboardHandler();
+    }
+    return nullptr;
+  }
+
+  bool IsCustomKeyboard() const override {
+    if (render_handler_) {
+      return render_handler_->IsCustomKeyboard();
+    }
+    return true;
+  }
+
+  void SendAccessibilityHoverEvent(int x, int y) override;
+
  private:
-  content::BrowserAccessibilityManagerOHOS* GetAccessibilityManager() const;
+  content::BrowserAccessibilityManagerOHOS* GetAccessibilityManager();
   void AddAccessibilityNodeInfoAttributes(
       std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
       const content::BrowserAccessibilityOHOS* node) const;
@@ -504,9 +630,11 @@ void PrecompileJavaScript(const std::string& url,
     std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
     const content::BrowserAccessibilityOHOS* node) const;
   std::shared_ptr<NWebAccessibilityNodeInfo>
-  PopulateAccessibilityNodeInfo(const content::BrowserAccessibilityOHOS* node) const;
+    PopulateAccessibilityNodeInfo(const content::BrowserAccessibilityOHOS* node);
   void AddAccessibilityNodeInfoActions(
-    std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo) const;
+    std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
+    const content::BrowserAccessibilityOHOS* node) const;
+  float GetViewPointHeight() const;
 
   float zoom_in_factor_ = 1.25f;
   float zoom_out_factor_ = 0.8f;
@@ -532,11 +660,15 @@ void PrecompileJavaScript(const std::string& url,
   uint32_t width_ = 0;
   uint32_t height_ = 0;
 #endif  // defined(OHOS_COMPOSITE_RENDER)
+#if defined(OHOS_INPUT_EVENTS)
+  uint32_t visible_width_ = 0;
+  uint32_t visible_height_ = 0;
+#endif
 
   uint32_t nweb_id_;
 
 #if BUILDFLAG(IS_OHOS)
-  float base_display_ratio_ = 1.f;
+  std::map<std::string, std::shared_ptr<NWebNativeEmbedDataInfo>> embedDataInfo_;
 #endif
 
   bool is_enhance_surface_ = false;
@@ -546,6 +678,8 @@ void PrecompileJavaScript(const std::string& url,
   bool accessibility_state_ = false;
   bool is_discarded_ = false;
   std::string richtext_data_str_ = "";
+  // The number of fingers that trigger the down event
+  int  pressing_num_ = 0;
   std::shared_ptr<NWebAccessibilityEventCallback>
       accessibility_event_listener_ = nullptr;
 };

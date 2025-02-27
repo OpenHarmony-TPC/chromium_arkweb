@@ -35,6 +35,10 @@ target(link_target_type, "renderer") {
     "//content/renderer:content_security_policy_util_fuzzer",
   ]
 
+  if(ohos_unittests){
+    visibility += ["//gpu:gpu_unittests",]
+  }
+
   sources = [
     "accessibility/aom_content_ax_tree.cc",
     "accessibility/aom_content_ax_tree.h",
@@ -202,6 +206,8 @@ target(link_target_type, "renderer") {
       "//ohos_glue:ohos_adapter_glue_source",
     ]
     sources += [
+      "host_proxy.cc",
+      "host_proxy.h",
       "media/ohos/native_renderer_client.cc",
       "media/ohos/native_renderer_client.h",
       "media/ohos/native_renderer_client_factory.cc",
@@ -216,8 +222,8 @@ target(link_target_type, "renderer") {
       "media/ohos/ohos_media_player_renderer_client_factory.h",
       "media/renderer_web_native_delegate.cc",
       "media/renderer_web_native_delegate.h",
-      "render_remote_proxy.cc",
-      "render_remote_proxy.h",
+      "render_remote_proxy_ohos.cc",
+      "render_remote_proxy_ohos.h",
       "stream_texture_host_ohos.cc",
       "stream_texture_host_ohos.h",
     ]

@@ -1934,9 +1934,14 @@ base::TimeDelta LayerTreeImpl::CurrentBeginFrameInterval() const {
 const gfx::Rect LayerTreeImpl::ViewportRectForTilePriority() const {
   const gfx::Rect& viewport_rect_for_tile_priority =
       host_impl_->viewport_rect_for_tile_priority();
-  return viewport_rect_for_tile_priority.IsEmpty()
-             ? GetDeviceViewport()
-             : viewport_rect_for_tile_priority;
+  if (viewport_rect_for_tile_priority.IsEmpty()) {
+    const gfx::Rect& deviceViewPort = GetDeviceViewport();
+    if (deviceViewPort.height() > MAX_VIEWPORT_HEIGHT) {
+      return gfx::Rect(0, 0, deviceViewPort.width(), MAX_VIEWPORT_HEIGHT);
+    }
+    return deviceViewPort;
+  }
+  return viewport_rect_for_tile_priority;
 }
 
 std::unique_ptr<ScrollbarAnimationController>
@@ -2474,23 +2479,6 @@ LayerImpl* LayerTreeImpl::FindLayerThatIsHitByPoint(
   return state.closest_match;
 }
 
-struct HitTestFunctorNative {
-  bool operator()(LayerImpl* layer) const { return layer->ShouldInterceptTouchEvent(); }
-};
-
-LayerImpl* LayerTreeImpl::FindLayerThatIsHitByPointNative(
-    const gfx::PointF& screen_space_point) {
-  if (layer_list_.empty())
-    return nullptr;
-  if (!UpdateDrawProperties())
-    return nullptr;
-  FindClosestMatchingLayerState state;
-  FindClosestMatchingLayer(screen_space_point, layer_list_[0].get(),
-                           HitTestFunctorNative(),
-                           &state);
-  return state.closest_match;
-}
-
 struct FindTouchEventLayerFunctor {
   bool operator()(LayerImpl* layer) const {
     if (!layer->has_touch_action_regions())
@@ -3019,6 +3007,10 @@ void LayerTreeImpl::RequestImplSideInvalidationForRerasterTiling() {
 #if BUILDFLAG(IS_OHOS)
 void LayerTreeImpl::OnLayerRectUpdate(int id, const gfx::Rect& rect) {
   host_impl_->OnLayerRectUpdate(id, rect);
+}
+
+void LayerTreeImpl::OnLayerRectVisibilityChange(int id, bool visibility) {
+  host_impl_->OnLayerRectVisibilityChange(id, visibility);
 }
 #endif
 

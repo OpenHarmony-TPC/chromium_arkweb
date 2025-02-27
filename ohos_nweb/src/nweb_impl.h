@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #include <mutex>
 #include <set>
 #include <vector>
+#include <EGL/eglplatform.h>
 #include "capi/nweb_app_client_extension_callback.h"
 #include "capi/nweb_download_delegate_callback.h"
 #include "nweb.h"
@@ -42,6 +43,7 @@ class NWebImpl : public NWeb {
 
   /* event interface */
   void Resize(uint32_t width, uint32_t height, bool isKeyboard = false) override;
+  void ResizeVisibleViewport(uint32_t width, uint32_t height, bool isKeyboard) override;
   void OnTouchPress(int32_t id, double x, double y, bool from_overlay) override;
   void OnTouchRelease(int32_t id,
                       double x,
@@ -60,6 +62,8 @@ class NWebImpl : public NWeb {
                            double deltaX,
                            double deltaY) override;
   void SendMouseEvent(int x, int y, int button, int action, int count) override;
+  void FillAutofillData(std::shared_ptr<NWebMessage> data) override;
+  void OnAutofillCancel(const std::string& fillContent) override;
 
   // public api
   int Load(const std::string& url) override;
@@ -116,7 +120,8 @@ class NWebImpl : public NWeb {
       const std::string& objName,
       const std::vector<std::string>& methodName,
       std::vector<NativeJSProxyCallbackFunc>&& callback,
-      bool isAsync);
+      bool isAsync,
+      const std::string& permission);
   void UnRegisterNativeArkJSFunction(const char* objName) override;
   void RegisterNativeValideCallback(const char* webName, const NativeArkWebOnValidCallback callback) override;
   void RegisterNativeDestroyCallback(const char* webName, const NativeArkWebOnDestroyCallback callback) override;
@@ -131,6 +136,11 @@ class NWebImpl : public NWeb {
                              const std::vector<std::string>& method_list,
                              const std::vector<std::string>& async_method_list,
                              const int32_t object_id) override;
+  void RegisterArkJSfunction(const std::string& object_name,
+                             const std::vector<std::string>& method_list,
+                             const std::vector<std::string>& async_method_list,
+                             const int32_t object_id,
+                             const std::string& permission) override;
   void UnregisterArkJSfunction(
       const std::string& object_name,
       const std::vector<std::string>& method_list) override;
@@ -182,11 +192,32 @@ class NWebImpl : public NWeb {
       int32_t direction) override;
   void SetAccessibilityState(bool state) override;
   void SuggestionSelected(int index) override;
+  void PutSpanstringConvertHtmlCallback(std::shared_ptr<NWebSpanstringConvertHtmlCallback> callback) override;
 #ifdef OHOS_SCREEN_LOCK
   void RegisterScreenLockFunction(int32_t windowId,
                                   std::shared_ptr<NWebScreenLockCallback> callback) override;
   void UnRegisterScreenLockFunction(int32_t windowId) override;
 #endif  // #ifdef OHOS_SCREEN_LOCK
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  static void AddAdsBlockDisallowList(
+      const std::vector<std::string>& domain_suffixes);
+  static void AddAdsBlockAllowList(
+      const std::vector<std::string>& domainSuffixes);
+  static void SetAdsBlockRules(const std::string& rulesFiles,
+                               const bool replace);
+  static void RemoveAdsBlockDisallowedList(
+      const std::vector<std::string>& domainSuffixes);
+  static void RemoveAdsBlockAllowedList(
+      const std::vector<std::string>& domainSuffixes);
+  static void ClearAdsBlockDisallowedList();
+  static void ClearAdsBlockAllowedList();
+  void EnableAdsBlock(bool enable) override;
+  bool IsAdsBlockEnabled() override;
+  bool IsAdsBlockEnabledForCurPage() override;
+  static bool IsAnyNWebAdblockEnabled();
+  void UpdateAdblockEasyListRules(long adBlockEasyListVersion);
+#endif
 
 #if defined(OHOS_EX_PASSWORD)
   void SetSavePasswordAutomatically(bool enable) const;
@@ -211,6 +242,10 @@ class NWebImpl : public NWeb {
       const size_t scriptLength,
       std::shared_ptr<NWebMessageValueCallback> callback,
       bool extention) override;
+  void ExecuteCreatePDFExt(
+      std::shared_ptr<NWebPDFConfigArgs> pdfConfig,
+      std::shared_ptr<NWebArrayBufferValueCallback> callback) override;
+
 
 #if defined(OHOS_MSGPORT)
   void ExecuteJavaScript(
@@ -232,12 +267,16 @@ class NWebImpl : public NWeb {
   void SetEnableBlankTargetPopupIntercept(bool enableBlankTargetPopup) const;
 #endif
 
+  void SetAutofillCallback(std::shared_ptr<NWebMessageValueCallback> callback) override;
   std::shared_ptr<NWebHistoryList> GetHistoryList() override;
   std::vector<uint8_t> SerializeWebState() override;
   bool RestoreWebState(const std::vector<uint8_t>& state) override;
 #ifdef OHOS_PAGE_UP_DOWN
   void PageUp(bool top) override;
   void PageDown(bool bottom) override;
+#ifdef OHOS_GET_SCROLL_OFFSET
+  void GetScrollOffset(float* offset_x, float* offset_y) override;
+#endif
 #endif  // #endif OHOS_PAGE_UP_DOWN
 
 #if defined(OHOS_INPUT_EVENTS)
@@ -245,6 +284,22 @@ class NWebImpl : public NWeb {
   void ScrollBy(float delta_x, float delta_y) override;
   void ScrollByRefScreen(float delta_x, float delta_y, float vx, float vy) override;
   void SlideScroll(float vx, float vy) override;
+  bool WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
+                       const std::vector<int32_t>& pressedCodes) override;
+  void WebSendMouseWheelEvent(double x,
+                              double y,
+                              double deltaX,
+                              double deltaY,
+                              const std::vector<int32_t>& pressedCodes) override;
+  void WebSendTouchpadFlingEvent(double x,
+                                 double y,
+                                 double vx,
+                                 double vy,
+                                 const std::vector<int32_t>& pressedCodes) override;
+  void ScrollToWithAnime(float x, float y, int32_t duration) override;
+  void ScrollByWithAnime(float delta_x, float delta_y, int32_t duration) override;
+  bool ScrollByWithResult (float delta_x, float delta_y) override;
+  void WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent) override;
 #endif  // defined(OHOS_INPUT_EVENTS)
 
   bool GetCertChainDerData(std::vector<std::string>& certChainData,
@@ -268,6 +323,8 @@ class NWebImpl : public NWeb {
   void OnRenderToForeground() override;
 
   void OnOnlineRenderToForeground() override;
+
+  void NotifyForNextTouchEvent() override;
 #ifdef OHOS_DRAG_DROP
   std::shared_ptr<NWebDragData> GetOrCreateDragData() override;
 #endif // #ifdef OHOS_DRAG_DROP
@@ -368,6 +425,7 @@ class NWebImpl : public NWeb {
   static void ResumeDownloadStatic(std::shared_ptr<NWebDownloadItem> download_item);
 #ifdef OHOS_EX_DOWNLOAD
   NWebDownloadItemState GetDownloadItemState(long item_id);
+  static NWebDownloadItemState GetDownloadItemStateByGuid(const std::string& guid);
 #endif
 
   bool Discard() override;
@@ -416,6 +474,11 @@ class NWebImpl : public NWeb {
   double GetBrowserZoomLevel() const;
 #endif
 
+#ifdef OHOS_CRASHPAD
+  static void SetDefaultCrashpadLogPath(const std::string& crashpad_log_path);
+  static const std::string GetDefaultCrashpadLogPath();
+#endif
+
 #if defined(OHOS_INCOGNITO_MODE)
   bool IsIncognitoMode() override {
     return incognito_mode_;
@@ -459,6 +522,47 @@ class NWebImpl : public NWeb {
   void OnSafeInsetsChange(int left, int top, int right, int bottom) override;
 #endif
 
+#ifdef OHOS_AI
+  void OnTextSelected() override;
+#endif
+  static base::Lock nweb_map_lock_;
+
+#if defined(OHOS_SOFTWARE_COMPOSITOR)
+  static void EnableWholeWebPageDrawing();
+
+  bool WebPageSnapshot(const char* id,
+                       PixelUnit type,
+                       int width,
+                       int height,
+                       const WebSnapshotCallback callback) override;
+#endif
+  int SetUrlTrustList(const std::string& urlTrustList) override;
+  int SetUrlTrustListWithErrMsg(
+    const std::string& urlTrustList, std::string& detailErrMsg) override;
+
+#ifdef OHOS_NETWORK_LOAD
+  void SetPathAllowingUniversalAccess(
+    const std::vector<std::string>& pathList, 
+    const std::vector<std::string>& moduleName,
+    std::string& errorPath) override;
+#endif
+  void PerformAction(int64_t accessibilityId, uint32_t action,
+      const std::map<std::string, std::string>& actionArguments) override;
+  void SendAccessibilityHoverEvent(int32_t x, int32_t y) override;
+
+  static void TrimMemoryByPressureLevel(int32_t memoryLevel);
+
+#ifdef OHOS_BFCACHE
+  void SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) override;
+#endif
+
+#ifdef OHOS_MIXED_CONTENT
+  void EnableMixedContentAutoUpgrades(bool enable);
+  bool IsMixedContentAutoUpgradesEnabled();
+#endif
+
+ void SetPopupSurface(void* popupSurface) override;
+
  private:
   void ProcessInitArgs(std::shared_ptr<NWebEngineInitArgs> init_args);
   void InitWebEngineArgs(std::shared_ptr<NWebEngineInitArgs> init_args);
@@ -492,6 +596,7 @@ class NWebImpl : public NWeb {
   bool is_richtext_value_ = false;
 
   bool incognito_mode_ = false;
+  EGLNativeWindowType window_;
 #if defined(OHOS_SCHEME_HANDLER)
   std::string web_tag_{""};
 #endif

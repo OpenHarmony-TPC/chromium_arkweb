@@ -23,6 +23,15 @@
 #include "cef_delegate/nweb_inputmethod_client.h"
 
 namespace OHOS::NWeb {
+enum CompositionType {
+  COMPOSITION_CURRENT,
+  COMPOSITION_POSITION,
+  COMPOSITION_REPLACE,
+  COMPOSITION_CANCEL,
+  COMPOSITION_DELETE,
+  COMPOSITION_INVALID,
+};
+
 class NWebInputMethodHandler : public NWebInputMethodClient {
  public:
   enum class ReattachType {
@@ -35,13 +44,14 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   NWebInputMethodHandler& operator=(const NWebInputMethodHandler&) = delete;
 
   void Attach(CefRefPtr<CefBrowser> browser,
-              bool show_keyboard,
-              cef_text_input_mode_t input_mode,
-              cef_text_input_type_t input_type) override;
+              InputInfo inputInfo,
+              bool is_need_reset_listener,
+              int32_t enterKeyType) override;
   void ShowTextInput() override;
   void HideTextInput(
       uint32_t nwebId = 0,
       HideTextinputType hideType = HideTextinputType::FROM_KERNEL) override;
+  void HideTextInputForce() override;
   void OnTextSelectionChanged(CefRefPtr<CefBrowser> browser,
                               const CefString& selected_text,
                               const CefRange& selected_range) override;
@@ -59,7 +69,7 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   void InsertText(const std::u16string& text);
   void DeleteBackward(int32_t length);
   void DeleteForward(int32_t length);
-  void SendEnterKeyEvent();
+  void SendEnterKeyEvent(int32_t enterKeyType);
   void MoveCursor(const IMFAdapterDirection direction);
   void SetScreenOffSet(double x, double y);
   void SetVirtualDeviceRatio(float device_pixel_ratio);
@@ -72,9 +82,37 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
                          int32_t end);
   void FinishTextPreview();
   void SetNeedUnderLine(bool is_need_underline);
+  bool HasComposition() override;
+  void OnImeCompositionRangeChanged(CefRefPtr<CefBrowser> browser,
+                                    const CefRange& selected_range) override;
+  void OnUpdateTextInputStateCalled(CefRefPtr<CefBrowser> browser,
+                                    const CefString& text,
+                                    const CefRange& selected_range,
+                                    const CefRange& compositon_range) override;
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  void AutoFillWithIMFEvent(bool is_username,
+                            bool is_other_account,
+                            bool is_new_password,
+                            const std::string& content);
+
+  void SetFillContent(const std::string& content, int32_t node_id) override {
+    fill_content_ = content;
+    fill_content_node_id_ = node_id;
+  }
+#endif
+
 #if defined(OHOS_CLIPBOARD)
   std::string GetSelectInfo();
 #endif
+  bool IsAttached() override {
+    return isAttached_;
+  }
+  void SetNeedReattachOnfocus() {
+    if (isAttached_) {
+      isNeedReattachOnfocus_ = true;
+    }
+  }
 
  private:
   void SetIMEStatusOnUI(bool status);
@@ -83,12 +121,32 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   void DeleteForwardHandlerOnUI(int32_t length);
   bool IsCorrectParam(int32_t number, int32_t& selectBegin, int32_t& selectEnd);
   bool ResetTextSelectiondata();
+  IMFAdapterTextInputType TextInputModeToIMFAdapter(cef_text_input_mode_t mode);
+  IMFAdapterTextInputType TextInputTypeToIMFAdapter(cef_text_input_type_t type);
+  IMFAdapterEnterKeyType TextInputActionToIMFAdapter(InputInfo inputInfo);
+  void ComputeEditorInfo(InputInfo inputInfo, int32_t customEnterKeyType);
   std::shared_ptr<IMFCursorInfoAdapter> GetCursorInfo();
   void PreviewTextHandlerOnUI(const std::u16string& text,
                               int32_t start,
                               int32_t end);
   void FinishPreviewTextOnUI();
   void SetNeedUnderLineOnUI(bool is_need_underline);
+  void ClearComposingStatus();
+  int32_t UpdateCompositionInfo(const std::u16string& text, int32_t start, int32_t end);
+  int32_t GetCompositionTypeAndCheckInput(const std::u16string& text,
+    int32_t start, int32_t end, CompositionType& composition_type);
+  void CancelPreviewHandlerOnUI();
+  void SendEnterKeyEventOnUI(int32_t enterKeyType);
+  bool IsTextInputStateChange(const CefString& text,
+                              const CefRange& selected_range,
+                              const CefRange& compositon_range);
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  void AutoFillWithIMFEventOnUI(bool is_username,
+                                bool is_other_account,
+                                bool is_new_password,
+                                const std::string& content);
+#endif
 
   static uint32_t lastAttachNWebId_;
   static IMFAdapterTextInputType lastInputMode_;
@@ -113,9 +171,12 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   bool show_keyboard_ = false;
   bool is_editable_node_ = false;
   bool isNeedReattachOncontinue_ = false;
-  IMFAdapterTextInputType input_mode_ = IMFAdapterTextInputType::TEXT;
+  IMFAdapterTextInputType imf_input_mode_ = IMFAdapterTextInputType::TEXT;
+  IMFAdapterEnterKeyType imf_input_action_ = IMFAdapterEnterKeyType::GO;
+  bool type_text_flag_multi_line_ = false;
   std::chrono::high_resolution_clock::time_point lastCloseInputMethodTime_;
   bool isNeedReattachOnfocus_ = false;
+  int32_t input_flags_ = 0;
 
   int textCursorReady_ = 0;
   std::mutex textCursorMutex_;
@@ -125,7 +186,18 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   uint32_t windowId_ = 0;
   const int32_t OK = 0;
   const int32_t ERROR = -1;
-  bool is_need_underline_ = true;
+  bool is_need_underline_ = false;
+  bool has_composition_ = false;
+  std::u16string preview_text_cache_;
+  int32_t composition_range_start_ = 0;
+  int32_t composition_range_end_ = 0;
+  CompositionType composition_type_ = COMPOSITION_INVALID;
+  int32_t composition_cursor_index_ = 0;
+
+#if defined(OHOS_PASSWORD_AUTOFILL)
+  std::string fill_content_;
+  int32_t fill_content_node_id_ = -1;
+#endif
   IMPLEMENT_REFCOUNTING(NWebInputMethodHandler);
 };
 
@@ -240,6 +312,34 @@ enum ScanKeyCode {
   NUMPADCOMMA_SCAN_CODE = 0x0081,
   METALEFT_SCAN_CODE = 0x0085,
   METARIGHT_SCAN_CODE = 0x0086,
+};
+
+enum class FocusType : int32_t {
+  // Map to: blink.mojom.FocusType.kNone
+  NONE = 0,
+
+  // Map to: blink.mojom.FocusType.kScript
+  SCRIPT = 1,
+
+  // Map to: blink.mojom.FocusType.kForward
+  FORWARD = 2,
+
+  // Map to: blink.mojom.FocusType.kBackward
+  BACKWARD = 3,
+
+  // Map to: blink.mojom.FocusType.kSpatialNavigation
+  SPATIALNAVIGATION = 4,
+
+  // Map to: blink.mojom.FocusType.kMouse
+  MOUSE = 5,
+
+  // Map to: blink.mojom.FocusType.kAccessKey
+  ACCESSKEY = 6,
+
+  // Map to: blink.mojom.FocusType.kPage
+  PAGE = 7,
+
+  MAXVALUE = 7,
 };
 }  // namespace OHOS::NWeb
 

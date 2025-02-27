@@ -1955,6 +1955,12 @@ void RenderFrameHostImpl::DidEnterBackForwardCacheInternal() {
   GetProcess()->PauseSocketManagerForRenderFrameHost(GetGlobalId());
 #endif  // BUILDFLAG(IS_P2P_ENABLED)
 
+#if BUILDFLAG(IS_OHOS)
+  if (delegate_) {
+    delegate_->OnRenderFrameHostEnterBackForwardCache(GetGlobalId());
+  }
+#endif  // BUILDFLAG(IS_OHOS)
+
   if (auto* permission_service_context =
           PermissionServiceContext::GetForCurrentDocument(this)) {
     permission_service_context->StoreStatusAtBFCacheEntry();
@@ -1998,6 +2004,12 @@ void RenderFrameHostImpl::WillLeaveBackForwardCacheInternal() {
 #if BUILDFLAG(IS_P2P_ENABLED)
   GetProcess()->ResumeSocketManagerForRenderFrameHost(GetGlobalId());
 #endif  // BUILDFLAG(IS_P2P_ENABLED)
+
+#if BUILDFLAG(IS_OHOS)
+  if (delegate_) {
+    delegate_->OnRenderFrameHostLeaveBackForwardCache(GetGlobalId());
+  }
+#endif  // BUILDFLAG(IS_OHOS)
 }
 
 mojom::DidCommitProvisionalLoadParamsPtr
@@ -2007,8 +2019,13 @@ RenderFrameHostImpl::TakeLastCommitParams() {
 
 void RenderFrameHostImpl::StartBackForwardCacheEvictionTimer() {
   DCHECK(IsInBackForwardCache());
+#ifdef OHOS_BFCACHE
+  base::TimeDelta evict_after =
+      GetBackForwardCache().ArkWebGetTimeToLiveInBackForwardCache();
+#else
   base::TimeDelta evict_after =
       BackForwardCacheImpl::GetTimeToLiveInBackForwardCache();
+#endif
 
   back_forward_cache_eviction_timer_.SetTaskRunner(
       GetBackForwardCache().GetTaskRunner());
@@ -4558,6 +4575,13 @@ void RenderFrameHostImpl::DidChangeBackForwardCacheDisablingFeatures(
     BackForwardCacheBlockingDetails details) {
   renderer_reported_bfcache_blocking_details_ = std::move(details);
 
+#if BUILDFLAG(IS_OHOS)
+  if (GetBackForwardCacheDisablingFeatures().Has(blink::scheduler::WebSchedulerTrackedFeature::kEnableCacheNativeEmbed)) {
+    LOG(INFO) << "NativeEmbed BFCache, render frame host received NativeEmbed feature, render frame host global id = " \
+      << GetGlobalId();
+  }
+#endif
+
   MaybeEvictFromBackForwardCache();
 
   if (back_forward_cache_disabling_features_callback_for_testing_) {
@@ -5052,9 +5076,15 @@ void RenderFrameHostImpl::DetachFromProxy() {
   if (IsPendingDeletion())
     return;
 
+
   // Start pending deletion on this frame and its children.
   DeleteRenderFrame(mojom::FrameDeleteIntention::kNotMainFrame);
   StartPendingDeletionOnSubtree(PendingDeletionReason::kFrameDetach);
+#if BUILDFLAG(IS_OHOS)
+  if (!frame_tree()) {
+    return;
+  }
+#endif
   frame_tree()->FrameUnloading(GetFrameTreeNodeForUnload());
 
   // Some children with no unload handler may be eligible for immediate
@@ -5696,9 +5726,14 @@ void RenderFrameHostImpl::ConsumeTransientUserActivation() {
 }
 
 void RenderFrameHostImpl::ActivateUserActivation(
-    blink::mojom::UserActivationNotificationType notification_type) {
-  user_activation_state_.Activate(notification_type);
-  history_user_activation_state_.Activate();
+    blink::mojom::UserActivationNotificationType notification_type,
+    bool sticky_only) {
+  if (sticky_only) {
+    user_activation_state_.SetHasBeenActive();
+  } else {
+    user_activation_state_.Activate(notification_type);
+    history_user_activation_state_.Activate();
+  }
 }
 
 bool RenderFrameHostImpl::IsHistoryUserActivationActive() const {
@@ -6918,6 +6953,8 @@ void RenderFrameHostImpl::EvictFromBackForwardCacheWithFlattenedAndTreeReasons(
               "EvictFromBackForwardCacheWithFlattenedAndTreeReasons",
               ChromeTrackEvent::kBackForwardCacheCanStoreDocumentResult,
               can_store.flattened_reasons);
+  LOG(INFO) << "RenderFrameHostImpl::" << __func__ << " the value of can_stored flattened_reasons is: "
+            << can_store.flattened_reasons.ToString();
   DCHECK(IsBackForwardCacheEnabled());
 
   RenderFrameHostImpl* top_document = GetOutermostMainFrame();
@@ -7395,6 +7432,12 @@ void RenderFrameHostImpl::ShowPopupMenu(
 void RenderFrameHostImpl::MouseSelectMenuShow(bool show) {
   if (delegate_) {
     delegate_->MouseSelectMenuShow(show);
+  }
+}
+
+void RenderFrameHostImpl::ChangeVisibilityOfQuickMenu() {
+  if (delegate_) {
+    delegate_->ChangeVisibilityOfQuickMenu();
   }
 }
 #endif

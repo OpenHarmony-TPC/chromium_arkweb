@@ -40,6 +40,7 @@ NWebSchemeHandlerFactory::GetOrCreateForScheme(const std::string& scheme) {
     CefRefPtr<NWebSchemeHandlerFactory> factory =
         new NWebSchemeHandlerFactory();
     CefRegisterSchemeHandlerFactory(scheme, "", factory, false);
+    CefRegisterSchemeHandlerFactory(scheme, "", factory, true);
     g_scheme_handler_factory_map[scheme] = factory;
   }
 
@@ -72,8 +73,11 @@ std::string NWebSchemeHandlerFactory::GetWebTag(CefRefPtr<CefBrowser> browser) {
   int nweb_id = -1;
   nweb_id = browser->GetNWebId();
   NWebImpl* nweb = NWebImpl::FromID(nweb_id);
+  if (!nweb) {
+    return "";
+  }
   std::string web_tag = nweb->GetWebTag();
-  LOG(INFO) << "scheme_handler nweb_id: " << nweb_id << " web_tag: " << web_tag;
+  LOG(DEBUG) << "scheme_handler nweb_id: " << nweb_id << " web_tag: " << web_tag;
   return web_tag;
 }
 
@@ -91,11 +95,11 @@ CefRefPtr<CefResourceHandler> NWebSchemeHandlerFactory::Create(
       return nullptr;
     }
     if (scheme_handler_for_sw_->fromEts && !CEF_CURRENTLY_ON_UIT()) {
-      LOG(DEBUG) << "scheme handler from ets should from UI thread";
+      LOG(INFO) << "scheme_handler from ets should from UI thread";
       return nullptr;
     }
     if (!scheme_handler_for_sw_->fromEts && !CEF_CURRENTLY_ON_IOT()) {
-      LOG(DEBUG) << "scheme handler not from ets should from IO thread";
+      LOG(INFO) << "scheme_handler not from ets should from IO thread";
       return nullptr;
     }
     ArkWeb_ResourceRequest* resource_request =
@@ -153,7 +157,7 @@ CefRefPtr<CefResourceHandler> NWebSchemeHandlerFactory::Create(
     delete resource_handler;
     return nullptr;
   }
-  LOG(INFO) << "scheme_handler will intercept the request.";
+  LOG(DEBUG) << "scheme_handler will intercept the request.";
   return resource_handler->pipe_resource_handler;
 }
 
@@ -220,7 +224,7 @@ void NWebSchemeHandlerFactory::OnRequestStop(
 
   ArkWeb_SchemeHandler* handler = FromTag(web_tag);
   if (!handler || !handler->on_request_stop) {
-    LOG(INFO) << "scheme_handler not set handler for " << web_tag;
+    LOG(DEBUG) << "scheme_handler not set handler for " << web_tag;
     return;
   }
   handler->on_request_stop(handler, resource_request);

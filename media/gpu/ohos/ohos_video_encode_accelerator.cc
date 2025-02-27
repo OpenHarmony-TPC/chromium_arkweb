@@ -24,6 +24,7 @@
 #include "media/base/ohos/ohos_media_codec_util.h"
 #include "media/video/picture.h"
 #include "media_codec_adapter.h"
+#include "third_party/bounds_checking_function/include/securec.h"
 #include "third_party/libyuv/include/libyuv/convert_from.h"
 #include "ui/gl/gl_bindings.h"
 
@@ -46,17 +47,21 @@ OHOSVideoEncodeAccelerator::~OHOSVideoEncodeAccelerator() {
 VideoEncodeAccelerator::SupportedProfiles
 OHOSVideoEncodeAccelerator::GetSupportedProfiles() {
   SupportedProfiles profiles;
-  SupportedProfile H264profile;
   CapabilityData H264capabilityAdapter =
       OHOSMediaCodecUtil::GetCodecCapability("video/avc", true);
-  H264profile.profile = H264PROFILE_BASELINE;
-  H264profile.max_resolution.SetSize(H264capabilityAdapter.maxWidth,
+  VideoCodecProfile h264Profiles[] = {H264PROFILE_BASELINE, H264PROFILE_MAIN};
+  for(const auto& codecProfile : h264Profiles) {
+    SupportedProfile H264profile;
+    H264profile.profile = codecProfile;
+    H264profile.max_resolution.SetSize(H264capabilityAdapter.maxWidth,
                                      H264capabilityAdapter.maxHeight);
-  H264profile.max_framerate_numerator = H264capabilityAdapter.maxframeRate;
-  LOG(INFO) << __func__ << ", maxWidth: " << H264capabilityAdapter.maxWidth
-            << ", maxHeight: " << H264capabilityAdapter.maxHeight
-            << ", maxframeRate" << H264capabilityAdapter.maxframeRate;
-  profiles.push_back(H264profile);
+    H264profile.max_framerate_numerator = H264capabilityAdapter.maxframeRate;
+    H264profile.rate_control_modes = media::VideoEncodeAccelerator::kConstantMode;
+    LOG(INFO) << "OHOSVideoEncodeAccelerator::GetSupportedProfiles, maxWidth: " << H264capabilityAdapter.maxWidth
+              << ", maxHeight: " << H264capabilityAdapter.maxHeight
+              << ", maxframeRate" << H264capabilityAdapter.maxframeRate;
+    profiles.push_back(H264profile);
+  }
   return profiles;
 }
 
@@ -297,7 +302,10 @@ void OHOSVideoEncodeAccelerator::DequeueOutput() {
     return;
   }
 
-  memcpy(mapping.memory(), buffer.addr, buffer.bufferSize);
+  if (memcpy_s(mapping.memory(), bitstream_buffer.size(), buffer.addr, buffer.bufferSize) != EOK) {
+    NotifyErrorStatus(
+        {EncoderStatus::Codes::kEncoderFailedEncode, "Failed to memcpy_s encoded data"});
+  }
   bool key_frame = (flag == BufferFlag::CODEC_BUFFER_FLAG_SYNC_FRAME);
   if (key_frame) {
     media_codec_->ClearKeyFrameCache();

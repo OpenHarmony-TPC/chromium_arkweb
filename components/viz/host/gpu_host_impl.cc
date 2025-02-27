@@ -175,6 +175,18 @@ void GpuHostImpl::StartMonitor() {
 void GpuHostImpl::StopMonitor() {
   gpu_service_remote_->StopMonitor();
 }
+
+void GpuHostImpl::SetVisible(bool visible) {
+  gpu_service_remote_->SetVisible(visible);
+}
+
+void GpuHostImpl::SetHasTouchPoint(bool has_touch_point) {
+  gpu_service_remote_->SetHasTouchPoint(has_touch_point);
+}
+
+void GpuHostImpl::ReportSlidingFrameRate(int32_t frame_rate) {
+  gpu_service_remote_->ReportSlidingFrameRate(frame_rate);
+}
 #endif
 
 void GpuHostImpl::SetProcessId(base::ProcessId pid) {
@@ -295,6 +307,16 @@ void GpuHostImpl::SetChannelClientPid(int client_id,
                                       base::ProcessId client_pid) {
   gpu_service_remote_->SetChannelClientPid(client_id, client_pid);
 }
+
+#if BUILDFLAG(IS_OHOS)
+std::string GpuHostImpl::GetSurfaceId(int32_t native_embed_id){
+  LOG(DEBUG) << "get surface id = " << native_embed_id;
+  mojo::SyncCallRestrictions::ScopedAllowSyncCall allow_sync;
+  std::string surface_id = "";
+  gpu_service_remote_->GetSurfaceId(native_embed_id, &surface_id);
+  return surface_id;
+}
+#endif
 
 void GpuHostImpl::SetChannelDiskCacheHandle(
     int client_id,

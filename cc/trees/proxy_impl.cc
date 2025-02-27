@@ -230,6 +230,13 @@ void ProxyImpl::SetDeferBeginMainFrameFromImpl(bool defer_begin_main_frame) {
     scheduler_->SetDeferBeginMainFrame(ShouldDeferBeginMainFrame());
 }
 
+void ProxyImpl::SetDeferInvalidationForFastMainFrameFromImpl(
+                    bool defer_invalidation_for_fast_main_frame) {
+  DCHECK(IsImplThread());
+  scheduler_->SetDeferInvalidationForFastMainFrame(
+                  defer_invalidation_for_fast_main_frame);
+}
+
 void ProxyImpl::SetNeedsRedrawOnImpl(const gfx::Rect& damage_rect) {
   DCHECK(IsImplThread());
   host_impl_->SetViewportDamage(damage_rect);
@@ -1055,6 +1062,13 @@ void ProxyImpl::OnLayerRectUpdate(int id, const gfx::Rect& rect) {
   MainThreadTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(&ProxyMain::OnLayerRectUpdate,
                                 proxy_main_weak_ptr_, id, rect));
+}
+
+void ProxyImpl::OnLayerRectVisibilityChange(int id, bool visibility) {
+  DCHECK(IsImplThread());
+  MainThreadTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(&ProxyMain::OnLayerRectVisibilityChange,
+                                proxy_main_weak_ptr_, id, visibility));
 }
 #endif
 }  // namespace cc

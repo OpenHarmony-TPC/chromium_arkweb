@@ -46,7 +46,21 @@ class NWebInputHandler {
   void SendTouchpadFlingEvent(double x, double y, double vx, double vy);
   void SendMouseWheelEvent(double x, double y, double deltaX, double deltaY);
   void SendMouseEvent(int x, int y, int button, int action, int count);
-
+#if defined(OHOS_INPUT_EVENTS)
+  bool WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
+                       const std::vector<int32_t>& pressedCodes);
+  void WebSendMouseWheelEvent(double x,
+                              double y,
+                              double deltaX,
+                              double deltaY,
+                              const std::vector<int32_t>& pressedCodes);
+  void WebSendTouchpadFlingEvent(double x,
+                                 double y,
+                                 double vx,
+                                 double vy,
+                                 const std::vector<int32_t>& pressedCodes);
+  void WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent);
+#endif
  private:
   void CheckSlideNavigation(int16_t start_x, int16_t end_x);
 
