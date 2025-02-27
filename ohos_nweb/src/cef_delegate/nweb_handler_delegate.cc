@@ -68,6 +68,11 @@
 
 #include "ohos_adapter_helper.h"
 
+#ifdef OHOS_ARKWEB_EXTENSIONS
+#include "base/command_line.h"
+#include "content/public/common/content_switches.h"
+#endif // OHOS_ARKWEB_EXTENSIONS
+
 #if defined(REPORT_SYS_EVENT)
 #include "event_reporter.h"
 #endif
@@ -101,6 +106,13 @@
 #endif
 
 #include "third_party/bounds_checking_function/include/securec.h"
+#include "ohos_nweb/src/capi/nweb_media_player_listener.h"
+#include "ohos_nweb/src/cef_delegate/nweb_media_player_for_vast.h"
+#include "ohos_nweb/src/video_assistant/nweb_media_player_controller_impl.h"
+
+#ifdef OHOS_LOGGER_REPORT
+#include "base/ohos/logger.h"
+#endif
 
 namespace OHOS::NWeb {
 namespace {
@@ -120,6 +132,15 @@ const int WEB_CAN_SNAPSHOT_DELAY_TIME = 1500;
 #endif
 
 const int VIEW_PORT_DIFF = 5;
+
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+std::shared_ptr<NWebExtensionApiCallback> g_extension_api_listener = nullptr;
+static std::map<int, TabCreatedCallback> g_tab_created_map_;
+#endif // OHOS_ARKWEB_EXTENSIONS
+
+#ifdef OHOS_LOGGER_REPORT
+std::shared_ptr<NWebLoggerCallback> g_logger_callback = nullptr;
+#endif
 
 ImageColorType TransformColorType(cef_color_type_t color_type) {
   switch (color_type) {
@@ -325,6 +346,43 @@ private:
 #if defined(OHOS_MULTI_WINDOW)
 const char kOffScreenFrameRate[] = "off-screen-frame-rate";
 #endif  // defined(OHOS_MULTI_WINDOW)
+
+void ParseNativeProxyArgs(CefRefPtr<CefListValue> args,
+                          std::vector<std::vector<uint8_t>>& dataList,
+                          std::vector<size_t>& dataSize) {
+  size_t argsSize = args->GetSize();
+
+  for (size_t i = 0; i < argsSize; i++) {
+    CefValueType type = args->GetType(i);
+    CefRefPtr<CefValue> value = args->GetValue(i);
+    if (!value) {
+      LOG(ERROR) << "value is nullptr";
+      continue;
+    }
+
+    if (type == VTYPE_STRING) {
+      auto argString = value->GetString().ToString();
+      size_t size = argString.size();
+
+      dataList[i] = std::vector<uint8_t>(argString.begin(), argString.end());
+      dataSize[i] = size;
+    } else if (type == VTYPE_BINARY) {
+      auto argBinary = value->GetBinary();
+      size_t size = argBinary->GetSize();
+
+      std::vector<uint8_t> data(size);
+      argBinary->GetData(&data[0], size, 0);
+
+      dataList[i] = std::move(data);
+      dataSize[i] = size;
+    } else {
+      std::string jsonString =
+          CefWriteJSON(value, JSON_WRITER_OMIT_BINARY_VALUES);
+      dataList[i] = std::vector<uint8_t>(jsonString.begin(), jsonString.end());
+      dataSize[i] = jsonString.size();
+    }
+  }
+}
 }  // namespace
 
 class NWebDateTimeSuggestionImpl : public NWebDateTimeSuggestion {
@@ -417,7 +475,6 @@ CefRefPtr<NWebHandlerDelegate> NWebHandlerDelegate::Create(
   return handler_delegate;
 }
 
-int32_t NWebHandlerDelegate::popIndex_ = 0;
 NWebHandlerDelegate::NWebHandlerDelegate(
     std::shared_ptr<NWebPreferenceDelegate> preference_delegate,
     CefRefPtr<NWebRenderHandler> render_handler,
@@ -441,6 +498,10 @@ NWebHandlerDelegate::NWebHandlerDelegate(
 }
 
 void NWebHandlerDelegate::OnDestroy() {
+#if defined(OHOS_JSPROXY)
+  RemoveTransientJavaScriptObject();
+#endif
+
   if (main_browser_) {
     main_browser_->GetHost()->CloseBrowser(true);
     main_browser_ = nullptr;
@@ -573,6 +634,13 @@ CefRefPtr<CefMediaHandler> NWebHandlerDelegate::GetMediaHandler() {
 }
 #endif  // defined(OHOS_MEDIA_MUTE_AUDIO)
 
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+CefRefPtr<CefWebExtensionApiHandler>
+NWebHandlerDelegate::GetWebExtensionApiHandler() {
+  return this;
+}
+#endif
+
 CefRefPtr<CefCookieAccessFilter> NWebHandlerDelegate::GetCookieAccessFilter(
     CefRefPtr<CefBrowser> browser,
     CefRefPtr<CefFrame> frame,
@@ -672,10 +740,68 @@ void NWebHandlerDelegate::OnMainFrameChanged(
   if (new_frame && browser && browser->IsValid() && preference_delegate_.get()) {
     preference_delegate_->WebPreferencesChanged();
   }
+
+  if (nweb_handler_) {
+    nweb_handler_->OnCursorChange(
+      OHOS::NWeb::CursorType::CT_POINTER, std::make_shared<NWebCursorInfoImpl>());
+    nweb_handler_->OnQuickMenuDismissed();
+  }
 }
 /* CefFrameHandler method end */
 
 /* CefLifeSpanHandler methods begin */
+void NWebHandlerDelegate::InjectJsToWebInner(
+    JsRunTime time,
+    ScriptItems& scriptItems,
+    ScriptItemsByOrder& scriptItemsByOrder) {
+  if (time == JsRunTime::Start) {
+    scriptItems = preference_delegate_->GetJavaScriptOnDocumentStart();
+    scriptItemsByOrder = preference_delegate_->GetJavaScriptOnDocumentStartByOrder();
+    if (scriptItems.size() <= 0) {
+      return;
+    }
+    main_browser_->GetHost()->RemoveJavaScriptOnDocumentStart();
+  } else if (time == JsRunTime::End) {
+    scriptItems = preference_delegate_->GetJavaScriptOnDocumentEnd();
+    scriptItemsByOrder = preference_delegate_->GetJavaScriptOnDocumentEndByOrder();
+    if (scriptItems.size() <= 0) {
+      return;
+    }
+    main_browser_->GetHost()->RemoveJavaScriptOnDocumentEnd();
+  }
+
+  if (scriptItemsByOrder.size() <= 0) {
+    for (const auto& item: scriptItems) {
+      scriptItemsByOrder.push_back(item.first);
+    }
+  }
+}
+
+void NWebHandlerDelegate::InjectJsToWeb(JsRunTime time) {
+  ScriptItems scriptItems;
+  ScriptItemsByOrder scriptItemsByOrder;
+
+  InjectJsToWebInner(time, scriptItems, scriptItemsByOrder);
+
+  for (const auto& item: scriptItemsByOrder) {
+    if (scriptItems.find(item) == scriptItems.end()) {
+        continue;
+    }
+    CefString script = item;
+    std::vector<CefString> scriptRules;
+    for (const std::string& rule : scriptItems[item]) {
+      CefString cefRule;
+      cefRule.FromString(rule);
+      scriptRules.push_back(cefRule);
+    }
+    if (time == JsRunTime::Start) {
+      main_browser_->GetHost()->JavaScriptOnDocumentStart(script, scriptRules);
+    } else if (time == JsRunTime::End) {
+      main_browser_->GetHost()->JavaScriptOnDocumentEnd(script, scriptRules);
+    }
+  }
+}
+
 void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   LOG(INFO) << "NWebHandlerDelegate::OnAfterCreated IsPopup "
             << browser->IsPopup();
@@ -712,6 +838,9 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
       event_handler_->SetBrowser(main_browser_);
     }
     if (main_browser_ && main_browser_->GetHost()) {
+      if (popup_window_) {
+        SetPopupSurface(popup_window_);
+      }
       if (preference_delegate_.get()) {
         main_browser_->GetHost()->SetVirtualPixelRatio(
             preference_delegate_->GetVirtualPixelRatio());
@@ -727,11 +856,6 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
         main_browser_->GetHost()->SetAudioResumeInterval(
             preference_delegate_->GetAudioResumeInterval());
 #endif
-#ifdef OHOS_RENDERER_ANR_DUMP
-        if (popup_window_) {
-          SetPopupSurface(popup_window_);
-        }
-#endif
 #if defined(OHOS_PRINT)
         main_browser_->GetHost()->SetToken(preference_delegate_->GetPrintToken());
 #endif
@@ -741,35 +865,9 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
 #endif
 
 #if defined(OHOS_JSPROXY)
-        auto scriptItemsStart = preference_delegate_->GetJavaScriptOnDocumentStart();
-        if (scriptItemsStart.size() > 0) {
-          main_browser_->GetHost()->RemoveJavaScriptOnDocumentStart();
-          for (const auto& item: scriptItemsStart) {
-            CefString script = item.first;
-            std::vector<CefString> scriptRules;
-            for (const std::string& rule : item.second) {
-              CefString cefRule;
-              cefRule.FromString(rule);
-              scriptRules.push_back(cefRule);
-            }
-            main_browser_->GetHost()->JavaScriptOnDocumentStart(script, scriptRules);
-          }
-        }
-
-        auto scriptItemsEnd = preference_delegate_->GetJavaScriptOnDocumentEnd();
-        if (scriptItemsEnd.size() > 0) {
-          main_browser_->GetHost()->RemoveJavaScriptOnDocumentEnd();
-          for (const auto& item: scriptItemsEnd) {
-            CefString script = item.first;
-            std::vector<CefString> scriptRules;
-            for (const std::string& rule : item.second) {
-              CefString cefRule;
-              cefRule.FromString(rule);
-              scriptRules.push_back(cefRule);
-            }
-            main_browser_->GetHost()->JavaScriptOnDocumentEnd(script, scriptRules);
-          }
-        }
+        InjectJsToWeb(JsRunTime::Start);
+        InjectJsToWeb(JsRunTime::HEAD_READY);
+        InjectJsToWeb(JsRunTime::End);
 #endif
       }
       main_browser_->GetHost()->SetNativeWindow(window_);
@@ -822,6 +920,20 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
       }
     }
 #endif
+#if defined(OHOS_VIDEO_ASSISTANT)
+    if (video_assistant_enabled_) {
+      if (main_browser_ && main_browser_->GetHost()) {
+        main_browser_->GetHost()->EnableVideoAssistant(
+            *video_assistant_enabled_);
+      }
+    }
+    if (custom_web_media_player_enabled_) {
+      if (main_browser_ && main_browser_->GetHost()) {
+        main_browser_->GetHost()->CustomWebMediaPlayer(
+            *custom_web_media_player_enabled_);
+      }
+    }
+#endif // OHOS_VIDEO_ASSISTANT
     return;
   }
 #endif  // defined(OHOS_MULTI_WINDOW)
@@ -841,6 +953,20 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
   } else {
     LOG(ERROR) << "Failed to set browser to settings delegate";
   }
+#if defined(OHOS_VIDEO_ASSISTANT)
+  if (video_assistant_enabled_) {
+    if (main_browser_ && main_browser_->GetHost()) {
+      main_browser_->GetHost()->EnableVideoAssistant(
+          *video_assistant_enabled_);
+    }
+  }
+  if (custom_web_media_player_enabled_) {
+    if (main_browser_ && main_browser_->GetHost()) {
+      main_browser_->GetHost()->CustomWebMediaPlayer(
+          *custom_web_media_player_enabled_);
+    }
+  }
+#endif // OHOS_VIDEO_ASSISTANT
 }
 
 bool NWebHandlerDelegate::DoClose(CefRefPtr<CefBrowser> browser) {
@@ -994,19 +1120,17 @@ bool NWebHandlerDelegate::OnPreBeforePopup(
   switch (target_disposition) {
     case WOD_NEW_WINDOW:
     case WOD_NEW_POPUP: {
-      popIndex_++;
       popupWindowCallback_ = callback;
       std::shared_ptr<NWebControllerHandler> handler =
-          std::make_shared<NWebControllerHandlerImpl>(popIndex_, true);
+          std::make_shared<NWebControllerHandlerImpl>(nweb_id_, true);
       nweb_handler_->OnWindowNewByJS(target_url, true, user_gesture, handler);
       return false;
     }
     case WOD_NEW_BACKGROUND_TAB:
     case WOD_NEW_FOREGROUND_TAB: {
-      popIndex_++;
       popupWindowCallback_ = callback;
       std::shared_ptr<NWebControllerHandler> handler =
-          std::make_shared<NWebControllerHandlerImpl>(popIndex_, true);
+          std::make_shared<NWebControllerHandlerImpl>(nweb_id_, true);
       nweb_handler_->OnWindowNewByJS(target_url, false, user_gesture, handler);
       return false;
     }
@@ -1049,7 +1173,7 @@ bool NWebHandlerDelegate::OnBeforePopup(
           return true;
         }
         std::shared_ptr<NWebControllerHandler> handler =
-            std::make_shared<NWebControllerHandlerImpl>(popIndex_, false);
+            std::make_shared<NWebControllerHandlerImpl>(nweb_id_, false);
         nweb_handler_->OnWindowNewByJS(target_url, true, user_gesture, handler);
         if (extra_info) {
           extra_info->SetInt("nweb_id", handler->GetNWebHandlerId());
@@ -1989,8 +2113,8 @@ void NWebHandlerDelegate::OnShowAutofillPopup(
     scale = GetBrowser()->GetHost()->Scale();
   }
   if (!is_password_popup_type) {
-    nweb_handler_->OnShowAutofillPopup(
-        bounds.x * ratio, bounds.y * ratio + bounds.height * ratio * scale, label_list);
+    nweb_handler_->OnShowAutofillPopupV2(
+        bounds.x * ratio, bounds.y * ratio + bounds.height * ratio, bounds.height * ratio, bounds.width, label_list);
     return;
   }
 #endif
@@ -2078,7 +2202,7 @@ void NWebHandlerDelegate::OnTopControlsChanged(float top_controls_offset,
 #endif
 }
 
-int NWebHandlerDelegate::OnGetTopControlsHeight() {
+NO_SANITIZE("cfi-icall") int NWebHandlerDelegate::OnGetTopControlsHeight() {
 #if defined(OHOS_EX_TOPCONTROLS)
   if (web_app_client_extension_listener_ == nullptr ||
       web_app_client_extension_listener_->OnGetTopControlsHeight == nullptr) {
@@ -2105,6 +2229,28 @@ bool NWebHandlerDelegate::DoBrowserControlsShrinkRendererSize() {
 }
 // #endif OHOS_EX_TOPCONTROLS
 
+#ifdef OHOS_EX_PULL_TO_REFRESH
+bool NWebHandlerDelegate::OnPullToRefreshAction(int action) {
+  if (web_app_client_extension_listener_ == nullptr ||
+      web_app_client_extension_listener_->OnPullToRefreshAction == nullptr) {
+    return false;
+  }
+
+  return web_app_client_extension_listener_->OnPullToRefreshAction(
+      action, web_app_client_extension_listener_->nweb_id);
+}
+
+void NWebHandlerDelegate::OnPullToRefreshPull(float offset_x, float offset_y) {
+  if (web_app_client_extension_listener_ == nullptr ||
+      web_app_client_extension_listener_->OnPullToRefreshPull == nullptr) {
+    return;
+  }
+
+  web_app_client_extension_listener_->OnPullToRefreshPull(
+      offset_x, offset_y, web_app_client_extension_listener_->nweb_id);
+}
+#endif
+
 void NWebHandlerDelegate::OnReceivedIcon(const void* data,
                                          size_t width,
                                          size_t height,
@@ -2123,22 +2269,34 @@ void NWebHandlerDelegate::OnReceivedIcon(const void* data,
   }
 }
 
+
 #ifdef OHOS_BFCACHE
 void NWebHandlerDelegate::UpdateFavicon(CefRefPtr<CefBrowser> browser) {
   CEF_REQUIRE_UI_THREAD();
+
+  if (!browser || !browser->GetHost() ||
+      !browser->GetHost()->GetVisibleNavigationEntry()) {
+    return;
+  }
+  LOG(INFO) << "[Favicon] nweb_handler delegate start to update favicon.";
 
   void* data = nullptr;
   int color_type;
   int alpha_type;
   int width;
   int height;
-  if (browser != nullptr && browser->GetHost() != nullptr
-      && browser->GetHost()->GetVisibleNavigationEntry() != nullptr) {
-    LOG(INFO) << "[Favicon] nweb_handler delegate start to update favicon.";
-    browser->GetHost()->GetVisibleNavigationEntry()->GetFavicon(&data, color_type, alpha_type, width, height);
-    SetFavicon(data, width, height, ImageColorType(color_type), ImageAlphaType(alpha_type));
+  browser->GetHost()->GetVisibleNavigationEntry()->GetFavicon(
+      &data, color_type, alpha_type, width, height);
+  SetFavicon(data, width, height, ImageColorType(color_type),
+             ImageAlphaType(alpha_type));
+
+  static int32_t kApplicationApi16 = 16;
+  if (data && nweb_handler_ &&
+      base::ohos::ApplicationApiVersion() >= kApplicationApi16) {
+    nweb_handler_->OnPageIcon(data, width, height, ImageColorType(color_type),
+                              ImageAlphaType(alpha_type));
+    return;
   }
-  return;
 }
 #endif // OHOS_BFCACHE
 
@@ -2205,6 +2363,23 @@ void NWebHandlerDelegate::OnReceivedIconUrl(const CefString& image_url,
   }
 }
 
+void NWebHandlerDelegate::OnTouchIconUrlWithSizesReceived(
+    const CefString& image_url,
+    bool precomposed,
+    const std::vector<IconSize>& sizes) {
+  if (!web_app_client_extension_listener_ ||
+      !web_app_client_extension_listener_->OnTouchIconUrlWithSizesReceived) {
+    return;
+  }
+
+  char* c_image_url = CopyCefStringToChar(image_url);
+
+  web_app_client_extension_listener_->OnTouchIconUrlWithSizesReceived(
+      c_image_url, precomposed, sizes.data(), sizes.size(),
+      web_app_client_extension_listener_->nweb_id);
+  delete[] c_image_url;
+}
+
 void NWebHandlerDelegate::OnReceivedTouchIconUrl(CefRefPtr<CefBrowser> browser,
                                                  const CefString& icon_url,
                                                  bool precomposed) {
@@ -2244,6 +2419,18 @@ void NWebHandlerDelegate::OnScaleChanged(CefRefPtr<CefBrowser> browser,
   }
 #ifdef OHOS_PAGE_UP_DOWN
   scale_ = new_page_scale_factor;
+#endif  // #ifdef OHOS_PAGE_UP_DOWN
+}
+
+void NWebHandlerDelegate::OnScaleInited(CefRefPtr<CefBrowser> browser,
+                                         float page_scale_factor) {
+  if (!render_handler_) {
+    LOG(ERROR) << "render handler is nullptr";
+    return;
+  }
+#ifdef OHOS_PAGE_UP_DOWN
+  LOG(INFO) << "OnScaleInited scale: " << page_scale_factor;
+  scale_ = page_scale_factor;
 #endif  // #ifdef OHOS_PAGE_UP_DOWN
 }
 
@@ -2316,13 +2503,11 @@ bool NWebHandlerDelegate::OnSetFocus(CefRefPtr<CefBrowser> browser,
                                      FocusSource source) {
   if (nweb_handler_ != nullptr) {
 #ifdef OHOS_FOCUS
-    LOG(INFO) << "NWebHandlerDelegate::OnSetFocus report arkweb get focus , source = " << source;
     if (!nweb_handler_->OnFocus(static_cast<NWebFocusSource>(source))) {
-      LOG(DEBUG) << "nweb_handler request focus unsuccessful, need't to set "
-                    "focus, source = "
-                 << source;
       return true;
     }
+    LOG(INFO) << "nweb_handler request focus successful, source = "
+              << source << ", nweb_id = " << nweb_id_;
     focusState_ = true;
 #endif  // OHOS_FOCUS
   }
@@ -2490,6 +2675,7 @@ bool NWebHandlerDelegate::OnFileDialog(
     const CefString& default_file_path,
     const std::vector<CefString>& accept_filters,
     bool capture,
+    const std::vector<CefString>& mime_filters,
     CefRefPtr<CefFileDialogCallback> callback) {
   if (nweb_handler_ == nullptr) {
     return false;
@@ -2518,7 +2704,7 @@ bool NWebHandlerDelegate::OnFileDialog(
   std::shared_ptr<NWebFileSelectorParams> param =
       std::make_shared<FileSelectorParamsImpl>(
           file_mode, file_selector_title, accept_filters,
-          default_file_path.ToString(), capture);
+          default_file_path.ToString(), capture, mime_filters);
   std::shared_ptr<NWebStringVectorValueCallback> file_path_callback =
       std::make_shared<FileSelectorCallbackImpl>(callback);
   return nweb_handler_->OnFileSelectorShow(file_path_callback, param);
@@ -2904,6 +3090,13 @@ void NWebHandlerDelegate::ChangeVisibilityOfQuickMenu() {
     nweb_handler_->ChangeVisibilityOfQuickMenu();
   }
 }
+
+bool NWebHandlerDelegate::CloseImageOverlaySelection() {
+  if (nweb_handler_ != nullptr) {
+    return nweb_handler_->CloseImageOverlaySelection();
+  }
+  return false;
+}
 /* CefContextMenuHandler method end */
 
 /* CefFindandler method begin */
@@ -3140,7 +3333,7 @@ int NWebHandlerDelegate::ProcessNativeProxyResultNew(
   }
 
   NativeJSProxyCallbackFunc callback = nullptr;
-  NativeJSProxyCallbackFuncWithResult CallbackWithResult = nullptr;
+
   auto it = asyncProxyObjMap_.find(object_name);
   if (it != asyncProxyObjMap_.end()) {
     auto& methodMap = it->second;
@@ -3163,6 +3356,40 @@ int NWebHandlerDelegate::ProcessNativeProxyResultNew(
       }
     }
   }
+
+  if (callback == nullptr) {
+    LOG(DEBUG) << "Processing sync native proxy result failed, "
+               << "method not found, name: "
+               << method.ToString();
+    return 1;
+  }
+  size_t argsSize = args->GetSize();
+  std::vector<std::vector<uint8_t>> dataList(argsSize);
+  std::vector<size_t> dataSize(argsSize);
+
+  ParseNativeProxyArgs(args, dataList, dataSize);
+
+  char* callbackResult = callback(dataList, dataSize);
+  if (callbackResult) {
+    result->SetString(0, callbackResult);
+  } else {
+    LOG(INFO) << "native return nullptr, just set null string to result";
+    result->SetNull(0);
+  }
+  return 0;
+}
+
+int NWebHandlerDelegate::ProcessNativeProxyResultNewForReturnValue(
+    CefRefPtr<CefListValue> args,
+    const CefString& method,
+    const CefString& object_name,
+    CefRefPtr<CefListValue> result) {
+  if (!args) {
+    LOG(ERROR) << "args is nullptr";
+    return 1;
+  }
+
+  NativeJSProxyCallbackFuncWithResult CallbackWithResult = nullptr;
 
   if (auto iter = asyncProxyObjWithResultMap_.find(object_name);
       iter != asyncProxyObjWithResultMap_.end()) {
@@ -3188,7 +3415,7 @@ int NWebHandlerDelegate::ProcessNativeProxyResultNew(
     }
   }
 
-  if (callback == nullptr && CallbackWithResult == nullptr) {
+  if (CallbackWithResult == nullptr) {
     LOG(DEBUG) << "Processing native proxy result failed, "
                << "method not found, name: "
                << method.ToString();
@@ -3197,54 +3424,14 @@ int NWebHandlerDelegate::ProcessNativeProxyResultNew(
   size_t argsSize = args->GetSize();
   std::vector<std::vector<uint8_t>> dataList(argsSize);
   std::vector<size_t> dataSize(argsSize);
+  ParseNativeProxyArgs(args, dataList, dataSize);
 
-  for (size_t i = 0; i < argsSize; i++) {
-    CefValueType type = args->GetType(i);
-    CefRefPtr<CefValue> value = args->GetValue(i);
-    if (!value) {
-      LOG(ERROR) << "value is nullptr";
-      continue;
-    }
-
-    if (type == VTYPE_STRING) {
-      auto argString = value->GetString().ToString();
-      size_t size = argString.size();
-
-      dataList[i] = std::vector<uint8_t>(argString.begin(), argString.end());
-      dataSize[i] = size;
-    } else if (type == VTYPE_BINARY) {
-      auto argBinary = value->GetBinary();
-      size_t size = argBinary->GetSize();
-
-      std::vector<uint8_t> data(size);
-      argBinary->GetData(&data[0], size, 0);
-
-      dataList[i] = std::move(data);
-      dataSize[i] = size;
-    } else {
-      std::string jsonString =
-          CefWriteJSON(value, JSON_WRITER_OMIT_BINARY_VALUES);
-      dataList[i] = std::vector<uint8_t>(jsonString.begin(), jsonString.end());
-      dataSize[i] = jsonString.size();
-    }
-  }
-
-  if (callback) {
-    char* callbackResult = callback(dataList, dataSize);
-    if (callbackResult) {
-      result->SetString(0, callbackResult);
-    } else {
-      LOG(INFO) << "native return nullptr, just set null string to result";
-      result->SetNull(0);
-    }
-  } else if (CallbackWithResult) {
-    std::shared_ptr<OHOS::NWeb::NWebValue> callbackResult = CallbackWithResult(dataList, dataSize);
-    if (callbackResult) {
-      ParseNWebValueToValue(callbackResult, result);
-    } else {
-      LOG(DEBUG) << "native return nullptr, just set null string to result";
-      result->SetNull(0);
-    }
+  std::shared_ptr<OHOS::NWeb::NWebValue> callbackResult = CallbackWithResult(dataList, dataSize);
+  if (callbackResult) {
+    ParseNWebValueToValue(callbackResult, result);
+  } else {
+    LOG(DEBUG) << "native return nullptr, just set null string to result";
+    result->SetNull(0);
   }
 
   return 0;
@@ -3256,16 +3443,28 @@ int NWebHandlerDelegate::ProcessNativeProxyResult(
     const CefString& object_name,
     CefRefPtr<CefListValue> result) {
   if (auto it = syncProxyObjWithResultMap_.find(object_name); it != syncProxyObjWithResultMap_.end()) {
-    ProcessNativeProxyResultNew(args, method, object_name, result);
+    if (ProcessNativeProxyResultNew(args, method, object_name, result) == 1) {
+      ProcessNativeProxyResultNewForReturnValue(args, method, object_name, result);
+    }
     return 0;
-  } else if (auto async_it = asyncProxyObjWithResultMap_.find(object_name); async_it != asyncProxyObjWithResultMap_.end()) {
-    ProcessNativeProxyResultNew(args, method, object_name, result);
+  } else if (auto async_it = asyncProxyObjWithResultMap_.find(object_name);
+      async_it != asyncProxyObjWithResultMap_.end()) {
+    if (ProcessNativeProxyResultNew(args, method, object_name, result) == 1) {
+      ProcessNativeProxyResultNewForReturnValue(args, method, object_name,
+                                                result);
+    }
     return 0;
   } else if (auto it_with_result = syncProxyObjMap_.find(object_name); it_with_result != syncProxyObjMap_.end()) {
-    ProcessNativeProxyResultNew(args, method, object_name, result);
+    if (ProcessNativeProxyResultNew(args, method, object_name, result) == 1) {
+      ProcessNativeProxyResultNewForReturnValue(args, method, object_name,
+                                                result);
+    }
     return 0;
-  } else if (auto async_it_with_result = asyncProxyObjMap_.find(object_name); async_it_with_result != asyncProxyObjMap_.end()) {
-    ProcessNativeProxyResultNew(args, method, object_name, result);
+  } else if (auto async_it_with_result = asyncProxyObjMap_.find(object_name);
+      async_it_with_result != asyncProxyObjMap_.end()) {
+    if (ProcessNativeProxyResultNew(args, method, object_name, result) == 1) {
+      ProcessNativeProxyResultNewForReturnValue(args, method, object_name, result);
+    }
     return 0;
   }
 
@@ -3722,6 +3921,77 @@ NWebHandlerDelegate::OnCreateCustomMediaPlayer(
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
+void NWebHandlerDelegate::OnShowToast(double duration, const CefString& toast) {
+#if defined(OHOS_VIDEO_ASSISTANT)
+  if (!web_app_client_extension_listener_) {
+    LOG(WARNING) << "application extension listener is nullptr";
+    return;
+  }
+
+  if (!web_app_client_extension_listener_->OnShowToast) {
+    LOG(WARNING) << "show toast callback is nullptr";
+    return;
+  }
+
+  web_app_client_extension_listener_->OnShowToast(
+      web_app_client_extension_listener_->nweb_id, duration,
+      toast.ToString().c_str());
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+}
+
+void NWebHandlerDelegate::OnShowVideoAssistant(
+    const CefString& videoAssistantItems) {
+#if defined(OHOS_VIDEO_ASSISTANT)
+  if (!web_app_client_extension_listener_) {
+    LOG(WARNING) << "application extension listener is nullptr";
+    return;
+  }
+
+  if (!web_app_client_extension_listener_->OnShowVideoAssistant) {
+    LOG(WARNING) << "show video assistant callback is nullptr";
+    return;
+  }
+
+  web_app_client_extension_listener_->OnShowVideoAssistant(
+      web_app_client_extension_listener_->nweb_id,
+      videoAssistantItems.ToString().c_str());
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+}
+
+void NWebHandlerDelegate::OnReportStatisticLog(const CefString& content) {
+#if defined(OHOS_VIDEO_ASSISTANT)
+  NWebImpl::OnReportStatisticLog(content.ToString());
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+}
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+CefOwnPtr<CefMediaPlayerListenerForVAST>
+NWebHandlerDelegate::OnFullScreenOverlayEnter(
+    CefOwnPtr<CefMediaPlayerController> media_player_controller,
+    const std::string& extra_info) {
+  if (!web_app_client_extension_listener_) {
+    LOG(WARNING) << "application extension listener is nullptr";
+    return nullptr;
+  }
+
+  if (!web_app_client_extension_listener_->OnFullScreenOverlayEnter) {
+    LOG(WARNING) << "OnFullScreenOverlayEnter is nullptr";
+    return nullptr;
+  }
+  auto controller = std::make_unique<NWebMediaPlayerControllerImpl>(
+      std::move(media_player_controller));
+
+  auto listener = web_app_client_extension_listener_->OnFullScreenOverlayEnter(
+      web_app_client_extension_listener_->nweb_id,
+      controller.release(), extra_info.c_str());
+  if (!listener) {
+    return nullptr;
+  }
+  return std::make_unique<NWebMediaPlayerListenerForVAST>(
+      std::unique_ptr<NWebMediaPlayerListener>(listener));
+}
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+
 #if defined(OHOS_RENDERER_ANR_DUMP)
 void NWebHandlerDelegate::OnRenderProcessNotResponding(
     CefRefPtr<CefBrowser> browser,
@@ -3747,6 +4017,7 @@ void NWebHandlerDelegate::OnRenderProcessResponding(
   LOG(INFO) << "OnRenderProcessResponding";
   nweb_handler_->OnRenderProcessResponding();
 }
+#endif
 
 void NWebHandlerDelegate::SetPopupSurface(void* popup_window) {
   if (main_browser_ && main_browser_->GetHost()) {
@@ -3764,7 +4035,6 @@ void NWebHandlerDelegate::SetPopupSurface(void* popup_window) {
     popup_window_ = popup_window;
   }
 }
-#endif
 
 void NWebHandlerDelegate::SetTransformHint(uint32_t rotation) {
   content::GpuProcessHost* host = content::GpuProcessHost::Get();
@@ -3772,4 +4042,179 @@ void NWebHandlerDelegate::SetTransformHint(uint32_t rotation) {
     host->gpu_host()->SetTransformHint(rotation, main_browser_->GetAcceleratedWidget(false));
   }
 }
+
+void NWebHandlerDelegate::OnRequestOpenDevTools() {
+  if (!web_app_client_extension_listener_) {
+    LOG(WARNING) << "OnRequestOpenDevTools failed, no listener";
+    return;
+  }
+  if (!web_app_client_extension_listener_->OnRequestOpenDevTools) {
+    LOG(WARNING) << "OnRequestOpenDevTools failed, no function";
+    return;
+  }
+  web_app_client_extension_listener_->OnRequestOpenDevTools(
+      web_app_client_extension_listener_->nweb_id);
+}
+
+void NWebHandlerDelegate::Discard() {
+  content::GpuProcessHost* host = content::GpuProcessHost::Get();
+  if (host != nullptr && host->gpu_host() != nullptr && main_browser_ != nullptr) {
+    host->gpu_host()->Discard(main_browser_->GetAcceleratedWidget(false));
+  }
+}
+
+#if defined(OHOS_MULTI_WINDOW)
+void NWebHandlerDelegate::OnActivateContent() {
+  if (web_app_client_extension_listener_ == nullptr ||
+      web_app_client_extension_listener_->OnActivateContent == nullptr) {
+    LOG(ERROR)<< "The web_app_client_extension_listener onActivateContent is null";
+    return;
+  }
+  LOG(INFO)<< "Handler delegate to extension listener onActivateContent";
+  web_app_client_extension_listener_->OnActivateContent(
+      web_app_client_extension_listener_->nweb_id);
+}
+#endif
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+void NWebHandlerDelegate::EnableVideoAssistant(bool enable) {
+  video_assistant_enabled_ = enable;
+}
+
+void NWebHandlerDelegate::CustomWebMediaPlayer(bool enable) {
+  LOG(INFO) << "NWebHandlerDelegate::CustomWebMediaPlayer enter. enable = " << enable;
+  custom_web_media_player_enabled_ = enable;
+}
+#endif // OHOS_VIDEO_ASSISTANT
+
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+void NWebHandlerDelegate::OnBeforeUnloadFired(CefRefPtr<CefBrowser> browser,
+                                              bool proceed) {
+  if (web_app_client_extension_listener_ != nullptr &&
+      web_app_client_extension_listener_->OnBeforeUnloadFired != nullptr) {
+    web_app_client_extension_listener_->OnBeforeUnloadFired(
+        proceed, web_app_client_extension_listener_->nweb_id);
+  }
+}
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+#ifdef OHOS_LOGGER_REPORT
+// static
+void NWebHandlerDelegate::RegisterLoggerCallback(
+    std::shared_ptr<NWebLoggerCallback> logger_callback) {
+  // TODO: Expected to be an instance of a profile
+  g_logger_callback = logger_callback;
+  ohos::logger::SetLoggerCallback(g_logger_callback);
+}
+
+// static
+void NWebHandlerDelegate::UnRegisterLoggerCallback() {
+  g_logger_callback = nullptr;
+}
+
+void NWebHandlerDelegate::logFeedback(const CefString& tag, int level, const CefString& message) {
+  if(!g_logger_callback) {
+    LOG(ERROR) << "No loggercallback logfeedback";
+    return;
+  }
+  std::string tagStr = tag.ToString();
+  std::string messageStr = message.ToString();
+  g_logger_callback->logFeedback(tagStr.c_str(), level, messageStr.c_str());
+}
+
+void NWebHandlerDelegate::logUrl(const CefString& url) {
+  if(!g_logger_callback) {
+    LOG(ERROR) << "No loggercallback logurl";
+    return;
+  }
+  std::string urlStr = url.ToString();
+  g_logger_callback->logUrl(urlStr.c_str());
+}
+#endif
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+void NWebHandlerDelegate::EnableVideoAssistant(bool enable) {
+  video_assistant_enabled_ = enable;
+}
+#endif // OHOS_VIDEO_ASSISTANT
+
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+// static
+void NWebHandlerDelegate::RegisterWebExtensionApiListener(
+    std::shared_ptr<NWebExtensionApiCallback> web_extension_api_listener) {\
+  LOG(INFO) << "RegisterWebExtensionApiListener";
+  // TODO: Expected to be an instance of a profile
+  g_extension_api_listener = web_extension_api_listener;
+}
+
+// static
+void NWebHandlerDelegate::UnRegisterWebExtensionApiListener() {
+  LOG(INFO) << "UnRegisterWebExtensionApiListener";
+  g_extension_api_listener = nullptr;
+}
+
+void NWebHandlerDelegate::OnUpdateTab(
+    int tab_id,
+    const NWebExtensionTabUpdateProperties* update_properties) {
+  if (!g_extension_api_listener) {
+    LOG(ERROR) << "No web extension api listener";
+    return;
+  }
+
+  if (g_extension_api_listener->OnUpdateTab) {
+    LOG(INFO) << "OnUpdateTab tabId: " << tab_id;
+    g_extension_api_listener->OnUpdateTab(tab_id, update_properties);
+    return;
+  }
+
+  // Compatible with older versions
+  if (g_extension_api_listener->OnUpdateTabUrl) {
+    LOG(INFO) << "OnUpdateTabUrl tabId: " << tab_id;
+    if (!update_properties->url) {
+      LOG(ERROR) << "OnUpdateTabUrl not has url";
+      return;
+    }
+    g_extension_api_listener->OnUpdateTabUrl(
+          tab_id,
+          update_properties->url.value().c_str());
+    return;
+  }
+
+  LOG(ERROR) << "g_extension_api_listener OnUpdateTab is nullptr";
+}
+
+// static
+bool NWebHandlerDelegate::OnCreateTab(const NWebTabCreateInfo& create_info,
+                                      TabCreatedCallback callback) {
+  static int request_id = 0;
+  if (!g_extension_api_listener) {
+    LOG(ERROR) << "No web extension api listener";
+    return false;
+  }
+
+  if (!g_extension_api_listener->OnCreateTab) {
+    LOG(ERROR) << "g_extension_api_listener OnCreateTab is nullptr";
+    return false;
+  }
+
+  request_id++;
+  LOG(INFO) << "OnCreateTab";
+  g_tab_created_map_[request_id] = std::move(callback);
+  g_extension_api_listener->OnCreateTab(create_info, request_id);
+  return true;
+}
+
+void NWebHandlerDelegate::WebExtensionTabCreateCallback(int request_id,
+                                                        const NWebExtensionTab* tab) {
+  if (g_tab_created_map_.count(request_id)) {
+    std::move(g_tab_created_map_[request_id]).Run(tab);
+    g_tab_created_map_.erase(request_id);
+  }
+}
+
+bool NWebHandlerDelegate::HasExtensionListener() {
+  return !!g_extension_api_listener;
+}
+#endif // OHOS_ARKWEB_EXTENSIONS
+
 }  // namespace OHOS::NWeb

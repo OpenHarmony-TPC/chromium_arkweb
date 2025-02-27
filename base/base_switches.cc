@@ -195,4 +195,12 @@ const char kBundleName[] = "bundle-name";
 const char kArkWebInstallPath[] = "arkwebcore-install-path";
 #endif
 
+#ifdef OHOS_VIDEO_ASSISTANT
+const char kEnableVideoAssistant[] = "enable-nweb-ex-video-assistant";
+#endif // OHOS_VIDEO_ASSISTANT
+
+#ifdef OHOS_LOGGER_REPORT
+const char kEnableLoggerReport[] = "enable-nweb-logger-report";
+#endif
+
 }  // namespace switches

@@ -46,6 +46,7 @@ class MockClient : public OHOSMediaPlayerBridge::Client {
   MOCK_METHOD(void, OnPlayerInterruptEvent, (int32_t), (override));
   MOCK_METHOD(void, OnAudioStateChanged, (bool), (override));
   MOCK_METHOD(void, OnPlayerSeekBack, (base::TimeDelta), (override));
+  MOCK_METHOD(OHOSMediaResourceGetter*, GetMediaResourceGetter, (), (override));
 };
 
 class MockPlayerAdapter : public PlayerAdapter {
@@ -77,6 +78,12 @@ class MockPlayerAdapter : public PlayerAdapter {
   MOCK_METHOD(int32_t, GetCurrentTime, (int32_t & currentTime), (override));
   MOCK_METHOD(int32_t, GetDuration, (int32_t & duration), (override));
   MOCK_METHOD(int32_t, SetPlaybackSpeed, (PlaybackRateMode mode), (override));
+  MOCK_METHOD(int32_t, SetVideoSurfaceNew, (void* native_window), (override));
+  using HeaderType = std::map<std::string, std::string>;
+  MOCK_METHOD(int32_t,
+              SetMediaSourceHeader,
+              (const std::string& url, const HeaderType& header),
+              (override));
 };
 
 class MockSurfaceBufferAdapter : public SurfaceBufferAdapter {
@@ -118,8 +125,8 @@ class OHOSMediaPlayerBridgeTests : public ::testing::Test {
     mock_client_ = std::make_unique<MockClient>();
 
     bridge = new OHOSMediaPlayerBridge(
-        *gurl_.get(), site_for_cookies, top_frame_origin, user_agent,
-        hide_url_log, mock_client_.get(), allow_credentials, is_hls);
+        *gurl_.get(), site_for_cookies, top_frame_origin, user_agent, has_storage_access,
+        hide_url_log, mock_client_.get(), allow_credentials, is_hls, headers);
   }
 
   void TearDown() override {
@@ -133,9 +140,11 @@ class OHOSMediaPlayerBridgeTests : public ::testing::Test {
   net::SiteForCookies site_for_cookies;
   url::Origin top_frame_origin;
   std::string user_agent{"test"};
+  bool has_storage_access = false;
   bool hide_url_log = false;
   bool allow_credentials = true;
   bool is_hls = false;
+  const base::flat_map<std::string, std::string> headers;
   std::unique_ptr<MockClient> mock_client_;
   std::unique_ptr<GURL> gurl_;
   base::test::TaskEnvironment task_environment_;

@@ -25,9 +25,11 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/ohos/sys_info_utils.h"
+#include "base/strings/utf_string_conversions.h"
 #include "cef/include/cef_task.h"
 #include "content/public/browser/browser_thread.h"
 #include "libcef/browser/thread_util.h"
+#include "ohos_glue/base/include/ark_web_errno.h"
 #include "ohos_adapter_helper.h"
 #include "res_sched_client_adapter.h"
 #include "ui/events/keycodes/keyboard_codes_posix.h"
@@ -321,7 +323,7 @@ void NWebInputMethodHandler::ComputeEditorInfo(InputInfo inputInfo, int32_t cust
   }
 }
 
-bool NWebInputMethodHandler::AttachToSystemIME(bool is_need_reset_listener) {
+bool NWebInputMethodHandler::AttachToSystemIME(bool is_need_reset_listener, int32_t requestKeyboardReason) {
   if (inputmethod_adapter_ == nullptr) {
     LOG(ERROR) << "inputmethod_adapter_ is nullptr";
     return false;
@@ -352,8 +354,14 @@ bool NWebInputMethodHandler::AttachToSystemIME(bool is_need_reset_listener) {
   textConfig->SetHeight((focus_rect_.y + focus_rect_.height + AVOID_OFFSET) *
                         device_pixel_ratio_);
 
-  if (!inputmethod_adapter_->Attach(inputmethod_listener_, show_keyboard_,
-                                    textConfig, is_need_reset_listener)) {
+  bool flag = inputmethod_adapter_->AttachWithRequestKeyboardReason(
+      inputmethod_listener_, show_keyboard_, textConfig, is_need_reset_listener,
+      requestKeyboardReason);
+  if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
+    flag = inputmethod_adapter_->Attach(inputmethod_listener_, show_keyboard_, textConfig,
+                  is_need_reset_listener);
+  }
+  if (!flag) {
     LOG(ERROR) << "inputmethod_adapter_ attach failed";
     return false;
   }
@@ -376,11 +384,20 @@ void NWebInputMethodHandler::Attach(CefRefPtr<CefBrowser> browser,
                                     bool is_need_reset_listener,
                                     int32_t enterKeyType) {
   LOG(INFO) << "NWebInputMethodHandler::Attach";
+  int32_t requestKeyboardReasonNone = 0;
+  Attach(browser, inputInfo, is_need_reset_listener, enterKeyType, requestKeyboardReasonNone);
+}
+
+void NWebInputMethodHandler::Attach(CefRefPtr<CefBrowser> browser,
+                                    InputInfo inputInfo,
+                                    bool is_need_reset_listener,
+                                    int32_t enterKeyType, int32_t requestKeyboardReason) {
+  LOG(INFO) << "NWebInputMethodHandler::Attach";
   ComputeEditorInfo(inputInfo, enterKeyType);
   composing_text_.clear();
   browser_ = browser;
 
-  if (!AttachToSystemIME(is_need_reset_listener)) {
+  if (!AttachToSystemIME(is_need_reset_listener, requestKeyboardReason)) {
     return;
   }
   isAttached_ = true;
@@ -395,9 +412,6 @@ void NWebInputMethodHandler::Attach(CefRefPtr<CefBrowser> browser,
 }
 
 bool NWebInputMethodHandler::Reattach(uint32_t nwebId, ReattachType type) {
-  LOG(INFO) << "Trigger reattach, nwebId=" << nwebId << ", source="
-            << (type == ReattachType::FROM_ONFOCUS ? "focus" : "continue")
-            << ", editable=" << is_editable_node_;
   nweb_id_ = nwebId;
   if (type == ReattachType::FROM_CONTINUE) {
     if (!isNeedReattachOncontinue_ || !is_editable_node_) {
@@ -415,6 +429,8 @@ bool NWebInputMethodHandler::Reattach(uint32_t nwebId, ReattachType type) {
     isNeedReattachOnfocus_ = false;
   }
 
+  LOG(INFO) << "Trigger reattach, nwebId=" << nwebId << ", source="
+            << (type == ReattachType::FROM_ONFOCUS ? "focus" : "continue");
   composing_text_.clear();
   ClearComposingStatus();
   if (!show_keyboard_ && isAttached_ && imf_input_mode_ != lastInputMode_) {
@@ -688,6 +704,13 @@ void NWebInputMethodHandler::InsertTextHandlerOnUI(const std::u16string& text) {
 
   CefKeyEvent keyEvent;
   keyEvent.windows_key_code = ui::VKEY_PROCESSKEY;
+  // keycode conversion for single char input on PC
+  if (base::ohos::IsPcDevice() && text.length() == 1) {
+    char16_t firstChar = text[0];
+    if (keycode_map.count(firstChar) > 0) {
+      keyEvent.windows_key_code = keycode_map[firstChar];
+    }
+  }
   keyEvent.modifiers = 0;
   keyEvent.is_system_key = false;
   keyEvent.type = KEYEVENT_RAWKEYDOWN;
@@ -792,7 +815,7 @@ void NWebInputMethodHandler::DeleteForwardHandlerOnUI(int32_t length) {
   keyEvent.modifiers = 0;
   keyEvent.is_system_key = false;
   keyEvent.character = keyEvent.unmodified_character = DEL_CHAR;
-  LOG(DEBUG) << "NWebInputMethodHandler::DeleteForwardHandlerOnUI";
+  LOG(INFO) << "NWebInputMethodHandler::DeleteForwardHandlerOnUI length=" << length;
 
   if (!browser_ || !browser_->GetHost()) {
     LOG(ERROR) << "delete backward browser get failed";
@@ -834,7 +857,7 @@ void NWebInputMethodHandler::DeleteBackwardHandlerOnUI(int32_t length) {
   keyEvent.modifiers = 0;
   keyEvent.is_system_key = false;
   keyEvent.character = keyEvent.unmodified_character = DEL_CHAR;
-  LOG(DEBUG) << "NWebInputMethodHandler::DeleteBackwardHandlerOnUI";
+  LOG(INFO) << "NWebInputMethodHandler::DeleteBackwardHandlerOnUI length=" << length;
 
   if (!browser_ || !browser_->GetHost()) {
     LOG(ERROR) << "delete forward browser get failed";
@@ -1323,8 +1346,8 @@ void NWebInputMethodHandler::AutoFillWithIMFEventOnUI(
 
 #if defined(OHOS_CLIPBOARD)
 std::string NWebInputMethodHandler::GetSelectInfo() {
-  std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> converter;
-  return converter.to_bytes(selected_text_);
+  std::string selected_str = base::UTF16ToUTF8(selected_text_);
+  return selected_str;
 }
 #endif
 

@@ -599,6 +599,9 @@ void DownloadItemImpl::StealDangerousDownload(bool delete_file_afterward,
 
 void DownloadItemImpl::Pause() {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::Pause guid: " << GetGuid()
+            << ", isPaused: " << IsPaused()
+            << ", state_: " << DebugDownloadStateString(state_);
 
   // Ignore irrelevant states.
   if (IsPaused())
@@ -634,6 +637,8 @@ void DownloadItemImpl::Pause() {
 void DownloadItemImpl::Resume(bool user_resume) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   DVLOG(20) << __func__ << "() download = " << DebugString(true);
+  LOG(INFO) << "DownloadItemImpl::Resume guid: " << GetGuid()
+            << ", user_resume: " << user_resume;
 
   switch (state_) {
     case CANCELLED_INTERNAL:  // Nothing to resume.
@@ -690,6 +695,8 @@ void DownloadItemImpl::UpdateResumptionInfo(bool user_resume) {
 void DownloadItemImpl::Cancel(bool user_cancel) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   DVLOG(20) << __func__ << "() download = " << DebugString(true);
+  LOG(INFO) << "DownloadItemImpl::Cancel guid: " << GetGuid()
+            << ", user_cancel: " << user_cancel;
   InterruptAndDiscardPartialState(
       user_cancel ? DOWNLOAD_INTERRUPT_REASON_USER_CANCELED
                   : DOWNLOAD_INTERRUPT_REASON_USER_SHUTDOWN);
@@ -699,6 +706,7 @@ void DownloadItemImpl::Cancel(bool user_cancel) {
 void DownloadItemImpl::Remove() {
   DVLOG(20) << __func__ << "() download = " << DebugString(true);
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::Remove guid: " << GetGuid();
 
   InterruptAndDiscardPartialState(DOWNLOAD_INTERRUPT_REASON_USER_CANCELED);
   UpdateObservers();
@@ -779,6 +787,7 @@ void DownloadItemImpl::RenameDownloadedFileDone(
 void DownloadItemImpl::Rename(const base::FilePath& display_name,
                               DownloadItem::RenameDownloadCallback callback) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::Rename guid: " << GetGuid();
 
   if (display_name.IsAbsolute()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -834,6 +843,8 @@ const std::string& DownloadItemImpl::GetRequestMethod() const {
 
 bool DownloadItemImpl::CanResume() const {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::CanResume guid: " << GetGuid()
+            << ", state_: " << DebugDownloadStateString(state_);
   switch (state_) {
     case INITIAL_INTERNAL:
     case COMPLETING_INTERNAL:
@@ -1561,6 +1572,7 @@ void DownloadItemImpl::Start(
     URLLoaderFactoryProvider::URLLoaderFactoryProviderPtr
         url_loader_factory_provider) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::Start guid: " << GetGuid();
 #if BUILDFLAG(IS_OHOS)
   // Simultaneously restoring a failed download multiple times will result in a crash.
   if (download_file_) {
@@ -1670,6 +1682,7 @@ void DownloadItemImpl::Start(
   }
 
   TransitionTo(TARGET_PENDING_INTERNAL);
+  LOG(INFO) << "DownloadItemImpl::Start download_file_: " << download_file_.get();
 
   job_->Start(download_file_.get(),
               base::BindRepeating(&DownloadItemImpl::OnDownloadFileInitialized,
@@ -2138,11 +2151,18 @@ void DownloadItemImpl::InterruptWithPartialState(
       ResumeMode resume_mode = GetResumeMode();
 #ifdef OHOS_EX_DOWNLOAD
       if (CheckIsNeedAutoResume(reason)) {
+        LOG(INFO) << "DownloadItemImpl::CheckIsNeedAutoResume last_reason_: "
+                  << last_reason_ << ", auto_resume_count_: " << auto_resume_count_
+                  << ", state_: " << DebugDownloadStateString(state_) << ", guid: " << GetGuid()
+                  << ", isPause: " << IsPaused()
+                  << ", is cancel: "<< IsCancellation(reason);
         resume_mode = ResumeMode::IMMEDIATE_CONTINUE;
         need_auto_resume = true;
       }
       LOG(INFO) << "DownloadItemImpl::InterruptWithPartialState "
-                << "need_auto_resume: " << need_auto_resume;
+                << ", guid: " << GetGuid()
+                << ", need_auto_resume: " << need_auto_resume
+                << ", path: " << GetFullPath();
 #endif // OHOS_EX_DOWNLOAD
       ReleaseDownloadFile(resume_mode != ResumeMode::IMMEDIATE_CONTINUE &&
                           resume_mode != ResumeMode::USER_CONTINUE);
@@ -2338,6 +2358,9 @@ bool DownloadItemImpl::IsDownloadReadyForCompletion(
 
 void DownloadItemImpl::TransitionTo(DownloadInternalState new_state) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+  LOG(INFO) << "DownloadItemImpl::TransitionTo "
+            << DebugDownloadStateString(state_) << " to "
+            << DebugDownloadStateString(new_state);
 
   if (state_ == new_state)
     return;
@@ -2480,14 +2503,30 @@ void DownloadItemImpl::SetFullPath(const base::FilePath& new_path) {
 }
 
 #ifdef OHOS_EX_DOWNLOAD
+bool DownloadItemImpl::IsAllowedAutoResume() {
+  switch (last_reason_) {
+    case DOWNLOAD_INTERRUPT_REASON_SERVER_NO_RANGE:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_HASH_MISMATCH:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_TOO_SHORT:
+    case DOWNLOAD_INTERRUPT_REASON_NETWORK_SERVER_DOWN:
+    case DOWNLOAD_INTERRUPT_REASON_SERVER_UNREACHABLE:
+    case DOWNLOAD_INTERRUPT_REASON_CRASH:
+    case DOWNLOAD_INTERRUPT_REASON_SERVER_FAILED:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_NO_SPACE:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_ACCESS_DENIED:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_NAME_TOO_LONG:
+    case DOWNLOAD_INTERRUPT_REASON_FILE_TOO_LARGE:
+      return false;
+    default:
+      return true;
+  }
+}
+
 bool DownloadItemImpl::CheckIsNeedAutoResume(DownloadInterruptReason reason) {
-  LOG(INFO) << "DownloadItemImpl::CheckIsNeedAutoResume last_reason_: "
-            << last_reason_ << ", auto_resume_count_: " << auto_resume_count_
-            << ", state_: " << state_ << ", guid: " << GetGuid()
-            << ", isPause: " << IsPaused();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-      switches::kEnableNwebExDownload) && state_ == TARGET_RESOLVED_INTERNAL &&
-      !IsPaused() && !IsCancellation(reason) &&
+      switches::kEnableNwebExDownload) &&
+      (state_ == TARGET_RESOLVED_INTERNAL || state_ == IN_PROGRESS_INTERNAL) &&
+      !IsPaused() && !IsCancellation(reason) && IsAllowedAutoResume() &&
       auto_resume_count_ <= kMaxAutoResumeAttempts) {
     return true;
   }
@@ -2636,8 +2675,19 @@ void DownloadItemImpl::ResumeInterruptedDownload(
   // will only be sent to the URL returned by GetURL().
   download_params->set_referrer(GetReferrerUrl());
   download_params->set_referrer_policy(net::ReferrerPolicy::NEVER_CLEAR);
-  download_params->set_cross_origin_redirects(
+#ifdef OHOS_EX_DOWNLOAD
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+      switches::kEnableNwebExDownload)) {
+      download_params->set_cross_origin_redirects(
+          network::mojom::RedirectMode::kFollow);
+  } else {
+      download_params->set_cross_origin_redirects(
+          network::mojom::RedirectMode::kError);
+  }
+#else
+  download_params->set_cross_origin_redirects(	
       network::mojom::RedirectMode::kError);
+#endif
 
   TransitionTo(RESUMING_INTERNAL);
   RecordDownloadCountWithSource(source == ResumptionRequestSource::USER

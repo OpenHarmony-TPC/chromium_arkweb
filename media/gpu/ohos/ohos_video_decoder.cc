@@ -291,13 +291,17 @@ void OhosVideoDecoder::OnCodecConfigured(
   OHOS::NWeb::DecoderFormat decoderFormat;
   decoderFormat.width = decoder_config_.coded_size().width();
   decoderFormat.height = decoder_config_.coded_size().height();
-  codec->ConfigureBridgeDecoder(decoderFormat,
-                                base::SequencedTaskRunner::GetCurrentDefault());
+  if (codec->ConfigureBridgeDecoder(decoderFormat, base::SequencedTaskRunner::GetCurrentDefault()) ==
+      DecoderAdapterCode::DECODER_ERROR) {
+      LOG(ERROR) << "OhosVideoDecoder::ConfigureBridgeDecoder failed.";
+      EnterTerminalState(State::kError, "Unable to config codec");
+      return;
+  }
   if (codec->SetBridgeOutputSurface(surface_bundle->GetOHOSNativeWindow()) ==
       DecoderAdapterCode::DECODER_ERROR) {
-    LOG(ERROR) << "OhosVideoDecoder::SetBridgeOutputSurface failed.";
-    EnterTerminalState(State::kError, "Unable to initialize codec");
-    return;
+      LOG(ERROR) << "OhosVideoDecoder::SetBridgeOutputSurface failed.";
+      EnterTerminalState(State::kError, "Unable to initialize codec");
+      return;
   }
   codec->PrepareBridgeDecoder();
   codec->StartBridgeDecoder();
@@ -311,6 +315,12 @@ void OhosVideoDecoder::OnCodecConfigured(
   if (!codec_) {
     LOG(ERROR) << "codec_ is null.";
   }
+#ifdef OHOS_VIDEO_ASSISTANT
+  if (pending_surface_id_ > 0) {
+    codec_->SetVideoSurface(pending_surface_id_);
+    pending_surface_id_ = -1;
+  }
+#endif // OHOS_VIDEO_ASSISTANT
   PumpCodec();
 }
 
@@ -595,5 +605,16 @@ bool OhosVideoDecoder::CanReadWithoutStalling() const {
 int OhosVideoDecoder::GetMaxDecodeRequests() const {
   return 2;
 }
+
+#ifdef OHOS_VIDEO_ASSISTANT
+void OhosVideoDecoder::SetVideoSurface(int32_t widget_id) {
+  LOG(INFO) << "SetVideoSurface(" << widget_id << "), codec_[" << (!!codec_) << "]";
+  if (codec_) {
+    codec_->SetVideoSurface(widget_id);
+  } else {
+    pending_surface_id_ = widget_id;
+  }
+}
+#endif // OHOS_VIDEO_ASSISTANT
 
 }  // namespace media

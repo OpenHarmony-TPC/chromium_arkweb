@@ -5,6 +5,7 @@
 #include "content/public/common/user_agent.h"
 
 #include <stdint.h>
+#include <atomic>
 
 #include "base/containers/contains.h"
 #include "base/logging.h"
@@ -241,6 +242,9 @@ std::string GetDistVersion() {
 }
 #endif
 
+std::atomic<bool> is_compatible_type_setted{false};
+static std::string compatible_device_type;
+
 std::string GetOSVersion(IncludeAndroidBuildNumber include_android_build_number,
                          IncludeAndroidModel include_android_model) {
   std::string os_version;
@@ -271,9 +275,21 @@ std::string GetOSVersion(IncludeAndroidBuildNumber include_android_build_number,
     device_type_string = command_line->GetSwitchValueASCII(::switches::kUserAgentValue);
   }
 
+  if (!is_compatible_type_setted) {
+    compatible_device_type = base::ohos::CompatibleDeviceType();
+    if (compatible_device_type == "Phone" ||
+        compatible_device_type == "PC" ||
+        compatible_device_type == "Tablet") {
+      LOG(DEBUG) << "compatible device type is: " << compatible_device_type;
+      device_type_string = compatible_device_type;
+    } else {
+      LOG(DEBUG) << "unknown compatible device type: " << compatible_device_type;
+    }
+    is_compatible_type_setted = true;
+  }
+
   int32_t ohos_major_version = base::ohos::MajorVersion();
   int32_t ohos_senior_version = base::ohos::SeniorVersion();
-  std::string dist_os_name = base::ohos::OsName();
   std::string base_os_name = base::ohos::BaseOsName();
   std::string ohos_fullname_str;
   if (base_os_name.empty() || ohos_major_version == -1 || ohos_senior_version == -1) {
@@ -285,6 +301,7 @@ std::string GetOSVersion(IncludeAndroidBuildNumber include_android_build_number,
       device_type_string.c_str(), base_os_name.c_str(),
       ohos_major_version, ohos_senior_version);
   }
+  std::string dist_os_name = base::ohos::BaseOsName();
   std::string dist_version = GetDistVersion();
   if (!dist_version.empty() && !dist_os_name.empty() && dist_os_name != base_os_name) {
     base::StringAppendF(&ohos_fullname_str, "; %s %s",
@@ -479,10 +496,21 @@ std::string BuildUserAgentFromOSAndProduct(const std::string& os_info,
   
 #if BUILDFLAG(IS_OHOS) && defined(OHOS_USERAGENT)
   std::string product_string = "";
+
+  if (!is_compatible_type_setted) {
+    compatible_device_type = base::ohos::CompatibleDeviceType();
+    is_compatible_type_setted = true;
+  }
+
   base::StringAppendF(&product_string, " ArkWeb/%s", ARKWEB_VERSION);
   if (base::ohos::IsMobileDevice()) {
     product_string += " Mobile";
+  } else if (base::ohos::IsTabletDevice() && (compatible_device_type == "Phone")) {
+    product_string += " Mobile";
+  } else if (base::ohos::IsPcDevice() && (compatible_device_type == "Phone")) {
+    product_string += " Mobile";
   }
+
   base::StringAppendF(&user_agent, "%s", product_string.c_str());
 #endif
   return user_agent;

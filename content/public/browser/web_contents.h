@@ -69,6 +69,10 @@
 #include "services/device/wake_lock/power_save_blocker/nweb_screen_lock_tracker.h"
 #endif
 
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+#include "ohos_nweb/src/capi/web_extension_tab_items.h"
+#endif
+
 namespace base {
 class FilePath;
 }  // namespace base
@@ -642,6 +646,7 @@ class WebContents : public PageNavigator,
 #ifdef OHOS_CLIPBOARD
   virtual void SetTouchInsertHandleMenuShow(bool show) = 0;
   virtual bool GetTouchInsertHandleMenuShow() = 0;
+  virtual void CollapseAllFramesSelection() = 0;
 #endif
 
 #ifdef OHOS_ARKWEB_ADBLOCK
@@ -664,6 +669,11 @@ class WebContents : public PageNavigator,
 
   virtual void SetAdBlockEnabledForSite(bool is_adblock_enabled,
                                         int main_frame_tree_node_id) = 0;
+#endif
+
+#if BUILDFLAG(IS_OHOS)
+  virtual void EnableSafeBrowsingDetection(bool enable, bool strictMode) = 0;
+  virtual bool IsSafeBrowsingDetectionEnabled() = 0;
 #endif
 
 #if defined(OHOS_EX_PASSWORD)
@@ -710,6 +720,10 @@ class WebContents : public PageNavigator,
   virtual int GetNWebId() = 0;
   virtual void SetNWebId(int nWebID) = 0;
 #endif  // defined(OHOS_WEBRTC)
+
+#if defined(OHOS_EX_SCREEN_CAPTURE)
+  virtual void StopScreenCapture(int32_t nweb_id, const std::string& session_id) = 0;
+#endif  // defined(OHOS_EX_SCREEN_CAPTURE)
 
   // Saves the given title to the navigation entry and does associated work. It
   // will update history and the view with the new title, and also synthesize
@@ -831,6 +845,12 @@ class WebContents : public PageNavigator,
   // This does not affect audio capture, just local/system output.
   virtual bool IsAudioMuted() = 0;
   virtual void SetAudioMuted(bool mute) = 0;
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  virtual void EnableVideoAssistant(bool enable) = 0;
+  virtual void ExecuteVideoAssistantFunction(const std::string& cmdId) = 0;
+  virtual void CustomWebMediaPlayer(bool enable) = 0;
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
 
 #if defined(OHOS_MEDIA_POLICY)
   //Set whether to the HTML play can be used to control media
@@ -1359,7 +1379,11 @@ class WebContents : public PageNavigator,
   //
   // This method must be called if any state that affects web preferences has
   // changed so that it can be recomputed and sent to the renderer.
+#ifdef OHOS_LOGGER_REPORT
+  virtual void OnWebPreferencesChanged(int32_t usage_scenario_type = 99) = 0;
+#else
   virtual void OnWebPreferencesChanged() = 0;
+#endif
 
   // Requests the renderer to exit fullscreen.
   // |will_cause_resize| indicates whether the fullscreen change causes a
@@ -1536,6 +1560,13 @@ class WebContents : public PageNavigator,
   virtual void BackNavigationLikely(PreloadingPredictor predictor,
                                     WindowOpenDisposition disposition) = 0;
 
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+  virtual void WebExtensionUpdateTab(
+      int32_t tab_id,
+      const NWebExtensionTabUpdateProperties* update_properties) = 0;
+  virtual int32_t GetTabId() = 0;
+#endif
+
   // Returns a scope object that needs to be owned by caller in order to
   // disallow custom cursors. Custom cursors whose width or height are larger
   // than `max_dimension_dips` are diallowed in this web contents for as long as
@@ -1548,7 +1579,36 @@ class WebContents : public PageNavigator,
 #ifdef OHOS_DRAG_DROP
   virtual void ClearContextMenu() = 0;
 #endif //OHOS_DRAG_DROP
+#ifdef OHOS_AI
+  virtual void OnOverlayZoomChanged() = 0;
+#endif
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+  virtual void OnBeforeUnloadFired(bool proceed) = 0;
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+#if defined(OHOS_MEDIA_AVSESSION)
+  void SetMediaTitle(const std::string& data) {
+     media_title_ = data;
+  }
+
+  std::string GetMediaTitle() {
+    return  media_title_;
+  }
+
+  void SetVideoPoster(const std::string& data) {
+     video_poster_ = data;
+  }
+
+  std::string GetVideoPoster() {
+    return  video_poster_;
+  }
+#endif // OHOS_MEDIA_AVSESSION
+
  private:
+#if defined(OHOS_MEDIA_AVSESSION)
+  std::string media_title_;
+  std::string video_poster_;
+#endif // OHOS_MEDIA_AVSESSION
   // This interface should only be implemented inside content.
   friend class WebContentsImpl;
   WebContents() = default;

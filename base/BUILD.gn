@@ -2558,6 +2558,8 @@ component("base") {
       "ohos/sys_info_utils.cc",
       "ohos/sys_info_utils.h",
       "system/sys_info_linux.cc",
+      "ohos/scoped_native_buffer_handle.cc",
+      "ohos/scoped_native_buffer_handle.h",
     ]
 
     if (ohos_i18n) {
@@ -2574,6 +2576,14 @@ component("base") {
       "//third_party/ashmem",
     ]
 
+    #ifdef OHOS_LOGGER_REPORT
+    if (defined(ohos_logger_report) && ohos_logger_report) {
+      sources += [
+        "ohos/logger.cc",
+        "ohos/logger.h",
+      ]
+    }
+    #endif
     # Add this build flag in gn file to enable stack trace dump
     if (use_symbolize) {
       defines += [ "USE_SYMBOLIZE" ]

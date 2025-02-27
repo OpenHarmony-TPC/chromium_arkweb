@@ -230,7 +230,7 @@ bool NWebEventHandler::CreateCefKeyEvent(CefKeyEvent& keyEvent,
   ui::KeyboardCode key_code =
       static_cast<ui::KeyboardCode>(keyEvent.windows_key_code);
   int keysym = ui::XKeysymForWindowsKeyCode(
-      key_code, keyEvent.modifiers & EVENTFLAG_SHIFT_DOWN);
+      key_code, keyEvent.modifiers & EVENTFLAG_SHIFT_DOWN, keyEvent.modifiers & EVENTFLAG_CAPS_LOCK_ON);
   char16_t character = ui::GetUnicodeCharacterFromXKeySym(keysym);
   keyEvent.character = keyEvent.unmodified_character = character;
   return true;
@@ -271,11 +271,13 @@ void NWebEventHandler::SendCefMouseWheelEvent(double x,
                                               double y,
                                               double deltaX,
                                               double deltaY,
-                                              int32_t modifiers) {
+                                              int32_t modifiers,
+                                              int32_t source) {
   CefMouseEvent mouseEvent;
   mouseEvent.x = x;
   mouseEvent.y = y;
   mouseEvent.modifiers = modifiers;
+  mouseEvent.source = source;
   LOG(DEBUG) << "WebSendMouseWheelEvent modifiers = " << mouseEvent.modifiers;
   if (!browser_ || !browser_->GetHost()) {
     LOG(ERROR) << "SendCefMouseWheelEvent browser_ or Host is nullptr, browser_: " << !browser_;
@@ -307,6 +309,16 @@ void NWebEventHandler::WebSendMouseWheelEvent(double x,
   SendCefMouseWheelEvent(x, y, deltaX, deltaY, modifiers);
 }
 
+void NWebEventHandler::WebSendMouseWheelEventV2(double x,
+                                              double y,
+                                              double deltaX,
+                                              double deltaY,
+                                              const std::vector<int32_t>& pressedCodes,
+                                              int32_t source) {
+  int32_t modifiers = NWebInputDelegate::GetWebModifiersByPressedCode(pressedCodes);
+  SendCefMouseWheelEvent(x, y, deltaX, deltaY, modifiers, source);
+}
+
 void NWebEventHandler::WebSendTouchpadFlingEvent(double x,
                                                  double y,
                                                  double vx,
@@ -325,6 +337,27 @@ void NWebEventHandler::WebSendTouchpadFlingEvent(double x,
   browser_->GetHost()->SendTouchpadFlingEvent(mouseEvent, vx, vy);
 }
 
+bool NWebEventHandler::SendKeyboardEvent(
+    const std::shared_ptr<OHOS::NWeb::NWebKeyboardEvent>& keyboardEvent) {
+  if (!keyboardEvent) {
+    return false;
+  }
+  if (keyboardEvent->GetKeyCode() < 0) {
+    LOG(ERROR) << "SendKeyboardEvent obtaining invalid keyCode";
+    return false;
+  }
+  CefKeyEvent keyEvent;
+  int32_t modifiers =  NWebInputDelegate::GetModifiersByKeyEvent(keyboardEvent);
+  if (!CreateCefKeyEvent(keyEvent,
+                         keyboardEvent->GetKeyCode(),
+                         keyboardEvent->GetAction(),
+                         modifiers)) {
+    return false;
+  }
+  SendCefKeyEvent(keyEvent);
+  return true;
+}
+
 #if defined(OHOS_INPUT_EVENTS)
 void NWebEventHandler::WebUpdateModifiers(CefMouseEvent& mouseInfo, const cef_mouse_button_type_t& buttonType) {
   if (NWebInputDelegate::IsMouseDown(previous_action_) && previous_button_ != buttonType) {
@@ -337,11 +370,14 @@ void NWebEventHandler::WebUpdateModifiers(CefMouseEvent& mouseInfo, const cef_mo
 void NWebEventHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent,
                                          float ratio) {
   if (!mouseEvent) {
+    LOG(INFO) << "WebSendMouseEvent mouseEvent is NULL";
     return;
   }
   CefMouseEvent mouseInfo;
   mouseInfo.x = mouseEvent->GetX() / ratio;
   mouseInfo.y = mouseEvent->GetY() / ratio;
+  mouseInfo.raw_x = mouseEvent->GetRawX();
+  mouseInfo.raw_y = mouseEvent->GetRawY();
 #ifdef OHOS_EX_TOPCONTROLS
   if (browser_ && browser_->GetHost()) {
     mouseInfo.y -= browser_->GetHost()->GetShrinkViewportHeight();
@@ -351,7 +387,7 @@ void NWebEventHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebM
       NWebInputDelegate::CefConverter("mousebutton", mouseEvent->GetButton()));
   mouseInfo.modifiers = NWebInputDelegate::GetWebMouseModifiersByPressedCode(buttonType,
     mouseEvent->GetPressKeyCodes());
-  LOG(DEBUG) << "WebSendMouseEvent x: " << mouseInfo.x << " y: " << mouseInfo.y
+  LOG(INFO) << "WebSendMouseEvent x: " << mouseInfo.x << " y: " << mouseInfo.y
              << " modifiers: " << mouseInfo.modifiers;
   if (NWebInputDelegate::IsMouseLeave(mouseEvent->GetAction())) {
     is_in_web_ = false;
@@ -362,11 +398,6 @@ void NWebEventHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebM
     if (NWebInputDelegate::IsMouseDown(mouseEvent->GetAction())) {
       previous_action_ = mouseEvent->GetAction();
       previous_button_ = buttonType;
-#ifdef OHOS_CLIPBOARD
-      if (buttonType == MBT_LEFT) {
-        browser_->GetHost()->SetFocus(true);
-      }
-#endif  // #ifdef OHOS_CLIPBOARD
       browser_->GetHost()->SendMouseClickEvent(mouseInfo, buttonType, false,
                                                mouseEvent->GetClickNum());
     } else if (NWebInputDelegate::IsMouseUp(mouseEvent->GetAction())) {
@@ -378,7 +409,7 @@ void NWebEventHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebM
       }
     } else if (NWebInputDelegate::IsMouseMove(mouseEvent->GetAction())) {
       if (last_mouse_x_ == mouseInfo.x && last_mouse_y_ == mouseInfo.y) {
-        LOG(DEBUG) << "no change in coordinates, cancel mouse move event";
+        LOG(INFO) << "no change in coordinates, cancel mouse move event";
         return;
       }
 #if defined(OHOS_INPUT_EVENTS)
@@ -388,11 +419,12 @@ void NWebEventHandler::WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebM
       last_mouse_y_ = mouseInfo.y;
       browser_->GetHost()->SendMouseMoveEvent(mouseInfo, false);
     } else if (NWebInputDelegate::IsMouseLeave(mouseEvent->GetAction())) {
-      if (NWebInputDelegate::IsMouseUp(previous_action_) || previous_button_ == MBT_RIGHT) {
+      if (previous_button_ == MBT_LEFT || previous_button_ == MBT_RIGHT) {
         browser_->GetHost()->SendMouseMoveEvent(mouseInfo, true);
       }
     } else {
-      LOG(DEBUG) << "mouse event action: " << mouseEvent->GetAction();
+      previous_action_= mouseEvent->GetAction();
+      LOG(INFO) << "mouse event action: " << mouseEvent->GetAction();
     }
   }
 }

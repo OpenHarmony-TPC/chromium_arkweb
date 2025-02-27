@@ -64,6 +64,8 @@ interface GpuService {
 
   [EnableIf=is_ohos] DestroyNativeWindow(uint32 native_window_id);
 
+  [EnableIf=is_ohos] Discard(uint32 native_window_id);
+
   [EnableIf=is_ohos] SetTransformHint(uint32 rotation, uint32 window_id);
 
   // Tells the GPU service an assigned cache handle. Note that for each type of
@@ -229,6 +231,10 @@ interface GpuService {
   // start frame loss monitor during page sliding scene
   [EnableIf=is_ohos]
   StopMonitor();
+
+  // get gpu total size
+  [EnableIf=is_ohos]
+  DumpGpuInfo() => (float totalSize);
 
   // Write out the accumulated code profiling profile to the configured file.
   // The callback is invoked once the profile has been flushed to disk.

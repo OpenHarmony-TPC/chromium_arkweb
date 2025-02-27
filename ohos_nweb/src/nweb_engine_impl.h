@@ -94,6 +94,17 @@ public:
 
   static bool CheckArkWebRomApiLevel(int apiLevel);
 
+  void RemoveAllCache(bool include_disk_files) override;
+
+  void SetProxyOverride(
+      const std::vector<std::string>& proxyUrls,
+      const std::vector<std::string>& proxySchemeFilters,
+      const std::vector<std::string>& bypassRules,
+      const bool& reverseBypass,
+      std::shared_ptr<NWebProxyChangedCallback> callback) override;
+  
+  void RemoveProxyOverride(std::shared_ptr<NWebProxyChangedCallback> callback) override;
+
 private:
   int romApiLevel_ = 0;
   std::shared_ptr<NWebDataBase> nweb_data_base_ = nullptr;

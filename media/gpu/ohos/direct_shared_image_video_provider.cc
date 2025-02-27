@@ -17,6 +17,8 @@
 #include "base/memory/ref_counted.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/ohos/sys_info_utils.h"
+#include "base/system/sys_info.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
@@ -25,6 +27,7 @@
 #include "gpu/command_buffer/service/ohos/ohos_video_image_backing.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_factory.h"
 #include "gpu/command_buffer/service/texture_manager.h"
+#include "gpu/config/gpu_finch_features.h"
 #include "gpu/ipc/service/command_buffer_stub.h"
 #include "gpu/ipc/service/gpu_channel.h"
 #include "gpu/ipc/service/gpu_channel_manager.h"
@@ -185,10 +188,16 @@ bool GpuSharedImageVideoFactory::CreateImageInternal(
     LOG(ERROR) << "GpuSharedImageVideoFactory: Unable to get a shared context.";
     return false;
   }
+
+  gl::ohos::TextureOwnerMode texture_owner_mode =
+      features::IsUsingVulkan() || base::ohos::IsEmulator() ||
+              base::SysInfo::IsLowEndDevice()
+              ? gl::ohos::TextureOwnerMode::kNativeImageTexture
+              : gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer;
   auto shared_image = gpu::OhosVideoImageBacking::Create(
       mailbox, coded_size, spec.color_space, kTopLeft_GrSurfaceOrigin,
       kPremul_SkAlphaType,
-      gl::ohos::TextureOwnerMode::kNativeImageTexture,
+      texture_owner_mode,
       std::move(image), std::move(shared_context), std::move(drdc_lock));
   DCHECK(stub_->channel()->gpu_channel_manager()->shared_image_manager());
   stub_->channel()->shared_image_stub()->factory()->RegisterBacking(

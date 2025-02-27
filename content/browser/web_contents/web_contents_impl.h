@@ -109,6 +109,12 @@
 #include "content/public/browser/custom_media_info.h"
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
+#ifdef OHOS_VIDEO_ASSISTANT
+#include "content/browser/media/video_assistant/video_assistant.h"
+#include "content/public/browser/media_player_controller.h"
+#include "content/public/browser/media_player_listener.h"
+#endif // OHOS_VIDEO_ASSISTANT
+
 namespace base {
 class FilePath;
 }  // namespace base
@@ -187,6 +193,12 @@ class PepperPlaybackObserver;
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
 class CustomMediaPlayerListener;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#ifdef OHOS_VIDEO_ASSISTANT
+class MediaPlayerController;
+class MediaPlayerListener;
+class VideoAssistant;
+#endif // OHOS_VIDEO_ASSISTANT
 
 // CreatedWindow holds the WebContentsImpl and target url between IPC calls to
 // CreateNewWindow and ShowCreatedWindow.
@@ -376,6 +388,10 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   void SetNWebId(int nWebID) override;
 #endif  // defined(OHOS_WEBRTC)
 
+#if defined(OHOS_EX_SCREEN_CAPTURE)
+  void StopScreenCapture(int32_t nweb_id, const std::string& session_id) override;
+#endif  // defined(OHOS_EX_SCREEN_CAPTURE)
+
   // WebContents ------------------------------------------------------
   WebContentsDelegate* GetDelegate() override;
   void SetDelegate(WebContentsDelegate* delegate) override;
@@ -456,6 +472,14 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
                                 int main_frame_tree_node_id) override;
 
   bool GetAdblockEnabledForSite() override;
+#endif
+
+#if BUILDFLAG(IS_OHOS)
+  void EnableSafeBrowsingDetection(bool enable, bool strictMode) override;
+
+  bool IsSafeBrowsingDetectionEnabled() override {
+    return is_safe_browsing_enabled_;
+  }
 #endif
 
 #if defined(OHOS_EX_PASSWORD)
@@ -727,7 +751,11 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   const blink::web_pref::WebPreferences& GetOrCreateWebPreferences() override;
   void NotifyPreferencesChanged() override;
   void SetWebPreferences(const blink::web_pref::WebPreferences& prefs) override;
+#ifdef OHOS_LOGGER_REPORT
+  void OnWebPreferencesChanged(int32_t usage_scenario_type = 99) override;
+#else
   void OnWebPreferencesChanged() override;
+#endif 
 
   void AboutToBeDiscarded(WebContents* new_contents) override;
 
@@ -754,6 +782,12 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 #if defined(OHOS_CLIPBOARD)
   void MouseSelectMenuShow(bool show) override;
   void ChangeVisibilityOfQuickMenu() override;
+  void CollapseAllFramesSelection() override;
+#endif
+
+#ifdef OHOS_AI
+  bool CloseImageOverlaySelection() override;
+  void OnOverlayZoomChanged() override;
 #endif
 
   void RunJavaScriptDialog(RenderFrameHostImpl* render_frame_host,
@@ -785,6 +819,14 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
                    base::i18n::TextDirection title_direction) override;
   void UpdateTargetURL(RenderFrameHostImpl* render_frame_host,
                        const GURL& url) override;
+
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+  void WebExtensionUpdateTab(
+      int32_t tab_id,
+      const NWebExtensionTabUpdateProperties* update_properties) override;
+  int32_t GetTabId() override;
+#endif
+
   bool IsNeverComposited() override;
   void SetCaptureHandleConfig(
       blink::mojom::CaptureHandleConfigPtr config) override;
@@ -1489,7 +1531,12 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   // Recomputes only the "fast" preferences (those not requiring slow
   // platform/device polling); the remaining "slow" ones are recomputed only if
   // the preference cache is empty.
+  
+#ifdef OHOS_LOGGER_REPORT
+  const blink::web_pref::WebPreferences ComputeWebPreferences(int32_t usage_scenario_type = 99);
+#else
   const blink::web_pref::WebPreferences ComputeWebPreferences();
+#endif
 
   // Certain WebXr modes integrate with Viz as a compositor directly, and thus
   // have their own FrameSinkId that typically renders fullscreen, obscuring
@@ -1559,9 +1606,41 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   void RequestEnterFullscreen(const MediaPlayerId& player_id);
   void RequestExitFullscreen(const MediaPlayerId& player_id);
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  void EnableVideoAssistant(bool enable) override;
+  void ExecuteVideoAssistantFunction(const std::string& cmdId) override;
+  void OnShowToast(double duration, const std::string& toast);
+  void OnShowVideoAssistant(const std::string& videoAssistantItems);
+  void OnReportStatisticLog(const std::string& content);
+  void CustomWebMediaPlayer(bool enable) override;
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+
 #if defined(OHOS_RENDER_PROCESS_SHARE)
   const std::string& SharedRenderProcessToken() override;
 #endif
+
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+  void OnBeforeUnloadFired(bool proceed) override;
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+#ifdef OHOS_VIDEO_ASSISTANT
+  void PopluateVideoAssistantConfig(
+      media::mojom::VideoAssistantConfigPtr& config);
+  void OnVideoPlaying(
+      media::mojom::VideoAttributesForVASTPtr video_attributes,
+      const MediaPlayerId& id);
+  void OnUpdateVideoAttributes(
+      media::mojom::VideoAttributesForVASTPtr video_attributes,
+      const MediaPlayerId& id);
+  void OnVideoDestroyed(const MediaPlayerId& id);
+  std::unique_ptr<MediaPlayerListener> OnFullScreenOverlayEnter(
+      media::mojom::MediaInfoForVASTPtr media_info,
+      const MediaPlayerId& media_player_id);
+
+  void SetVideoSurface(const MediaPlayerId& id, int32_t surface_widget);
+  void ReportVideoDecoderName(const std::string& decoder_name);
+#endif // OHOS_VIDEO_ASSISTANT
 
  private:
   using FrameTreeIterationCallback = base::RepeatingCallback<void(FrameTree&)>;
@@ -2401,6 +2480,8 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 #if BUILDFLAG(IS_OHOS)
   std::unique_ptr<NativeWebContentsObserver> native_web_contents_observer_;
   std::map<std::string, gfx::Rect> native_web_embed_rect_info_map_;
+  bool is_safe_browsing_enabled_ = true;
+  bool safe_browsing_strict_mode_ = false;
 #endif
 
 #if BUILDFLAG(ENABLE_PPAPI)
@@ -2649,6 +2730,12 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
   std::map<MediaPlayerId, CustomMediaPlayer*> players_;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#ifdef OHOS_VIDEO_ASSISTANT
+  std::unique_ptr<VideoAssistant> video_assistant_;
+  bool custom_media_player_enabled_ = false;
+  std::map<MediaPlayerId, int32_t> surface_widget_map_;
+#endif // OHOS_VIDEO_ASSISTANT
 };
 
 // Dangerous methods which should never be made part of the public API, so we

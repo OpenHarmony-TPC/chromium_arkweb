@@ -46,6 +46,9 @@ class CodecWrapperImpl : public base::RefCountedThreadSafe<CodecWrapperImpl> {
   bool IsDrained() const;
   bool Flush();
   bool SetSurface(scoped_refptr<CodecSurfaceBundle> surface_bundle);
+#ifdef OHOS_VIDEO_ASSISTANT
+  void SetVideoSurface(int32_t widget_id);
+#endif // OHOS_VIDEO_ASSISTANT
   scoped_refptr<CodecSurfaceBundle> SurfaceBundle();
   QueueStatus QueueInputBuffer(const DecoderBuffer& buffer);
   DequeueStatus DequeueOutputBuffer(
@@ -91,15 +94,25 @@ class CodecWrapperImpl : public base::RefCountedThreadSafe<CodecWrapperImpl> {
   gfx::ColorSpace color_space_ = gfx::ColorSpace::CreateSRGB();
 
   scoped_refptr<base::SequencedTaskRunner> release_task_runner_;
+
+#ifdef OHOS_VIDEO_ASSISTANT
+  bool render_video_view_ = false;
+#endif // OHOS_VIDEO_ASSISTANT
 };
 
 CodecOutputBuffer::CodecOutputBuffer(scoped_refptr<CodecWrapperImpl> codec,
                                      int64_t id,
                                      const gfx::Size& size,
+#ifdef OHOS_VIDEO_ASSISTANT
+                                     bool render_video_view,
+#endif // OHOS_VIDEO_ASSISTANT
                                      const gfx::ColorSpace& color_space)
     : codec_(std::move(codec)),
       id_(id),
       size_(size),
+#ifdef OHOS_VIDEO_ASSISTANT
+      render_video_view_(render_video_view),
+#endif // OHOS_VIDEO_ASSISTANT
       color_space_(color_space) {}
 
 CodecOutputBuffer::~CodecOutputBuffer() {
@@ -203,6 +216,7 @@ CodecWrapperImpl::QueueStatus CodecWrapperImpl::QueueInputBuffer(
       elided_eos_pending_ = true;
     } else {
       auto res = codec_->QueueInputBufferEOS();
+      TRACE_EVENT1("media", "QueueInputBufferEOS End", "result", res);
       if (res == DecoderAdapterCode::DECODER_RETRY) {
         return QueueStatus::kTryAgainLater;
       }
@@ -214,6 +228,7 @@ CodecWrapperImpl::QueueStatus CodecWrapperImpl::QueueInputBuffer(
 
   status = codec_->QueueInputBuffer(buffer.data(), buffer.data_size(),
                                     buffer.timestamp().ToInternalValue());
+  TRACE_EVENT1("media", "CodecWrapperImpl::QueueInputBuffer End", "result", status);                                    
   switch (status) {
     case DecoderAdapterCode::DECODER_OK:
       state_ = State::kRunning;
@@ -251,11 +266,13 @@ CodecWrapperImpl::DequeueStatus CodecWrapperImpl::DequeueOutputBuffer(
     uint32_t index = 0;
     bool eos = false;
     auto status = codec_->DequeueOutputBuffer(presentation_time, index, eos);
+    TRACE_EVENT1("media", "CodecWrapperImpl::DequeueOutputBuffer End", "result", status);
     switch (status) {
       case DecoderAdapterCode::DECODER_OK: {
         if (eos) {
           state_ = State::kDrained;
-          codec_->ReleaseOutputBuffer(index, false);
+          auto result = codec_->ReleaseOutputBuffer(index, false);
+          TRACE_EVENT1("media", "ReleaseOutputBuffer End", "result", result);
           if (end_of_stream)
             *end_of_stream = true;
           return DequeueStatus::kOk;
@@ -266,6 +283,7 @@ CodecWrapperImpl::DequeueStatus CodecWrapperImpl::DequeueOutputBuffer(
 
         OHOS::NWeb::DecoderFormat format;
         auto result = codec_->GetOutputFormatBridgeDecoder(format);
+        TRACE_EVENT1("media", "GetOutputFormatBridgeDecoder End", "result", result);
         LOG(DEBUG) << "CodecWrapperImpl::DequeueOutputBuffer "
                       "des width: "
                    << format.width << ", height: " << format.height;
@@ -283,7 +301,11 @@ CodecWrapperImpl::DequeueStatus CodecWrapperImpl::DequeueOutputBuffer(
         }
 
         *codec_buffer = base::WrapUnique(
-            new CodecOutputBuffer(this, buffer_id, size_, color_space_));
+            new CodecOutputBuffer(this, buffer_id, size_,
+#ifdef OHOS_VIDEO_ASSISTANT
+                render_video_view_,
+#endif // OHOS_VIDEO_ASSISTANT
+                color_space_));
         return DequeueStatus::kOk;
       }
       case DecoderAdapterCode::DECODER_RETRY: {
@@ -313,8 +335,22 @@ bool CodecWrapperImpl::SetSurface(
     return false;
   }
   surface_bundle_ = std::move(surface_bundle);
+#ifdef OHOS_VIDEO_ASSISTANT
+  render_video_view_ = false;
+#endif // OHOS_VIDEO_ASSISTANT
   return true;
 }
+
+#ifdef OHOS_VIDEO_ASSISTANT
+void CodecWrapperImpl::SetVideoSurface(int32_t widget_id) {
+  if (codec_) {
+    codec_->SetVideoSurface(widget_id);
+#ifdef OHOS_VIDEO_ASSISTANT
+    render_video_view_ = widget_id > 0;
+#endif // OHOS_VIDEO_ASSISTANT
+  }
+}
+#endif // OHOS_VIDEO_ASSISTANT
 
 scoped_refptr<CodecSurfaceBundle> CodecWrapperImpl::SurfaceBundle() {
   base::AutoLock l(lock_);
@@ -407,6 +443,12 @@ bool CodecWrapper::SetSurface(
     scoped_refptr<CodecSurfaceBundle> surface_bundle) {
   return impl_->SetSurface(std::move(surface_bundle));
 }
+
+#ifdef OHOS_VIDEO_ASSISTANT
+void CodecWrapper::SetVideoSurface(int32_t widget_id) {
+  impl_->SetVideoSurface(widget_id);
+}
+#endif // OHOS_VIDEO_ASSISTANT
 
 scoped_refptr<CodecSurfaceBundle> CodecWrapper::SurfaceBundle() {
   return impl_->SurfaceBundle();

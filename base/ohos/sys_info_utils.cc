@@ -15,7 +15,10 @@
 
 #include "base/ohos/sys_info_utils.h"
 
+#include "base/command_line.h"
 #include "base/threading/scoped_blocking_call.h"
+#include "base/logging.h"
+#include "content/public/common/content_switches.h"
 #include "ohos_adapter_helper.h"
 #include "ui/base/clipboard/clipboard.h"
 
@@ -25,6 +28,8 @@ namespace ohos {
 namespace {
 
 constexpr char kProductModeEmulator[] = "emulator";
+constexpr char kCompatiblePhone[] = "Phone";
+constexpr char kCompatibleTablet[] = "Tablet";
 
 using namespace OHOS::NWeb;
 
@@ -59,6 +64,17 @@ class SystemProperties {
 
   std::string product_model() { return product_model_; }
 
+  std::string api_version() { return api_version_; }
+
+  std::string compatible_device_type() { return compatible_device_type_; }
+
+  bool is_compatible_mode() {
+    LOG(INFO) << "systemProperties compatible type is " << compatible_device_type_.c_str();
+    return is_2in1() &&
+           (compatible_device_type_ == kCompatiblePhone || compatible_device_type_ == kCompatibleTablet);
+  }
+
+
 #ifdef OHOS_SCROLLBAR
   float get_pixel_ratio() { return virtual_pixel_ratio_;}
   void set_pixel_ratio(float ratio) { virtual_pixel_ratio_ = ratio;}
@@ -76,6 +92,8 @@ class SystemProperties {
   std::string os_version_;
   std::string base_os_name_;
   std::string product_model_;
+  std::string api_version_;
+  std::string compatible_device_type_;
 #ifdef OHOS_SCROLLBAR
   float virtual_pixel_ratio_ = 2.0;
 #endif
@@ -102,7 +120,13 @@ SystemProperties::SystemProperties()
                    .GetUserAgentBaseOSName()),
       product_model_(OhosAdapterHelper::GetInstance()
                          .GetSystemPropertiesInstance()
-                         .GetDeviceInfoProductModel()) {}
+                         .GetDeviceInfoProductModel()),
+      api_version_(OhosAdapterHelper::GetInstance()
+                         .GetSystemPropertiesInstance()
+                         .GetDeviceInfoApiVersion()),
+      compatible_device_type_(OhosAdapterHelper::GetInstance()
+                             .GetSystemPropertiesInstance()
+                             .GetCompatibleDeviceType()) {}
 }  // namespace
 
 #ifdef OHOS_SCROLLBAR
@@ -150,6 +174,33 @@ BASE_EXPORT std::string OsVersion() {
 
 BASE_EXPORT std::string BaseOsName() {
   return SystemProperties::Instance()->base_os_name();
+}
+
+BASE_EXPORT std::string ApiVersion() {
+  return SystemProperties::Instance()->api_version();
+}
+
+BASE_EXPORT std::string CompatibleDeviceType() {
+  return SystemProperties::Instance()->compatible_device_type();
+}
+
+BASE_EXPORT bool IsCompatibleMode() {
+  return SystemProperties::Instance()->is_compatible_mode();
+}
+
+BASE_EXPORT int32_t ApplicationApiVersion() {
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kOhosAppApiVersion)) {
+    std::string apiVersion =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            switches::kOhosAppApiVersion);
+    if (!apiVersion.empty()) {
+      // Same as API_VERSION_MOD in js_ui_ability.cpp of ability_runtime
+      static int32_t kApiVersionMod = 100;
+      return (std::stoi(apiVersion) % kApiVersionMod);
+    }
+  }
+  return -1;
 }
 
 }  // namespace ohos

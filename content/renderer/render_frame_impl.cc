@@ -257,6 +257,12 @@
 #include "cef/libcef/renderer/javascript/oh_gin_javascript_bridge_dispatcher.h"
 #endif
 
+#ifdef OHOS_LOGGER_REPORT
+#include "base/base_switches.h"
+#include "base/command_line.h"
+#include "url/ohos/log_utils.h"
+#endif
+
 using base::Time;
 using blink::ContextMenuData;
 using blink::WebContentDecryptionModule;
@@ -2383,6 +2389,17 @@ void RenderFrameImpl::ChangeVisibilityOfQuickMenu() {
 }
 #endif
 
+#ifdef OHOS_AI
+bool RenderFrameImpl::CloseImageOverlaySelection() {
+  if (GetFrameHost()) {
+    bool result = false;
+    GetFrameHost()->CloseImageOverlaySelection(&result);
+    return result;
+  }
+  return false;
+}
+#endif
+
 void RenderFrameImpl::AddMessageToConsole(
     blink::mojom::ConsoleMessageLevel level,
     const std::string& message) {
@@ -2604,10 +2621,6 @@ void RenderFrameImpl::CommitNavigation(
       std::move(navigation_client_impl_), request_id,
       was_initiated_in_this_frame);
 
-#ifdef OHOS_ARKWEB_ADBLOCK
-  bool site_adblock_enabled = commit_params->site_adblock_enabled;
-#endif  // OHOS_ARKWEB_ADBLOCK
-
   // Check if the navigation being committed originated as a client redirect.
   bool is_client_redirect =
       !!(common_params->transition & ui::PAGE_TRANSITION_CLIENT_REDIRECT);
@@ -2739,13 +2752,6 @@ void RenderFrameImpl::CommitNavigation(
 
   // Common case - fill navigation params from provided information and commit.
   std::move(commit_with_params).Run(std::move(navigation_params));
-
-#ifdef OHOS_ARKWEB_ADBLOCK
-  if (is_main_frame_) {
-    // All subframes share the main frame's adblock switch
-    OnUpdateAdBlockEnabledToRender(site_adblock_enabled);
-  }
-#endif  // OHOS_ARKWEB_ADBLOCK
 }
 
 void RenderFrameImpl::CommitNavigationWithParams(
@@ -2768,6 +2774,10 @@ void RenderFrameImpl::CommitNavigationWithParams(
     mojom::StorageInfoPtr storage_info,
     std::unique_ptr<DocumentState> document_state,
     std::unique_ptr<WebNavigationParams> navigation_params) {
+#ifdef OHOS_ARKWEB_ADBLOCK
+  bool site_adblock_enabled = commit_params->site_adblock_enabled;
+#endif  // OHOS_ARKWEB_ADBLOCK
+
   if (common_params->url.IsAboutSrcdoc()) {
     WebNavigationParams::FillStaticResponse(navigation_params.get(),
                                             "text/html", "UTF-8",
@@ -2865,6 +2875,13 @@ void RenderFrameImpl::CommitNavigationWithParams(
   // The commit can result in this frame being removed.
   if (!weak_self)
     return;
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  if (is_main_frame_) {
+    // All subframes share the main frame's adblock switch
+    OnUpdateAdBlockEnabledToRender(site_adblock_enabled);
+  }
+#endif  // OHOS_ARKWEB_ADBLOCK
 
   ResetMembersUsedForDurationOfCommit();
 }
@@ -3931,6 +3948,18 @@ void RenderFrameImpl::RunScriptsAtDocumentElementAvailable() {
   GetContentClient()->renderer()->RunScriptsAtDocumentStart(this);
   // Do not use |this|! ContentClient might have deleted them by now!
 }
+
+#if defined(OHOS_JSPROXY)
+void RenderFrameImpl::RunScriptsAtHeadReady() {
+  if (!initialized_) {
+    return;
+  }
+
+  if (GetContentClient() && GetContentClient()->renderer()) {
+    GetContentClient()->renderer()->RunScriptsAtHeadReady(this);
+  }
+}
+#endif
 
 void RenderFrameImpl::DidReceiveTitle(const blink::WebString& title) {
   // Ignore all but top level navigations.
@@ -5392,6 +5421,12 @@ void RenderFrameImpl::BeginNavigation(
     SynchronouslyCommitAboutBlankForBug778318(std::move(info));
     return;
   }
+
+#ifdef OHOS_LOGGER_REPORT
+    if (IsMainFrame()) {
+      LOG_FEEDBACK(INFO) << "Begin navigation routing_id: " << routing_id_;
+    }
+#endif
 
   // Everything else is handled asynchronously by the browser process through
   // BeginNavigation.

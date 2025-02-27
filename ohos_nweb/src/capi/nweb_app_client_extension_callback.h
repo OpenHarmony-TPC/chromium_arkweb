@@ -16,9 +16,13 @@
 #ifndef OHOS_NWEB_SRC_NWEB_APP_CLIENT_EXTENSION_CALLBACK_H_
 #define OHOS_NWEB_SRC_NWEB_APP_CLIENT_EXTENSION_CALLBACK_H_
 
+#include <cstddef>
 #include <map>
-#include <stddef.h>
 #include <string>
+#include "ohos_nweb/src/capi/nweb_icon_size.h"
+
+class NWebMediaPlayerController;
+class NWebMediaPlayerListener;
 
 struct NWebAppClientExtensionCallback {
   size_t struct_size = sizeof(NWebAppClientExtensionCallback);
@@ -29,6 +33,11 @@ struct NWebAppClientExtensionCallback {
                                int color_type,
                                int alpha_type,
                                int nweb_id);
+  void (*OnTouchIconUrlWithSizesReceived)(const char* image_url,
+                                          bool precomposed,
+                                          const IconSize* sizes,
+                                          size_t sizes_count,
+                                          int nweb_id);
   void (*OnLoadStarted)(bool toDifferentDocument, int nweb_id);
   void (*OnActivityStateChanged)(int state, int type, int nweb_id);
   void (*OnHidePasswordAutofillPopup)(int nweb_id);
@@ -58,6 +67,29 @@ struct NWebAppClientExtensionCallback {
                                           int main_frame_tree_node_id,
                                           int nweb_id);
 #endif
+
+  void (*OnRequestOpenDevTools)(int32_t nweb_id);
+#if defined(OHOS_MULTI_WINDOW)
+  void (*OnActivateContent)(int nweb_id);
+#endif
+#ifdef OHOS_EX_PULL_TO_REFRESH
+  bool (*OnPullToRefreshAction)(int action, int nweb_id);
+  void (*OnPullToRefreshPull)(float offset_x, float offset_y, int nweb_id);
+#endif
+
+  void (*OnShowToast)(int32_t nweb_id, double duration, const char* toast);
+
+  void (*OnShowVideoAssistant)(int32_t nweb_id,
+                               const char* video_assistant_items);
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+  void (*OnBeforeUnloadFired)(bool proceed, int nweb_id);
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  NWebMediaPlayerListener* (*OnFullScreenOverlayEnter)(int32_t nweb_id,
+      NWebMediaPlayerController* media_player_controller,
+      const char* media_info);
+#endif // OHOS_VIDEO_ASSISTANT
 };
 
 #endif  // OHOS_NWEB_SRC_NWEB_APP_CLIENT_EXTENSION_CALLBACK_H_

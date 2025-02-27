@@ -95,7 +95,9 @@ bool NWebResourceHandler::ReadStringData(void* data_out,
   bool has_data = false;
   bytes_read = 0;
 
-  data_ = response_->ResponseData();
+  if (data_.empty()) {
+    data_ = response_->ResponseData();
+  }
   if (offset_ < data_.length()) {
     // Copy the next block of data into the buffer.
     int transfer_size =
@@ -292,6 +294,9 @@ void NWebResourceHandler::GetResponseHeaders(CefRefPtr<CefResponse> response,
 
 #ifdef OHOS_NETWORK_LOAD
   if (response_->ResponseDataType() == NWebResponseDataType::NWEB_STRING_TYPE) {
+    if (data_.empty()) {
+      data_ = response_->ResponseData();
+    }
     response_length = data_.length();
     LOG(DEBUG) << "intercept NWEB_STRING_TYPE response_length=" << response_length;
   } else if (response_->ResponseDataType() == NWebResponseDataType::NWEB_BUFFER_TYPE) {

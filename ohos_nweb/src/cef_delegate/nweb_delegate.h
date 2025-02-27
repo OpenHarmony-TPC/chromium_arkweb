@@ -40,6 +40,8 @@
 #include "capi/nweb_download_delegate_callback.h"
 #endif  //  OHOS_EX_DOWNLOAD
 
+struct OpenDevToolsParam;
+
 namespace OHOS::NWeb {
 class JavaScriptResultCallbackImpl;
 class CefPdfValueCallbackImpl;
@@ -140,6 +142,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void ExecuteJavaScript(const std::string& code) const override;
   void PutBackgroundColor(int color) const override;
   void InitialScale(float scale) const override;
+  void PutOptimizeParserBudgetEnabled(bool enable) const override;
   void OnPause() override;
   void OnContinue() override;
   void WebComponentsBlur() override;
@@ -149,6 +152,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   std::shared_ptr<NWebPreference> GetPreference() const override;
   std::string Title() override;
   std::shared_ptr<HitTestResult> GetHitTestResult() const override;
+  std::shared_ptr<HitTestResult> GetLastHitTestResult() const override;
   int PageLoadProgress() override;
   float Scale() override;
   int Load(const std::string& url,
@@ -182,6 +186,8 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       std::function<void(void)>&& callback) override;
   void RegisterNativeLoadEndCallback(
       std::function<void(void)>&& callback) override;
+  void RegisterNativeScrollCallback(
+    std::function<void(double, double)>&& callback) override;
 
 #ifdef OHOS_ARKWEB_ADBLOCK
   void UpdateAdblockEasyListRules(
@@ -198,8 +204,18 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       const std::string& object_name,
       const std::vector<std::string>& method_list) const override;
 
+#if defined(OHOS_JSPROXY)
   void JavaScriptOnDocumentStart(const ScriptItems& scriptItems) override;
   void JavaScriptOnDocumentEnd(const ScriptItems& scriptItems) override;
+
+  void JavaScriptOnDocumentStartByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) override;
+  void JavaScriptOnDocumentEndByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) override;
+
+  void JavaScriptOnHeadReadyByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) override;
+#endif
 
   bool Discard() override;
   bool Restore() override;
@@ -257,6 +273,8 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
 
   int ScaleGestureChange(double scale, double centerX, double centerY) const override;
 
+  int ScaleGestureChangeV2(int type, double scale, double originScale, double centerX, double centerY) const override;
+
 #if defined(OHOS_MSGPORT)
   uint32_t runJSCallbackId_ = 0;
   std::unordered_map<uint32_t, CefRefPtr<JavaScriptResultCallbackImpl>> runJSCallbackMap_;
@@ -289,6 +307,8 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
 #ifdef OHOS_I18N
   void UpdateLocale(const std::string& language,
                     const std::string& region) override;
+  void UpdateNavigatorLanguage(const std::string& language,
+                               const std::string& region) override;
 #endif  // #ifdef OHOS_I18N
   CefRefPtr<CefClient> GetCefClient() const override {
     return handler_delegate_;
@@ -349,6 +369,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
 #ifdef BUILDFLAG(IS_OHOS)
 bool IsSafeBrowsingEnabled() override;
 void EnableSafeBrowsing(bool enable) override;
+void EnableSafeBrowsingDetection(bool enable, bool strictMode) override;
 void PrecompileJavaScript(const std::string& url,
                           const std::string& script,
                           std::shared_ptr<CacheOptions>& cacheOptions,
@@ -380,6 +401,12 @@ void SetTransformHint(uint32_t rotation) override;
                               double deltaX,
                               double deltaY,
                               const std::vector<int32_t>& pressedCodes) override;
+  void WebSendMouseWheelEventV2(double x,
+                                double y,
+                                double deltaX,
+                                double deltaY,
+                                const std::vector<int32_t>& pressedCodes,
+                                int32_t source) override;
   void WebSendTouchpadFlingEvent(double x,
                                  double y,
                                  double vx,
@@ -390,6 +417,7 @@ void SetTransformHint(uint32_t rotation) override;
 #if defined(OHOS_GET_SCROLL_OFFSET)
   void GetOverScrollOffset(float* offset_x, float* offset_y) override;
 #endif
+  bool SendKeyboardEvent(const std::shared_ptr<OHOS::NWeb::NWebKeyboardEvent>& keyboardEvent) override;
   bool ScrollByWithResult(float delta_x, float delta_y) override;
   void WebSendMouseEvent(const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent) override;
 #endif  // defined(OHOS_INPUT_EVENTS)
@@ -470,9 +498,13 @@ void SetTransformHint(uint32_t rotation) override;
  double GetBrowserZoomLevel() override;
 #endif
   void SetAccessibilityState(cef_state_t accessibility_state) override;
-  void ExecuteAction(int64_t accessibilityId, uint32_t action) override;
-  void ExecuteAction(int64_t accessibilityId, uint32_t action,
+  bool ExecuteAction(int64_t accessibilityId, uint32_t action,
       const std::map<std::string, std::string>& actionArguments) override;
+  bool GetAccessibilityNodeRectById(int64_t accessibilityId,
+                                    int32_t* width,
+                                    int32_t* height,
+                                    int32_t* offsetX,
+                                    int32_t* offsetY) override;
   std::shared_ptr<NWebAccessibilityNodeInfo>
   GetFocusedAccessibilityNodeInfo(int64_t accessibilityId,
                                   bool isAccessibilityFocus) override;
@@ -491,6 +523,12 @@ void SetTransformHint(uint32_t rotation) override;
   void StopCamera() override;
   void CloseCamera() override;
 #endif  // defined(OHOS_WEBRTC)
+
+#if defined(OHOS_EX_SCREEN_CAPTURE)
+  void StopScreenCapture(int32_t nweb_id, const char* session_id) override;
+  void RegisterScreenCaptureDelegateListener(
+      std::shared_ptr<NWebScreenCaptureDelegateCallback> listener) override;
+#endif  // defined(OHOS_EX_SCREEN_CAPTURE)
 
 #if defined(OHOS_SCREEN_LOCK)
   void SetWakeLockCallback(int32_t windowId, const std::shared_ptr<NWebScreenLockCallback>& callback) override;
@@ -526,8 +564,14 @@ void SetTransformHint(uint32_t rotation) override;
 
 void NotifyForNextTouchEvent() override;
 
+#ifdef OHOS_ACTIVE_POLICY
+void SetDelayDurationForBackgroundTabFreezing(int64_t delay) override;
+#endif
+
 #ifdef OHOS_AI
   void OnTextSelected() override;
+  void OnDestroyImageAnalyzerOverlay() override;
+  void OnFoldStatusChanged(FoldStatus foldstatus) override;
 #endif
 
 #ifdef OHOS_URL_TRUST_LIST
@@ -540,6 +584,36 @@ void NotifyForNextTouchEvent() override;
       const std::vector<std::string>& pathList) override;
 #endif
 
+#ifdef OHOS_ARKWEB_EXTENSIONS
+  void WebExtensionTabCreated(int tab_id) override;
+  void WebExtensionTabRemoved(int tab_id) override;
+  void WebExtensionTabUpdated(
+      int tab_id,
+      const std::vector<std::string>& changed_property_names,
+      const std::string& url) override;
+  void WebExtensionTabUpdated(
+      int tab_id,
+      const std::vector<std::string>& changed_property_names,
+      std::unique_ptr<NWebExtensionTabChangeInfo> changeInfo) override;
+  void WebExtensionTabActivated(
+      std::unique_ptr<NWebExtensionTabActiveInfo> activeInfo) override;
+  void WebExtensionTabAttached(
+      std::unique_ptr<NWebExtensionTabAttachInfo> attachInfo) override;
+  void WebExtensionTabDetached(
+      std::unique_ptr<NWebExtensionTabDetachInfo> detachInfo) override;
+  void WebExtensionTabHighlighted(int32_t tab_id, int32_t window_id) override;
+  void WebExtensionTabMoved(
+      int32_t tab_id,
+      std::unique_ptr<NWebExtensionTabMoveInfo> moveInfo) override;
+  void WebExtensionTabReplaced(int32_t addedTabId,
+                               int32_t removedTabId) override;
+  void WebExtensionTabZoomChange(std::unique_ptr<NWebExtensionTabZoomChangeInfo>
+                                     tabZoomChangeInfo) override;
+
+  void WebExtensionActionClicked(std::string extensionId,
+                                 const NWebExtensionTab* tab) override;
+#endif
+
 #ifdef OHOS_MIXED_CONTENT
   void EnableMixedContentAutoUpgrades(bool enable) override;
   bool IsMixedContentAutoUpgradesEnabled() override;
@@ -549,7 +623,23 @@ void NotifyForNextTouchEvent() override;
   void SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) override;
 #endif
 
+#ifdef OHOS_EX_REFRESH_IFRAME
+  bool WebExtensionContextMenuIsIframe() override;
+  void WebExtensionContextMenuReloadFocusedFrame() override;
+#endif
    void SetPopupSurface(void* popupSurface) override;
+
+  void OpenDevtoolsWith(
+      std::shared_ptr<NWebDelegateInterface> nweb_delegate,
+      std::unique_ptr<OpenDevToolsParam> param) override;
+  void CloseDevtools() override;
+
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+  bool NeedToFireBeforeUnloadOrUnloadEvents() override;
+  void DispatchBeforeUnload() override;
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+  void MaximizeResize() override;
 
  public:
   int argc_;
@@ -610,6 +700,12 @@ void NotifyForNextTouchEvent() override;
       std::shared_ptr<NWebCreateNativeMediaPlayerCallback> callback) override;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
+#if defined(OHOS_VIDEO_ASSISTANT)
+  void EnableVideoAssistant(bool enable) override;
+  void ExecuteVideoAssistantFunction(const std::string& cmd_id) override;
+  void CustomWebMediaPlayer(bool enable) override;
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+
   std::shared_ptr<NWebCustomKeyboardHandlerImpl> GetCustomKeyboardHandler() const override {
     if (render_handler_) {
       return render_handler_->GetCustomKeyboardHandler();
@@ -627,7 +723,8 @@ void NotifyForNextTouchEvent() override;
   void SendAccessibilityHoverEvent(int x, int y) override;
 
  private:
-  content::BrowserAccessibilityManagerOHOS* GetAccessibilityManager();
+  content::BrowserAccessibilityManagerOHOS* GetAccessibilityManager() const;
+  int64_t GetRealAccessibilityId(int64_t accessibilityId) const;
   void AddAccessibilityNodeInfoAttributes(
       std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
       const content::BrowserAccessibilityOHOS* node) const;
@@ -645,11 +742,16 @@ void NotifyForNextTouchEvent() override;
   float GetViewPointHeight() const;
   int32_t GetArgumentByKey(const std::map<std::string, std::string>& actionArguments,
     const std::string& checkKey) const;
+  
+  void SetIsHovering(bool is_hovering) {
+    is_hovering_ = is_hovering;
+  }
 
   float zoom_in_factor_ = 1.25f;
   float zoom_out_factor_ = 0.8f;
   float default_virtual_pixel_ratio_ = 2.0;
   float intial_scale_ = 0;
+  bool is_hovering_ = false;
   bool has_requested_visited_history = false;
   CefRefPtr<NWebApplication> nweb_app_ = nullptr;
   CefRefPtr<NWebHandlerDelegate> handler_delegate_ = nullptr;
@@ -662,6 +764,9 @@ void NotifyForNextTouchEvent() override;
   std::shared_ptr<OHOS::NWeb::DisplayScreenListener> display_listener_ =
       nullptr;
   int32_t display_listener_id_;
+  std::shared_ptr<OHOS::NWeb::FoldStatusScreenListener> foldstatus_listener_ =
+      nullptr;
+  int32_t foldstatus_listener_id_ = 0;
   // Members only accessed on the main thread.
   bool hidden_ = false;
   bool occluded_ = false;

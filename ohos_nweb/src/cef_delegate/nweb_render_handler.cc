@@ -38,6 +38,7 @@
 #ifdef OHOS_DRAG_DROP
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
+#include "base/ohos/sys_info_utils.h"
 #include "cef/libcef/common/drag_data_impl.h"
 #include "content/public/common/drop_data.h"
 #include "nweb_drag_data.h"
@@ -275,6 +276,11 @@ CefRefPtr<NWebRenderHandler> NWebRenderHandler::Create() {
     return nullptr;
   }
   return renderHandler;
+}
+
+void NWebRenderHandler::RegisterNativeScrollCallback(
+    std::function<void(double, double)>&& callback) {
+  on_scroll_cb_ = std::move(callback);
 }
 
 void NWebRenderHandler::RegisterRenderCb(
@@ -594,6 +600,10 @@ void NWebRenderHandler::OnScrollOffsetChanged(CefRefPtr<CefBrowser> browser,
     handler->OnScroll(x, y);
   }
 
+  if (on_scroll_cb_) {
+    on_scroll_cb_(x, y);
+  }
+
   ResSchedClientAdapter::ReportScene(ResSchedStatusAdapter::WEB_SCENE_ENTER,
                                      ResSchedSceneAdapter::SLIDE);
 }
@@ -691,9 +701,14 @@ void NWebRenderHandler::HandleKeyboardAttach(
                    "close custom keyboard";
       custom_keyboard_handler_->Close();
     }
-    LOG(INFO) << "WebCustomKeyboard attach system keyboard";
+    int32_t requestKeyboardReason = 0;
+    auto iter = attributesMap.find("requestKeyboardReason");
+    if (iter != attributesMap.end()) {
+      requestKeyboardReason = std::stoi(iter->second);
+    }
+    LOG(INFO) << "WebCustomKeyboard attach system keyboard requestKeyboardReason = " << requestKeyboardReason;
     inputmethod_client_->Attach(browser, text_input_info,
-                                is_need_reset_listener, enterKeyType);
+                                is_need_reset_listener, enterKeyType, requestKeyboardReason);
   } else {
     if (isSystemKeyboard_) {
       LOG(INFO) << "WebCustomKeyboard before use custom keyboard, need to "
@@ -876,6 +891,25 @@ void NWebRenderHandler::ImageDragForFileUri(CefRefPtr<CefDragData> drag_data) {
   }
 }
 
+void NWebRenderHandler::GetVisibleRectToWeb(
+    int& visibleX, int& visibleY, int& visibleWidth, int& visibleHeight) {
+  auto handler = handler_.lock();
+  if (handler == nullptr) {
+    LOG(ERROR) << "can't get strong ptr with handler";
+    return;
+  }
+  handler->GetVisibleRectToWeb(visibleX, visibleY, visibleWidth, visibleHeight);
+}
+
+void NWebRenderHandler::RestoreRenderFit() {
+  auto handler = handler_.lock();
+  if (handler == nullptr) {
+    LOG(ERROR) << "can't get strong ptr with handler";
+    return;
+  }
+  handler->RestoreRenderFit();
+}
+
 // chromium内核上报的拖拽数据
 bool NWebRenderHandler::StartDragging(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefDragData> drag_data,
@@ -927,17 +961,14 @@ bool NWebRenderHandler::StartDragging(CefRefPtr<CefBrowser> browser,
   if (delegete) {
     dark_mode_enable = delegete->DarkModeEnabled();
   }
-  int32_t view_port_height = 0;
-#if defined(OHOS_EX_TOPCONTROLS)
-  if (browser && browser->GetHost()) {
-    view_port_height = browser->GetHost()->GetShrinkViewportHeight();
-  }
-#endif
 
+  bool is_drag_new_style = true;
+  if (base::ohos::IsPcDevice()) {
+    is_drag_new_style = false;
+  }
   nweb_drag_data_ = std::make_shared<NWebDragDataImpl>(
       drag_data, drag_touch_point, start_edge, end_edge,
-      screen_info_.display_ratio, usefull_selection, dark_mode_enable, view_port_height, true);
-
+      screen_info_.display_ratio, usefull_selection, dark_mode_enable, is_drag_new_style);
   auto handler = handler_.lock();
   if (handler == nullptr) {
     LOG(ERROR) << "can't get strong ptr with handler";
@@ -1024,6 +1055,14 @@ void NWebRenderHandler::OnScrollState(CefRefPtr<CefBrowser> browser,
                                       bool scroll_state) {
   if (auto handler = handler_.lock()) {
     handler->OnScrollState(scroll_state);
+  }
+}
+
+void NWebRenderHandler::OnScrollStart(CefRefPtr<CefBrowser> browser,
+                                          const float x,
+                                          const float y) {
+  if (auto handler = handler_.lock()) {
+    handler->OnScrollStart(x, y);
   }
 }
 

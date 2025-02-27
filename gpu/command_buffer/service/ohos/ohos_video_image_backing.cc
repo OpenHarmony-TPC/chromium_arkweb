@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "gpu/command_buffer/service/ohos/ohos_video_image_backing.h"
+
+#include "base/ohos/scoped_native_buffer_handle.h"
 #include "components/viz/common/gpu/vulkan_context_provider.h"
 #include "components/viz/common/resources/resource_sizes.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
@@ -11,8 +13,8 @@
 #include "gpu/command_buffer/service/ohos/native_image_image_backing.h"
 #include "gpu/command_buffer/service/ohos/native_image_texture_owner.h"
 #include "gpu/command_buffer/service/ohos/same_layer_native_buffer_image_backing.h"
+#include "gpu/command_buffer/service/ohos/hw_video_native_buffer_image_backing.h"
 #include "gpu/command_buffer/service/ohos/scoped_native_buffer_fence_sync.h"
-#include "gpu/command_buffer/service/ohos/scoped_native_buffer_handle.h"
 #include "gpu/command_buffer/service/ref_counted_lock.h"
 #include "gpu/command_buffer/service/shared_context_state.h"
 #include "gpu/config/gpu_finch_features.h"
@@ -58,6 +60,13 @@ std::unique_ptr<OhosVideoImageBacking> OhosVideoImageBacking::Create(
         std::move(stream_texture_sii), std::move(context_state),
         std::move(drdc_lock));
   }
+  if (texture_owner_mode == gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer) {
+    return std::make_unique<HwVideoNativeBufferImageBacking>(
+        mailbox, size, color_space, surface_origin, alpha_type,
+        std::move(stream_texture_sii), std::move(context_state),
+        std::move(drdc_lock));
+  }
+
 
   return std::make_unique<NativeImageImageBacking>(
       mailbox, size, color_space, surface_origin, alpha_type,

@@ -76,6 +76,13 @@ extern const char kBundleInstallationDir[];
 extern const char kBundleName[];
 extern const char kArkWebInstallPath[];
 #endif
+#ifdef OHOS_VIDEO_ASSISTANT
+extern const char kEnableVideoAssistant[];
+#endif // OHOS_VIDEO_ASSISTANT
+
+#ifdef OHOS_LOGGER_REPORT
+extern const char kEnableLoggerReport[];
+#endif
 
 }  // namespace switches
 

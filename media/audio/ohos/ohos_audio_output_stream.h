@@ -45,6 +45,8 @@ class AudioRendererOptions : public AudioRendererOptionsAdapter {
 
   int32_t GetRenderFlags() override;
 
+  AudioAdapterConcurrencyMode GetConcurrencyMode() override;
+
  private:
   friend class OHOSAudioOutputStream;
   AudioAdapterSamplingRate rate_;
@@ -54,6 +56,7 @@ class AudioRendererOptions : public AudioRendererOptionsAdapter {
   AudioAdapterContentType content_type_;
   AudioAdapterStreamUsage stream_usage_;
   int32_t renderer_flags_;
+  AudioAdapterConcurrencyMode concurrency_mode_;
 };
 
 class AudioRendererCallback : public AudioRendererCallbackAdapter {
@@ -111,6 +114,7 @@ class OHOSAudioOutputStream : public AudioOutputStream {
   bool GetInterruptMode();
   void SetInterruptMode(bool audioExclusive);
   bool GetAudioExclusive();
+  void FlushData();
 
  private:
   ~OHOSAudioOutputStream() override;
@@ -135,15 +139,16 @@ class OHOSAudioOutputStream : public AudioOutputStream {
   void ReleaseAudioBuffer();
 
   // Call to set audio_render silentMode
-  void SetUpAudioSilentState();
+  void SetUpAudioSilentState(int32_t bytesSingle);
+
+  // Call to determine whether media is preload
+  bool IsPreloadOrMutedMediaMode();
 
   bool InitRender(const std::shared_ptr<AudioRendererOptionsAdapter> options);
 
   bool StartRender();
 
   void Prepare(base::WeakPtr<content::MediaSessionImpl> weakMediaSession);
-
-  void GetMediaSessionFromWebContent();
 
   raw_ptr<OHOSAudioManager> manager_;
 
@@ -189,6 +194,8 @@ class OHOSAudioOutputStream : public AudioOutputStream {
   bool isSuspended_ = false;
 
   bool isSilentMode_ = false;
+
+  size_t silentFrameNum_ = 0;
 
   scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_;
 

@@ -180,6 +180,7 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
   browser_settings.text_autosizing_enabled =
       IsTextAutosizingEnabled() ? STATE_ENABLED : STATE_DISABLED;
   browser_settings.force_zero_layout_height = IsFitContent();
+  browser_settings.font_weight_scale = GetFontWeightScale();
 #endif  // BUILDFLAG(IS_OHOS)
 #if defined(OHOS_CLIPBOARD)
   browser_settings.copy_option = static_cast<int>(GetCopyOptionMode());
@@ -214,6 +215,10 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
 #if defined(OHOS_SOFTWARE_COMPOSITOR)
   browser_settings.record_whole_document = GetEnableWholeWebPageDrawing();
 #endif // OHOS_SOFTWARE_COMPOSITOR
+
+#ifdef OHOS_ACTIVE_POLICY
+  browser_settings.delay_for_background_tab_freezing = GetDelayDurationForBackgroundTabFreezing();
+#endif
 }
 
 void NWebPreferenceDelegate::SetBrowserSettingsToNetHelpers() {
@@ -666,7 +671,7 @@ void NWebPreferenceDelegate::SetNativeEmbedMode(bool flag) {
   // Native Embed is not supported on pc device.
   CefRefPtr<CefCommandLine> command_line = CefCommandLine::GetGlobalCommandLine();
   auto isEnableEmbed = command_line->HasSwitch(::switches::kEnableEmbedMode);
-  enable_embed_mode_ = flag && !isEnableEmbed;
+  enable_embed_mode_ = flag && (!isEnableEmbed || base::ohos::IsCompatibleMode());
   if (enable_embed_mode_) {
     zooming_function_enabled_ = false;
   }
@@ -787,10 +792,21 @@ bool NWebPreferenceDelegate::IsTextAutosizingEnabled() const {
 
 void NWebPreferenceDelegate::SetFitContent(bool value) {
   fit_content_ = value;
+  WebPreferencesChanged();
 }
 
 bool NWebPreferenceDelegate::IsFitContent() const {
   return fit_content_;
+}
+
+void NWebPreferenceDelegate::SetFontWeightScale(float scale) {
+  LOG(INFO) << "set fontWeightScale = " << scale;
+  font_weight_scale_ = scale;
+  WebPreferencesChanged();
+}
+
+float NWebPreferenceDelegate::GetFontWeightScale() const {
+  return font_weight_scale_;
 }
 #endif
 
@@ -859,16 +875,54 @@ void NWebPreferenceDelegate::PutJavaScriptOnDocumentStart(const ScriptItems& scr
   script_items_start_ = scriptItems;
 }
 
+void NWebPreferenceDelegate::PutJavaScriptOnDocumentStartByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) {
+  script_items_start_ = scriptItems;
+  script_items_start_by_order_ = scriptItemsByOrder;
+}
+
 ScriptItems NWebPreferenceDelegate::GetJavaScriptOnDocumentStart() {
   return script_items_start_;
+}
+
+ScriptItemsByOrder NWebPreferenceDelegate::GetJavaScriptOnDocumentStartByOrder() {
+  return script_items_start_by_order_;
 }
 
 void NWebPreferenceDelegate::PutJavaScriptOnDocumentEnd(const ScriptItems& scriptItems) {
   script_items_end_ = scriptItems;
 }
 
+void NWebPreferenceDelegate::PutJavaScriptOnDocumentEndByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) {
+  script_items_end_ = scriptItems;
+  script_items_end_by_order_ = scriptItemsByOrder;
+}
+
 ScriptItems NWebPreferenceDelegate::GetJavaScriptOnDocumentEnd() {
   return script_items_end_;
+}
+
+ScriptItemsByOrder NWebPreferenceDelegate::GetJavaScriptOnDocumentEndByOrder() {
+  return script_items_end_by_order_;
+}
+
+void NWebPreferenceDelegate::PutJavaScriptOnHeadReady(const ScriptItems& scriptItems) {
+  script_items_head_ready_ = scriptItems;
+}
+
+void NWebPreferenceDelegate::PutJavaScriptOnHeadReadyByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder) {
+  script_items_head_ready_ = scriptItems;
+  script_items_head_ready_by_order_ = scriptItemsByOrder;
+}
+
+ScriptItems NWebPreferenceDelegate::GetJavaScriptOnHeadReady() {
+  return script_items_head_ready_;
+}
+
+ScriptItemsByOrder NWebPreferenceDelegate::GetJavaScriptOnHeadReadyByOrder() {
+  return script_items_head_ready_by_order_;
 }
 #endif
 
@@ -930,4 +984,29 @@ int NWebPreferenceDelegate::GetTimeToLive() {
 }
 #endif // OHOS_BFCACHE
 
+#ifdef OHOS_ACTIVE_POLICY
+void NWebPreferenceDelegate::SetDelayDurationForBackgroundTabFreezing(
+  int64_t delay_for_background_tab_freezing) {
+  if (delay_for_background_tab_freezing_ == delay_for_background_tab_freezing) {
+    return;
+  }
+  delay_for_background_tab_freezing_ = delay_for_background_tab_freezing;
+  WebPreferencesChanged();
+}
+
+int64_t NWebPreferenceDelegate::GetDelayDurationForBackgroundTabFreezing() {
+  return delay_for_background_tab_freezing_;
+}
+#endif
+
+#if defined(OHOS_MEDIA_AVSESSION)
+void NWebPreferenceDelegate::PutWebMediaAVSessionEnabled(bool enable) {
+  if (!browser_) {
+    LOG(ERROR) << "PutWebMediaAVSessionEnabled failed, browser is null";
+    return;
+  }
+  LOG(INFO) << "NWebPreferenceDelegate::PutWebMediaAVSessionEnabled enable:" << enable;
+  browser_->GetHost()->PutWebMediaAVSessionEnabled(enable);
+}
+#endif // OHOS_MEDIA_AVSESSION
 }  // namespace OHOS::NWeb

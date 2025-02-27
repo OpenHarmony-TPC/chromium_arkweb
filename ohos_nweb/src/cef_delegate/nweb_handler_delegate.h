@@ -34,11 +34,14 @@
 #include <condition_variable>
 #include <functional>
 #include <list>
+#include <map>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_set>
-#include <map>
 #include "capi/nweb_app_client_extension_callback.h"
+#include "capi/nweb_icon_size.h"
+#include "capi/nweb_extension_api_callback.h"
 #include "nweb_download_callback.h"
 #include "nweb_javascript_result_callback.h"
 #include "nweb_value.h"
@@ -50,6 +53,15 @@
 #if defined(OHOS_SOFTWARE_COMPOSITOR)
 #include "base/cancelable_callback.h"
 #endif
+
+#if defined(OHOS_LOGGER_REPORT)
+#include "capi/nweb_logger_callback.h"
+#include "cef/include/cef_logger_callback_api_handler.h"
+#endif
+
+#ifdef OHOS_ARKWEB_EXTENSIONS
+using TabCreatedCallback = base::RepeatingCallback<void(const NWebExtensionTab*)>;
+#endif // OHOS_ARKWEB_EXTENSIONS
 
 struct NativeWindow;
 
@@ -75,6 +87,10 @@ class NWebHandlerDelegate : public CefClient,
                             public CefMediaHandler,
                             public CefFormHandler,
                             public CefFrameHandler,
+                            public CefWebExtensionApiHandler,
+#if defined(OHOS_LOGGER_REPORT)
+                            public CefLoggerCallbackApiHandler,
+#endif  // defined(OHOS_LOGGER_REPORT)
 #if defined(OHOS_PRINT)
                             public CefCookieAccessFilter,
                             public CefPrintHandler {
@@ -145,7 +161,10 @@ class NWebHandlerDelegate : public CefClient,
                                   const CefString& method,
                                   const CefString& object_name,
                                   CefRefPtr<CefListValue> result);
-
+  int ProcessNativeProxyResultNewForReturnValue(CefRefPtr<CefListValue> args,
+                                  const CefString& method,
+                                  const CefString& object_name,
+                                  CefRefPtr<CefListValue> result);
   int ProcessNativeProxyResultNewFlowbuf(CefRefPtr<CefListValue> args,
                                   const CefString& method,
                                   const CefString& object_name,
@@ -242,6 +261,9 @@ class NWebHandlerDelegate : public CefClient,
 #endif  // defined(OHOS_PRINT)
 
   CefRefPtr<CefFrameHandler> GetFrameHandler() override;
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+  CefRefPtr<CefWebExtensionApiHandler> GetWebExtensionApiHandler() override;
+#endif // defined(OHOS_ARKWEB_EXTENSIONS)
   /* CefClient methods end */
 
   /* CefLifeSpanHandler methods begin */
@@ -455,6 +477,10 @@ class NWebHandlerDelegate : public CefClient,
                          size_t height,
                          cef_color_type_t color_type,
                          cef_alpha_type_t alpha_type) override;
+void OnTouchIconUrlWithSizesReceived(
+    const CefString& image_url,
+    bool precomposed,
+    const std::vector<IconSize>& sizes) override;
   void OnReceivedTouchIconUrl(CefRefPtr<CefBrowser> browser,
                               const CefString& icon_url,
                               bool precomposed) override;
@@ -466,6 +492,8 @@ class NWebHandlerDelegate : public CefClient,
   void OnScaleChanged(CefRefPtr<CefBrowser> browser,
                       float old_page_scale_factor,
                       float new_page_scale_factor) override;
+  void OnScaleInited(CefRefPtr<CefBrowser> browser,
+                      float page_scale_factor) override;
   void OnContentsBrowserZoomChange(double zoom_factor,
                                    bool can_show_bubble) override;
 #if defined(OHOS_INPUT_EVENTS)
@@ -524,6 +552,7 @@ class NWebHandlerDelegate : public CefClient,
                     const CefString& default_file_path,
                     const std::vector<CefString>& accept_filters,
                     bool capture,
+                    const std::vector<CefString>& mime_filters,
                     CefRefPtr<CefFileDialogCallback> callback) override;
 
 #ifdef OHOS_HTML_SELECT
@@ -594,6 +623,7 @@ class NWebHandlerDelegate : public CefClient,
                             bool is_mouse_trigger) override;
   void HideHandleAndQuickMenuIfNecessary(bool hide) override;
   void ChangeVisibilityOfQuickMenu() override;
+  bool CloseImageOverlaySelection() override;
   /* CefContextMenuHandler method end */
 
   /* CefFindandler methods begin */
@@ -740,6 +770,16 @@ class NWebHandlerDelegate : public CefClient,
       const CefCustomMediaInfo& media_info) override;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
+  void OnShowToast(double duration, const CefString& toast) override;
+  void OnShowVideoAssistant(const CefString& videoAssistantItems) override;
+  void OnReportStatisticLog(const CefString& content) override;
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  CefOwnPtr<CefMediaPlayerListenerForVAST> OnFullScreenOverlayEnter(
+      CefOwnPtr<CefMediaPlayerController> media_player_controller,
+      const std::string& extra_info) override;
+#endif // OHOS_VIDEO_ASSISTANT
+
 #if defined(OHOS_CLIPBOARD)
   void SetIsRichText(bool is_rich_text) { is_rich_text_ = is_rich_text; }
 #endif
@@ -752,6 +792,22 @@ class NWebHandlerDelegate : public CefClient,
   void OnRenderProcessResponding(CefRefPtr<CefBrowser> browser) override;
 #endif
 
+#if defined(OHOS_ARKWEB_EXTENSIONS)
+  static void RegisterWebExtensionApiListener(
+      std::shared_ptr<NWebExtensionApiCallback> web_extension_api_listener);
+  static void UnRegisterWebExtensionApiListener();
+
+  // CefWebExtensionApiHandler implements
+  void OnUpdateTab(
+      int tab_id,
+      const NWebExtensionTabUpdateProperties* update_properties) override;
+  static bool OnCreateTab(const NWebTabCreateInfo& create_info,
+                          TabCreatedCallback callback);
+  static void WebExtensionTabCreateCallback(int request_id,
+                                            const NWebExtensionTab* tab);
+  static bool HasExtensionListener();
+#endif // OHOS_ARKWEB_EXTENSIONS
+
 #ifdef OHOS_DISPLAY_CUTOUT
   void OnViewportFitChange(CefRefPtr<CefBrowser> browser,
                            int viewport_fit) override;
@@ -762,9 +818,54 @@ class NWebHandlerDelegate : public CefClient,
   void SetWebPaintedForSnapshot() { isWebPaintedForSnapshot_ = true; }
 #endif
 
+#ifdef OHOS_EX_PULL_TO_REFRESH
+  bool OnPullToRefreshAction(int action) override;
+  void OnPullToRefreshPull(float offset_x, float offset_y) override;
+#endif
+#if defined(OHOS_MULTI_WINDOW)
+ void OnActivateContent() override;
+#endif
  void SetPopupSurface(void* popup_window);
  void SetTransformHint(uint32_t rotation);
+
+  void OnRequestOpenDevTools();
+
+  void Discard();
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  void EnableVideoAssistant(bool enable);
+  void CustomWebMediaPlayer(bool enable);
+#endif // OHOS_VIDEO_ASSISTANT
+
+#if defined(OHOS_DISPATCH_BEFORE_UNLOAD)
+ void OnBeforeUnloadFired(CefRefPtr<CefBrowser> browser,
+                          bool proceed) override;
+#endif // OHOS_DISPATCH_BEFORE_UNLOAD
+
+#ifdef OHOS_LOGGER_REPORT
+  static void RegisterLoggerCallback(
+      std::shared_ptr<NWebLoggerCallback> logger_callback);
+  static void UnRegisterLoggerCallback();
+
+  // CefLoggerCallbackApiHandler implements
+  void logFeedback(const CefString& tag, int level, const CefString& message) override;
+  void logUrl(const CefString& url) override;
+#endif
+
  private:
+#if defined(OHOS_JSPROXY)
+  enum class JsRunTime {
+    Start = 0,
+    End = 1,
+    HEAD_READY
+  };
+  void InjectJsToWeb(JsRunTime time);
+  void InjectJsToWebInner(
+      JsRunTime time,
+      ScriptItems& scriptItems,
+      ScriptItemsByOrder& scriptItemsByOrder);
+#endif
+
   void CopyImageToClipboard(CefRefPtr<CefImage> image);
   // List of existing browser windows. Only accessed on the CEF UI thread.
   typedef std::list<CefRefPtr<CefBrowser>> BrowserList;
@@ -824,7 +925,6 @@ class NWebHandlerDelegate : public CefClient,
 #endif
   uint32_t window_id_ = 0;
   bool focusState_ = false;
-  static int32_t popIndex_;
   CefRefPtr<CefCallback> popupWindowCallback_ = nullptr;
 
 #if defined(OHOS_NWEB_EX)
@@ -885,6 +985,10 @@ class NWebHandlerDelegate : public CefClient,
 #ifdef OHOS_ARKWEB_ADBLOCK
       bool is_global_adblock_enabled_ = false;
 #endif
+#if defined(OHOS_VIDEO_ASSISTANT)
+  std::optional<bool> video_assistant_enabled_;
+  std::optional<bool> custom_web_media_player_enabled_;
+#endif // OHOS_VIDEO_ASSISTANT
 
   base::WeakPtrFactory<NWebHandlerDelegate> weak_factory_{this};
 };

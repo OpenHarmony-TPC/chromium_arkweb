@@ -51,6 +51,7 @@ class NWebRenderHandler : public CefRenderHandler {
   NWebRenderHandler() = default;
   ~NWebRenderHandler() = default;
 
+  void RegisterNativeScrollCallback(std::function<void(double, double)>&& callback);
   void RegisterRenderCb(std::function<void(const char*)> render_update_cb);
   void RegisterNWebHandler(std::shared_ptr<NWebHandler> handler);
   void Resize(uint32_t width, uint32_t height);
@@ -166,6 +167,7 @@ class NWebRenderHandler : public CefRenderHandler {
   void UpdateDragCursor(CefRefPtr<CefBrowser> browser,
                         DragOperation operation) override;
   void ImageDragForFileUri(CefRefPtr<CefDragData> drag_data);
+  void GetVisibleRectToWeb(int& visibleX, int& visibleY, int& visibleWidth, int& visibleHeight) override;
   bool StartDragging(CefRefPtr<CefBrowser> browser,
                      CefRefPtr<CefDragData> drag_data,
                      DragOperationsMask allowed_ops,
@@ -184,6 +186,9 @@ class NWebRenderHandler : public CefRenderHandler {
   void OnOverScrollFlingEnd(CefRefPtr<CefBrowser> browser) override;
   void OnScrollState(CefRefPtr<CefBrowser> browser,
                      bool scroll_state) override;
+  void OnScrollStart(CefRefPtr<CefBrowser> browser,
+                         const float x,
+                         const float y) override;
   void OnNativeEmbedGestureEvent(CefRefPtr<CefBrowser> browser,
                     const CefEmbedTouchEvent& event,
                     CefRefPtr<CefGestureEventCallback> callback) override;
@@ -204,6 +209,7 @@ class NWebRenderHandler : public CefRenderHandler {
   void StartVibraFeedback(const std::string& vibratorType) override;
   void GetDevicePixelSize(CefRefPtr<CefBrowser> browser, CefSize& size) override;
   void OnAccessibilityEvent(int64_t accessibilityId, int32_t eventType) override;
+  void RestoreRenderFit() override;
 #endif
 
 #ifdef OHOS_EX_FREE_COPY
@@ -285,6 +291,8 @@ class NWebRenderHandler : public CefRenderHandler {
 #endif  // defined(OHOS_INPUT_EVENTS)
   bool isSystemKeyboard_ = true;
   bool gesture_event_result_ = false;
+
+  std::function<void(double, double)> on_scroll_cb_ = nullptr;
 };
 }  // namespace OHOS::NWeb
 

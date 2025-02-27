@@ -82,6 +82,9 @@ void OH_ArkWeb_OnPageEnd(const char* webTag,
 void OH_ArkWeb_OnDestroy(const char* webTag,
                          ArkWeb_OnComponentCallback callback,
                          void* userData);
+bool OH_ArkWeb_OnScroll(const char* webTag,
+                        ArkWeb_OnScrollCallback callback,
+                        void* userData);
 void OH_ArkWeb_RegisterAsyncJavaScriptProxy(
     const char* webTag,
     const ArkWeb_ProxyObject* proxyObject);
@@ -164,6 +167,13 @@ ArkWeb_JavaScriptValuePtr OH_JavaScript_CreateJavaScriptValue(
     ArkWeb_JavaScriptValueType type,
     void* data,
     size_t dataLength);
+
+ArkWeb_ErrorCode OH_NativeArkWeb_LoadData(const char* webTag,
+                                          const char* data,
+                                          const char* mimeType,
+                                          const char* encoding,
+                                          const char* baseUrl,
+                                          const char* historyUrl);
 #ifdef __cplusplus
 }
 #endif

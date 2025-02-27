@@ -14,6 +14,10 @@
 #include "base/trace_event/trace_event.h"
 #include "third_party/bounds_checking_function/include/securec.h"
 
+#ifdef OHOS_VIDEO_ASSISTANT
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
+#endif // OHOS_VIDEO_ASSISTANT
+
 using namespace media;
 using namespace OHOS::NWeb;
 using namespace std;
@@ -115,7 +119,7 @@ MediaCodecDecoderBridgeImpl::MediaCodecDecoderBridgeImpl(
   }
   videoDecoder_ =
       OhosAdapterHelper::GetInstance().CreateMediaCodecDecoderAdapter();
-  DecoderAdapterCode ret = CreateVideoBridgeDecoderByMime(codec_type);
+  DecoderAdapterCode ret = CreateVideoBridgeDecoderByName(codec_type);
   if (ret == DecoderAdapterCode::DECODER_ERROR) {
     LOG(ERROR) << "create decoder failed.";
     return;
@@ -126,6 +130,13 @@ MediaCodecDecoderBridgeImpl::MediaCodecDecoderBridgeImpl(
 MediaCodecDecoderBridgeImpl::~MediaCodecDecoderBridgeImpl() {
   LOG(INFO) << "MediaCodecDecoderBridgeImpl::~MediaCodecDecoderBridgeImpl.";
   ReleaseBridgeDecoder();
+
+#ifdef OHOS_VIDEO_ASSISTANT
+  if (video_surface_id_ > 0) {
+    NWebNativeWindowTracker::Get()->DestroyNativeWindow(video_surface_id_);
+    video_surface_id_ = -1;
+  }
+#endif // OHOS_VIDEO_ASSISTANT
 }
 
 DecoderAdapterCode MediaCodecDecoderBridgeImpl::ConfigureBridgeDecoder(
@@ -192,6 +203,9 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::SetBridgeOutputSurface(
                   "is NULL.";
     return DecoderAdapterCode::DECODER_ERROR;
   }
+#ifdef OHOS_VIDEO_ASSISTANT
+  window_from_surface_ = window;
+#endif // OHOS_VIDEO_ASSISTANT
   return videoDecoder_->SetOutputSurface(window);
 }
 
@@ -392,9 +406,9 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::QueueInputBuffer(
     LOG(ERROR)
         << "MediaCodecDecoderBridgeImpl::QueueInputBuffer memcpy failed.";
     return DecoderAdapterCode::DECODER_ERROR;
-  } 
+  }
   DecoderAdapterCode ret = PushInbufferDec(index, inputSize, presentation_time);
-
+  TRACE_EVENT0("media", "PushInbufferDec End");
   PopInqueueDec();
   return ret;
 }
@@ -415,7 +429,7 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::QueueInputBufferEOS() {
   }
   uint32_t index = signal_->inputQueue_.front().inputBufferIndex;
   DecoderAdapterCode ret = PushInbufferDecEos(index);
-
+  TRACE_EVENT0("media", "PushInbufferDecEos End");
   PopInqueueDec();
   isRunning_.store(false);
   return ret;
@@ -580,3 +594,30 @@ void CodecBridgeCallback::OnNeedOutputData(
   signal_->outputQueue_.push(outputBuffer);
   on_buffers_available_cb_.Run();
 }
+
+#ifdef OHOS_VIDEO_ASSISTANT
+DecoderAdapterCode MediaCodecDecoderBridgeImpl::SetVideoSurface(
+    int32_t widget_id) {
+  LOG(INFO) << "MediaCodecDecoderBridgeImpl::SetVideoSurface(" << widget_id << ")";
+  if (video_surface_id_ == widget_id) {
+    return DecoderAdapterCode::DECODER_OK;
+  }
+  if (video_surface_id_ > 0) {
+    NWebNativeWindowTracker::Get()->DestroyNativeWindow(video_surface_id_);
+    video_surface_id_ = -1;
+  }
+  if (videoDecoder_ == nullptr) {
+    LOG(ERROR) << "MediaCodecDecoderBridgeImpl::SetVideoSurface decoder is NULL";
+    return DecoderAdapterCode::DECODER_ERROR;
+  }
+  if (widget_id < 0) {
+    if (window_from_surface_) {
+      return videoDecoder_->SetOutputSurface(window_from_surface_);
+    }
+    return DecoderAdapterCode::DECODER_ERROR;
+  }
+  video_surface_id_ = widget_id;
+  return videoDecoder_->SetOutputSurface(
+      NWebNativeWindowTracker::Get()->GetNativeWindow(video_surface_id_));
+}
+#endif // OHOS_VIDEO_ASSISTANT

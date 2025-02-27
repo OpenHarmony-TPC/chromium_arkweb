@@ -409,6 +409,12 @@ class CONTENT_EXPORT RenderThreadImpl
   void NotifyLocaleChanged(const std::string& update_locale) override;
 #endif
 #if BUILDFLAG(IS_ANDROID)
+
+#if defined(OHOS_LOGGER_REPORT)
+  void OnChannelConnected(int32_t peer_pid) override;
+  void OnChannelListenError() override;
+#endif
+
   // ChildThreadImpl
   void OnMemoryPressureFromBrowserReceived(
       base::MemoryPressureListener::MemoryPressureLevel level) override;
@@ -467,6 +473,11 @@ class CONTENT_EXPORT RenderThreadImpl
 #if BUILDFLAG(IS_OHOS)
   void SetDrawMode(int mode, base::PassKey<AgentSchedulingGroup>);
 #endif
+
+#ifdef OHOS_THEME_FONT
+  void UpdateThemeFontFile(base::File theme_font) override;
+#endif
+
   void OnMemoryPressure(
       base::MemoryPressureListener::MemoryPressureLevel memory_pressure_level);
 

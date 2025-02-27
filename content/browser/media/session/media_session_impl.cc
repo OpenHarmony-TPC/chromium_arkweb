@@ -938,12 +938,10 @@ void MediaSessionImpl::OnSuspendInternal(SuspendType suspend_type,
     return;
   }
 
-
   if (audio_focus_state_ != State::ACTIVE) {
     LOG(INFO) << "MediaSessionImpl::OnSuspendInternal, audio_focus_state_: " << static_cast<int> (audio_focus_state_);
     return;
   }
-
 
   switch (suspend_type) {
     case SuspendType::kUI:
@@ -1314,24 +1312,6 @@ MediaSessionImpl::NWebPlaybackState MediaSessionImpl::NWebGetState() {
   }
 }
 
-void MediaSessionImpl::SetWebviewShow(bool show) {
-  if (session_ohos_) {
-    session_ohos_->SetWebviewShow(show);
-  }
-}
-
-void MediaSessionImpl::SetWebviewShowForAudio(bool show) {
-  if (session_ohos_) {
-    session_ohos_->SetWebviewShowForAudio(show);
-  }
-}
-
-void MediaSessionImpl::SetWebviewShowForVideo(bool show) {
-  if (session_ohos_) {
-    session_ohos_->SetWebviewShowForVideo(show);
-  }
-}
-
 bool MediaSessionImpl::IsEndOfMedia() {
   bool ret = true;
   if (position_) {
@@ -1363,12 +1343,45 @@ bool MediaSessionImpl::GetPlayingState()
 
 void MediaSessionImpl::SetPlayingState(bool playingState)
 {
+#if defined(OHOS_MEDIA_AVSESSION)
+  RebuildAndNotifyMetadataChanged();
+#endif // OHOS_MEDIA_AVSESSION
   isPlayingState_ = playingState;
 }
 
 bool MediaSessionImpl::GetMuteState()
 {
   return is_muted_;
+}
+
+bool MediaSessionImpl::IsPauseByAvsession() {
+    bool ret = false;
+    if (session_ohos_) {
+        ret = session_ohos_->IsPauseByAvsession();
+    }
+    return ret;
+}
+
+void MediaSessionImpl::SetPauseByAvsession(bool is_pause) {
+    if (session_ohos_) {
+        session_ohos_->SetPauseByAvsession(is_pause);
+    }
+}
+
+void MediaSessionImpl::SetWebviewShow(bool show, bool is_special_for_audio) {
+    if (session_ohos_) {
+        session_ohos_->SetWebviewShow(show, is_special_for_audio);
+    }
+}
+
+void MediaSessionImpl::SetSessionState(MediaSessionImpl::NWebMediaSessionState sessionState)
+{
+  sessionState_ = sessionState;
+}
+
+MediaSessionImpl::NWebMediaSessionState MediaSessionImpl::GetSessionState()
+{
+  return sessionState_;
 }
 
 #endif // OHOS_MEDIA_POLICY
@@ -1836,6 +1849,16 @@ void MediaSessionImpl::RebuildAndNotifyMetadataChanged() {
   if (metadata.title.empty())
     metadata.title = SanitizeMediaTitle(web_contents()->GetTitle());
 
+#if defined(OHOS_MEDIA_AVSESSION)
+  if (web_contents()) {
+    std::u16string u16title =
+        base::UTF8ToUTF16(web_contents()->GetMediaTitle());
+    if (!u16title.empty()) {
+      metadata.title = u16title;
+    }
+  }
+#endif // OHOS_MEDIA_AVSESSION
+
   ContentClient* content_client = content::GetContentClient();
   const GURL& url = web_contents()->GetLastCommittedURL();
 
@@ -1862,6 +1885,13 @@ void MediaSessionImpl::RebuildAndNotifyMetadataChanged() {
   }
 
   metadata.source_title = source_title;
+
+#if defined(OHOS_MEDIA_AVSESSION)
+  std::string attrib_image_url = web_contents()->GetVideoPoster();
+  media_session::MediaImage mediaImage;
+  mediaImage.src = GURL(attrib_image_url);
+  artwork.push_back(mediaImage);
+#endif // OHOS_MEDIA_AVSESSION
 
   // If we have no artwork in |images_| or the arwork has changed then we should
   // update it with the latest artwork from the routed service.
@@ -2039,6 +2069,31 @@ void MediaSessionImpl::SetShouldThrottleDurationUpdateForTest(
 bool MediaSessionImpl::HasImageCacheForTest(const GURL& image_url) const {
   return GetPageData(web_contents()->GetPrimaryPage()).GetImageCache(image_url);
 }
+
+#if defined(OHOS_MEDIA_AVSESSION)
+void MediaSessionImpl::PutWebMediaAVSessionEnabled(bool enable) {
+  LOG(INFO) << "media avsession MediaSessionImpl::PutWebMediaAVSessionEnabled enable is: " << enable;
+  bool isWebMediaAVSessionSwitch = false;
+  auto currentProcess = base::CommandLine::ForCurrentProcess();
+  if (currentProcess && !currentProcess->HasSwitch(switches::kEnableMediaAvsession)) {
+    isWebMediaAVSessionSwitch = true;
+  }
+  if (enable) {
+    if (isWebMediaAVSessionSwitch && !session_ohos_) {
+      session_ohos_ = std::make_unique<MediaSessionOHOS>(this);
+      if (web_contents() && web_contents()->GetPrimaryMainFrame() &&
+        web_contents()->GetPrimaryMainFrame()->GetView()) {
+        focused_ = web_contents()->GetPrimaryMainFrame()->GetView()->HasFocus();
+      }
+    }
+  } else {
+    if (session_ohos_) {
+      session_ohos_.reset();
+    }
+  }
+  RebuildAndNotifyMetadataChanged();
+}
+#endif // OHOS_MEDIA_AVSESSION
 
 MediaSessionImpl::PageData::PageData(content::Page& page)
     : PageUserData(page) {}

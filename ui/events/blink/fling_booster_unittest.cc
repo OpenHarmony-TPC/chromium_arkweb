@@ -63,6 +63,9 @@ class MockSystemPropertiesAdapter : public OHOS::NWeb::SystemPropertiesAdapter {
   MOCK_METHOD(int32_t, GetLTPOStrategy, (), (override));
   MOCK_METHOD(std::string, GetUserAgentBaseOSName, (), (override));
   MOCK_METHOD(std::string, GetUserAgentOSVersion, (), (override));
+  MOCK_METHOD(std::string, GetDeviceInfoApiVersion, (), (override));
+  MOCK_METHOD(std::string, GetPRPPreloadMode, (), (override));
+  MOCK_METHOD(std::string, GetScrollVelocityScale, (), (override));
 };
 }  // namespace OHOS::NWeb
 #endif // OHOS_UNITTESTS

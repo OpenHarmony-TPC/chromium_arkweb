@@ -57,6 +57,10 @@ namespace content {
 class AudibleMetrics;
 class WebContentsImpl;
 
+#ifdef OHOS_VIDEO_ASSISTANT
+class MediaPlayerListener;
+#endif // OHOS_VIDEO_ASSISTANT
+
 // This class manages all RenderFrame based media related managers at the
 // browser side. It receives IPC messages from media RenderFrameObservers and
 // forwards them to the corresponding managers. The managers are responsible
@@ -132,7 +136,7 @@ class CONTENT_EXPORT MediaWebContentsObserver
   // is an error to call this method if no MediaPlayer with |player_id| exists.
   mojo::AssociatedRemote<media::mojom::MediaPlayer>& GetMediaPlayerRemote(
       const MediaPlayerId& player_id);
-  
+
 #if defined(OHOS_MEDIA_POLICY)
   bool IsPlayerIdInMediaPlayerRemotesMap(const MediaPlayerId& player_id);
 #endif // defined(OHOS_MEDIA_POLICY)
@@ -155,6 +159,14 @@ class CONTENT_EXPORT MediaWebContentsObserver
   void RequestEnterFullscreen(const MediaPlayerId& player_id);
   void RequestExitFullscreen(const MediaPlayerId& player_id);
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+  bool IsMediaPlaying(const MediaPlayerId& player_id);
+  void SetPlaybackRate(double playback_rate, const MediaPlayerId& player_id);
+  void RequestFullScreen(bool enable, const MediaPlayerId& player_id);
+  void RequestDownloadUrl(const MediaPlayerId& player_id);
+  void HidePlaybackSpeedList(const MediaPlayerId& player_id);
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
 
  protected:
   MediaSessionControllersManager* session_controllers_manager() {
@@ -187,6 +199,10 @@ class CONTENT_EXPORT MediaWebContentsObserver
         mojo::PendingAssociatedReceiver<media::mojom::MediaPlayerObserver>
             media_player_observer,
         int32_t player_id) override;
+#ifdef OHOS_VIDEO_ASSISTANT
+    void RequestVideoAssistantConfig(
+        RequestVideoAssistantConfigCallback callback) override;
+#endif // OHOS_VIDEO_ASSISTANT
 
    private:
     GlobalRenderFrameHostId frame_routing_id_;
@@ -237,6 +253,39 @@ class CONTENT_EXPORT MediaWebContentsObserver
     void FullscreenChanged(bool is_fullscreen) override;
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
 
+#ifdef OHOS_VIDEO_ASSISTANT
+    void OnVideoPlaying(
+        media::mojom::VideoAttributesForVASTPtr video_attributes) override;
+    void OnUpdateVideoAttributes(
+        media::mojom::VideoAttributesForVASTPtr video_attributes) override;
+    void OnVideoDestroyed() override;
+    void OnFullScreenOverlayEnter(
+        media::mojom::MediaInfoForVASTPtr media_info) override;
+
+    void UpdatePlayStateOverlay(bool playState) override;
+    void MutedChangedOverlay(bool muted) override;
+    void PlaybackRateChangedOverlay(double playback_rate) override;
+
+    void DurationChangedOverlay(double duration) override;
+    void TimeUpdateOverlay(double current_time) override;
+    void BufferedEndTimeChangedOverlay(double buffered_end_time) override;
+    void EndedOverlay() override;
+
+    void FullscreenChangedOverlay(bool fullscreen) override;
+    void SeekingOverlay() override;
+    void SeekingFinishedOverlay() override;
+    void ErrorOverlay(int32_t error_code, const std::string& error_msg) override;
+    void VideoSizeChangedOverlay(int32_t width, int32_t height) override;
+    void FullscreenOverlayChanged(
+        bool fullscreen_overlay, const std::string& decoder_name) override;
+#endif // OHOS_VIDEO_ASSISTANT
+
+#if defined(OHOS_MEDIA_AVSESSION)
+    void OnGetMediaTitle(const std::string& data) override;
+    void OnGetVideoPoster(const std::string& data) override;
+    void OnInitMediaTitle() override;
+    void OnInitVideoPoster() override;
+#endif // OHOS_MEDIA_AVSESSION
    private:
     PlayerInfo* GetPlayerInfo();
     void NotifyAudioStreamMonitorIfNeeded();
@@ -254,6 +303,10 @@ class CONTENT_EXPORT MediaWebContentsObserver
     bool uses_audio_service_ = true;
     std::unique_ptr<AudioStreamMonitor::AudibleClientRegistration>
         audio_client_registration_;
+
+#ifdef OHOS_VIDEO_ASSISTANT
+    std::unique_ptr<MediaPlayerListener> media_player_listener_;
+#endif // OHOS_VIDEO_ASSISTANT
 
     base::WeakPtrFactory<MediaPlayerObserverHostImpl> weak_factory_{this};
   };

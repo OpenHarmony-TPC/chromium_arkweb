@@ -154,6 +154,9 @@ class COMPOSITOR_EXPORT ContextFactory {
 class COMPOSITOR_EXPORT CompositorDelegate {
  public:
   virtual std::unique_ptr<viz::HostDisplayClient> CreateHostDisplayClient() = 0;
+#if BUILDFLAG(IS_OHOS)
+  virtual void RestoreRenderFit() = 0;
+#endif
 
  protected:
   virtual ~CompositorDelegate() {}
@@ -259,6 +262,7 @@ class COMPOSITOR_EXPORT Compositor : public base::PowerSuspendObserver,
   void SetShouldFrameSubmissionBeforeDraw(bool should);
   void SetDrawRect(const gfx::Rect& new_rect);
   void SetDrawMode(const int32_t& mode);
+  int32_t drawMode_ = 0;
 #endif  // defined(OHOS_COMPOSITE_RENDER)
 
   // Sets the compositor's device scale factor and size.
@@ -533,6 +537,8 @@ void SetEnableLowerFrameRate(bool enabled);
 void EvictFrameBackBuffers(bool invisible);
 void UpdateVSyncFrequency();
 void ResetVSyncFrequency();
+void DisableSwapUntilMaximized();
+void RestoreRenderFit() override;
 #endif
 
  private:

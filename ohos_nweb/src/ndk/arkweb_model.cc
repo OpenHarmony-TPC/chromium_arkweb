@@ -29,6 +29,7 @@
 #include "ohos_nweb/include/nweb_engine.h"
 #include "ohos_nweb/include/nweb_errors.h"
 #include "cef/libcef/browser/javascript/oh_gin_javascript_bridge_dispatcher_host.h"
+#include "third_party/bounds_checking_function/include/securec.h"
 
 #ifdef __cplusplus
 
@@ -160,7 +161,7 @@ ARKWEB_NDK_EXPORT void OH_ArkWeb_Refresh(const char* webTag) {
   }
 }
 
-ARKWEB_NDK_EXPORT void OH_ArkWeb_OnControllerAttached(
+NO_SANITIZE("cfi-icall") ARKWEB_NDK_EXPORT void OH_ArkWeb_OnControllerAttached(
     const char* webTag,
     ArkWeb_OnComponentCallback callback,
     void* userData) {
@@ -184,7 +185,7 @@ ARKWEB_NDK_EXPORT void OH_ArkWeb_OnControllerAttached(
       });
 }
 
-ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageBegin(
+NO_SANITIZE("cfi-icall") ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageBegin(
     const char* webTag,
     ArkWeb_OnComponentCallback callback,
     void* userData) {
@@ -208,9 +209,9 @@ ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageBegin(
       });
 }
 
-ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageEnd(const char* webTag,
-                                           ArkWeb_OnComponentCallback callback,
-                                           void* userData) {
+NO_SANITIZE("cfi-icall") ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageEnd(const char* webTag,
+    ArkWeb_OnComponentCallback callback,
+    void* userData) {
   if (callback == nullptr) {
     LOG(ERROR) << "NativeArkWeb OnPageEnd callback is nullptr";
     return;
@@ -231,9 +232,9 @@ ARKWEB_NDK_EXPORT void OH_ArkWeb_OnPageEnd(const char* webTag,
       });
 }
 
-ARKWEB_NDK_EXPORT void OH_ArkWeb_OnDestroy(const char* webTag,
-                                           ArkWeb_OnComponentCallback callback,
-                                           void* userData) {
+NO_SANITIZE("cfi-icall") ARKWEB_NDK_EXPORT void OH_ArkWeb_OnDestroy(const char* webTag,
+    ArkWeb_OnComponentCallback callback,
+    void* userData) {
   if (callback == nullptr) {
     LOG(ERROR) << "NativeArkWeb OnDestroy callback is nullptr";
     return;
@@ -254,13 +255,37 @@ ARKWEB_NDK_EXPORT void OH_ArkWeb_OnDestroy(const char* webTag,
       });
 }
 
+NO_SANITIZE("cfi-icall") ARKWEB_NDK_EXPORT bool OH_ArkWeb_OnScroll(const char* webTag,
+    ArkWeb_OnScrollCallback callback,
+    void* userData) {
+  if (callback == nullptr) {
+    LOG(ERROR) << "NativeArkWeb OnScroll callback is nullptr";
+    return false;
+  }
+  auto webObjectPtr =
+      OHOS::NWeb::ArkWebNativeObject::GetWebInstanceByWebTag(webTag);
+  if (!webObjectPtr) {
+    LOG(ERROR) << "NativeArkWeb web object pointer is nullptr";
+    return false;
+  }
+  webObjectPtr->SetScrollCallback(
+      [cb = callback, webTag = std::string(webTag), userData](double x, double y) {
+        if (!cb) {
+          LOG(ERROR) << "NativeArkWeb OnScroll callback is nullptr";
+          return;
+        }
+        cb(webTag.c_str(), userData, x, y);
+      });
+  return true;
+}
+
 ARKWEB_NDK_EXPORT void OH_ArkWeb_RegisterAsyncJavaScriptProxy(
     const char* webTag,
     const ArkWeb_ProxyObject* proxyObject) {
   RegisterJavaScriptProxy(webTag, proxyObject, true, "");
 }
 
-void RegisterJavaScriptProxy(
+NO_SANITIZE("cfi-icall") void RegisterJavaScriptProxy(
     const char* webTag,
     const ArkWeb_ProxyObject* proxyObject,
     bool isAsync,
@@ -325,19 +350,20 @@ void RegisterJavaScriptProxy(
   }
 }
 
-
-ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
+bool CreateWebMessagePortsInternal(
     const char* webTag,
-    size_t* size) {
+    size_t* size,
+    std::vector<std::string>& ports,
+    ArkWeb_WebMessagePortPtr** wPortsResult) {
   if (!webTag || !size) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts nullptr error";
-    return nullptr;
+    return false;
   }
 
   if (std::string(webTag).empty()) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts web tag empty";
     *size = 0;
-    return nullptr;
+    return false;
   }
 
   auto webObjectPtr =
@@ -345,7 +371,7 @@ ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
   if (!webObjectPtr) {
     LOG(ERROR) << "NativeArkWeb object pointer is nullptr";
     *size = 0;
-    return nullptr;
+    return false;
   }
 
   auto nwebSharedPtr = webObjectPtr->GetWebSharedPtr();
@@ -353,14 +379,14 @@ ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts get nweb null: %{public}s"
                << webTag;
     *size = 0;
-    return nullptr;
+    return false;
   }
 
-  std::vector<std::string> ports = nwebSharedPtr->CreateWebMessagePorts();
+  ports = nwebSharedPtr->CreateWebMessagePorts();
   if (ports.size() == 0) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts failed";
     *size = 0;
-    return nullptr;
+    return false;
   }
 
   ArkWeb_WebMessagePortPtr* wPorts =
@@ -368,38 +394,58 @@ ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
   if (!wPorts) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
     *size = 0;
+    return false;
+  }
+  *wPortsResult = wPorts;
+  return true;
+}
+
+ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
+    const char* webTag,
+    size_t* size) {
+  std::vector<std::string> ports;
+  ArkWeb_WebMessagePortPtr* wPorts;
+  if (!CreateWebMessagePortsInternal(webTag, size, ports, &wPorts)) {
     return nullptr;
   }
+  auto webObjectPtr = OHOS::NWeb::ArkWebNativeObject::GetWebInstanceByWebTag(webTag);
   for (unsigned int i = 0; i < ports.size(); i++) {
     wPorts[i] = new (std::nothrow) ArkWeb_WebMessagePort();
     if (!wPorts[i]) {
       LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
-      nwebSharedPtr->ClosePort(std::string(ports[0]));
+      webObjectPtr->GetWebSharedPtr()->ClosePort(std::string(ports[0]));
       OH_ArkWeb_DestroyWebMessagePorts(&wPorts, ports.size());
       *size = 0;
       return nullptr;
     }
 
     char* tag = new (std::nothrow) char[std::string(webTag).size() + 1];
-    if (!tag) {
-      LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
-      nwebSharedPtr->ClosePort(std::string(ports[0]));
+    if (!tag || memcpy_s(tag, std::string(webTag).size() + 1,
+        (char*)webTag, std::string(webTag).size() + 1) != EOK) {
+      LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc or memcpy failed";
+      if (tag) {
+        delete[] tag;
+      }
+      webObjectPtr->GetWebSharedPtr()->ClosePort(std::string(ports[0]));
       OH_ArkWeb_DestroyWebMessagePorts(&wPorts, ports.size());
       *size = 0;
       return nullptr;
     }
-    memcpy(tag, (char*)webTag, std::string(webTag).size() + 1);
+
     wPorts[i]->webTag = tag;
 
     char* portHandle = new (std::nothrow) char[ports[i].size() + 1];
-    if (!portHandle) {
-      LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
-      nwebSharedPtr->ClosePort(std::string(ports[0]));
+    if (!portHandle ||
+        memcpy_s(portHandle, ports[i].size() + 1, (char*)(ports[i].c_str()), ports[i].size() + 1) != EOK) {
+      LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc or memcpy failed";
+      if (portHandle) {
+        delete[] portHandle;
+      }
+      webObjectPtr->GetWebSharedPtr()->ClosePort(std::string(ports[0]));
       OH_ArkWeb_DestroyWebMessagePorts(&wPorts, ports.size());
       *size = 0;
       return nullptr;
     }
-    memcpy(portHandle, (char*)(ports[i].c_str()), ports[i].size() + 1);
     wPorts[i]->portHandle = portHandle;
   }
   *size = ports.size();
@@ -685,7 +731,12 @@ ARKWEB_NDK_EXPORT void OH_WebMessage_SetData(ArkWeb_WebMessagePtr message,
     return;
   }
 
-  memcpy(destination, (char*)data, dataLength);
+  if (memcpy_s(destination, dataLength, (char*)data, dataLength) != EOK) {
+    LOG(ERROR) << "NativeArkWeb SetData memcpy failed";
+    delete[] destination;
+    return;
+  }
+
   message->data = (void*)destination;
   message->dataLength = dataLength;
 }
@@ -891,12 +942,49 @@ ARKWEB_NDK_EXPORT ArkWeb_JavaScriptValuePtr OH_JavaScript_CreateJavaScriptValue(
     return nullptr;
   }
 
-  memcpy(destination, (char*)data, dataLength);
+  if (memcpy_s(destination, dataLength, (char*)data, dataLength) != EOK) {
+    LOG(ERROR) << "NativeArkWeb CreateJavaScriptValue memcpy failed";
+    delete[] destination;
+    delete value;
+    return nullptr;
+  }
+
   value->data = (void*)destination;
   value->dataLength = dataLength;
   value->type = type;
 
   return value;
+}
+
+ARKWEB_NDK_EXPORT ArkWeb_ErrorCode OH_NativeArkWeb_LoadData(const char* webTag,
+                                                            const char* data,
+                                                            const char* mimeType,
+                                                            const char* encoding,
+                                                            const char* baseUrl,
+                                                            const char* historyUrl) {
+  std::string base_url_str(baseUrl ? baseUrl : "");
+  std::string history_url_str(historyUrl ? historyUrl : "");
+
+  auto webObjectPtr =
+      OHOS::NWeb::ArkWebNativeObject::GetWebInstanceByWebTag(webTag);
+  if (!webObjectPtr) {
+    LOG(ERROR) << "OH_NativeArkWeb_LoadData: NativeArkWeb object pointer is nullptr";
+    return ArkWeb_ErrorCode::ARKWEB_INIT_ERROR;
+  }
+
+  auto nwebSharedPtr = webObjectPtr->GetWebSharedPtr();
+  if (!nwebSharedPtr) {
+    LOG(ERROR) << "OH_NativeArkWeb_LoadData: NativeArkWeb get nweb null for webTag: " << webTag;
+    return ArkWeb_ErrorCode::ARKWEB_INIT_ERROR;
+  }
+
+  if (base_url_str.empty() && history_url_str.empty()) {
+    nwebSharedPtr->LoadWithData(data, mimeType, encoding);
+  } else {
+    nwebSharedPtr->LoadWithDataAndBaseUrl(
+      baseUrl, data, mimeType, encoding, historyUrl);
+  }
+  return ArkWeb_ErrorCode::ARKWEB_SUCCESS;
 }
 
 #ifdef __cplusplus

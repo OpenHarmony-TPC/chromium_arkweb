@@ -63,6 +63,7 @@
 #include "media/mojo/services/mojo_video_encode_accelerator_provider.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "skia/buildflags.h"
+#include "skia/ext/skia_memory_tracer.h"
 #include "third_party/skia/include/gpu/GrDirectContext.h"
 #include "third_party/skia/include/gpu/gl/GrGLAssembleInterface.h"
 #include "third_party/skia/include/gpu/gl/GrGLInterface.h"
@@ -181,11 +182,13 @@ bool PreInitializeLogHandler(int severity,
                              int line,
                              size_t message_start,
                              const std::string& message);
+#if !BUILDFLAG(IS_OHOS)
 bool PostInitializeLogHandler(int severity,
                               const char* file,
                               int line,
                               size_t message_start,
                               const std::string& message);
+#endif
 
 // Class which manages LOG() message forwarding before and after GpuServiceImpl
 // InitializeWithHost(). Prior to initialize, log messages are deferred and kept
@@ -251,7 +254,11 @@ class LogMessageManager {
     for (auto& log : deferred_messages_)
       RouteMessage(log.severity, std::move(log.header), std::move(log.message));
     deferred_messages_.clear();
+#if BUILDFLAG(IS_OHOS)
+    logging::SetLogMessageHandler(nullptr);
+#else
     logging::SetLogMessageHandler(PostInitializeLogHandler);
+#endif
   }
 
   // Called when it's no longer safe to invoke |log_callback_|.
@@ -284,6 +291,7 @@ bool PreInitializeLogHandler(int severity,
   return false;
 }
 
+#if !BUILDFLAG(IS_OHOS)
 bool PostInitializeLogHandler(int severity,
                               const char* file,
                               int line,
@@ -294,6 +302,7 @@ bool PostInitializeLogHandler(int severity,
                                        message.substr(message_start));
   return false;
 }
+#endif
 
 bool IsAcceleratedJpegDecodeSupported() {
 #if BUILDFLAG(IS_CHROMEOS_ASH)
@@ -564,10 +573,8 @@ void GpuServiceImpl::InitializeWithHost(
     // The global callback is reset from the dtor. So Unretained() here is safe.
     // Note that the callback can be called from any thread. Consequently, the
     // callback cannot use a WeakPtr.
-#if !BUILDFLAG(IS_OHOS)
     GetLogMessageManager()->InstallPostInitializeLogHandler(base::BindRepeating(
         &GpuServiceImpl::RecordLogMessage, base::Unretained(this)));
-#endif
   }
 
   if (!sync_point_manager) {
@@ -1120,6 +1127,14 @@ void GpuServiceImpl::SetTransformHint(uint32_t rotation, uint32_t window_id)
   void* window = NWebNativeWindowTracker::GetInstance()->GetNativeWindow(window_id);
   OHOS::NWeb::OhosAdapterHelper::GetInstance().GetWindowAdapterInstance().SetTransformHint(rotation, window);
 }
+
+void GpuServiceImpl::Discard(uint32_t native_window_id)
+{
+  void* window = NWebNativeWindowTracker::GetInstance()->GetNativeWindow(native_window_id);
+  OHOS::NWeb::OhosAdapterHelper::GetInstance()
+      .GetWindowAdapterInstance()
+      .NativeWindowSurfaceCleanCacheWithPara(reinterpret_cast<void*>(window), true);
+}
 #endif
 
 void GpuServiceImpl::SetChannelDiskCacheHandle(
@@ -1414,6 +1429,19 @@ void GpuServiceImpl::StartMonitor() {
 
 void GpuServiceImpl::StopMonitor() {
   base::ohos::DynamicFrameLossMonitor::GetInstance().StopMonitor();
+}
+
+void GpuServiceImpl::DumpGpuInfo(DumpGpuInfoCallback callback) {
+  float totalSize = 0;
+  if (compositor_gpu_thread_) {
+    GrDirectContext* grContext = compositor_gpu_thread_->GetSharedContextState()->gr_context();
+    auto skiaMemoryTracer = std::make_shared<SkiaMemoryTracer>("category", true);
+    if (grContext != nullptr && skiaMemoryTracer) {
+      grContext->dumpMemoryStatistics(skiaMemoryTracer.get());
+      totalSize = skiaMemoryTracer->GetGpuMemorySizeInMB();
+    }
+  }
+  std::move(callback).Run(totalSize);
 }
 
 void GpuServiceImpl::SetVisible(int32_t nweb_id, bool visible) {

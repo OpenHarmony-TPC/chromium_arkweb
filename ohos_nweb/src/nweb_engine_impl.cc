@@ -83,6 +83,10 @@ void NWebEngineImpl::PrepareForPageLoad(const std::string &url,
   return NWebImpl::PrepareForPageLoad(url, preconnectable, num_sockets);
 }
 
+void NWebEngineImpl::RemoveAllCache(bool include_disk_files) {
+  return NWebImpl::RemoveAllCache(include_disk_files);
+}
+
 void NWebEngineImpl::SetWebDebuggingAccess(bool isEnableDebug) {
   static bool isDebuggingEnabled = false;
   if (isEnableDebug && !isDebuggingEnabled) {
@@ -191,6 +195,19 @@ int NWebEngineImpl::GetArkWebCoreApiLevel() {
 // static
 bool NWebEngineImpl::CheckArkWebRomApiLevel(int apiLevel) {
   return g_nweb_engine_impl->GetArkWebRomApiLevel() >= apiLevel;
+}
+
+void NWebEngineImpl::SetProxyOverride(
+    const std::vector<std::string>& proxyUrls,
+    const std::vector<std::string>& proxySchemeFilters,
+    const std::vector<std::string>& bypassRules,
+    const bool& reverseBypass,
+    std::shared_ptr<NWebProxyChangedCallback> callback) {
+  NWebImpl::SetProxyOverride(proxyUrls, proxySchemeFilters, bypassRules, reverseBypass, callback);
+    }
+
+void NWebEngineImpl::RemoveProxyOverride(std::shared_ptr<NWebProxyChangedCallback> callback) {
+  NWebImpl::RemoveProxyOverride(callback);
 }
 
 } // namespace OHOS::NWeb

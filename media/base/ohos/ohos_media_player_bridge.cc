@@ -11,6 +11,11 @@
 #include "media/base/ohos/ohos_media_player_callback.h"
 #include "media/base/ohos/ohos_media_player_listener.h"
 #include "ohos_adapter_helper.h"
+#include "ohos_glue/base/include/ark_web_errno.h"
+
+#ifdef OHOS_VIDEO_ASSISTANT
+#include "gpu/ipc/common/nweb_native_window_tracker.h"
+#endif // OHOS_VIDEO_ASSISTANT
 
 namespace media {
 
@@ -24,10 +29,12 @@ OHOSMediaPlayerBridge::OHOSMediaPlayerBridge(
     const net::SiteForCookies& site_for_cookies,
     const url::Origin& top_frame_origin,
     const std::string& user_agent,
+    bool has_storage_access,
     bool hide_url_log,
     Client* client,
     bool allow_credentials,
-    bool is_hls)
+    bool is_hls,
+    const base::flat_map<std::string, std::string> headers)
     : client_(client),
       url_(url),
       prepared_(false),
@@ -36,7 +43,15 @@ OHOSMediaPlayerBridge::OHOSMediaPlayerBridge(
       should_seek_on_prepare_(false),
       should_set_volume_on_prepare_(false),
       seeking_on_playback_complete_(false),
-      seeking_back_complete_(false) {
+      seeking_back_complete_(false),
+      headers_(std::move(headers)),
+      user_agent_(user_agent),
+      site_for_cookies_(site_for_cookies),
+      pending_retrieve_cookies_(false),
+      should_prepare_on_retrieved_cookies_(false),
+      has_storage_access_(has_storage_access),
+      top_frame_origin_(top_frame_origin),
+      allow_credentials_(allow_credentials) {
 #if defined(RK3568)
   is_hls_ = is_hls;
 #endif
@@ -51,7 +66,72 @@ int32_t OHOSMediaPlayerBridge::Initialize() {
     NOTREACHED();
     return PLAYER_INIT_ERROR;
   }
+   if (allow_credentials_ && client_ != nullptr) {
+    media::OHOSMediaResourceGetter* resource_getter_ = client_->GetMediaResourceGetter();
+    if (resource_getter_) {
+      pending_retrieve_cookies_ = true;
+      resource_getter_->GetCookies(
+          url_, site_for_cookies_, top_frame_origin_, has_storage_access_,
+          base::BindOnce(&OHOSMediaPlayerBridge::OnCookiesRetrieved,
+                        weak_factory_.GetWeakPtr()));
+    }
+  }
   return PLAYER_INIT_OK;
+}
+
+void OHOSMediaPlayerBridge::OnCookiesRetrieved(const std::string& cookies) {
+  cookies_ = cookies;
+  pending_retrieve_cookies_ = false;
+  if (client_ == nullptr || client_->GetMediaResourceGetter() == nullptr) {
+    return;
+  }
+  client_->GetMediaResourceGetter()->GetAuthCredentials(
+      url_, base::BindOnce(&OHOSMediaPlayerBridge::OnAuthCredentialsRetrieved,
+                           weak_factory_.GetWeakPtr()));
+
+  if (should_prepare_on_retrieved_cookies_) {
+    should_prepare_on_retrieved_cookies_ = false;
+    if (!player_) {
+      LOG(ERROR) << "player_ is null";
+      return;
+    }
+    auto player_headers = GetPlayerHeadersInternal();
+    int32_t ret = player_->SetMediaSourceHeader(url_.spec(), player_headers);
+    if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
+      ret = player_->SetSource(url_.spec());
+    }
+    if (ret != 0) {
+      LOG(ERROR) << "SetPlayerSourceHeader error:ret= " << ret;
+      return;
+    }
+    SetPlayerSurface();
+  }
+}
+
+void OHOSMediaPlayerBridge::OnAuthCredentialsRetrieved(const std::u16string& username,
+    const std::u16string& password) {
+  GURL::ReplacementsW replacements;
+  if (!username.empty()) {
+    replacements.SetUsernameStr(username);
+    if (!password.empty()) {
+      replacements.SetPasswordStr(password);
+    }
+    url_ = url_.ReplaceComponents(replacements);
+  }
+}
+
+std::map<std::string, std::string> OHOSMediaPlayerBridge::GetPlayerHeadersInternal() {
+  std::map<std::string, std::string> player_headers;
+  if (!cookies_.empty()) {
+    player_headers.insert(std::pair<std::string, std::string>("Cookie", cookies_));
+  }
+  if (!user_agent_.empty()) {
+    player_headers.insert(std::pair<std::string, std::string>("User-Agent", user_agent_));
+  }
+  for (const auto& entry : headers_) {
+    player_headers[entry.first] = entry.second;
+  }
+  return player_headers;
 }
 
 void OHOSMediaPlayerBridge::Start() {
@@ -99,13 +179,29 @@ void OHOSMediaPlayerBridge::Prepare() {
   if (url_.SchemeIsFile()) {
     ret = SetFdSource(url_.GetContent());
   } else {
-    ret = player_->SetSource(url_.spec());
+    if (pending_retrieve_cookies_) {
+      should_prepare_on_retrieved_cookies_ = true;
+      return;
+    }
+    auto player_headers = GetPlayerHeadersInternal();
+    ret = player_->SetMediaSourceHeader(url_.spec(), player_headers);
+    if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
+      ret = player_->SetSource(url_.spec());
+    }
   }
   if (ret != 0) {
     LOG(ERROR) << "SetSource error::ret=" << ret;
     return;
   }
+  SetPlayerSurface();
 
+}
+
+void OHOSMediaPlayerBridge::SetPlayerSurface() {
+  if (!player_) {
+    LOG(ERROR) << "OHOSMediaPlayerBridge SetPlayerSurface player is null";
+    return;
+  }
   consumer_surface_ = OHOS::NWeb::OhosAdapterHelper::GetInstance()
                           .CreateConsumerSurfaceAdapter();
   if (consumer_surface_ == nullptr) {
@@ -119,7 +215,7 @@ void OHOSMediaPlayerBridge::Prepare() {
       surfaceFormat,
       std::to_string(OHOS::NWeb::PixelFormatAdapter::PIXEL_FMT_RGBA_8888));
   consumer_surface_->SetQueueSize(QUEUE_SIZE);
-  ret = player_->SetVideoSurface(consumer_surface_);
+  int32_t ret = player_->SetVideoSurface(consumer_surface_);
   if (ret != 0) {
     LOG(ERROR) << "SetVideoSurface error::ret=" << ret;
     consumer_surface_ = nullptr;
@@ -147,8 +243,9 @@ void OHOSMediaPlayerBridge::Pause() {
   if ((player_ && player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STARTED &&
                   player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PAUSED &&
                   player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STOPPED &&
+                  player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PREPARED &&
                   player_state_ != OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_PLAYBACK_COMPLETE) || pending_play_) {
-    LOG(INFO) << "OHOSMediaPlayerBridge Pause when perpared!!";
+    LOG(INFO) << "OHOSMediaPlayerBridge Pause when perpared, player_state_ is:" << static_cast<int32_t>(player_state_);
     pause_when_prepared_ = true;
   }
   if (player_ && player_state_ == OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STARTED) {
@@ -264,7 +361,7 @@ void OHOSMediaPlayerBridge::OnSeekBack(base::TimeDelta extra_time) {
     return;
   }
 
-  //When processing seek requests, there may be a maximum error of 300ms between the nearest keyframe 
+  //When processing seek requests, there may be a maximum error of 300ms between the nearest keyframe
   //found by mediaplayer and the time point of seekTo
   if ((recording_seek_ - extra_time_) > base::Milliseconds(MAX_TOLERABLE_SEEK_ERROR)) {
     if (client_) {
@@ -369,8 +466,12 @@ void OHOSMediaPlayerBridge::OnPlayerStateUpdate(
     }
 
     if (pending_play_) {
+      LOG(INFO) << "OnPlayerStateUpdate PLAYER_PREPARED, pending_play_";
       StartInternal();
       pending_play_ = false;
+    } else if (pause_when_prepared_) {
+      LOG(INFO) << "OnPlayerStateUpdate PLAYER_PREPARED, no pending_play then pause_when_prepared is false";
+      pause_when_prepared_ = false;
     }
   } else if (player_state ==
                  OHOS::NWeb::PlayerAdapter::PlayerStates::PLAYER_STATE_ERROR ||
@@ -437,6 +538,23 @@ void OHOSMediaPlayerBridge::OnBufferAvailable(
 }
 
 void OHOSMediaPlayerBridge::OnVideoSizeChanged(int32_t width, int32_t height) {
+#ifdef OHOS_VIDEO_ASSISTANT
+  video_width_ = width;
+  video_height_ = height;
+  if (pending_new_surface_id_ > 0 && video_width_ > 0 && video_height_ > 0) {
+    pending_new_surface_id_ = -1;
+    void* native_window =
+        NWebNativeWindowTracker::Get()->GetNativeWindow(new_surface_id_);
+    if (native_window) {
+      int32_t ret = player_->SetVideoSurfaceNew(native_window);
+      if (ret != 0) {
+        LOG(ERROR) << "SetVideoSurfaceNew error::ret = " << ret
+          << ", new_surface_id_ = " << new_surface_id_
+          << ", native_window = " << native_window;
+      }
+    }
+  }
+#endif // OHOS_VIDEO_ASSISTANT
   if (client_) {
     client_->OnVideoSizeChanged(width, height);
   }
@@ -469,4 +587,48 @@ int32_t OHOSMediaPlayerBridge::SetFdSource(const std::string& path) {
 bool OHOSMediaPlayerBridge::IsAudible(float volume) {
   return volume > 0;
 }
+
+#ifdef OHOS_VIDEO_ASSISTANT
+void OHOSMediaPlayerBridge::SetVideoSurface(int32_t surface_id) {
+  if (surface_id > 0) {
+    SetVideoSurfaceNew(surface_id);
+  } else {
+    SetVideoSurfaceOld();
+  }
+}
+
+void OHOSMediaPlayerBridge::SetVideoSurfaceNew(int32_t surface_id) {
+  LOG(INFO) << "SetVideoSurfaceNew(" << surface_id << "), new_surface_id_["
+            << new_surface_id_ << "], player_[" << player_.get() << "]";
+  if (new_surface_id_ == surface_id) {
+    return;
+  }
+  if (new_surface_id_ > 0) {
+    NWebNativeWindowTracker::Get()->DestroyNativeWindow(new_surface_id_);
+    new_surface_id_ = -1;
+  }
+  new_surface_id_ = surface_id;
+  void* native_window = nullptr;
+  if (player_ && video_width_ > 0 && video_height_ > 0) {
+    native_window = NWebNativeWindowTracker::Get()->GetNativeWindow(surface_id);
+  } else {
+    if (!player_) {
+      Prepare();
+    }
+  }
+  if (native_window) {
+    player_->SetVideoSurfaceNew(native_window);
+  } else {
+    pending_new_surface_id_ = new_surface_id_;
+  }
+}
+
+void OHOSMediaPlayerBridge::SetVideoSurfaceOld() {
+  if (new_surface_id_ > 0) {
+    NWebNativeWindowTracker::Get()->DestroyNativeWindow(new_surface_id_);
+    new_surface_id_ = -1;
+  }
+  player_->SetVideoSurface(consumer_surface_);
+}
+#endif // OHOS_VIDEO_ASSISTANT
 }  // namespace media

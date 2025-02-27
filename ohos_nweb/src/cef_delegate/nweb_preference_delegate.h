@@ -132,6 +132,8 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool IsTextAutosizingEnabled() const;
   void SetFitContent(bool value);
   bool IsFitContent() const;
+  void SetFontWeightScale(float scale) override;
+  float GetFontWeightScale() const;
 #endif
 
 #if defined(OHOS_MULTI_WINDOW)
@@ -192,9 +194,20 @@ class NWebPreferenceDelegate : public NWebPreference {
 
 #if defined(OHOS_JSPROXY)
   void PutJavaScriptOnDocumentStart(const ScriptItems& scriptItems);
+  void PutJavaScriptOnDocumentStartByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder);
   ScriptItems GetJavaScriptOnDocumentStart();
+  ScriptItemsByOrder GetJavaScriptOnDocumentStartByOrder();
   void PutJavaScriptOnDocumentEnd(const ScriptItems& scriptItems);
+  void PutJavaScriptOnDocumentEndByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder);
   ScriptItems GetJavaScriptOnDocumentEnd();
+  ScriptItemsByOrder GetJavaScriptOnDocumentEndByOrder();
+  void PutJavaScriptOnHeadReady(const ScriptItems& scriptItems);
+  void PutJavaScriptOnHeadReadyByOrder(const ScriptItems& scriptItems,
+      const ScriptItemsByOrder& scriptItemsByOrder);
+  ScriptItems GetJavaScriptOnHeadReady();
+  ScriptItemsByOrder GetJavaScriptOnHeadReadyByOrder();
 #endif
 
 #if defined(OHOS_SOFTWARE_COMPOSITOR)
@@ -222,6 +235,15 @@ class NWebPreferenceDelegate : public NWebPreference {
   int GetTimeToLive();
   void PutBackForwardCacheOptions(int size, int time_to_live);
 #endif  // OHOS_BFCACHE
+
+#ifdef OHOS_ACTIVE_POLICY
+  void SetDelayDurationForBackgroundTabFreezing(int64_t delay_for_background_tab_freezing);
+  int64_t GetDelayDurationForBackgroundTabFreezing();
+#endif
+
+#if defined(OHOS_MEDIA_AVSESSION)
+  void PutWebMediaAVSessionEnabled(bool enable) override;
+#endif // OHOS_MEDIA_AVSESSION
 
  private:
   CefRefPtr<CefBrowser> browser_ = nullptr;
@@ -291,6 +313,7 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool text_autosizing_enabled_{true};
   std::string surface_id_{""};
   bool fit_content_{false};
+  float font_weight_scale_ = 1.0f;
 #endif
   bool enable_embed_mode_{false};
   std::string embed_tag_{"embed"};
@@ -313,6 +336,10 @@ class NWebPreferenceDelegate : public NWebPreference {
 #if defined(OHOS_JSPROXY)
   ScriptItems script_items_start_{};
   ScriptItems script_items_end_{};
+  ScriptItems script_items_head_ready_{};
+  ScriptItemsByOrder script_items_start_by_order_;
+  ScriptItemsByOrder script_items_end_by_order_;
+  ScriptItemsByOrder script_items_head_ready_by_order_;
 #endif
 
 #if defined(OHOS_SOFTWARE_COMPOSITOR)
@@ -331,6 +358,10 @@ class NWebPreferenceDelegate : public NWebPreference {
   int size_ = -1;
   int time_to_live_ = -1;
 #endif // OHOS_BFCACHE
+
+#ifdef OHOS_ACTIVE_POLICY
+  int64_t delay_for_background_tab_freezing_ = -1;
+#endif
 };
 }  // namespace OHOS::NWeb
 

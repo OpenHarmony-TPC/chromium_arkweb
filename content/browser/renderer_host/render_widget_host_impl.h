@@ -924,6 +924,8 @@ class CONTENT_EXPORT RenderWidgetHostImpl
                      const gfx::Point& touch_point) override;
   gfx::Rect GetImageRect();
   void OnTextSelected(bool flag);
+  void OnDestroyImageAnalyzerOverlay();
+  void OnFoldStatusChanged(uint32_t foldstatus);
 #endif
 
  protected:
@@ -1055,6 +1057,9 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   void AutoscrollStart(const gfx::PointF& position) override;
   void AutoscrollFling(const gfx::Vector2dF& velocity) override;
   void AutoscrollEnd() override;
+#ifdef OHOS_DRAG_DROP
+  void GetVisibleRectToWeb(GetVisibleRectToWebCallback callback) override;
+#endif
   void StartDragging(blink::mojom::DragDataPtr drag_data,
                      blink::DragOperationsMask drag_operations_mask,
                      const SkBitmap& unsafe_bitmap,

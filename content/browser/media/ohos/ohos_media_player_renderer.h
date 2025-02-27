@@ -50,6 +50,10 @@ class CONTENT_EXPORT OHOSMediaPlayerRenderer
   // media::Renderer implementation
   void Initialize(media::MediaResource* media_resource,
                   media::RendererClient* client,
+#ifdef OHOS_VIDEO_ASSISTANT
+                  media::RequestSurfaceCB request_surface_cb,
+                  media::VideoDecoderChangedCB decoder_changed_cb,
+#endif // OHOS_VIDEO_ASSISTANT
                   media::PipelineStatusCallback init_cb) override;
   void SetLatencyHint(absl::optional<base::TimeDelta> latency_hint) override;
   void Flush(base::OnceClosure flush_cb) override;
@@ -58,6 +62,9 @@ class CONTENT_EXPORT OHOSMediaPlayerRenderer
   void SetPlaybackRate(double playback_rate) override;
   void SetVolume(float volume) override;
   base::TimeDelta GetMediaTime() override;
+#ifdef OHOS_VIDEO_ASSISTANT
+  void SetVideoSurface(int32_t surface_id) override;
+#endif // OHOS_VIDEO_ASSISTANT
 
   // media::OHOSMediaPlayerBridge::Client implementation
   void OnFrameAvailable(int fd,
@@ -67,6 +74,7 @@ class CONTENT_EXPORT OHOSMediaPlayerRenderer
                         int32_t visible_width,
                         int32_t visible_height,
                         int32_t format) override;
+  media::OHOSMediaResourceGetter* GetMediaResourceGetter() override;
   void OnMediaDurationChanged(base::TimeDelta duration) override;
   void OnPlaybackComplete() override;
   void OnError(int error) override;
@@ -111,6 +119,14 @@ class CONTENT_EXPORT OHOSMediaPlayerRenderer
   bool has_error_;
 
   gfx::Size video_size_;
+
+  // Identifiers to find the RenderFrameHost that created |this|.
+  // NOTE: We store these IDs rather than a RenderFrameHost* because we do not
+  // know when the RenderFrameHost is destroyed.
+  int render_process_id_;
+  int routing_id_;
+
+  std::unique_ptr<media::OHOSMediaResourceGetter> media_resource_getter_;
 
   bool web_contents_muted_;
   raw_ptr<OHOSMediaPlayerRendererWebContentsObserver> web_contents_observer_;

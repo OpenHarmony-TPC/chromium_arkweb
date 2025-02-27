@@ -301,6 +301,12 @@
 #include "content/browser/renderer_host/render_view_host_delegate_view.h"
 #endif
 
+#if defined(OHOS_LOGGER_REPORT)
+#include "url/ohos/log_utils.h"
+#include "content/public/browser/web_contents.h"
+#include "content/browser/web_contents/web_contents_impl.h"
+#endif
+
 namespace features {
 BASE_FEATURE(kDisableFrameNameUpdateOnNonCurrentRenderFrameHost,
              "DisableFrameNameUpdateOnNonCurrentRenderFrameHost",
@@ -1196,6 +1202,10 @@ class RenderFrameHostImpl::SubresourceLoaderFactoriesConfig {
   static SubresourceLoaderFactoriesConfig ForPendingNavigation(
       NavigationRequest& navigation_request) {
     SubresourceLoaderFactoriesConfig result;
+#if BUILDFLAG(IS_OHOS_PRPP)
+    result.main_url_ = navigation_request.common_params().url;
+    result.addr_web_handle_ = navigation_request.GetAddrWebHandle();
+#endif
     result.origin_ = navigation_request.GetOriginToCommit().value();
     result.client_security_state_ =
         navigation_request.BuildClientSecurityState();
@@ -1285,6 +1295,10 @@ class RenderFrameHostImpl::SubresourceLoaderFactoriesConfig {
       const SubresourceLoaderFactoriesConfig&) = delete;
 
   const url::Origin& origin() const { return origin_; }
+#if BUILDFLAG(IS_OHOS_PRPP)
+  const GURL& main_url() const { return main_url_; }
+  uint64_t addr_web_handle() const { return addr_web_handle_; }
+#endif
   const net::IsolationInfo& isolation_info() const { return isolation_info_; }
 
   network::mojom::ClientSecurityStatePtr GetClientSecurityState() const {
@@ -1320,6 +1334,10 @@ class RenderFrameHostImpl::SubresourceLoaderFactoriesConfig {
   // Private constructor - please go through the static For... methods.
   SubresourceLoaderFactoriesConfig() = default;
 
+#if BUILDFLAG(IS_OHOS_PRPP)
+  GURL main_url_;
+  uint64_t addr_web_handle_;
+#endif
   url::Origin origin_;
   net::IsolationInfo isolation_info_;
   network::mojom::ClientSecurityStatePtr client_security_state_;
@@ -4921,6 +4939,9 @@ NavigationRequest* RenderFrameHostImpl::GetSameDocumentNavigationRequest(
 
 void RenderFrameHostImpl::ResetOwnedNavigationRequests(
     NavigationDiscardReason reason) {
+#ifdef OHOS_LOGGER_REPORT
+  LOG_FEEDBACK(INFO) << "current lifecycle state: " << static_cast<int>(lifecycle_state_);
+#endif
   if (ShouldQueueNavigationsWhenPendingCommitRFHExists() &&
       lifecycle_state_ == LifecycleStateImpl::kPendingCommit) {
     // With navigation queueing, pending commit navigations shouldn't get
@@ -6638,10 +6659,18 @@ void RenderFrameHostImpl::DidBlockNavigation(
     const GURL& blocked_url,
     const GURL& initiator_url,
     blink::mojom::NavigationBlockedReason reason) {
+  // Do not allow renderers to show off-limits URLs in the blocked dialog.
+  GURL validated_blocked_url = blocked_url;
+  GURL validated_initiator_url = initiator_url;
+  RenderProcessHost* process = GetProcess();
+  process->FilterURL(/*empty_allowed=*/false, &validated_blocked_url);
+  process->FilterURL(/*empty_allowed=*/false, &validated_initiator_url);
+
   // Cross-origin navigations are not allowed in prerendering so we can not
   // reach here while prerendering.
   DCHECK_NE(lifecycle_state(), LifecycleStateImpl::kPrerendering);
-  delegate_->OnDidBlockNavigation(blocked_url, initiator_url, reason);
+  delegate_->OnDidBlockNavigation(validated_blocked_url,
+                                  validated_initiator_url, reason);
 }
 
 void RenderFrameHostImpl::DidChangeLoadProgress(double load_progress) {
@@ -7447,6 +7476,12 @@ void RenderFrameHostImpl::ChangeVisibilityOfQuickMenu() {
   if (delegate_) {
     delegate_->ChangeVisibilityOfQuickMenu();
   }
+}
+#endif
+
+#ifdef OHOS_AI
+void RenderFrameHostImpl::CloseImageOverlaySelection(CloseImageOverlaySelectionCallback callback) {
+  std::move(callback).Run(delegate_ ? delegate_->CloseImageOverlaySelection() : false);
 }
 #endif
 
@@ -9735,7 +9770,12 @@ void RenderFrameHostImpl::CommitNavigation(
         subresource_overrides,
     blink::mojom::ServiceWorkerContainerInfoForClientPtr container_info,
     const absl::optional<blink::DocumentToken>& document_token,
-    const base::UnguessableToken& devtools_navigation_token) {
+    const base::UnguessableToken& devtools_navigation_token
+#if BUILDFLAG(IS_OHOS_PRPP)
+    ,
+    uint64_t addr_web_handle
+#endif
+    ) {
   TRACE_EVENT2("navigation", "RenderFrameHostImpl::CommitNavigation",
                "navigation_request", navigation_request, "url",
                common_params->url);
@@ -10955,7 +10995,13 @@ RenderFrameHostImpl::CreateURLLoaderFactoryParamsForMainWorld(
       config.GetClientSecurityState(), config.GetCoepReporter(), GetProcess(),
       config.trust_token_issuance_policy(),
       config.trust_token_redemption_policy(), config.cookie_setting_overrides(),
-      debug_tag);
+      debug_tag
+#if BUILDFLAG(IS_OHOS_PRPP)
+      ,
+      config.main_url(),
+      config.addr_web_handle()
+#endif
+      );
 }
 
 bool RenderFrameHostImpl::CreateNetworkServiceDefaultFactoryAndObserve(
@@ -13069,6 +13115,9 @@ void RenderFrameHostImpl::TakeNewDocumentPropertiesFromNavigation(
 #ifdef OHOS_BUGFIX_CRASH
   if (fullscreen_document_on_document_element_ready_ && !IsOutermostMainFrame()) {
     LOG(INFO) << "fullscreen element is ready, while document is not main frame";
+#ifdef OHOS_LOGGER_REPORT
+    LOG_FEEDBACK(INFO) << "fullscreen element is ready, while document is not main frame";
+#endif
     return;
   }
 #else

@@ -29,6 +29,10 @@
 #include "third_party/blink/public/platform/web_fullscreen_video_status.h"
 #include "ui/gfx/geometry/size.h"
 
+#ifdef OHOS_VIDEO_ASSISTANT
+#include "content/public/browser/media_player_listener.h"
+#endif // OHOS_VIDEO_ASSISTANT
+
 namespace content {
 
 namespace {
@@ -129,8 +133,8 @@ class MediaWebContentsObserver::PlayerInfo {
   void NotifyPlayerGone() {
     if (observer_ && observer_->web_contents_impl()) {
       observer_->web_contents_impl()->MediaPlayerGone(
-          WebContentsObserver::MediaPlayerInfo(has_video_, has_audio_), id_);  
-    }  
+          WebContentsObserver::MediaPlayerInfo(has_video_, has_audio_), id_);
+    }
   }
 #endif
 
@@ -372,12 +376,20 @@ void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
   media_web_contents_observer_->web_contents_impl()->MediaMutedStatusChanged(
       media_player_id_, muted);
 
+#ifndef OHOS_MEDIA
   media_web_contents_observer_->session_controllers_manager()
       ->OnMediaMutedStatusChanged(media_player_id_, muted);
+#endif
 
   PlayerInfo* player_info = GetPlayerInfo();
   if (!player_info)
     return;
+
+#ifdef OHOS_MEDIA
+  media_web_contents_observer_->session_controllers_manager()
+      ->OnMediaMutedStatusChanged(media_player_id_, muted);
+  LOG(INFO) << "OhMedia::" << __func__ << ", muted=" << muted;
+#endif // OHOS_MEDIA
 
   player_info->set_muted(muted);
   NotifyAudioStreamMonitorIfNeeded();
@@ -516,8 +528,8 @@ void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnMediaPaused(
 void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnMediaPlayerGone() {
   PlayerInfo* player_info = GetPlayerInfo();
   if (!player_info)
-    return;      
-  
+    return;
+
   player_info->SetIsPlayerGone();
 }
 #endif
@@ -643,6 +655,10 @@ void MediaWebContentsObserver::OnMediaPlayerObserverDisconnected(
     const MediaPlayerId& player_id) {
   DCHECK(media_player_observer_hosts_.contains(player_id));
   media_player_observer_hosts_.erase(player_id);
+
+#ifdef OHOS_VIDEO_ASSISTANT
+  web_contents_impl()->OnVideoDestroyed(player_id);
+#endif // OHOS_VIDEO_ASSISTANT
 }
 
 device::mojom::WakeLock* MediaWebContentsObserver::GetAudioWakeLock() {
@@ -774,6 +790,9 @@ void MediaWebContentsObserver::RequestEnterFullscreen(const MediaPlayerId& playe
   const auto iter = media_player_remotes_.find(player_id);
   if (iter == media_player_remotes_.end()) {
     LOG(WARNING) << "RequestEnterFullscreen failed";
+#ifdef OHOS_LOGGER_REPORT
+    LOG_FEEDBACK(WARNING) << "RequestEnterFullscreen failed";
+#endif
     return;
   }
   iter->second->RequestEnterFullscreen();
@@ -783,10 +802,257 @@ void MediaWebContentsObserver::RequestExitFullscreen(const MediaPlayerId& player
   const auto iter = media_player_remotes_.find(player_id);
   if (iter == media_player_remotes_.end()) {
     LOG(WARNING) << "RequestExitFullscreen failed";
+#ifdef OHOS_LOGGER_REPORT
+    LOG_FEEDBACK(WARNING) << "RequestEnterFullscreen failed";
+#endif
     return;
   }
   iter->second->RequestExitFullscreen();
 }
 #endif // OHOS_CUSTOM_VIDEO_PLAYER
+
+#if defined(OHOS_VIDEO_ASSISTANT)
+bool MediaWebContentsObserver::IsMediaPlaying(const MediaPlayerId& player_id) {
+  auto player_info = GetPlayerInfo(player_id);
+  return player_info && player_info->is_playing();
+}
+
+void MediaWebContentsObserver::SetPlaybackRate(double playback_rate,
+                                               const MediaPlayerId& player_id) {
+  const auto iter = media_player_remotes_.find(player_id);
+  if (iter == media_player_remotes_.end()) {
+    return;
+  }
+
+  iter->second->SetPlaybackRate(playback_rate);
+}
+
+void MediaWebContentsObserver::RequestFullScreen(
+    bool enable,
+    const MediaPlayerId& player_id) {
+  const auto iter = media_player_remotes_.find(player_id);
+  if (iter == media_player_remotes_.end()) {
+    return;
+  }
+
+  if (enable) {
+    iter->second->RequestEnterFullscreen();
+  } else {
+    iter->second->RequestExitFullscreen();
+  }
+}
+
+void MediaWebContentsObserver::RequestDownloadUrl(
+    const MediaPlayerId& player_id) {
+  const auto iter = media_player_remotes_.find(player_id);
+  if (iter == media_player_remotes_.end()) {
+    return;
+  }
+
+  iter->second->RequestDownloadUrl();
+}
+
+void MediaWebContentsObserver::HidePlaybackSpeedList(
+    const MediaPlayerId& player_id) {
+  const auto iter = media_player_remotes_.find(player_id);
+  if (iter == media_player_remotes_.end()) {
+    return;
+  }
+
+  iter->second->HidePlaybackSpeedList();
+}
+#endif  // defined(OHOS_VIDEO_ASSISTANT)
+
+#ifdef OHOS_VIDEO_ASSISTANT
+void MediaWebContentsObserver::MediaPlayerHostImpl::
+    RequestVideoAssistantConfig(
+        RequestVideoAssistantConfigCallback callback) {
+  LOG(INFO) << "RequestVideoAssistantConfig";
+  auto config = media::mojom::VideoAssistantConfig::New(true, true,
+      media::mojom::VideoAssistantDownloadButton::kDownloadPerPage);
+  auto* web_contents_impl = media_web_contents_observer_->web_contents_impl();
+  web_contents_impl->PopluateVideoAssistantConfig(config);
+  std::move(callback).Run(std::move(config));
+}
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
+    OnVideoPlaying(
+        media::mojom::VideoAttributesForVASTPtr video_attributes) {
+  LOG(INFO) << "OnVideoPlaying";
+  media_web_contents_observer_->web_contents_impl()->OnVideoPlaying(
+      std::move(video_attributes), media_player_id_);
+}
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
+    OnUpdateVideoAttributes(
+        media::mojom::VideoAttributesForVASTPtr video_attributes) {
+  LOG(INFO) << "OnUpdateVideoAttributes";
+  media_web_contents_observer_->web_contents_impl()->OnUpdateVideoAttributes(
+      std::move(video_attributes), media_player_id_);
+}
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
+    OnVideoDestroyed() {
+  LOG(INFO) << "OnVideoDestroyed";
+  media_web_contents_observer_->web_contents_impl()->OnVideoDestroyed(
+      media_player_id_);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
+    OnFullScreenOverlayEnter(
+        media::mojom::MediaInfoForVASTPtr media_info_ptr) {
+  if (!media_info_ptr) {
+    LOG(ERROR) << "OnFullScreenOverlayEnter MediaInfo is empty";
+    return;
+  }
+  LOG(INFO) << "OnFullScreenOverlayEnter";
+  media_player_listener_ = media_web_contents_observer_
+      ->web_contents_impl()->OnFullScreenOverlayEnter(
+          std::move(media_info_ptr), media_player_id_);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::UpdatePlayStateOverlay(bool playState) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::UpdatePlayStateOverlay enter. playState is " << playState;
+  uint32_t status = static_cast<uint32_t>(playState);
+  media_player_listener_->OnStatusChanged(status);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::MutedChangedOverlay(bool muted) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::MutedChangedOverlay enter. muted is " << muted;
+  media_player_listener_->OnMutedChanged(muted);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::PlaybackRateChangedOverlay(double playback_rate) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::PlaybackRateChangedOverlay enter. playback_rate is " << playback_rate;
+  media_player_listener_->OnPlaybackRateChanged(playback_rate);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::DurationChangedOverlay(double duration) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::DurationChangedOverlay enter. duration is " << duration;
+  media_player_listener_->OnDurationChanged(duration);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::TimeUpdateOverlay(double current_time) {
+  if (!media_player_listener_) {
+    return;
+  }
+  media_player_listener_->OnTimeUpdate(current_time);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::BufferedEndTimeChangedOverlay(double buffered_end_time) {
+  if (!media_player_listener_) {
+    return;
+  }
+  media_player_listener_->OnBufferedEndTimeChanged(buffered_end_time);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::EndedOverlay() {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::EndedOverlay enter.";
+  media_player_listener_->OnEnded();
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::FullscreenChangedOverlay(bool fullscreen) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::FullscreenChangedOverlay enter. fullscreen is " << fullscreen;
+  media_player_listener_->OnFullscreenChanged(fullscreen);
+  if (!fullscreen) {
+    media_player_listener_ = nullptr;
+  }
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::SeekingOverlay() {
+  if (!media_player_listener_) {
+    return;
+  }
+  media_player_listener_->OnSeeking();
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::SeekingFinishedOverlay() {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::SeekingFinishedOverlay enter.";
+  media_player_listener_->OnSeekFinished();
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::ErrorOverlay(int32_t error_code,
+  const std::string& error_msg) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::EndedOverlay enter.";
+  media_player_listener_->OnError(error_code, error_msg);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::VideoSizeChangedOverlay(int32_t width, int32_t height) {
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::VideoSizeChangedOverlay enter. width = " << width << ", height = " << height;
+  media_player_listener_->OnVideoSizeChanged(width, height);
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
+    FullscreenOverlayChanged(
+        bool fullscreen_overlay, const std::string& decoder_name) {
+  if (media_web_contents_observer_ &&
+      media_web_contents_observer_->web_contents_impl()) {
+    media_web_contents_observer_->web_contents_impl()->ReportVideoDecoderName(
+        decoder_name);
+  }
+  if (!media_player_listener_) {
+    return;
+  }
+  LOG(INFO) << "MediaWebContentsObserver::FullscreenOverlayChanged("
+            << fullscreen_overlay << ", " << decoder_name << ")";
+  media_player_listener_->OnFullscreenOverlayChanged(fullscreen_overlay);
+}
+#endif // OHOS_VIDEO_ASSISTANT
+
+#if defined(OHOS_MEDIA_AVSESSION)
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnGetMediaTitle(
+    const std::string& data) {
+  if (media_web_contents_observer_ &&
+      media_web_contents_observer_->web_contents_impl()) {
+    media_web_contents_observer_->web_contents_impl()->SetMediaTitle(data);
+  }
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnGetVideoPoster(
+    const std::string& data) {
+  if (media_web_contents_observer_ &&
+      media_web_contents_observer_->web_contents_impl()) {
+    media_web_contents_observer_->web_contents_impl()->SetVideoPoster(data);
+  }
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnInitMediaTitle() {
+  if (media_web_contents_observer_ &&
+      media_web_contents_observer_->web_contents_impl()) {
+    media_web_contents_observer_->web_contents_impl()->SetMediaTitle("");
+  }
+}
+
+void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnInitVideoPoster() {
+  if (media_web_contents_observer_ &&
+      media_web_contents_observer_->web_contents_impl()) {
+    media_web_contents_observer_->web_contents_impl()->SetVideoPoster("");
+  }
+}
+#endif // OHOS_MEDIA_AVSESSION
 
 }  // namespace content

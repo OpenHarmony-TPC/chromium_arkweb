@@ -384,6 +384,9 @@ class CONTENT_EXPORT RenderFrameImpl
   void MouseSelectMenuShow(bool show) override;
   void ChangeVisibilityOfQuickMenu() override;
 #endif
+#ifdef OHOS_AI
+  bool CloseImageOverlaySelection() override;
+#endif
   void AddMessageToConsole(blink::mojom::ConsoleMessageLevel level,
                            const std::string& message) override;
   bool IsPasting() override;
@@ -580,6 +583,9 @@ class CONTENT_EXPORT RenderFrameImpl
   void DidClearWindowObject() override;
   void DidCreateDocumentElement() override;
   void RunScriptsAtDocumentElementAvailable() override;
+#if defined(OHOS_JSPROXY)
+  void RunScriptsAtHeadReady() override;
+#endif
   void DidReceiveTitle(const blink::WebString& title) override;
   void DidDispatchDOMContentLoadedEvent() override;
   void RunScriptsAtDocumentReady() override;

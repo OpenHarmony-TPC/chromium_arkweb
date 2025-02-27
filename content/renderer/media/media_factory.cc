@@ -141,6 +141,7 @@
 #include "content/renderer/media/ohos/native_texture_wrapper_impl.h"
 #include "content/renderer/media/ohos/ohos_media_player_renderer_client_factory.h"
 #include "content/renderer/media/renderer_web_native_delegate.h"
+#include "gpu/config/gpu_finch_features.h"
 #include "third_party/blink/renderer/platform/web_native_bridge_impl.h"
 #endif
 
@@ -653,12 +654,22 @@ MediaFactory::CreateRendererFactorySelector(
 #endif
 
 #if defined(OHOS_CUSTOM_VIDEO_PLAYER)
+#ifdef OHOS_NB_DEBUG
+  LOG(INFO)<<__FUNCTION__<<" ohos_custom_media_player_factory NativeTextureWrapperImpl ";
+#endif
+  gl::ohos::TextureOwnerMode texture_owner_mode =
+      features::IsUsingVulkan() || base::ohos::IsEmulator() ||
+              base::SysInfo::IsLowEndDevice()
+              ? gl::ohos::TextureOwnerMode::kNativeImageTexture
+              : gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer;
   auto ohos_custom_media_player_factory =
       std::make_unique<OHOSCustomMediaPlayerRendererClientFactory>(
           render_thread->compositor_task_runner(), CreateMojoRendererFactory(),
           base::BindRepeating(
-              &NativeTextureWrapperImpl::Create, true,
-              gl::ohos::TextureOwnerMode::kNativeImageTexture,
+              &NativeTextureWrapperImpl::Create,
+              features::IsUsingVulkan() || base::ohos::IsEmulator() ||
+                  base::SysInfo::IsLowEndDevice(),
+              texture_owner_mode,
               render_thread->GetNativeTexureFactory(),
               render_frame_->GetTaskRunner(blink::TaskType::kInternalMedia)));
   factory_selector->AddFactory(RendererType::kOHOSCustomMediaPlayer,
