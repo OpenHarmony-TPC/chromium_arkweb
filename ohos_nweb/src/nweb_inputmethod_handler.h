@@ -66,6 +66,7 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
 
   bool Reattach(uint32_t nwebId, ReattachType type);
   void SetIMEStatus(bool status);
+  void WebBlurKeyboardHide();
   void InsertText(const std::u16string& text);
   void DeleteBackward(int32_t length);
   void DeleteForward(int32_t length);
@@ -116,6 +117,7 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
 
  private:
   void SetIMEStatusOnUI(bool status);
+  void WebBlurKeyboardHideOnUI();
   void InsertTextHandlerOnUI(const std::u16string& text);
   void DeleteBackwardHandlerOnUI(int32_t length);
   void DeleteForwardHandlerOnUI(int32_t length);
@@ -140,6 +142,7 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   bool IsTextInputStateChange(const CefString& text,
                               const CefRange& selected_range,
                               const CefRange& compositon_range);
+  bool AttachToSystemIME(bool is_need_reset_listener);
 
 #if defined(OHOS_PASSWORD_AUTOFILL)
   void AutoFillWithIMFEventOnUI(bool is_username,
@@ -177,6 +180,7 @@ class NWebInputMethodHandler : public NWebInputMethodClient {
   std::chrono::high_resolution_clock::time_point lastCloseInputMethodTime_;
   bool isNeedReattachOnfocus_ = false;
   int32_t input_flags_ = 0;
+  int32_t input_node_id_ = -1;
 
   int textCursorReady_ = 0;
   std::mutex textCursorMutex_;

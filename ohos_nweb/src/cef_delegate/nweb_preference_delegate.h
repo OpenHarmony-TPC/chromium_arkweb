@@ -157,6 +157,8 @@ class NWebPreferenceDelegate : public NWebPreference {
   void SetScrollable(bool enable) override;
   void SetScrollable(bool enable, int32_t scrollType) override;
   bool GetScrollable() override;
+  void SetBlurOnKeyboardHideMode(int enable) override;
+  int GetBlurEnable();
 #endif  // defined(OHOS_INPUT_EVENTS)
   void SetNativeEmbedMode(bool flag) override;
   bool GetNativeEmbedMode() override;
@@ -215,6 +217,12 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool IsMixedContentAutoUpgradesEnabled();
 #endif
 
+#ifdef OHOS_BFCACHE
+  int GetCacheSize();
+  int GetTimeToLive();
+  void PutBackForwardCacheOptions(int size, int time_to_live);
+#endif  // OHOS_BFCACHE
+
  private:
   CefRefPtr<CefBrowser> browser_ = nullptr;
 
@@ -272,6 +280,8 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool vertical_scrollBar_access_{true};
   int overscroll_mode_{0};
   bool scroll_enabled_{true};
+  bool setting_scroll_enabled_{true};
+  int blur_enabled_;
 #endif  // defined(OHOS_INPUT_EVENTS)
 #if defined(OHOS_VIEWPORT)
   std::optional<bool> viewport_enabled_;
@@ -317,6 +327,10 @@ class NWebPreferenceDelegate : public NWebPreference {
   bool enable_mixed_content_auto_upgrades_{false};
 #endif
 
+#ifdef OHOS_BFCACHE
+  int size_ = -1;
+  int time_to_live_ = -1;
+#endif // OHOS_BFCACHE
 };
 }  // namespace OHOS::NWeb
 

@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Based on crashpad_android.cc originally written by
+// Copyright 2018 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 #include "components/crash/core/app/crashpad.h"
 
 #include <dlfcn.h>
@@ -549,9 +554,7 @@ bool PlatformCrashpadInitialization(
   }
 
   if (browser_process) {
-    LOG(INFO) << "crashpad PlatformCrashpadInitialization, browser process init";
-    HandlerStarter* starter = HandlerStarter::Get();
-    *database_path = starter->Initialize(dump_at_crash);
+    LOG(INFO) << "crashpad PlatformCrashpadInitialization, browser process init skipped";
     return true;
   }
 

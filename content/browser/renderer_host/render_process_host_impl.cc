@@ -3669,6 +3669,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
 #if BUILDFLAG(IS_OZONE)
     switches::kOzonePlatform,
 #endif
+#ifdef OHOS_SCROLLBAR
+    switches::kPixelRatio,
+#endif
 #if defined(ENABLE_IPC_FUZZER)
     switches::kIpcDumpDirectory,
     switches::kIpcFuzzerTestcase,
@@ -3681,6 +3684,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
     switches::kBundleInstallationDir,
     switches::kOhSchemeHandlerCustomScheme,
     switches::kBundleName,
+    switches::kArkWebInstallPath,
 #endif
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     switches::kLacrosEnablePlatformHevc,
@@ -5851,4 +5855,24 @@ void RenderProcessHostImpl::RemoveFromSharedRenderProcessMap(
 }
 #endif
 
+#ifdef OHOS_I18N
+void RenderProcessHostImpl::NotifyLocaleChanged(
+    const std::string& update_locale) {
+  GetRendererInterface()->NotifyLocaleChanged(update_locale);
+}
+
+// static
+void RenderProcessHost::OnLocaleChangedToRenderer(
+    const std::string& update_locale) {
+  iterator iter(AllHostsIterator());
+  while (!iter.IsAtEnd()) {
+    RenderProcessHostImpl* host =
+        static_cast<RenderProcessHostImpl*>(iter.GetCurrentValue());
+    if (host && host->IsInitializedAndNotDead()) {
+      host->NotifyLocaleChanged(update_locale);
+    }
+    iter.Advance();
+  }
+}
+#endif
 }  // namespace content

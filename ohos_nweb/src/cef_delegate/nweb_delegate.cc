@@ -84,6 +84,7 @@
 #if OHOS_I18N
 #include "base/ohos/locale_utils.h"
 #endif
+
 namespace {
 static const float richtextDisplayRatio = 1.0;
 }
@@ -974,8 +975,8 @@ void NWebDelegate::NotifyScreenInfoChanged(RotationType rotation,
       LOG(ERROR) << "Invalid display_ratio, display_ratio = " << display_ratio;
       return;
     }
-    int width = std::round(display->GetWidth() / display_ratio);
-    int height = std::round(display->GetHeight() / display_ratio);
+    int width = std::ceil(display->GetWidth() / display_ratio);
+    int height = std::ceil(display->GetHeight() / display_ratio);
 #ifdef OHOS_SCREEN_ROTATION
     bool default_portrait = display_manager_adapter_->IsDefaultPortrait();
     if (hidden_ && !isWebinitialization) {
@@ -1463,6 +1464,7 @@ void NWebDelegate::OnPause() {
   }
 
   // Remove focus from the browser.
+  LOG(INFO) << "NWebDelegate::OnPause set web blur, nweb_id = " << nweb_id_;
   GetBrowser()->GetHost()->SetFocus(false);
 
 #if defined(OHOS_INPUT_EVENTS)
@@ -1583,13 +1585,26 @@ void NWebDelegate::OnContinue() {
   }
 
   // Give focus to the browser.
+#if defined(OHOS_INPUT_EVENTS)
   if (handler_delegate_ && handler_delegate_->GetContinueNeedFocus()) {
     if (is_onPause_) {
       GetBrowser()->GetHost()->SetFocus(true);
       handler_delegate_->SetContinueNeedFocus(false);
     }
+  } else if (handler_delegate_ && handler_delegate_->IsCurrentFocus()) {
+    LOG(INFO) << "NWebDelegate::OnContinue set web core focus, nweb_id = " << nweb_id_;
+    GetBrowser()->GetHost()->SetFocus(true);
   }
   is_onPause_ = false;
+#endif
+}
+
+void NWebDelegate::WebComponentsBlur() {
+  LOG(INFO) << "NWebDelegate::WebComponentsBlur, nweb_id = " << nweb_id_;
+  if (!GetBrowser().get()) {
+    return;
+  }
+  GetBrowser()->GetHost()->SetFocusOnWeb();
 }
 
 void NWebDelegate::OnOccluded() {
@@ -2073,8 +2088,8 @@ void NWebDelegate::RegisterArkJSfunction(
       LOG(INFO) << "NWebDelegate::RegisterArkJSfunction popup case, the "
                    "object_name is "
                 << object_name.c_str();
-      handler_delegate_->SavaArkJSFunctionForPopup(object_name, method_list,
-                                                   async_method_list, object_id, permission);
+      handler_delegate_->SavaArkJSFunctionForPopup(
+          object_name, method_list, async_method_list, object_id, permission);
     }
     return;
   } else if (!GetBrowser()) {
@@ -2083,8 +2098,8 @@ void NWebDelegate::RegisterArkJSfunction(
                << object_name.c_str();
     return;
   } else {
-    GetBrowser()->GetHost()->RegisterArkJSfunction(object_name, method_vector,
-                                                   async_method_vector, object_id, permission);
+    GetBrowser()->GetHost()->RegisterArkJSfunction(
+        object_name, method_vector, async_method_vector, object_id, permission);
   }
 }
 
@@ -2109,10 +2124,11 @@ void NWebDelegate::UnregisterArkJSfunction(
 
 void NWebDelegate::RegisterNativeArkJSFunction(
     const char* objName,
-    const std::vector<std::shared_ptr<NWebJsProxyCallback>> &callbacks) {
+    const std::vector<std::shared_ptr<NWebJsProxyCallback>>& callbacks) {
   if (!CEF_CURRENTLY_ON_UIT()) {
     CEF_POST_TASK(CEF_UIT,
-      base::BindOnce(&NWebDelegate::RegisterNativeArkJSFunction, this, objName, callbacks));
+                  base::BindOnce(&NWebDelegate::RegisterNativeArkJSFunction,
+                                 this, objName, callbacks));
     return;
   }
 
@@ -2123,7 +2139,8 @@ void NWebDelegate::RegisterNativeArkJSFunction(
   }
   if (GetBrowser() && GetBrowser()->GetHost()) {
     GetBrowser()->GetHost()->RegisterArkJSfunction(objName, method_vector,
-                                                   std::vector<CefString>(), kDefaultWebNativeProxy, "");
+                                                   std::vector<CefString>(),
+                                                   kDefaultWebNativeProxy, "");
   } else {
     LOG(ERROR) << "browser or host is null";
   }
@@ -2137,9 +2154,10 @@ void NWebDelegate::RegisterNativeJSProxy(
     bool isAsync,
     const std::string& permission) {
   if (!CEF_CURRENTLY_ON_UIT()) {
-    CEF_POST_TASK(CEF_UIT,
-                  base::BindOnce(&NWebDelegate::RegisterNativeJSProxy, this,
-                                 objName, methodName, std::move(callback), isAsync, permission));
+    CEF_POST_TASK(
+        CEF_UIT,
+        base::BindOnce(&NWebDelegate::RegisterNativeJSProxy, this, objName,
+                       methodName, std::move(callback), isAsync, permission));
     return;
   }
 
@@ -2148,8 +2166,8 @@ void NWebDelegate::RegisterNativeJSProxy(
     return;
   }
 
-  handler_delegate_->RegisterNativeJavaScriptCallBack(objName, methodName,
-                                                      std::move(callback), isAsync, permission);
+  handler_delegate_->RegisterNativeJavaScriptCallBack(
+      objName, methodName, std::move(callback), isAsync, permission);
 
   size_t size = methodName.size();
   std::vector<CefString> method_vector;
@@ -2157,8 +2175,45 @@ void NWebDelegate::RegisterNativeJSProxy(
     method_vector.push_back(methodName[i]);
   }
   if (GetBrowser() && GetBrowser()->GetHost()) {
-    GetBrowser()->GetHost()->RegisterNativeJSProxy(objName, method_vector,
-                                                   kDefaultWebNativeProxy, isAsync, permission);
+    GetBrowser()->GetHost()->RegisterNativeJSProxy(
+        objName, method_vector, kDefaultWebNativeProxy, isAsync, permission);
+  } else {
+    LOG(ERROR) << "browser or host is null";
+  }
+}
+
+void NWebDelegate::RegisterNativeJSProxyWithResult(
+    const std::string& objName,
+    const std::vector<std::string>& methodName,
+    std::vector<std::function<std::shared_ptr<OHOS::NWeb::NWebValue>(
+        std::vector<std::vector<uint8_t>>&,
+        std::vector<size_t>&)>>&& callback,
+    bool isAsync,
+    const std::string& permission) {
+  if (!CEF_CURRENTLY_ON_UIT()) {
+    CEF_POST_TASK(CEF_UIT,
+                  base::BindOnce(&NWebDelegate::RegisterNativeJSProxyWithResult,
+                                 this, objName, methodName, std::move(callback),
+                                 isAsync, permission));
+    return;
+  }
+
+  if (handler_delegate_ == nullptr) {
+    LOG(ERROR) << "handler_delegate_ is nullptr";
+    return;
+  }
+
+  handler_delegate_->RegisterNativeJavaScriptCallBackWithResult(
+      objName, methodName, std::move(callback), isAsync, permission);
+
+  size_t size = methodName.size();
+  std::vector<CefString> method_vector;
+  for (size_t i = 0; i < size; i++) {
+    method_vector.push_back(methodName[i]);
+  }
+  if (GetBrowser() && GetBrowser()->GetHost()) {
+    GetBrowser()->GetHost()->RegisterNativeJSProxy(
+        objName, method_vector, kDefaultWebNativeProxy, isAsync, permission);
   } else {
     LOG(ERROR) << "browser or host is null";
   }
@@ -2167,7 +2222,8 @@ void NWebDelegate::RegisterNativeJSProxy(
 void NWebDelegate::UnRegisterNativeArkJSFunction(const char* objName) {
   if (!CEF_CURRENTLY_ON_UIT()) {
     CEF_POST_TASK(CEF_UIT,
-      base::BindOnce(&NWebDelegate::UnRegisterNativeArkJSFunction, this, objName));
+                  base::BindOnce(&NWebDelegate::UnRegisterNativeArkJSFunction,
+                                 this, objName));
     return;
   }
 
@@ -2200,7 +2256,7 @@ void NWebDelegate::RegisterNativeLoadEndCallback(
 void NWebDelegate::JavaScriptOnDocumentStart(const ScriptItems& scriptItems) {
   if (GetBrowser() != nullptr && GetBrowser()->GetHost() != nullptr) {
     GetBrowser()->GetHost()->RemoveJavaScriptOnDocumentStart();
-    for (auto item: scriptItems) {
+    for (auto item : scriptItems) {
       CefString script = item.first;
       std::vector<CefString> scriptRules;
       for (std::string rule : item.second) {
@@ -2243,7 +2299,7 @@ void NWebDelegate::CallH5Function(
 void NWebDelegate::JavaScriptOnDocumentEnd(const ScriptItems& scriptItems) {
   if (GetBrowser() != nullptr && GetBrowser()->GetHost() != nullptr) {
     GetBrowser()->GetHost()->RemoveJavaScriptOnDocumentEnd();
-    for (auto item: scriptItems) {
+    for (auto item : scriptItems) {
       CefString script = item.first;
       std::vector<CefString> scriptRules;
       for (std::string rule : item.second) {
@@ -2278,6 +2334,7 @@ bool NWebDelegate::OnFocus(const FocusReason& focusReason) const {
 
 #ifdef OHOS_FOCUS
   if (handler_delegate_ && !handler_delegate_->GetFocusState()) {
+    LOG(INFO) << "NWebDelegate::OnFocus set web focus, nweb_id = " << nweb_id_;
     GetBrowser()->GetHost()->SetFocus(true);
   }
 #endif  // #ifdef OHOS_FOCUS
@@ -2294,6 +2351,7 @@ void NWebDelegate::OnBlur() const {
 
 #ifdef OHOS_FOCUS
   if (handler_delegate_ && handler_delegate_->GetFocusState()) {
+    LOG(INFO) << "NWebDelegate::OnBlur set web blur, nweb_id = " << nweb_id_;
     handler_delegate_->SetFocusState(false);
     GetBrowser()->GetHost()->SetFocus(false);
 #if defined(OHOS_INPUT_EVENTS)
@@ -2663,6 +2721,8 @@ bool NWebDelegate::WebSendKeyEvent(int32_t keyCode, int32_t keyAction,
   bool retVal = false;
   if (event_handler_ != nullptr) {
     retVal = event_handler_->WebSendKeyEventFromAce(keyCode, keyAction, pressedCodes);
+  } else {
+    LOG(ERROR) << "WebSendKeyEvent event_handler_ is nullptr";
   }
   return retVal;
 }
@@ -2678,6 +2738,8 @@ void NWebDelegate::WebSendMouseWheelEvent(double x,
                                            deltaX / default_virtual_pixel_ratio_,
                                            deltaY / default_virtual_pixel_ratio_,
                                            pressedCodes);
+  } else {
+    LOG(ERROR) << "WebSendMouseWheelEvent event_handler_ is nullptr";
   }
 }
 
@@ -2692,6 +2754,8 @@ void NWebDelegate::WebSendTouchpadFlingEvent(double x,
                                               vx / default_virtual_pixel_ratio_,
                                               vy / default_virtual_pixel_ratio_,
                                               pressedCodes);
+  } else {
+    LOG(ERROR) << "WebSendTouchpadFlingEvent event_handler_ is nullptr";
   }
 }
 
@@ -3145,7 +3209,14 @@ bool NWebDelegate::GetPrintBackground() {
 #ifdef OHOS_ARKWEB_ADBLOCK
 void NWebDelegate::EnableAdsBlock(bool enable) {
   LOG(INFO) << "NWebDelegate::EnableAdsBlock " << enable;
-  if (GetBrowser().get()) {
+  if (is_popup_ready_) {
+    if (handler_delegate_) {
+      LOG(INFO) << "[ADBLOCK] NWebDelegate::EnableAdsBlock popup case, the "
+                   "adblock switch is " << enable;
+      handler_delegate_->SaveGlobalAdsBlock(enable);
+    }
+    return;
+  } else if (GetBrowser().get()) {
     GetBrowser()->EnableAdsBlock(enable);
   }
 }
@@ -3162,6 +3233,15 @@ bool NWebDelegate::IsAdsBlockEnabledForCurPage() {
     return GetBrowser()->IsAdsBlockEnabledForCurPage();
   }
   return false;
+}
+
+void NWebDelegate::SetAdBlockEnabledForSite(bool is_adblock_enabled,
+                                            int main_frame_tree_node_id) {
+  LOG(INFO) << "NWebDelegate::SetAdBlockEnabledForSite " << is_adblock_enabled;
+  if (GetBrowser().get()) {
+    GetBrowser()->SetAdBlockEnabledForSite(is_adblock_enabled,
+                                           main_frame_tree_node_id);
+  }
 }
 #endif
 
@@ -3386,13 +3466,14 @@ void NWebDelegate::UpdateNativeEmbedInfo(std::shared_ptr<NWebNativeEmbedDataInfo
     }
   }
 }
-#endif
 
-void NWebDelegate::RegisterAccessibilityEventListener(
-    std::shared_ptr<NWebAccessibilityEventCallback>
-        accessibility_event_listener) {
-  accessibility_event_listener_ = accessibility_event_listener;
+void NWebDelegate::SetTransformHint(uint32_t rotation)
+{
+  if (handler_delegate_) {
+    handler_delegate_->SetTransformHint(rotation);
+  }
 }
+#endif
 
 void NWebDelegate::SetAccessibilityState(cef_state_t accessibilityState) {
   if (GetBrowser() == nullptr || GetBrowser()->GetHost() == nullptr) {
@@ -3504,11 +3585,26 @@ void NWebDelegate::ExecuteAction(int64_t accessibilityId, uint32_t action,
       accessibilityManager->SetFocus(*accessibilityManager->GetBrowserAccessibilityRoot());
       break;
     case AceAction::ACTION_SCROLL_FORWARD:
-      node->Scroll(ax::mojom::Action::kScrollForward);
+    case AceAction::ACTION_SCROLL_BACKWARD: {
+      int32_t argument = GetArgumentByKey(actionArguments,"scrolltype");
+      AccessibilityScrollType scrollType;
+      switch (argument) {
+        case 0:
+          scrollType = AccessibilityScrollType::SCROLL_HALF;
+          break;
+        case 1:
+          scrollType = AccessibilityScrollType::SCROLL_FULL;
+          break;
+        default:
+          scrollType = AccessibilityScrollType::SCROLL_DEFAULT;
+          break;
+      }
+      node->Scroll(aceAction == AceAction::ACTION_SCROLL_FORWARD ?
+        content::ScrollDirection::FORWARD : content::ScrollDirection::BACKWARD,
+        scrollType != AccessibilityScrollType::SCROLL_HALF);
+      node->manager()->LoadInlineTextBoxes(*node);
       break;
-    case AceAction::ACTION_SCROLL_BACKWARD:
-      node->Scroll(ax::mojom::Action::kScrollBackward);
-      break;
+    }
     case AceAction::ACTION_COPY:
       accessibilityManager->Copy();
       break;
@@ -3614,12 +3710,7 @@ NWebDelegate::GetAccessibilityManager() {
   }
   void* manager = nullptr;
   GetBrowser()->GetHost()->GetRootBrowserAccessibilityManager(&manager);
-  auto managerOHOS = static_cast<content::BrowserAccessibilityManagerOHOS*>(manager);
-  if (managerOHOS != nullptr && managerOHOS->GetAccessibilityEventListener() == nullptr
-      && accessibility_event_listener_ != nullptr) {
-      managerOHOS->RegisterAccessibilityEventListener(accessibility_event_listener_);
-  }
-  return managerOHOS;
+  return static_cast<content::BrowserAccessibilityManagerOHOS*>(manager);
 }
 
 std::shared_ptr<NWebAccessibilityNodeInfo>
@@ -3688,6 +3779,32 @@ NWebDelegate::GetAccessibilityNodeInfoById(int64_t accessibilityId) {
   return PopulateAccessibilityNodeInfo(node);
 }
 
+bool NWebDelegate::GetAccessibilityVisible(int64_t accessibilityId) {
+  auto* accessibilityManager = GetAccessibilityManager();
+  if (accessibilityManager == nullptr) {
+    return true;
+  }
+  auto rootNode = accessibilityManager->GetBrowserAccessibilityRoot();
+  if (rootNode == nullptr) {
+    LOG(ERROR) << "GetAccessibilityVisible rootNode is not found";
+    return true;
+  }
+  content::BrowserAccessibilityOHOS* node = nullptr;
+  if (accessibilityId < 0) {
+    node = static_cast<content::BrowserAccessibilityOHOS*>(rootNode);
+  } else {
+    node = content::BrowserAccessibilityOHOS::GetFromAccessibilityId(
+        accessibilityId);
+  }
+  if (node == nullptr) {
+    LOG(ERROR) << "GetAccessibilityNodeInfoById node is not found";
+    return true;
+  }
+  ui::AXOffscreenResult offscreen_result = ui::AXOffscreenResult::kOnscreen;
+  node->GetUnclippedRootFrameBoundsRect(&offscreen_result);
+  return offscreen_result == ui::AXOffscreenResult::kOnscreen;
+}
+
 std::shared_ptr<NWebAccessibilityNodeInfo>
 NWebDelegate::GetAccessibilityNodeInfoByFocusMove(int64_t accessibilityId,
                                                   int32_t direction) {
@@ -3722,7 +3839,7 @@ NWebDelegate::GetAccessibilityNodeInfoByFocusMove(int64_t accessibilityId,
 
 std::shared_ptr<NWebAccessibilityNodeInfo>
 NWebDelegate::PopulateAccessibilityNodeInfo(
-    const content::BrowserAccessibilityOHOS* node) {
+    content::BrowserAccessibilityOHOS* node) {
   auto* accessibilityManager = GetAccessibilityManager();
   if (accessibilityManager == nullptr) {
     return nullptr;
@@ -3730,12 +3847,29 @@ NWebDelegate::PopulateAccessibilityNodeInfo(
 
   std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo =
     std::make_shared<NWebAccessibilityNodeInfoImpl>();
+  if (nodeInfo == nullptr || node == nullptr) {
+    LOG(ERROR) << "PopulateAccessibilityNodeInfo nodeInfo or node is null";
+    return nullptr;
+  }
   nodeInfo->SetAccessibilityId(node->GetAccessibilityId());
-  nodeInfo->SetParentId(node->GetParentId());
+  nodeInfo->SetParentId(-1);
+  bool isRoot = !node->PlatformGetParent();
+  if (!isRoot) {
+    auto* parentNode = static_cast<content::BrowserAccessibilityOHOS*>(
+        node->PlatformGetParent());
+    if (parentNode) {
+      nodeInfo->SetParentId(parentNode->GetAccessibilityId());
+    }
+  }
 
-  std::vector<int64_t> childrenIds;
-  node->GetChildrenIds(childrenIds);
-  nodeInfo->SetChildIds(childrenIds);
+  std::vector<int64_t> childIds;
+  for (const auto& childNode : node->PlatformChildren()) {
+    const content::BrowserAccessibilityOHOS& childNodeOHOS =
+        static_cast<const content::BrowserAccessibilityOHOS&>(childNode);
+    childIds.emplace_back(childNodeOHOS.GetAccessibilityId());
+  }
+  nodeInfo->SetChildIds(childIds);
+
   nodeInfo->SetIsAccessibilityFocus(
       (accessibilityManager->GetAccessibilityFocusId() ==
               node->GetAccessibilityId()
@@ -3881,9 +4015,11 @@ void NWebDelegate::AddAccessibilityNodeInfoActions(
         static_cast<uint32_t>(AceAction::ACTION_ACCESSIBILITY_FOCUS));
   }
   if (node != nullptr) {
-    if (node->IsScrollSupported()) {
+    if (node->CanScrollForward()) {
       actions.emplace_back(
           static_cast<uint32_t>(AceAction::ACTION_SCROLL_FORWARD));
+    }
+    if (node->CanScrollBackward()) {
       actions.emplace_back(
           static_cast<uint32_t>(AceAction::ACTION_SCROLL_BACKWARD));
     }
@@ -4132,10 +4268,11 @@ void NWebDelegate::RefreshAccessibilityManagerClickEvent() {
 
 #ifdef OHOS_BFCACHE
 void NWebDelegate::SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) {
-  LOG(INFO) << "NWebDelegate::SetBackForwardCacheOptions param size: " << size
-            << " timeToLive: " << timeToLive;
-  if (GetBrowser()) {
-    LOG(ERROR) << "NWebDelegate::SetBackForwardCacheOptions Get browser failed.";
+  if (!GetBrowser()) {
+    if (preference_delegate_) {
+      preference_delegate_->PutBackForwardCacheOptions(size, timeToLive);
+    }
+    return;
   }
 
   GetBrowser()->SetBackForwardCacheOptions(size, timeToLive);
@@ -4148,5 +4285,18 @@ void NWebDelegate::SetPopupSurface(void* popupSurface) {
     return;
   }
   handler_delegate_->SetPopupSurface(popupSurface);
+}
+
+int32_t NWebDelegate::GetArgumentByKey(const std::map<std::string, std::string>& actionArguments,
+  const std::string& checkKey) const
+{
+    auto iter = actionArguments.find(checkKey);
+    int32_t argument = -1; // -1:default value
+    if (iter != actionArguments.end()) {
+        std::stringstream strArguments;
+        strArguments << iter->second;
+        strArguments >> argument;
+    }
+    return argument;
 }
 }  // namespace OHOS::NWeb

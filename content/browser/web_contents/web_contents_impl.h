@@ -437,24 +437,25 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
 #endif  // #ifdef OHOS_CLIPBOARD
 
 #ifdef OHOS_ARKWEB_ADBLOCK
-  bool TrigAdBlockEnabledForSite(GURL url) override;
+  void TrigAdBlockEnabledForSiteFromUi(
+      const std::string& main_frame_url) override;
 
-  void EnableAdsBlock(bool enable) override {
-    LOG(INFO) << "enable adblock: " << enable;
-    base::AutoLock locker(lock_);
-    enable_adblock_ = enable;
-  }
+  void EnableAdsBlock(bool enable) override;
 
-  bool IsAdsBlockEnabled() override {
-    base::AutoLock locker(lock_);
-    return enable_adblock_;
-  }
+  bool IsAdsBlockEnabled() override;
 
   bool IsAdsBlockEnabledForCurPage() override;
 
   void OnAdsBlocked(const std::string& main_frame_url,
                     const std::map<std::string, int32_t>& subresource_blocked,
                     bool is_site_first_report) override;
+
+  void UpdateAdBlockEnabledToRender(bool site_adblock_enabled) override;
+
+  void SetAdBlockEnabledForSite(bool is_adblock_enabled,
+                                int main_frame_tree_node_id) override;
+
+  bool GetAdblockEnabledForSite() override;
 #endif
 
 #if defined(OHOS_EX_PASSWORD)
@@ -1255,6 +1256,11 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
       const WebContentsObserver::MediaPlayerInfo& media_info,
       const MediaPlayerId& id,
       WebContentsObserver::MediaStoppedReason reason);
+#if BUILDFLAG(IS_OHOS)
+  void MediaPlayerGone(
+      const WebContentsObserver::MediaPlayerInfo& media_info,
+      const MediaPlayerId& id);
+#endif
   // This will be called before playback is started, check
   // GetCurrentlyPlayingVideoCount if you need this when playback starts.
   void MediaResized(const gfx::Size& size, const MediaPlayerId& id);
@@ -2591,13 +2597,6 @@ class CONTENT_EXPORT WebContentsImpl : public WebContents,
   std::string user_agent_{""};
 #endif  // OHOS_EX_UA
 
-#ifdef OHOS_ARKWEB_ADBLOCK
-  mutable base::Lock lock_;
-
-  bool enable_adblock_ = false;
-
-  bool enable_adblock_for_site_ = false;
-#endif
 
 #if defined(OHOS_EX_PASSWORD)
   bool save_password_ = true;

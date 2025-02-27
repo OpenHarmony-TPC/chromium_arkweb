@@ -2669,6 +2669,14 @@ void RenderFrameHostImpl::ExecuteJavaScriptExt(const int fd,
   GetAssociatedLocalFrame()->JavaScriptExecuteRequestExt(
       mojo::ScopedHandle(mojo::Handle(handle)), scriptLength, wants_result, std::move(callback));
 }
+
+void RenderFrameHostImpl::SendAccessibilityEvent(int64_t accessibilityId, int32_t eventType) {
+  RenderWidgetHostViewBase* view = static_cast<RenderWidgetHostViewBase*>(
+      render_view_host_->GetWidget()->GetView());
+  if (view) {
+    view->SendAccessibilityEvent(accessibilityId, eventType);
+  }
+}
 #endif
 
 void RenderFrameHostImpl::ExecuteJavaScriptInIsolatedWorld(
@@ -15467,4 +15475,34 @@ void RenderFrameHostImpl::OnClearContextMenu() {
   delegate_->ClearContextMenu();
 }
 #endif // OHOS_DRAG_DROP
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+void RenderFrameHostImpl::UpdateAdBlockEnabledToRender(
+    bool site_adblock_enabled) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  FrameTreeNode* tree_node = frame_tree_node();
+  if (!tree_node->IsMainFrame()) {
+    return;
+  }
+  // Update the adblock site switch of local_frame_root and
+  // activation_state.activation_level of subresource_filter_agent
+  // in the rendering process only by the main frame.
+  RenderFrameHostImpl* pending_frame_host =
+      tree_node->render_manager()->speculative_frame_host();
+  if (pending_frame_host && pending_frame_host->frame_) {
+    LOG(INFO) << "[AdBlock] Speculative update adblock site switch:"
+              << site_adblock_enabled;
+    pending_frame_host->frame_->OnUpdateAdBlockEnabledToRender(
+        site_adblock_enabled);
+  }
+
+  RenderFrameHostImpl* current_frame_host = tree_node->current_frame_host();
+  if (current_frame_host && current_frame_host->frame_) {
+    LOG(INFO) << "[AdBlock] Update adblock site switch:"
+              << site_adblock_enabled;
+    current_frame_host->frame_->OnUpdateAdBlockEnabledToRender(
+        site_adblock_enabled);
+  }
+}
+#endif
 }  // namespace content

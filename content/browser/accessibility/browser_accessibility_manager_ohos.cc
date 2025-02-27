@@ -24,6 +24,7 @@
 namespace content {
 const int64_t kInvalidAccessibilityId = -1;
 constexpr int64_t kDefaultUpdateEventDelayMs = 100;
+constexpr int64_t kDefaultFrequentHoverEnterEventDelayMs = 300;
 
 BrowserAccessibilityManager* BrowserAccessibilityManager::Create(
     const ui::AXTreeUpdate& initial_tree,
@@ -49,12 +50,10 @@ void BrowserAccessibilityManagerOHOS::HandleFocusChanged(
     int64_t accessibilityId) {
   SendAccessibilityEvent(accessibilityId,
                          OHOS::NWeb::AccessibilityEventType::FOCUS);
-  MoveAccessibilityFocusToId(accessibilityId);
-}
-
-std::shared_ptr<OHOS::NWeb::NWebAccessibilityEventCallback>
-    BrowserAccessibilityManagerOHOS::GetAccessibilityEventListener() const {
-    return accessibilityEventListener_;
+  if (accessibilityId != accessibilityFocusId_ && accessibilityId != GetRootAccessibilityId()) {
+    SendAccessibilityEvent(accessibilityId,
+                           OHOS::NWeb::AccessibilityEventType::REQUEST_FOCUS);
+  }
 }
 
 void BrowserAccessibilityManagerOHOS::FireFocusEvent(
@@ -90,15 +89,15 @@ void BrowserAccessibilityManagerOHOS::FireBlinkEvent(
     case ax::mojom::Event::kHover:
       HandleHover(accessibilityId);
       break;
+    case ax::mojom::Event::kTreeChanged:
+      if (GetRootAccessibilityId() == accessibilityId) {
+        SendAccessibilityEvent(accessibilityId,
+                               OHOS::NWeb::AccessibilityEventType::PAGE_CHANGE);
+      }
+      break;
     default:
       break;
   }
-}
-
-void BrowserAccessibilityManagerOHOS::RegisterAccessibilityEventListener(
-    std::shared_ptr<OHOS::NWeb::NWebAccessibilityEventCallback>
-        accessibilityEventListener) {
-  accessibilityEventListener_ = accessibilityEventListener;
 }
 
 bool BrowserAccessibilityManagerOHOS::MoveAccessibilityFocusToId(
@@ -157,8 +156,6 @@ void BrowserAccessibilityManagerOHOS::SendAccessibilityEvent(
     OHOS::NWeb::AccessibilityEventType eventType) {
   if ((OHOS::NWeb::AccessibilityEventType::CHANGE == eventType &&
        IsIgnoredEvent(lastContentUpdateEventFiredTimes_, accessibilityId)) ||
-      (OHOS::NWeb::AccessibilityEventType::PAGE_CHANGE == eventType &&
-       IsIgnoredEvent(lastStateUpdateEventFiredTimes_, accessibilityId)) ||
       (OHOS::NWeb::AccessibilityEventType::SCROLL_END == eventType &&
        IsIgnoredEvent(lastScrollEventFiredTimes_, accessibilityId))) {
     return;
@@ -167,11 +164,12 @@ void BrowserAccessibilityManagerOHOS::SendAccessibilityEvent(
   LOG(INFO) << "SendAccessibilityEvent accessibilityId is " << accessibilityId
             << ", eventType is " << static_cast<uint32_t>(eventType);
 
-  if (accessibilityEventListener_ != nullptr &&
-      eventType != OHOS::NWeb::AccessibilityEventType::UNKNOWN &&
-      accessibilityId != kInvalidAccessibilityId) {
-    accessibilityEventListener_->OnAccessibilityEvent(
-        accessibilityId, static_cast<uint32_t>(eventType));
+  if (eventType != OHOS::NWeb::AccessibilityEventType::UNKNOWN &&
+      accessibilityId != kInvalidAccessibilityId && delegate_ != nullptr) {
+    auto renderFrameHost = delegate_->AccessibilityRenderFrameHost();
+    if (renderFrameHost != nullptr) {
+      renderFrameHost->SendAccessibilityEvent(accessibilityId, static_cast<int32_t>(eventType));
+    }
   }
 
   if (eventType == OHOS::NWeb::AccessibilityEventType::HOVER_ENTER_EVENT) {
@@ -185,11 +183,31 @@ void BrowserAccessibilityManagerOHOS::SendAccessibilityEvent(
   }
 }
 
+bool BrowserAccessibilityManagerOHOS::IsFrequentlyEvent(std::map<int64_t, int64_t>& lastEventFiredTimes,
+  int64_t intervalMs, const int64_t& accessibilityId) {
+  auto lastEnterTimeIter = lastEventFiredTimes.find(accessibilityId);
+  auto now = std::chrono::system_clock::now();
+  auto millis = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
+  auto timestamp = millis.time_since_epoch().count();
+  if (lastEventFiredTimes.end() == lastEnterTimeIter) {
+    lastEventFiredTimes.insert(std::make_pair(accessibilityId, timestamp));
+  } else {
+    auto interval = std::abs(timestamp - lastEnterTimeIter->second);
+    lastEnterTimeIter->second = timestamp;
+    if (interval <= intervalMs) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void BrowserAccessibilityManagerOHOS::HandleHover(int64_t accessibilityId) {
-  if (lastHoverId_ == accessibilityId) {
+  // Hover events with intervals less than kDefaultFrequentHoverEnterEventDelayMs milliseconds will be filtered out.
+  if (IsFrequentlyEvent(lastHoverEnterEventFiredTimes_,
+    kDefaultFrequentHoverEnterEventDelayMs, accessibilityId)) {
+    LOG(INFO) << "skip send hover enter event accessibilityId is " << accessibilityId;
     return;
   }
-
   SendAccessibilityEvent(accessibilityId,
                          OHOS::NWeb::AccessibilityEventType::HOVER_ENTER_EVENT);
 }
@@ -265,13 +283,22 @@ void BrowserAccessibilityManagerOHOS::FireGeneratedEvent(
     case ui::AXEventGenerator::Event::SCROLL_VERTICAL_POSITION_CHANGED:
       if (GetRootAccessibilityId() == accessibilityId) {
         SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::PAGE_CHANGE);
-      } else {
-        SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::SCROLL_END);
+      }
+      SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::SCROLL_END);
+      break;
+    case ui::AXEventGenerator::Event::OTHER_ATTRIBUTE_CHANGED:
+      if (GetRootAccessibilityId() == accessibilityId) {
+        LoadInlineTextBoxes(*nodeOHOS);
+        SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::PAGE_CHANGE);
       }
       break;
     case ui::AXEventGenerator::Event::SELECTED_CHANGED:
-      SendAccessibilityEvent(accessibilityId, 
-          OHOS::NWeb::AccessibilityEventType::SELECTED);
+      if (nodeOHOS->IsSelected()) {
+        SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::SELECTED);
+        if (accessibilityId != accessibilityFocusId_) {
+          SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::REQUEST_FOCUS);
+        }
+      }
       break;
     case ui::AXEventGenerator::Event::DOCUMENT_SELECTION_CHANGED: {
       if (ax_tree() == nullptr) {
@@ -291,6 +318,15 @@ void BrowserAccessibilityManagerOHOS::FireGeneratedEvent(
       }
       break;
     }
+    case ui::AXEventGenerator::Event::LIVE_REGION_NODE_CHANGED: {
+      SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::SELECTED);
+      break;
+    }
+    case ui::AXEventGenerator::Event::SUBTREE_CREATED:
+      if (GetRootAccessibilityId() == accessibilityId) {
+        SendAccessibilityEvent(accessibilityId, OHOS::NWeb::AccessibilityEventType::PAGE_OPEN);
+      }
+      break;
     default:
       break;
   }

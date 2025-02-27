@@ -157,9 +157,11 @@ CmMt ConvertContextMenuMediaType(CefContextMenuParams::MediaType value) {
 namespace OHOS::NWeb {
 NWebContextMenuParamsImpl::NWebContextMenuParamsImpl(
   CefRefPtr<CefContextMenuParams> params,
-  float virutal_device_ratio) :
+  float virutal_device_ratio,
+  int32_t view_port_height) :
       params_(params),
-      virutal_device_ratio_(virutal_device_ratio) {}
+      virutal_device_ratio_(virutal_device_ratio),
+      view_port_height_(view_port_height) {}
 
 int32_t NWebContextMenuParamsImpl::GetXCoord() {
   if (params_ != nullptr) {
@@ -404,6 +406,13 @@ std::string NWebContextMenuParamsImpl::GetSelectionText() {
     return params_->GetSelectionText().ToString();
   }
   return std::string();
+}
+
+void NWebContextMenuParamsImpl::GetImageRect(int& x, int& y, int& w, int& h) {
+  if (params_ != nullptr) {
+    params_->GetImageRect(x, y, w, h);
+    y += view_port_height_ * virutal_device_ratio_;
+  }
 }
 
 }  // namespace OHOS::NWeb

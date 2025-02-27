@@ -75,9 +75,6 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
           web_app_client_extension_listener) override;
   void RegisterDownLoadListener(
       std::shared_ptr<NWebDownloadCallback> downloadListener) override;
-  void RegisterAccessibilityEventListener(
-      std::shared_ptr<NWebAccessibilityEventCallback>
-          accessibility_event_listener) override;
   void RegisterReleaseSurfaceListener(
       std::shared_ptr<NWebReleaseSurfaceCallback> releaseSurfaceListener)
       override;
@@ -145,6 +142,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void InitialScale(float scale) const override;
   void OnPause() override;
   void OnContinue() override;
+  void WebComponentsBlur() override;
   void OnOccluded() override;
   void OnUnoccluded() override;
   void SetEnableLowerFrameRate(bool enabled) override;
@@ -172,6 +170,12 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       const std::vector<std::string>& methodName,
       std::vector<std::function<char*(std::vector<std::vector<uint8_t>>&,
                                       std::vector<size_t>&)>>&& callback,
+      bool isAsync, const std::string& permission) override;
+  void RegisterNativeJSProxyWithResult(
+      const std::string& objName,
+      const std::vector<std::string>& methodName,
+      std::vector<std::function<std::shared_ptr<OHOS::NWeb::NWebValue>(
+          std::vector<std::vector<uint8_t>>&, std::vector<size_t>&)>>&& callback,
       bool isAsync, const std::string& permission) override;
   void UnRegisterNativeArkJSFunction(const char* objName) override;
   void RegisterNativeLoadStartCallback(
@@ -351,6 +355,7 @@ void PrecompileJavaScript(const std::string& url,
                           std::shared_ptr<NWebMessageValueCallback> callback) override;
 void UpdateNativeEmbedInfo(std::shared_ptr<NWebNativeEmbedDataInfo> info) override;
 bool HitNativeArea(double x, double y);
+void SetTransformHint(uint32_t rotation) override;
 #endif
 
 #ifdef OHOS_PAGE_UP_DOWN
@@ -393,6 +398,8 @@ bool HitNativeArea(double x, double y);
   void EnableAdsBlock(bool enable) override;
   bool IsAdsBlockEnabled() override;
   bool IsAdsBlockEnabledForCurPage() override;
+  void SetAdBlockEnabledForSite(bool is_adblock_enabled,
+                                int main_frame_tree_node_id) override;
 #endif
 
 #if defined(OHOS_PASSWORD_AUTOFILL)
@@ -471,6 +478,7 @@ bool HitNativeArea(double x, double y);
                                   bool isAccessibilityFocus) override;
   std::shared_ptr<NWebAccessibilityNodeInfo>
   GetAccessibilityNodeInfoById(int64_t accessibilityId) override;
+  bool GetAccessibilityVisible(int64_t accessibilityId) override;
   std::shared_ptr<NWebAccessibilityNodeInfo>
   GetAccessibilityNodeInfoByFocusMove(int64_t accessibilityId,
                                       int32_t direction) override;
@@ -630,11 +638,13 @@ void NotifyForNextTouchEvent() override;
     std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
     const content::BrowserAccessibilityOHOS* node) const;
   std::shared_ptr<NWebAccessibilityNodeInfo>
-    PopulateAccessibilityNodeInfo(const content::BrowserAccessibilityOHOS* node);
+    PopulateAccessibilityNodeInfo(content::BrowserAccessibilityOHOS* node);
   void AddAccessibilityNodeInfoActions(
     std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo,
     const content::BrowserAccessibilityOHOS* node) const;
   float GetViewPointHeight() const;
+  int32_t GetArgumentByKey(const std::map<std::string, std::string>& actionArguments,
+    const std::string& checkKey) const;
 
   float zoom_in_factor_ = 1.25f;
   float zoom_out_factor_ = 0.8f;
@@ -680,8 +690,6 @@ void NotifyForNextTouchEvent() override;
   std::string richtext_data_str_ = "";
   // The number of fingers that trigger the down event
   int  pressing_num_ = 0;
-  std::shared_ptr<NWebAccessibilityEventCallback>
-      accessibility_event_listener_ = nullptr;
 };
 }  // namespace OHOS::NWeb
 #endif

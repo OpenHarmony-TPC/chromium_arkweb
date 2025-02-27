@@ -647,13 +647,21 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
     OHOS::NWeb::ResSchedClientAdapter::ReportScene(
       OHOS::NWeb::ResSchedStatusAdapter::WEB_SCENE_ENTER, OHOS::NWeb::ResSchedSceneAdapter::SLIDE);
   }
+  if (input_event.GetType() == WebInputEvent::Type::kTouchStart) {
+    native_result_ = false;
+  }
 
   output_stream_validator_.Validate(input_event);
   blink::mojom::InputEventResultState filtered_state =
       client_->FilterInputEvent(input_event, latency_info);
   if (WasHandled(filtered_state)) {
+#if defined(IS_OHOS)
+    TRACE_EVENT1("input", "InputEventFiltered",
+                 InputEventResultStateToString(filtered_state));
+#else
     TRACE_EVENT_INSTANT0("input", "InputEventFiltered",
                          TRACE_EVENT_SCOPE_THREAD);
+#endif
     if (filtered_state != blink::mojom::InputEventResultState::kUnknown) {
       std::move(callback).Run(blink::mojom::InputEventResultSource::kBrowser,
                               latency_info, filtered_state, nullptr, nullptr,
@@ -685,7 +693,9 @@ void InputRouterImpl::FilterAndSendWebInputEvent(
                   input_router->client_->OnInvalidInputEventSource();
                 return;
               }
-
+              if (input_router && input_router->GetNativeResult()) {
+                state = blink::mojom::InputEventResultState::kConsumed;
+              }
               std::move(callback).Run(
                   source, latency, state, std::move(overscroll),
                   std::move(touch_action), std::move(scroll_result_data));
@@ -888,8 +898,17 @@ void InputRouterImpl::UpdateTouchAckTimeoutEnabled() {
 }
 
 #if BUILDFLAG(IS_OHOS)
-void InputRouterImpl::SetGestureEventResult(bool result) {
-  client_->GetWidgetInputHandler()->SetGestureEventResult(result);
+void InputRouterImpl::SetGestureEventResult(bool result, bool stopPropagation) {
+  native_result_ = result;
+  client_->GetWidgetInputHandler()->SetGestureEventResult(result, stopPropagation);
+}
+
+void InputRouterImpl::SetNativeEmbedMode(bool flag) {
+  client_->GetWidgetInputHandler()->SetNativeEmbedMode(flag);
+}
+
+void InputRouterImpl::ScrollBy(float delta_x, float delta_y) {
+  client_->GetWidgetInputHandler()->ScrollBy(delta_x, delta_y);
 }
 #endif
 }  // namespace content

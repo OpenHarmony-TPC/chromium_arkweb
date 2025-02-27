@@ -24,6 +24,8 @@ namespace ohos {
 
 namespace {
 
+constexpr char kProductModeEmulator[] = "emulator";
+
 using namespace OHOS::NWeb;
 
 class SystemProperties {
@@ -43,6 +45,8 @@ class SystemProperties {
 
   bool is_2in1() { return device_type_ == ProductDeviceType::DEVICE_TYPE_2IN1; }
 
+  bool is_emulator() { return product_model_ == kProductModeEmulator; }
+
   int32_t major_version() { return major_version_; }
 
   int32_t senior_version() { return senior_version_; }
@@ -53,6 +57,12 @@ class SystemProperties {
 
   std::string base_os_name() { return base_os_name_; }
 
+  std::string product_model() { return product_model_; }
+
+#ifdef OHOS_SCROLLBAR
+  float get_pixel_ratio() { return virtual_pixel_ratio_;}
+  void set_pixel_ratio(float ratio) { virtual_pixel_ratio_ = ratio;}
+#endif
  private:
   friend class NoDestructor<SystemProperties>;
 
@@ -65,6 +75,10 @@ class SystemProperties {
   std::string os_name_;
   std::string os_version_;
   std::string base_os_name_;
+  std::string product_model_;
+#ifdef OHOS_SCROLLBAR
+  float virtual_pixel_ratio_ = 2.0;
+#endif
 };
 
 SystemProperties::SystemProperties()
@@ -85,9 +99,21 @@ SystemProperties::SystemProperties()
                    .GetUserAgentOSVersion()),
       base_os_name_(OhosAdapterHelper::GetInstance()
                    .GetSystemPropertiesInstance()
-                   .GetUserAgentBaseOSName()) {}
-
+                   .GetUserAgentBaseOSName()),
+      product_model_(OhosAdapterHelper::GetInstance()
+                         .GetSystemPropertiesInstance()
+                         .GetDeviceInfoProductModel()) {}
 }  // namespace
+
+#ifdef OHOS_SCROLLBAR
+BASE_EXPORT float GetPixelRatio() {
+  return SystemProperties::Instance()->get_pixel_ratio();
+}
+
+BASE_EXPORT void SetPixelRatio(float ratio) {
+  SystemProperties::Instance()->set_pixel_ratio(ratio);
+}
+#endif
 
 BASE_EXPORT bool IsMobileDevice() {
   return SystemProperties::Instance()->is_mobile();
@@ -100,6 +126,10 @@ BASE_EXPORT bool IsTabletDevice() {
 BASE_EXPORT bool IsPcDevice() {
   // 2in1 is treated as pc device on ohos platform now.
   return SystemProperties::Instance()->is_2in1();
+}
+
+BASE_EXPORT bool IsEmulator() {
+  return SystemProperties::Instance()->is_emulator();
 }
 
 BASE_EXPORT int32_t MajorVersion() {

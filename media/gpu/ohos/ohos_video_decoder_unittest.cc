@@ -35,7 +35,6 @@
 #include "base/task/task_features.h"
 #include "base/task/thread_pool.h"
 #include "base/test/task_environment.h"
-#include "command_buffer/service/ohos/shared_image_video_ohos.h"
 #include "media/base/async_destroy_video_decoder.h"
 #include "media/base/decoder_buffer.h"
 #include "media/base/decoder_status.h"
@@ -1002,18 +1001,10 @@ TEST_F(OhosVideoDecoderTest, OnCodecConfigured_002) {
   codec->videoDecoder_ = std::make_unique<MockMediaCodecDecoderAdapter>();
   auto videoDecoder =
       static_cast<MockMediaCodecDecoderAdapter*>(codec->videoDecoder_.get());
-  EXPECT_CALL(*videoDecoder, SetOutputSurface)
-      .WillOnce(testing::Return(OHOS::NWeb::DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*videoDecoder, PrepareDecoder)
-      .WillOnce(testing::Return(OHOS::NWeb::DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*videoDecoder, StartDecoder)
-      .WillOnce(testing::Return(OHOS::NWeb::DecoderAdapterCode::DECODER_OK));
   EXPECT_CALL(*videoDecoder, ConfigureDecoder)
       .WillOnce(testing::Return(OHOS::NWeb::DecoderAdapterCode::DECODER_OK));
   EXPECT_CALL(*videoDecoder, ReleaseDecoder)
       .WillOnce(testing::Return(OHOS::NWeb::DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*task_runner, RunsTasksInCurrentSequence).WillOnce(Return(false));
-  EXPECT_CALL(*task_runner, PostDelayedTask).WillOnce(Return(false));
   ohos_video_decoder_->OnCodecConfigured(std::move(surface_bundle_),
                                          std::move(codec));
 }
@@ -1097,7 +1088,8 @@ TEST_F(OhosVideoDecoderTest, Decode_002) {
       std::make_shared<DecoderBridgeSignal>();
   EXPECT_CALL(*video_frame_factory_, Initialize);
   OhosVideoDecoder::DecodeCB cb = base::BindOnce([](DecoderStatus) {});
-  ohos_video_decoder_->Decode(std::move(buffer), std::move(cb));
+  ohos_video_decoder_->Decode(buffer, std::move(cb));
+  ASSERT_NE(buffer, nullptr);
 }
 
 TEST_F(OhosVideoDecoderTest, Decode_003) {

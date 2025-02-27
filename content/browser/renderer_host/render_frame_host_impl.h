@@ -437,6 +437,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void ExecuteJavaScriptExt(const int fd,
                             const uint64_t scriptLength,
                             JavaScriptResultCallback callback) override;
+  void SendAccessibilityEvent(int64_t accessibilityId, int32_t eventType);
 #endif
   void ExecuteJavaScriptInIsolatedWorld(const std::u16string& javascript,
                                         JavaScriptResultCallback callback,
@@ -2950,6 +2951,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Records metrics on sudden termination handlers found in this frame and
   // subframes.
   void RecordNavigationSuddenTerminationHandlers();
+
+#ifdef OHOS_ARKWEB_ADBLOCK
+  void UpdateAdBlockEnabledToRender(bool site_adblock_enabled);
+#endif
 
  protected:
   friend class RenderFrameHostFactory;

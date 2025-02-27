@@ -17,7 +17,6 @@
 #define CONTENT_BROWSER_ACCESSIBILITY_BROWSER_ACCESSIBILITY_MANAGER_OHOS_H_
 
 #include "content/browser/accessibility/browser_accessibility_manager.h"
-#include "ohos_nweb/include/nweb_accessibility_event_callback.h"
 #include "ohos_nweb/src/cef_delegate/nweb_accessibility_utils.h"
 
 namespace content {
@@ -44,13 +43,6 @@ class CONTENT_EXPORT BrowserAccessibilityManagerOHOS
   void FireBlinkEvent(ax::mojom::Event event_type,
                       BrowserAccessibility* node,
                       int action_request_id) override;
-
-  void RegisterAccessibilityEventListener(
-      std::shared_ptr<OHOS::NWeb::NWebAccessibilityEventCallback>
-          accessibility_event_listener);
-
-  std::shared_ptr<OHOS::NWeb::NWebAccessibilityEventCallback>
-      GetAccessibilityEventListener() const;
 
   void SetLastHoverId(int64_t id) { lastHoverId_ = id; }
 
@@ -92,16 +84,16 @@ class CONTENT_EXPORT BrowserAccessibilityManagerOHOS
   bool IsIgnoredEvent(std::map<int64_t, int64_t>& lastEventFiredTimes,
                        const int64_t& accessibilityId);
 
+  bool IsFrequentlyEvent(std::map<int64_t, int64_t>& lastEventFiredTimes,
+                         int64_t intervalMs, const int64_t& accessibilityId);
+
   int64_t lastHoverId_ = -1;
 
   int64_t accessibilityFocusId_ = -1;
 
   std::map<int64_t, int64_t> lastScrollEventFiredTimes_;
-  std::map<int64_t, int64_t> lastStateUpdateEventFiredTimes_;
   std::map<int64_t, int64_t> lastContentUpdateEventFiredTimes_;
-
-  std::shared_ptr<OHOS::NWeb::NWebAccessibilityEventCallback>
-      accessibilityEventListener_;
+  std::map<int64_t, int64_t> lastHoverEnterEventFiredTimes_;
 };
 }  // namespace content
 

@@ -1,17 +1,11 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2022-2024 Huawei Device Co., Ltd. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Based on stream_texture_factory.cc originally written by
+// Copyright 2014 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include "content/renderer/media/ohos/native_texture_factory.h"
 
@@ -160,7 +154,8 @@ NativeTextureFactory::NativeTextureFactory(
 
 NativeTextureFactory::~NativeTextureFactory() = default;
 
-ScopedNativeTextureProxy NativeTextureFactory::CreateProxy() {
+ScopedNativeTextureProxy NativeTextureFactory::CreateProxy(
+    gl::ohos::TextureOwnerMode texture_owner_mode) {
   // Send a StreamTexture receiver down to the GPU process. This will be bound
   // to a concrete StreamTexture impl there.
   int32_t native_id = channel_->GenerateRouteID();
@@ -168,7 +163,8 @@ ScopedNativeTextureProxy NativeTextureFactory::CreateProxy() {
   mojo::PendingAssociatedRemote<gpu::mojom::StreamTexture> remote;
   int32_t native_embed_id = -1;
   channel_->GetGpuChannel().CreateNativeTexture(
-      native_id, remote.InitWithNewEndpointAndPassReceiver(), &native_embed_id);
+      native_id, (int32_t)texture_owner_mode,
+      remote.InitWithNewEndpointAndPassReceiver(), &native_embed_id);
   if (native_embed_id == -1) {
     DLOG(ERROR) << "[NativeEmbed] Fail to create NativeTexture.";
     return ScopedNativeTextureProxy();

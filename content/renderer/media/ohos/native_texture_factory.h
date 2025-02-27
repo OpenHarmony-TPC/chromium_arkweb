@@ -1,17 +1,11 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright (c) 2022-2024 Huawei Device Co., Ltd. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Based on stream_texture_factory.h originally written by
+// Copyright 2014 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #ifndef CONTENT_RENDERER_MEDIA_OHOS_NATIVE_TEXTURE_FACTORY_H_
 #define CONTENT_RENDERER_MEDIA_OHOS_NATIVE_TEXTURE_FACTORY_H_
@@ -31,6 +25,7 @@
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/gl/ohos/native_buffer_utils.h"
 
 namespace gpu {
 class ClientSharedImageInterface;
@@ -138,7 +133,7 @@ class CONTENT_EXPORT NativeTextureFactory
   // gpu::StreamTexture and returns its route_id. If this route_id is invalid
   // nullptr is returned. If the route_id is valid it returns
   // NativeTextureProxy object.
-  ScopedNativeTextureProxy CreateProxy();
+  ScopedNativeTextureProxy CreateProxy(gl::ohos::TextureOwnerMode texture_owner_mode);
 
   // Returns true if the NativeTextureFactory's channel is lost.
   bool IsLost() const;

@@ -139,6 +139,15 @@ class NWebRenderHandler : public CefRenderHandler {
                                   bool is_need_reset_listener,
                                   const AttributesMap& attributes) override;
 
+#if defined(OHOS_INPUT_EVENTS)
+  void HandleKeyboardAttach(CefRefPtr<CefBrowser> browser,
+                            const TextInputInfo& text_input_info,
+                            bool is_need_reset_listener,
+                            const std::map<std::string, std::string>& attributesMap);
+
+  void HandleKeyboardDetach();
+#endif
+
   void GetTouchHandleSize(CefRefPtr<CefBrowser> browser,
                           cef_horizontal_alignment_t orientation,
                           CefSize& size) override;
@@ -180,7 +189,7 @@ class NWebRenderHandler : public CefRenderHandler {
                     CefRefPtr<CefGestureEventCallback> callback) override;
   void OnNativeEmbedLifecycleChange(CefRefPtr<CefBrowser> browser,
                     const CefNativeEmbedData& info) override;
-  void OnNativeEmbedVisibilityChange(const std::string& embed_id, 
+  void OnNativeEmbedVisibilityChange(const std::string& embed_id,
                     bool visibility) override;
   bool FilterScrollEvent(CefRefPtr<CefBrowser> browser,
                          const float x,
@@ -194,6 +203,7 @@ class NWebRenderHandler : public CefRenderHandler {
   gfx::Size GetSize();
   void StartVibraFeedback(const std::string& vibratorType) override;
   void GetDevicePixelSize(CefRefPtr<CefBrowser> browser, CefSize& size) override;
+  void OnAccessibilityEvent(int64_t accessibilityId, int32_t eventType) override;
 #endif
 
 #ifdef OHOS_EX_FREE_COPY
@@ -207,10 +217,9 @@ class NWebRenderHandler : public CefRenderHandler {
   void CreateOverlay(CefRefPtr<CefBrowser> browser,
                      CefRefPtr<CefImage> cef_image,
                      const CefRect& cef_image_rect,
-                     const CefPoint& cef_touch_point,
-                     const CefRect& cef_screen_rect) override;
+                     const CefPoint& cef_touch_point) override;
   void OnOverlayStateChanged(CefRefPtr<CefBrowser> browser,
-                             const CefRect& cef_screen_rect) override;
+                             const CefRect& cef_image_rect) override;
 #endif
   /* CefRenderHandler method end */
 
@@ -270,10 +279,6 @@ class NWebRenderHandler : public CefRenderHandler {
   bool is_irregular_drag_background_ = true;
   bool select_all_ = false;
 #endif // #ifdef OHOS_DRAG_DROP
-
-#ifdef OHOS_AI
-  CefRect cef_image_rect_;
-#endif
 
 #if defined(OHOS_INPUT_EVENTS)
   std::weak_ptr<NWebDelegateInterface> delegate_interface_;
