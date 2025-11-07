@@ -6,6 +6,7 @@
 * webview组件：OpenHarmony的UI组件。
 * nweb：基于CEF构建的OpenHarmony Web组件的Native引擎，主要构建Web组件浏览器内核的部分能力。
 * CEF：CEF全称Chromium Embedded Framework，是一个基于Google Chromium 的开源项目。
+* Arkweb: 基于chromium二次开发的增强特性， 即本仓的代码。 包括Arkweb特有的一些特性， 包括LTPO， 夜景模式， 广告拦截， 输入框填充特性， 后台任务， 双指捏合， 任务下载， 网页导航， 网页加解密等。
 ## 使用说明
 1. 下载代码：以132_trunk分支为例，要下载其他分支代码请替换-b 后带的manifest分支参数，参数列表详见7。
     ```
