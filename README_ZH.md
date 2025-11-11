@@ -7,6 +7,31 @@
 * nweb：基于CEF构建的OpenHarmony Web组件的Native引擎，主要构建Web组件浏览器内核的部分能力。
 * CEF：CEF全称Chromium Embedded Framework，是一个基于Google Chromium 的开源项目。
 * Arkweb: 基于chromium二次开发的增强特性， 即本仓的代码。 包括Arkweb特有的一些特性， 包括LTPO， 夜景模式， 广告拦截， 输入框填充特性， 后台任务， 双指捏合， 任务下载， 网页导航， 网页加解密等。
+## 目录
+
+```
+├── arkweb
+│   ├── chromium_ext                                # 对纯净版chromium解耦出的文件放到此目录，内部子目录与纯净chromium目录一一对应
+│   │  ├── build                                       
+│   │  ├── components                            
+│   │  ├── content                                 
+│   │  ├── gpu    
+│   │  └── net
+│   ├── build                                       #编译arkweb相关目录
+│   ├── glue                                        #胶水层代码，适配系统组件
+│   ├── ohos_browser_shell                          # 测试用的浏览器hap包
+│   ├── ohos_nweb                                   # arkweb扩展的特性和代码
+│   ├── patch                                        # 仓名为arkweb_patch, 对纯净版chromium侵入式修改的patch放到此目录
+│   │   ├── build                            
+│   │   │   ├── 001_set_ohos_toolchain.patch                            
+│   │   │   └──002_add_enhance_targets.patch  
+│   │   ├── cef
+│   │   ├── media
+│   │   ├── os_adapter
+│   │   └── v8
+│   ├── test
+```
+
 ## 使用说明
 1. 下载代码：以132_trunk分支为例，要下载其他分支代码请替换-b 后带的manifest分支参数，参数列表详见7。
     ```
