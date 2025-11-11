@@ -11,7 +11,7 @@
 
 ```
 ├── arkweb
-│   ├── chromium_ext                                # 对纯净版chromium解耦出的文件放到此目录，内部子目录与纯净chromium目录一一对应
+│   ├── chromium_ext                                # 对chromium解耦出的文件放到此目录，内部子目录与chromium目录一一对应
 │   │  ├── build                                       
 │   │  ├── components                            
 │   │  ├── content                                 
@@ -21,7 +21,7 @@
 │   ├── glue                                        #胶水层代码，适配系统组件
 │   ├── ohos_browser_shell                          # 测试用的浏览器hap包
 │   ├── ohos_nweb                                   # arkweb扩展的特性和代码
-│   ├── patch                                        # 仓名为arkweb_patch, 对纯净版chromium侵入式修改的patch放到此目录
+│   ├── patch                                       # 仓名为arkweb_patch, 对chromium侵入式修改的patch放到此目录
 │   │   ├── build                            
 │   │   │   ├── 001_set_ohos_toolchain.patch                            
 │   │   │   └──002_add_enhance_targets.patch  
