@@ -1,7 +1,7 @@
 # Chromium
 ## 简介
 ### 软件架构
-软件架构说明
+软件架构说明![image.png](https://raw.gitcode.com/user-images/assets/8118744/d3432b35-5e94-4832-9665-12631f0de527/image.png 'image.png')
 ![](figures/Web-architecture_ZH.png "web软件架构图")
 * webview组件：OpenHarmony的UI组件。
 * nweb：基于CEF构建的OpenHarmony Web组件的Native引擎，主要构建Web组件浏览器内核的部分能力。
