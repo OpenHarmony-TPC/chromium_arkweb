@@ -1,13 +1,22 @@
-# Chromium
-## 简介
-### 软件架构
-软件架构说明![image.png](https://raw.gitcode.com/user-images/assets/8118744/d3432b35-5e94-4832-9665-12631f0de527/image.png 'image.png')
-![](figures/Web-architecture_ZH.png "web软件架构图")
-* webview组件：OpenHarmony的UI组件。
-* nweb：基于CEF构建的OpenHarmony Web组件的Native引擎，主要构建Web组件浏览器内核的部分能力。
-* CEF：CEF全称Chromium Embedded Framework，是一个基于Google Chromium 的开源项目。
-* Arkweb: 基于chromium二次开发的增强特性， 即本仓的代码。 包括Arkweb特有的一些特性， 包括LTPO， 夜景模式， 广告拦截， 输入框填充特性， 后台任务， 双指捏合， 任务下载， 网页导航， 网页加解密等。
-## 目录
+# ArkWeb 项目
+
+## 1. 概述
+
+ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `NWeb` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
+
+本项目是 Chromium 源代码的一个分支，其中包含了大量的添加和修改，以使其适应 OHOS 架构和 API。它包括一个原生抽象层、对核心 Chromium 模块的扩展，以及一个示例浏览器应用程序 (HAP) 来演示其功能。
+
+## 2. 架构
+
+项目遵循分层架构，图中Arkweb模块即本仓内容：
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/85ad3f58-f283-4c56-a9a3-43c41c7d7e03/image.png 'image.png')
+
+1.  **浏览器外壳 (`ohos_browser_shell`)**：一个基于 OpenHarmony 构建的最小浏览器应用程序 (HAP)，作为 NWeb 组件的宿主。
+2.  **NWeb API (`ohos_nweb`)**：面向 OHOS 开发者的公共 API，用于在他们的应用程序中嵌入 Webview。
+3.  **Chromium 扩展 (`chromium_ext`)**：在各种 Chromium 模块（例如 `base`、`blink`、`content`、`net`）中进行的定制和平台特定实现。
+
+
+## 3. 目录结构
 
 ```
 ├── arkweb
@@ -17,22 +26,17 @@
 │   │  ├── content                                 
 │   │  ├── gpu    
 │   │  └── net
-│   ├── build                                       #编译arkweb相关目录
-│   ├── glue                                        #胶水层代码，适配系统组件
+│   ├── build                                       # 编译arkweb相关目录
+│   ├── glue                                        # 胶水层代码，适配系统组件
 │   ├── ohos_browser_shell                          # 测试用的浏览器hap包
-│   ├── ohos_nweb                                   # arkweb扩展的特性和代码
-│   ├── patch                                       # 仓名为arkweb_patch, 对chromium侵入式修改的patch放到此目录
-│   │   ├── build                            
-│   │   │   ├── 001_set_ohos_toolchain.patch                            
-│   │   │   └──002_add_enhance_targets.patch  
-│   │   ├── cef
-│   │   ├── media
-│   │   ├── os_adapter
-│   │   └── v8
-│   ├── test
+│   ├── ohos_nweb                                   # 面向 OHOS 开发者的公共 API，用于在他们的应用程序中嵌入 Webview
+│   ├── patch                                       # 测试相关代码
+│   ├── test                                        # 测试相关代码
 ```
 
-## 使用说明
+
+
+## 4.使用说明
 1. 下载代码：以132_trunk分支为例，要下载其他分支代码请替换-b 后带的manifest分支参数，参数列表详见7。
     ```
     repo init -u https://gitcode.com/openharmony-tpc/manifest -b 132_trunk -m developer.xml --no-repo-verify
@@ -150,7 +154,7 @@
     配套OpenHarmony 4.1 Beta1 分支：master114_20231218
 
 ## 相关仓
-[chromium_cef](https://gitcode.com/openharmony-tpc/chromium_cef)
-
-[chromium_third_party_ohos_nweb_hap](https://gitcode.com/openharmony-tpc/chromium_third_party_ohos_nweb_hap)
+代码仓地址：
+Arkweb主仓，架构图中的chromium部分：https://gitcode.com/openharmony-tpc/chromium_src
+CEF仓：https://gitcode.com/openharmony-tpc/chromium_cef
 
