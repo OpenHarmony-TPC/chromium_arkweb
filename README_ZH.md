@@ -9,12 +9,11 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 ## 2. 架构
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/85ad3f58-f283-4c56-a9a3-43c41c7d7e03/image.png 'image.png')
-
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/251aa1a0-f135-4083-a9e6-abf72cda06d6/image.png 'image.png')
 1.  **浏览器外壳 (`ohos_browser_shell`)**：一个基于 OpenHarmony 构建的最小浏览器应用程序 (HAP)，作为 NWeb 组件的宿主。
 2.  **NWeb API (`ohos_nweb`)**：面向 OHOS 开发者的公共 API，用于在他们的应用程序中嵌入 Webview。
 3.  **Chromium 扩展 (`chromium_ext`)**：在各种 Chromium 模块（例如 `base`、`blink`、`content`、`net`）中进行的定制和平台特定实现。
-3.  **南向NDK适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层
+3.  **南向适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层
 
 ## 3. 目录结构
 
