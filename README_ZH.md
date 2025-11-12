@@ -20,18 +20,18 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 ```
 ├── arkweb
-│   ├── chromium_ext                                # 对chromium解耦出的文件放到此目录，内部子目录与chromium目录一一对应
+│   ├── chromium_ext               # 对chromium解耦出的文件放到此目录，内部子目录与chromium目录一一对应
 │   │  ├── build                                       
 │   │  ├── components                            
 │   │  ├── content                                 
 │   │  ├── gpu    
 │   │  └── net
-│   ├── build                                       # 编译arkweb相关目录
-│   ├── glue                                        # 胶水层代码，适配系统组件
-│   ├── ohos_browser_shell                          # 测试用的浏览器hap包
-│   ├── ohos_nweb                                   # 面向 OHOS 开发者的公共 API，用于在他们的应用程序中嵌入 Webview
-│   ├── patch                                       # 测试相关代码
-│   ├── test                                        # 测试相关代码
+│   ├── build                      # 编译arkweb相关目录
+│   ├── glue                       # 胶水层代码，适配系统组件
+│   ├── ohos_browser_shell         # 测试用的浏览器hap包
+│   ├── ohos_nweb                  # 面向 OHOS 开发者的公共 API，用于在他们的应用程序中嵌入 Webview
+│   ├── patch                      # 测试相关代码
+│   ├── test                       # 测试相关代码
 ```
 
 
