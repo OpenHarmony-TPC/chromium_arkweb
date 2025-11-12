@@ -2,7 +2,7 @@
 
 ## 1. 概述
 
-ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `NWeb` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
+ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `Web` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
 
 本项目是 Chromium 源代码的一个分支，其中包含了大量的添加和修改，以使其适应 OHOS 架构和 API。它包括一个原生抽象层、对核心 Chromium 模块的扩展，以及一个示例浏览器应用程序 (HAP) 来演示其功能。
 
@@ -37,7 +37,6 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 │   ├── test                       # 测试相关代码
 
 ```
-
 
 
 ## 4.使用说明
