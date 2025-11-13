@@ -9,7 +9,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 ## 2. 架构
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/897882b1-ca6c-45ff-bb7e-cf6871b75a84/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/c5f29890-1e00-4037-9bfd-7bd77be0695d/image.png 'image.png')
 
 1.  **API接口实现层 (`ohos_nweb`)**：面向 OHOS 开发者的公共 API的实现，用于在他们的应用程序中嵌入 Webview。
 2.  **CEF，Chromium扩展层 (`, ohos_cef_ext、chromium_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
