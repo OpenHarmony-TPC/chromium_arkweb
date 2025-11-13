@@ -9,7 +9,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 ## 2. 架构
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/a4c28b8b-ca87-4c64-8508-776eaa72186a/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/897882b1-ca6c-45ff-bb7e-cf6871b75a84/image.png 'image.png')
 
 1.  **API接口实现层 (`ohos_nweb`)**：面向 OHOS 开发者的公共 API的实现，用于在他们的应用程序中嵌入 Webview。
 2.  **CEF，Chromium扩展层 (`, ohos_cef_ext、chromium_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
@@ -154,12 +154,21 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
     配套OpenHarmony 4.1 Beta1 分支：master114_20231218
 
-## 相关仓
-代码仓地址：
-架构图中的Web Component仓
-架构图中的Webview ts仓
-架构图中的Webview NDK仓
-架构图中的Webview仓
+## 相关代码仓地址：
+
+[架构图中的Web Component仓
+](https://gitcode.com/openharmony/arkui_ace_engine/tree/master/frameworks/core/components/web)
+
+[架构图中的Webview ts仓
+](https://gitcode.com/openharmony/interface_sdk-js/tree/master/api)
+
+[架构图中的Webview NDK仓
+](https://gitcode.com/openharmony/interface_sdk_c/tree/master/web)
+
+[架构图中的web_webview仓
+](https://gitcode.com/openharmony/web_webview)
+
 [架构图中的Chromium仓](https://gitcode.com/openharmony-tpc/chromium_src)
+
 [架构图中的CEF仓](https://gitcode.com/openharmony-tpc/chromium_cef)
 
