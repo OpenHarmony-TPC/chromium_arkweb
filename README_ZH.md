@@ -4,14 +4,14 @@
 
 ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `Web` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
 
-本项目是对 Chromium 源代码的扩展和增强，以使其适应 OHOS 架构和 API，并在原有功能的基础上，基于Openharmoy平台扩展了很多新性，如广告拦截，任务下载，输入框填充等。它包括一个原生抽象层、对核心 Chromium 模块的扩展，以及一个示例浏览器应用程序 (HAP) 来演示其功能。
+本项目是对 Chromium 源代码的扩展和增强，以使其适应 OHOS 架构和 API，并在原有功能的基础上，基于Openharmoy平台扩展了很多新性，如广告拦截，任务下载，输入框填充等。它包括一个API接口实现层、对核心 Chromium 模块的扩展，以及OS适配层。
 
 ## 2. 架构
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 ![image.png](https://raw.gitcode.com/user-images/assets/4769982/c5f29890-1e00-4037-9bfd-7bd77be0695d/image.png 'image.png')
 
-1.  **API接口实现层 (`ohos_nweb`)**：面向 OHOS 开发者的公共 API的实现，用于在他们的应用程序中嵌入 Webview。
+1.  **API接口实现层 (`ohos_nweb`)**：Web相关的API在web内核侧的最上层的实现，该实现层依赖cef、chromium，以及libs通用库。通过调用cef和chromium中content层提供的接口，实现了web的功能，并扩展了如广告拦截，任务下载，输入框填充等openharmoy特有的功能。
 2.  **CEF，Chromium扩展层 (`, ohos_cef_ext、chromium_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
 3.  **OS适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层
 
@@ -154,16 +154,16 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
     配套OpenHarmony 4.1 Beta1 分支：master114_20231218
 
-## 相关代码仓地址：
-
-[架构图中的Web Component仓
-](https://gitcode.com/openharmony/arkui_ace_engine/tree/master/frameworks/core/components/web)
+## 其他相关代码仓地址：
 
 [架构图中的Webview ts仓
 ](https://gitcode.com/openharmony/interface_sdk-js/tree/master/api)
 
 [架构图中的Webview NDK仓
 ](https://gitcode.com/openharmony/interface_sdk_c/tree/master/web)
+
+[架构图中的Web Component仓
+](https://gitcode.com/openharmony/arkui_ace_engine/tree/master/frameworks/core/components/web)
 
 [架构图中的web_webview仓
 ](https://gitcode.com/openharmony/web_webview)
