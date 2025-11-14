@@ -10,10 +10,22 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/f0474dbd-355e-4f6d-ae2d-2658515187e0/image.png 'image.png')
-1.  **API接口实现层 (`ohos_nweb`)**：Web相关的API在web内核侧的最上层的实现，该实现层依赖cef、chromium，以及libs通用库。通过调用cef和chromium中content层提供的接口，实现了web的功能，并扩展了如广告拦截，任务下载，输入框填充等openharmoy特有的功能。
-2.  **CEF，Chromium扩展层 (`ohos_cef_ext、chromium_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
-3.  **OS适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/c521b23a-c361-4286-9e6a-d2e6326c174f/image.png 'image.png')
+
+架构图中CEF, Chromium和当前仓ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。
+
+1.  **API接口实现层 (`ohos_nweb`)**：Web组件及API接口在Web内核侧的最上层的实现，向上直接对接系统侧的webview和web组件，向下依赖cef和chromium的接口。ohos_nweb定义的接口，隔离了系统侧的web相关的API和CEF/Chromium内核的接口，实现了CEF/chromium和系统侧Web API的解耦， 进而实现了web内核hap包的独立升级，支持同一系统运行不同版本的内核。本模块通过调用cef和chromium中content层提供的接口，实现了web的功能，并扩展了如广告拦截，任务下载，输入框填充等openharmoy特有的功能。
+
+
+2.  **CEF扩展层 (`ohos_cef_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
+
+3.  **Chromium扩展层 (`chromium_ext`)**：
+- base基础库：调试功能扩展、文件系统操作扩展、国际化支持、内存管理扩展、消息循环扩展、性能指标收集
+- components组件：自动填充功能、门户网站检测、内容解密模块、内容设置、崩溃处理、下载管理、JavaScript 注入、内存压力监控、密码管理器、PDF 处理、性能管理、权限管理、打印功能
+- media媒体：音频处理、基础媒体功能、内容捕获、GPU 媒体加速、媒体渲染器等
+- net网络：证书管理、DNS 解析、HTTP 协议处理、代理解析、套接字处理、SSL/TLS 支持、URL 请求处理
+
+4.  **OS适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层。
 
 ## 3. 目录结构
 
