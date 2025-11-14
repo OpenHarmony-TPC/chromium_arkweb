@@ -10,8 +10,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/01e9224e-8222-4ddf-bb6f-dc832c23485e/image.png 'image.png')
-
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/f0474dbd-355e-4f6d-ae2d-2658515187e0/image.png 'image.png')
 1.  **API接口实现层 (`ohos_nweb`)**：Web相关的API在web内核侧的最上层的实现，该实现层依赖cef、chromium，以及libs通用库。通过调用cef和chromium中content层提供的接口，实现了web的功能，并扩展了如广告拦截，任务下载，输入框填充等openharmoy特有的功能。
 2.  **CEF，Chromium扩展层 (`ohos_cef_ext、chromium_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
 3.  **OS适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层
@@ -158,7 +157,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 ## 其他相关代码仓地址：
 
-[架构图中的Webview Arkts仓
+[架构图中的Webview ArkTS仓
 ](https://gitcode.com/openharmony/interface_sdk-js/tree/master/api)
 
 [架构图中的Webview NDK仓
