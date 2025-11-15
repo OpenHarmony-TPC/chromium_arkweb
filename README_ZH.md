@@ -59,7 +59,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 │   │  └── net                     # 网络扩展，包括证书管理、DNS 解析、HTTP 协议处理、代理解析、套接字处理、SSL/TLS 支持、URL 请求处理等
 │   ├── ohos_adapter               # 对 OpenHarmony 原生 NDK 和系统服务的调用的封装层
 │   ├── ohos_cef_ext               # 对cef解耦出的文件放到此目录，内部子目录与cef仓目录一一对应
-│   ├── ohos_nweb                  # 向 OHOS 开发者的公共 API的实现，用于在他们的应用程序中嵌入 Webview
+│   ├── ohos_nweb                  # Web API接口在webview层被转换为NWeb接口，并在本模块的进行了实现
 │   ├── test                       # 测试相关代码
 
 ```
