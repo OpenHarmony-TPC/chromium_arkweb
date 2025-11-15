@@ -28,7 +28,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 2.  **CEF扩展层 (`ohos_cef_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
 
 
-3.  **Chromium扩展层 (`chromium_ext`)**：
+3.  **Chromium扩展层 (`chromium_ext`)，扩展了chromium原生的如下功能**：
       - base基础库：调试功能扩展、文件系统操作扩展、国际化支持、内存管理扩展、消息循环扩展、性能指标收集。
       - components组件：自动填充功能、门户网站检测、内容解密模块、内容设置、崩溃处理、下载管理、JavaScript 注入、内存压力监控、密码管理器、PDF 处理、性能管理、权限管理、打印功能。
       - media媒体：音频处理、基础媒体功能、内容捕获、GPU 媒体加速、媒体渲染器。
