@@ -47,11 +47,11 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 ├── arkweb
 │   ├── build                      # 编译arkweb相关目录
 │   ├── chromium_ext               # 对chromium解耦出的文件放到此目录，内部子目录与chromium仓目录一一对应
-│   │  ├── base                                       
-│   │  ├── components                            
+│   │  ├── base                    # 基础库扩展，包括调试功能扩展、文件系统操作扩展、国际化支持等   
+│   │  ├── components              # components组件扩展，包括自动填充功能、门户网站检测、内容解密模块、内容设置、崩溃处理、下载管理等。
 │   │  ├── content                                 
-│   │  ├── media    
-│   │  └── net
+│   │  ├── media                   # 媒体扩展，包括音频处理、基础媒体功能、内容捕获、GPU 媒体加速等
+│   │  └── net                     # 网络扩展，包括证书管理、DNS 解析、HTTP 协议处理、代理解析、套接字处理、SSL/TLS 支持、URL 请求处理等
 │   ├── ohos_adapter               # 对 OpenHarmony 原生 NDK 和系统服务的调用的封装层
 │   ├── ohos_cef_ext               # 对cef解耦出的文件放到此目录，内部子目录与cef仓目录一一对应
 │   ├── ohos_nweb                  # 向 OHOS 开发者的公共 API的实现，用于在他们的应用程序中嵌入 Webview
