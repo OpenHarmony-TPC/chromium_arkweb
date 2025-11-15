@@ -25,14 +25,14 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - InputHandler处理用户输入事件，包括触摸、键盘、鼠标等输入设备的交互。
 
 
-2.  **CEF扩展层 (`ohos_cef_ext`)**：对cef的接口进行扩展，通过继承和多重继承实现功能扩展，保持与CEF框架的兼容性。扩展内容包括：
+2.  **CEF扩展层 (`ohos_cef_ext`)**：对cef的接口的扩展，通过类继承或插桩调用到独立文件的方式进行扩展，保持与CEF框架的兼容性的同时提供了远超标准CEF的丰富API，满足移动Web应用的各种需求。扩展内容包括：
 
      - 安全和隐私扩展（ohos_safe_browsing，anti_tracking，adblock，subresource_filter）
     - 网络和存储扩展（net_service，net_database，storage）
     - 用户界面和交互扩展（autofill，permission，printing，devtools）
     - 内容渲染扩展arkweb_content_renderer_client_cef_ext（预加载网络请求优化PrescientNetworking，网络导航处理增强HandleNavigation，集成安全浏览错误页面处理 PrepareErrorPage， JavaScript注入系统）
      - 帧渲染的扩展arkweb_frame_impl_ext（图像检测和处理， 高级URL加载LoadHeaderUrl，输入事件和滚动控制，渲染控制UpdateDrawRect和TerminateRenderProcess）
-
+       -浏览器实现扩展browser_impl_ext等
 3.  **Chromium扩展层 (`chromium_ext`)，扩展了chromium原生的如下功能**：
       - base基础库：调试功能扩展、文件系统操作扩展、国际化支持、内存管理扩展、消息循环扩展。
       - components组件：自动填充功能、门户网站检测、内容解密模块、内容设置、崩溃处理、下载管理、JavaScript 注入、内存压力监控、密码管理器、PDF 处理、性能管理、权限管理、打印功能。
