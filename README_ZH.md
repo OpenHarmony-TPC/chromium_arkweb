@@ -10,11 +10,11 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/c521b23a-c361-4286-9e6a-d2e6326c174f/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/8261933/514ef0fc-bd3e-464b-b7a1-4e2149c1df34/image.png 'image.png')
 
 架构图中CEF, Chromium和当前仓ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。
 
-1.  **NWeb接口实现层 (`ohos_nweb`)**：Web API接口在webview层被转换为NWeb接口，并在本模块的进行了实现。ohos_nweb向上直接对接系统侧的webview和web组件，向下依赖cef和chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，实现了web内核hap包的独立升级。NWeb接口实现层通过调用cef和chromium中content层提供的接口，实现了web的功能，并扩展了如广告拦截，任务下载，输入框填充等openharmoy特有的功能。
+1.  **NWeb接口实现层 (`ohos_nweb`)**：Web API接口在webview层被转换为NWeb接口，并在本模块的进行了实现。ohos_nweb向上直接对接系统侧的webview和web组件，向下依赖cef和chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，实现了web内核hap包的独立升级。NWeb接口实现层通过调用cef和chromium中content层提供的接口，实现了web的核心功能。
        - WebEngineImpl: 管理整Web 引擎实例，负责创建新的 Web 实例，或根据 ID 获取已存在的 Web 实例。负责初始化所有核心组件。
       - WebStorageImpl： 管理 Web 应用的本地存储，包括 localStorage、sessionStorage 和密码管理。
       - CookieManager：管理 HTTP Cookie 的存储、访问和策略控制。
@@ -25,7 +25,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - InputHandler处理用户输入事件，包括触摸、键盘、鼠标等输入设备的交互。
 
 
-2.  **CEF扩展层 (`ohos_cef_ext`)**：对原生CEF和Chromium的模块（例如 `base`、`blink`、`content`、`net`）进行的定制和平台特定实现的扩展。
+2.  **CEF扩展层 (`ohos_cef_ext`)**：对cef的接口进行扩展，通过继承和多重继承实现功能扩展，保持与CEF框架的兼容性，提供了远超标准CEF的丰富API，满足移动Web应用的各种需求，其中包括：URL信任列表管理，恶意软件白名单、儿童模式策略，第三方Cookie访问策略、智能跟踪防护，广告拦截系统，高级内容过滤。权限管理，自动填充功能扩展、网络和存储模块扩展、预取网络请求优化提升页面加载性能、集成安全浏览错误页面处理、帧内图像检测和提取、支持添加额外的HTTP头部、带持续时间的动画滚动效果、用户界面增强、密码和表单管理等。
 
 
 3.  **Chromium扩展层 (`chromium_ext`)，扩展了chromium原生的如下功能**：
