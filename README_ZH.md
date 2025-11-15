@@ -35,8 +35,11 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - net网络：证书管理、DNS 解析、HTTP 协议处理、代理解析、套接字处理、SSL/TLS 支持、URL 请求处理。
 
 
-4.  **OS适配层 (`ohos_adapter_ndk`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层。
-
+4.  **OS适配层 (`ohos_adapter`)**：对 OpenHarmony 原生 NDK 和系统服务（例如网络、图形、输入和窗口管理）的调用的封装层。
+      - graphic_adapter：为Web引擎提供图形渲染和显示相关的底层系统适配，实现与OHOS图形系统的无缝集成。包括垂直同步，帧率同步管理，图形缓冲区buffer管理，色域像素的格式转换，图像数据的创建、处理和显示等。
+      -  net_config_adapter：为 Web 引擎提供网络安全配置和策略管理，明文传输控制管理，确保网络请求符合系统安全策略。
+      - sensor_adapter：为 Web 应用提供设备传感器访问能力，包括运动传感器、方向传感。支持网页与设备硬件的交互。
+      - media_adapter: 为 Web 引擎提供完整的媒体编解码、DRM数字版权管理保护和高性能媒体处理能力。
 
 ## 3. 目录结构
 
