@@ -19,10 +19,10 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - WebStorageImpl： 管理 Web 应用的本地存储，包括 localStorage、sessionStorage 和密码管理。
       - CookieManager：管理 HTTP Cookie 的存储、访问和策略控制。
       - AdBlock：实现广告拦截功能，提供规则管理和域名白名单/黑名单功能。
-      - AdvancedSecurity提供高级安全功能控制，管理各种Web安全特性的开关状态，如WebAssembly支持，JIT编译支持，WebGL支持，WebRTC支持。
-      - NotificationManager管理 Web 通知功能，处理通知的显示、关闭和交互事件。
-      - WebDataBaseImpl管理 Web 应用的数据库数据，包括 HTTP 认证信息和权限数据。
-      - InputHandler处理用户输入事件，包括触摸、键盘、鼠标等输入设备的交互。
+      - AdvancedSecurity：提供高级安全功能控制，管理各种Web安全特性的开关状态，如WebAssembly支持，JIT编译支持，WebGL支持，WebRTC支持。
+      - NotificationManager：管理 Web 通知功能，处理通知的显示、关闭和交互事件。
+      - WebDataBaseImpl：管理 Web 应用的数据库数据，包括 HTTP 认证信息和权限数据。
+      - InputHandler：处理用户输入事件，包括触摸、键盘、鼠标等输入设备的交互。
 
 
 2.  **CEF扩展层 (`ohos_cef_ext`)**：对cef的接口的扩展，通过类继承或插桩调用到独立文件的方式进行扩展，保持与CEF框架的兼容性的同时提供了远超标准CEF的丰富API，满足移动Web应用的各种需求。扩展内容包括：
