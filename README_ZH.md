@@ -10,7 +10,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/72140734-9f78-4449-9996-b097e8500bb2/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/ba9d5a4e-62ef-49f2-94b4-cf6e6b21206e/image.png 'image.png')
 
 架构图中CEF, Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。ArkWeb仓主要包含以下几个部分：
 
@@ -20,9 +20,6 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - CookieManager：管理 HTTP Cookie 的存储、访问和策略控制。
       - AdBlock：实现广告拦截功能，提供规则管理和域名白名单/黑名单功能。
       - AdvancedSecurity：提供高级安全功能控制，管理各种Web安全特性的开关状态，如WebAssembly支持，JIT编译支持，WebGL支持，WebRTC支持。
-      - NotificationManager：管理 Web 通知功能，处理通知的显示、关闭和交互事件。
-      - WebDataBaseImpl：管理 Web 应用的数据库数据，包括 HTTP 认证信息和权限数据。
-      - InputHandler：处理用户输入事件，包括触摸、键盘、鼠标等输入设备的交互。
 
 
 2.  **CEF扩展层 (`ohos_cef_ext`)**：对CEF的接口的扩展，通过类继承或插桩调用到独立文件的方式进行扩展，保持与CEF框架的兼容性的同时提供了远超标准CEF的丰富API，满足移动Web应用的各种需求。扩展内容包括：
