@@ -10,7 +10,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/8261933/514ef0fc-bd3e-464b-b7a1-4e2149c1df34/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/725e8257-5760-43b0-b4dc-91da591b3f69/image.png 'image.png')
 
 架构图中CEF, Chromium和当前仓ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。
 
@@ -192,7 +192,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 [架构图中的Web Component仓
 ](https://gitcode.com/openharmony/arkui_ace_engine/tree/master/frameworks/core/components/web)
 
-[架构图中的web_webview仓
+[架构图中的Web Webview仓
 ](https://gitcode.com/openharmony/web_webview)
 
 [架构图中的Chromium仓](https://gitcode.com/openharmony-tpc/chromium_src)
