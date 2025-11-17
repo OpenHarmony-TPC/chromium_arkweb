@@ -14,7 +14,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 架构图中CEF, Chromium和当前仓ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。
 
-1.  **NWeb接口实现层 (`ohos_nweb`)**：web_webview仓主要内容为对应用开放的Web api的实现，主要是通过调用NWeb接口来实现。web_webview仓只是定义了NWeb接口，NWeb的具体实现在本仓的ohos_nweb模块。ohos_nweb向上直接对接系统侧的web_webview和web组件，向下依赖cef和chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，进而支持了web内核hap包的独立升级。NWeb接口实现层通过调用cef和chromium中content层提供的接口，实现了web的核心功能。
+1.  **NWeb接口实现层 (`ohos_nweb`)**：web_webview仓主要内容为对应用开放的Web api的实现，主要是通过调用NWeb接口来实现。web_webview仓只是定义了NWeb接口，NWeb的具体实现在本仓的ohos_nweb模块。ohos_nweb向上直接对接系统侧的web_webview和web组件，向下依赖CEF和Chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，进而支持了web内核hap包的独立升级。NWeb接口实现层通过调用CEF和Chromium中content层提供的接口，实现了Web的核心功能。
        - WebEngineImpl: 管理整Web 引擎实例，负责创建新的 Web 实例，或根据 ID 获取已存在的 Web 实例。负责初始化所有核心组件。
       - WebStorageImpl： 管理 Web 应用的本地存储，包括 localStorage、sessionStorage 和密码管理。
       - CookieManager：管理 HTTP Cookie 的存储、访问和策略控制。
