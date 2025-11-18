@@ -4,7 +4,7 @@
 
 ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `Web` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
 
-本项目是对 Chromium 源代码的扩展和增强，以使其适应 OHOS 架构和 API，并在原有功能的基础上，基于Openharmoy平台扩展了很多新性，如广告拦截，任务下载，输入框填充等。它包括一个NWeb接口实现层、对核心 Chromium 模块的扩展，以及OS适配层。
+本项目是对 Chromium 源代码的扩展和增强，以使其适应 OHOS 架构和 API，并在原有功能的基础上，基于Openharmony平台扩展了很多新特性，如广告拦截，任务下载，输入框填充等。它包括一个NWeb接口实现层、对核心 Chromium 模块的扩展，以及OS适配层。
 
 ## 2. 架构
 
@@ -12,11 +12,11 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 ![image.png](https://raw.gitcode.com/user-images/assets/4769982/9b06239c-c0a7-410a-9738-39e43d72316d/image.png 'image.png')
 
-架构图中CEF, Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。ArkWeb仓主要包含以下几个部分：
+架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。ArkWeb仓主要包含以下几个部分：
 
-1.  **NWeb接口实现层 (`ohos_nweb`)**：Web Webview仓主要内容为对应用开放的Web API的实现，主要是通过调用NWeb接口来实现。Web Webview仓只是定义了NWeb接口，NWeb的具体实现在本仓的ohos_nweb层。ohos_nweb向上直接对接系统侧的Webview和Web组件，向下依赖CEF和Chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，进而支持了web内核hap包的独立升级。NWeb接口实现层通过调用CEF和Chromium中content层提供的接口，实现了Web的核心功能。NWeb的主要实现包括：
-       - WebEngineImpl: 管理整Web 引擎实例，负责创建新的 Web 实例，或根据 ID 获取已存在的 Web 实例。负责初始化所有其他接口实现。
-      - WebStorageImpl： 管理 Web 应用的本地存储，包括 localStorage、sessionStorage 和密码管理。
+1.  **NWeb接口实现层 (`ohos_nweb`)**：Webview仓主要内容为对应用开放的Web API的实现，主要是通过调用NWeb接口来实现。Webview仓只是定义了NWeb接口，NWeb的具体实现在本仓的ohos_nweb层。ohos_nweb向上直接对接系统侧的Webview和Web组件，向下依赖CEF和Chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，支持web内核hap包的独立升级。NWeb接口实现层通过调用CEF和Chromium中content层提供的接口，实现了Web的核心功能。NWeb的主要实现包括：
+       - WebEngineImpl：管理整Web 引擎实例，负责创建新的 Web 实例，或根据 ID 获取已存在的 Web 实例。负责初始化所有其他接口实现。
+      - WebStorageImpl：管理 Web 应用的本地存储，包括 localStorage、sessionStorage 和密码管理。
       - CookieManager：管理 HTTP Cookie 的存储、访问和策略控制。
       - AdBlock：实现广告拦截功能，提供规则管理和域名白名单/黑名单功能。
       - AdvancedSecurity：提供高级安全功能控制，管理各种Web安全特性的开关状态，如WebAssembly支持，JIT编译支持，WebGL支持，WebRTC支持。
@@ -41,7 +41,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
       - graphic_adapter：为Web引擎提供图形渲染和显示相关的底层系统适配，实现与OHOS图形系统的无缝集成。包括垂直同步，帧率同步管理，图形缓冲区buffer管理，色域像素的格式转换，图像数据的创建、处理和显示等。
       -  net_config_adapter：为 Web 引擎提供网络安全配置和策略管理，明文传输控制管理，确保网络请求符合系统安全策略。
       - sensor_adapter：为 Web 应用提供设备传感器访问能力，包括运动传感器、方向传感。支持网页与设备硬件的交互。
-      - media_adapter: 为 Web 引擎提供系统的媒体编解码能力。
+      - media_adapter：为 Web 引擎提供系统的媒体编解码能力。
 
 ## 3. 目录结构
 
@@ -118,7 +118,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
     方法二：替换hap包
     
-    编译完成后，在out目录下找到NWeb-rk3568.hap或者NWeb-rk3568_64.hap, 将它推送到设备中。
+    编译完成后，在out目录下找到NWeb-rk3568.hap或者NWeb-rk3568_64.hap， 将它推送到设备中。
 
     ```
     hdc shell "mount -o remount,rw /"
