@@ -2,9 +2,9 @@
 
 ## 1. 概述
 
-ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony (OHOS) 操作系统中。它作为系统 `Web` 组件的基础，为 OHOS 应用程序提供强大的 Web 渲染能力。
+ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集成到 OpenHarmony操作系统中。它作为系统 `Web` 组件的基础，为OpenHarmony应用程序提供强大的 Web 渲染能力。
 
-本项目是对 Chromium 源代码的扩展和增强，以使其适应 OHOS 架构和 API，并在原有功能的基础上，基于Openharmony平台扩展了很多新特性，如广告拦截，任务下载，输入框填充等。它包括一个NWeb接口实现层、对核心 Chromium 模块的扩展，以及OS适配层。
+本项目是对 Chromium 源代码的扩展和增强，以使其适应OpenHarmony架构和 API，并在原有功能的基础上，基于OpenHarmony平台扩展了很多新特性，如广告拦截，网络加速，输入框填充等。它包括一个NWeb接口实现层、对CEF、Chromium 模块的扩展，以及OS适配层。
 
 ## 2. 架构
 
@@ -12,7 +12,7 @@ ArkWeb 项目是一个全面的解决方案，旨在将 Chromium Web 引擎集�
 
 ![image.png](https://raw.gitcode.com/user-images/assets/4769982/9b06239c-c0a7-410a-9738-39e43d72316d/image.png 'image.png')
 
-架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在openharmony系统中。ArkWeb仓主要包含以下几个部分：
+架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在OpenHarmony系统中。ArkWeb仓主要包含以下几个部分：
 
 1.  **NWeb接口实现层 (`ohos_nweb`)**：ohos_nweb向上直接对接系统侧的Webview，向下依赖CEF和Chromium的接口。Webview仓主要内容为对应用开放的Web API的实现，主要是通过调用NWeb提供的C++接口来实现，Webview仓只是定义了NWeb接口，NWeb的具体实现在本仓的ohos_nweb层。NWeb接口隔离了系统侧的Web API和内核侧的CEF/Chromium接口， 支持同一系统运行不同版本的内核，支持Web内核Hap包的独立升级。NWeb接口实现层通过调用CEF和Chromium的接口，实现了Web的核心功能。NWeb的主要实现包括：
        - WebEngineImpl：管理整Web 引擎实例，负责创建新的 Web 实例，或根据 ID 获取已存在的 Web 实例。负责初始化所有其他接口实现。
