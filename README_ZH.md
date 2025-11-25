@@ -10,7 +10,7 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/9b06239c-c0a7-410a-9738-39e43d72316d/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/350fe618-8047-4c5c-8f68-66b583eae278/image.png 'image.png')
 
 架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在OpenHarmony系统中。ArkWeb仓主要包含以下几个部分：
 
