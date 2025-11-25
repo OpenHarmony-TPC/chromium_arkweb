@@ -166,20 +166,6 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 
     6.11 联系committer加分
 
-7. chromium各版manifest分支名
-
-    99分支：chromium
-
-    114分支：114_trunk
-    
-    132分支：132_trunk
-
-    配套OpenHarmony 3.2Release分支：3.2_Release
-
-    配套OpenHarmony 4.0Release分支：4.0_Release
-
-    配套OpenHarmony 4.1 Beta1 分支：master114_20231218
-
 ## 其他相关代码仓地址：
 
 [架构图中的Webview ArkTS仓
