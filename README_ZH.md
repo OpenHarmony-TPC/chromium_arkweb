@@ -64,18 +64,17 @@ ohos_nweb向上直接对接系统侧的Webview，向下依赖CEF和Chromium的�
      - 同层渲染技术：支持ArkUI组件与Web DOM元素混合在一起进行排版渲染，保证ArkUI组件和DOM元素交互一致。
      - 原生缓冲区实现零拷贝：获取外部纹理数据后，封装为shareImage对象，合成时从shareImage对象取出buffer转为OES纹理进行合成，OHOSNativeBufferImageBacking 实现零拷贝渲染
    - **content核心扩展：**
-      - 进程启动重构：使用 OHOS 原生 ChildProcessStarter，相比原生 Chromium 的通用进程创建机制提供更好的性能和安全性
-      - 无障碍深度集成：完整集成OHOS无障碍服务，相比原生Chromium的基础屏幕阅读器支持更加完善
+      - 进程启动重构：重构了 Chromium 的通用进程创建机制，使用 OHOS 原生 ChildProcessStarter启动子进程
+      - 无障碍深度集成：完整集成OHOS无障碍服务，比原生Chromium的基础屏幕阅读器更加完善
    - **components组件扩展：**
        - 企业级 DRM：集成华为WisePlay DRM，支持硬件级内容保护，相比于原生的Widevine，ArkWeb提供更符合国内生态的DRM方案
       - 硬件加密： 集成HUKS（硬件通用密钥服务），相比原生Chromium的软件加密提供硬件级安全保障
        - JS 桥接增强：提供类似 Android WebView 的 JavaScript 桥接能力，相比原生 Chromium 的受限接口更加灵活
-       -  广告拦截：基于 Trie 结构的域名过滤系统，相比原生 Chromium 的基本拦截规则，效率和准确度都大幅提升
+       -  广告拦截：基于 Trie 结构的域名过滤系统，相比原生 Chromium 的基本拦截规则，提升了效率和准确度
    - **media媒体扩展：**
-      - 硬件编解码：支持 4K@60fps 硬件编码，，相比原生 Chromium 的软件编解码性能提升显著
+      - 硬件编解码：支持 4K@60fps 以及H.264、VPX 等格式硬件编码，相比原生 Chromium 的软件编解码性能提升显著
       - 现代格式支持：完整的 HEIF/HEIC 硬件解码支持，原生 Chromium 需要第三方插件
-      - 智能桥接：OhosMediaCodecBridge 提供统一的软/硬件编解码器接口，相比原生 Chromium 的复杂选择逻辑更加智能
-      - 帧工厂优化：多种视频帧提供策略，相比原生 Chromium 的单一模式提供更好的性能和兼容性
+      - 智能桥接：OhosMediaCodecBridge 提供统一的软/硬件编解码器接口，屏蔽了原生 Chromium 的复杂选择逻辑
    - **net网络扩展：**
       - 智能连接：IPv4/IPv6 并发连接和最优路径选择，提升网络的连接成功率
       - 预加载优化：智能连接预加载机制，降低网络连接延迟
