@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,21 +13,10 @@
  * limitations under the License.
  */
 
-module network.mojom;
+#include "arkweb/chromium_ext/net/base/fallback_proxy_constants.h"
 
-struct HttpsDnsFallbackConfig {
-  bool enabled = false;
-  int32 connect_job_with_dns_only_timeout;
-  string https_dns_server_template;
-  array<string> source_host_list;
-  array<string> suspect_ip_list;
-};
+namespace net {
 
-struct FallbackProxyInfoConfig {
-  array<int32> using_proxy_error_codes;
-  array<int32> safe_browsing_hw_codes;
-  array<int32> safe_browsing_malicious_types;
-  int32 proxy_tunnel_timeout;
-  int32 proxy_connect_timeout;
-  int32 malicious_url_check_wait_time;
-};
+constexpr char kFallbackProxyTunnelHeaderKey[] = "Authentication";
+
+}
