@@ -23,11 +23,6 @@
         <policylist>
             <policy name="projectPolicy" desc="">
                 <policyitem type="copyright" name="Huawei Device Co., Ltd" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
-                <policyitem type="copyright" name="The Chromium Authors" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
-				<policyitem type="copyright" name="Marshall A. Greenblatt" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
-				<policyitem type="copyright" name="Apple Inc" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
-				<policyitem type="copyright" name="Torch Mobile Inc" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
-				<policyitem type="copyright" name="Nokia Corporation and/or its subsidiary(-ies)" path=".*" rule="may" group="defaultGroup" filefilter="copyrightPolicyFilter" desc="Developed by X Company"/>
             </policy>
         </policylist>
         <filefilterlist>
