@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on user_ruleset_service.h originally written by
-// Copyright 2016 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #ifndef COMPONENTS_SUBRESOURCE_FILTER_CONTENT_SHARED_BROWSER_USER_RULESET_PUBLISHER_H_
 #define COMPONENTS_SUBRESOURCE_FILTER_CONTENT_SHARED_BROWSER_USER_RULESET_PUBLISHER_H_
 
