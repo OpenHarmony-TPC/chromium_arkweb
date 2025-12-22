@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on url_loader.cc originally written by
-// Copyright 2017 The Chromium Authors
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-
 #include "arkweb/chromium_ext/services/network/prp_preload/src/preload_runner/prpp_request_loader_impl.h"
 
 #include "arkweb/chromium_ext/services/network/prp_preload/src/page_res_parallel_preload_mgr_impl.h"

@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on scoped_hardware_buffer_handle.h originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
-
 #ifndef _GPU_COMMAND_BUFFER_SERVICE_OHOS_SCOPED_HARDWARE_BUFFER_HANDLE_H_
 #define _GPU_COMMAND_BUFFER_SERVICE_OHOS_SCOPED_HARDWARE_BUFFER_HANDLE_H_
 
