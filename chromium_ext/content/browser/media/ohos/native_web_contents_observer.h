@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on media_web_contents_observer.h originally written by
-// Copyright (c) 2014 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
- 
 #ifndef CONTENT_BROWSER_MEDIA_OHOS_NATIVE_WEB_CONTENTS_OBSERVER_H_
 #define CONTENT_BROWSER_MEDIA_OHOS_NATIVE_WEB_CONTENTS_OBSERVER_H_
 

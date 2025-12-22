@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on SkiaMemoryTracer.h originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
-
 #ifndef RS_SKIA_MEMORY_TRACER_H
 #define RS_SKIA_MEMORY_TRACER_H
 #include <unordered_map>

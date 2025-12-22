@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on gl_texture_passthrough_ohos_image_representation.cc originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
-
 #include "gpu/command_buffer/service/shared_image/gl_texture_passthrough_ohos_image_representation.h"
 
 #include "gpu/command_buffer/service/texture_manager.h"
