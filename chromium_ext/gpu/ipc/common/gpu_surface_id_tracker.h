@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on gpu_surface_tracker.h originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
- 
 #ifndef GPU_IPC_COMMON_GPU_SURFACE_ID_LOOKUP_H_
 #define GPU_IPC_COMMON_GPU_SURFACE_ID_LOOKUP_H_
 
