@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on audio_input_stream_fuchsia.cc originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
-
 #include "ohos_audio_input_stream.h"
 
 #include "base/logging.h"
