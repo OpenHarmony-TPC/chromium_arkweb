@@ -11,11 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Based on image_reader_gl_owner.h originally written by
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
-
 #ifndef GPU_COMMAND_BUFFER_SERVICE_OHOS_NATIVE_BUFFER_GL_OWNER_H_
 #define GPU_COMMAND_BUFFER_SERVICE_OHOS_NATIVE_BUFFER_GL_OWNER_H_
 
