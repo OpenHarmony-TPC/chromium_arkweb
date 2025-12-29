@@ -12,7 +12,7 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 
 ![image.png](https://raw.gitcode.com/user-images/assets/4769982/98f5417c-f702-4157-bce9-a5ad38e5c16b/image.png 'image.png')
 
-架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在OpenHarmony系统中。ArkWeb仓主要包含以下几个部分：
+架构图中[CEF](https://gitcode.com/openharmony-tpc/chromium_cef)，[Chromium](https://gitcode.com/openharmony-tpc/chromium_src)和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在OpenHarmony系统中。ArkWeb仓主要包含以下几个部分：
 
 #### NWeb接口实现
 该模块向上直接对接系统侧的Webview，向下依赖CEF和Chromium的接口。NWeb接口隔离了系统侧的Web API和内核侧的Chromium接口， 支持同一系统运行不同版本的内核，支持Web内核Hap包的独立升级。
