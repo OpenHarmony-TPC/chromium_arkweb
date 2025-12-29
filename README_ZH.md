@@ -10,7 +10,7 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 
 项目遵循分层架构，图中Arkweb模块即本仓内容：
 
-![image.png](https://raw.gitcode.com/user-images/assets/4769982/15cf1d22-9a68-47a9-88e0-6e7ef83ad479/image.png 'image.png')
+![image.png](https://raw.gitcode.com/user-images/assets/4769982/98f5417c-f702-4157-bce9-a5ad38e5c16b/image.png 'image.png')
 
 架构图中CEF，Chromium和当前ArkWeb仓联合编译出Web内核，编译产物为NWeb.hap，通过二进制集成在OpenHarmony系统中。ArkWeb仓主要包含以下几个部分：
 
@@ -28,7 +28,7 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 该模块提供对OpenHarmony系统库进行了封装适配，使Chromium能够便利的对接到OpenHarmony系统库。包括图形系统适配，网络系统适配，多媒体适配，设备和服务适配，系统工具适配等。
 
 
-## 3. 目录结构
+## 目录结构
 
 ```
 ├── arkweb
@@ -49,7 +49,7 @@ ArkWeb 项目主要包含一个NWeb接口实现层，对CEF/Chromium 模块的�
 ```
 
 
-## 4.使用说明
+## 使用说明
 1. 下载代码：以132_trunk分支为例，要下载其他分支代码请替换-b 后带的manifest分支参数，参数列表详见7。
     ```
     repo init -u https://gitcode.com/openharmony-tpc/manifest -b 132_trunk -m developer.xml --no-repo-verify
