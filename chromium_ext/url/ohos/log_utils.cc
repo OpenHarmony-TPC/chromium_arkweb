@@ -15,23 +15,29 @@
 
 #include "log_utils.h"
 
+#include <algorithm>
 #include <memory>
+#include <sstream>
+#include <vector>
 
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
 #include "url/url_constants.h"
 
 namespace url {
-const char kReplaceStr[] = "***";
-const char kSchemeSeparator[] = "//";
-const char kSchemeSeparatorForReport[] = "://";
-const char kSchemeNotParseOne[] = "about:blank";
-const char kSchemeNotParseTwo[] = "hwweb://newtab";
-const size_t kSchemeSuffixLength = 3;
-const size_t kAdditionalCharsToShow = 2;
-int32_t FEEDSPAGE_TYPE = 5;
+
+constexpr char kReplaceStr[] = "***";
+constexpr char kSchemeSeparator[] = "//";
+constexpr char kSchemeSeparatorForReport[] = "://";
+constexpr char kSchemeNotParseOne[] = "about:blank";
+constexpr char kSchemeNotParseTwo[] = "hwweb://newtab";
+constexpr size_t kSchemeSuffixLength = 3;
+constexpr size_t kAdditionalCharsToShow = 3;
+constexpr size_t kMaxUrlLen = 128;
+constexpr int32_t FEEDSPAGE_TYPE = 5;
+
 // static
-bool LogUtils::IsSupportScheme(const std::string& url,
+bool LogUtils::IsSupportScheme(const std::string_view url,
                                unsigned int urlLen,
                                unsigned int& colonIndex) {
   while (colonIndex < urlLen && url[colonIndex] != ':') {
@@ -46,16 +52,23 @@ bool LogUtils::IsSupportScheme(const std::string& url,
 }
 
 // static
-bool LogUtils::IsSupportScheme(const std::string& scheme) {
+bool LogUtils::IsSupportScheme(const std::string_view scheme) {
   if (base::EqualsCaseInsensitiveASCII(scheme, url::kHttpScheme) ||
-      base::EqualsCaseInsensitiveASCII(scheme, url::kHttpsScheme)) {
+      base::EqualsCaseInsensitiveASCII(scheme, url::kHttpsScheme)
+#if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
+      || base::EqualsCaseInsensitiveASCII(scheme, url::kChromeExtensionScheme)
+#endif
+#if BUILDFLAG(ARKWEB_RECOURCE_SCHEME)
+      || base::EqualsCaseInsensitiveASCII(scheme, url::kResourcesScheme)
+#endif
+  ) {
     return true;
   }
   return false;
 }
 
 // static
-void LogUtils::FixupUrlPart(const std::string& text,
+void LogUtils::FixupUrlPart(const std::string_view text,
                             const url::Component& part,
                             std::string& converted) {
   if (!part.is_valid()) {
@@ -66,7 +79,7 @@ void LogUtils::FixupUrlPart(const std::string& text,
 }
 
 // static
-void LogUtils::ConvertUrlHost(const std::string& url,
+void LogUtils::ConvertUrlHost(const std::string_view url,
                               url::Parsed& parsed,
                               std::string& converted,
                               bool is_for_report) {
@@ -97,7 +110,7 @@ void LogUtils::ConvertUrlHost(const std::string& url,
 }
 
 // static
-void LogUtils::ConvertUrlPath(const std::string& url,
+void LogUtils::ConvertUrlPath(const std::string_view url,
                               const url::Component& part,
                               std::string& converted) {
   if (!part.is_valid()) {
@@ -125,7 +138,7 @@ bool LogUtils::IsSupportParam(const std::string& param) {
 #endif
 
 // static
-void LogUtils::ConvertUrlQuery(const std::string& url,
+void LogUtils::ConvertUrlQuery(const std::string_view url,
                                const url::Component& part,
                                std::string& converted) {
   if (!part.is_valid()) {
@@ -181,7 +194,7 @@ void LogUtils::ConvertUrlQuery(const std::string& url,
 }
 
 // static
-void LogUtils::ConvertUrlRef(const std::string& url,
+void LogUtils::ConvertUrlRef(const std::string_view url,
                              const url::Component& part,
                              std::string& converted) {
   if (!part.is_valid()) {
@@ -197,15 +210,15 @@ std::string LogUtils::ConvertUrl(const std::string& url,
                                  int32_t scenario_type,
                                  bool should_noise_url) {
   if (!should_noise_url) {
-    return url;
+    return std::string(url);
   }
 
   if (url.length() == 0) {
-    return url;
+    return std::string(url);
   }
 
   if (url.find(kSchemeNotParseOne) == 0 || url.find(kSchemeNotParseTwo) == 0) {
-    return url;
+    return std::string(url);
   }
 
   unsigned int colonIndex = 0;
@@ -213,9 +226,9 @@ std::string LogUtils::ConvertUrl(const std::string& url,
 
   if (!IsSupportScheme(url, url.length(), colonIndex)) {
     if (colonIndex < url.length() - 1) {
-      return url.substr(0, colonIndex + 1);
+      return std::string(url.substr(0, colonIndex + 1));
     } else {
-      return url;
+      return std::string(url);
     }
   }
 
@@ -234,37 +247,159 @@ std::string LogUtils::ConvertUrl(const std::string& url,
 }
 
 // static
-std::string LogUtils::MaskHost(const std::string& host) {
+std::string LogUtils::MaskHost(const std::string_view host) {
   size_t dotPos = host.find('.');
-  if (dotPos == std::string::npos) {
-    return host;
+  if (dotPos == std::string_view::npos) {
+    return std::string(host);
   }
-  
-  return host.substr(0, dotPos + 1) + "***";
+
+  return std::string(host.substr(0, dotPos + 1)) + "***";
 }
 
+std::string MaskMiddleTwoChars(std::string_view scheme) {
+  std::string scheme_copy(scheme);
 
+  if (scheme_copy.size() <= 2) {
+    return scheme_copy;
+  }
+
+  size_t mid = (scheme_copy.size() - 1) / 2;
+  scheme_copy[mid] = '*';
+  scheme_copy[mid + 1] = '*';
+  return scheme_copy;
+}
 
 // static
 std::string LogUtils::ConvertUrlWithMask(const std::string& url) {
-  if (url.find(kSchemeNotParseOne) == 0 || url.find(kSchemeNotParseTwo) == 0) {
-    return url;
+  std::string_view truncated_url = std::string_view(url).substr(0, kMaxUrlLen);
+  if (truncated_url.find(kSchemeNotParseOne) == 0 ||
+      truncated_url.find(kSchemeNotParseTwo) == 0) {
+    return std::string(truncated_url);
   }
 
   unsigned int colonIndex = 0;
-  if (!IsSupportScheme(url, url.length(), colonIndex)) {
-    return MaskHost(url);
+  if (!IsSupportScheme(truncated_url, truncated_url.length(), colonIndex)) {
+    return MaskHost(truncated_url);
   }
 
   size_t endPos = colonIndex + kSchemeSuffixLength + kAdditionalCharsToShow;
-  if (endPos > url.length()) {
-    endPos = url.length();
+  if (endPos > truncated_url.length()) {
+    endPos = truncated_url.length();
   }
 
   std::string converted;
-  converted.append(url.substr(0, endPos));
+  converted.append(MaskMiddleTwoChars(truncated_url.substr(0, colonIndex)));
+  converted.append(truncated_url.substr(colonIndex, endPos - colonIndex));
   converted.append("***");
   return converted;
 }
+
+// static
+std::string LogUtils::ConvertPathWithMask(const std::string& file_path) {
+    if (file_path.empty()) {
+        return "";
+    }
+    std::string normalized_path = file_path;
+    std::string::size_type pos = 0;
+    // Replace '\\' "//"" with '/'
+    while ((pos = normalized_path.find('\\', pos)) != std::string::npos) {
+        normalized_path[pos] = '/';
+        pos++;
+    }
+    pos = 0;
+    while ((pos = normalized_path.find("//", pos)) != std::string::npos) {
+        normalized_path.replace(pos, 2, "/");
+    }
+    std::vector<std::string> parts;
+    std::stringstream ss(normalized_path);
+    std::string part;
+    while (std::getline(ss, part, '/')) {
+        if (!part.empty()) {
+            parts.push_back(part);
+        }
+    }
+    if (parts.empty()) {
+        return "";
+    }
+    std::string result = "";
+    // Skip the drive letter(e.g "D:")
+    size_t start_index = 0;
+    if (parts.size() > 0 && parts[0].length() == 2 && parts[0][1] == ':') {
+      start_index = 1;
+    }
+    for (size_t i = start_index; i < parts.size(); ++i) {
+        std::string current_part = parts[i];
+        if (i == parts.size() - 1) {
+            // Remove file extension
+            size_t dot_pos = current_part.find_last_of('.');
+            if (dot_pos != std::string::npos) {
+                current_part = current_part.substr(0, dot_pos);
+            }
+        }
+        if (!current_part.empty()) {
+            std::string masked_part;
+            // Replace all characters except the first one with "***"
+            masked_part += current_part[0];
+            masked_part += "***";
+
+            result += "/" + masked_part;
+        }
+    }
+    return result;
+}
+
+std::string LogUtils::ConvertUrlParamWithMask(const std::string& url) {
+    std::string maskedUrl = url;
+    size_t questionMarkPos = maskedUrl.find('?');
+
+    // Return original URL if no query parameters are present
+    if (questionMarkPos == std::string::npos || questionMarkPos == maskedUrl.length() - 1) {
+        return maskedUrl;
+    }
+
+    size_t currentPos = questionMarkPos + 1;
+    while (currentPos < maskedUrl.length()) {
+      size_t equalSignPos = maskedUrl.find('=', currentPos);
+
+      // Break if no '=' is found, indicating no more key-value pairs
+      if (equalSignPos == std::string::npos) {
+          break;
+      }
+
+      size_t valueStart = equalSignPos + 1;
+      size_t ampersandPos = maskedUrl.find('&', valueStart);
+
+      size_t valueEnd;
+      if (ampersandPos == std::string::npos) {
+          // This is the last parameter, process until the end of the string
+          valueEnd = maskedUrl.length();
+      }
+      else {
+          // There are subsequent parameters after this one
+          valueEnd = ampersandPos;
+      }
+
+      // Replace the value part with "***"
+      if (valueEnd > valueStart) {
+          maskedUrl.replace(valueStart, valueEnd - valueStart, "***");
+          // Update position to the end of the newly inserted "***"
+          currentPos = valueStart + 3;
+      }
+      else {
+          // Handle cases where the value is empty (e.g., "key=&"), just move forward
+          currentPos = valueStart;
+      }
+
+      // Locate the beginning of the next parameter
+      currentPos = maskedUrl.find('&', currentPos);
+      if (currentPos == std::string::npos) {
+          break;
+      }
+      currentPos++; // Skip the '&' delimiter
+    }
+
+    return maskedUrl;
+}
+
 
 }  // namespace url

@@ -19,13 +19,14 @@
 #include "cef_delegate/nweb_inputmethod_client.h"
 #include "condition_variable"
 #define private public
-#include "arkweb/chromium_ext/base/ohos/ltpo/src/mock_sys_info_util_ext.h"
+#include "arkweb/ohos_adapter_ndk/mock_ndk_api/include/mock_base_ohos_api.h"
 #include "base/ohos/sys_info_utils_ext.h"
 #include "cef_devtools_message_handler_delegate.h"
 #include "cef_client.h"
 #include "imf_adapter.h"
 #include "nweb_inputmethod_handler.h"
 #include "nweb_inputmethod_handler.cc"
+#include "ohos_cef_ext/libcef/common/cef_open_devtools_ext_opt.h"
 #include "ohos_nweb/include/nweb_errors.h"
 
 using namespace base::ohos;
@@ -64,6 +65,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
       const std::vector<double>& detectionTiming,
       const std::vector<int32_t>& detectionMethods,
       int32_t contentfulNodesCountThreshold) override {}
+#endif
+#if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
+  void GetOverScrollOffsetValue(float* offset_x, float* offset_y) override {}
 #endif
   bool HasView() override { return false; }
   CefRefPtr<CefClient> GetClient() override { return nullptr; }
@@ -116,6 +120,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void WasResized() override {}
   void WasHidden(bool hidden) override {}
   void WasOccluded(bool occluded) override {}
+  void SetIsOfflineWebComponent() override {}
   void OnWindowShow() override {}
   void OnWindowHide() override {}
   void OnOnlineRenderToForeground() override {}
@@ -287,11 +292,13 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void JavaScriptOnDocumentStart(
       const CefString& script,
       const std::vector<CefString>& script_rules,
+      const std::vector<std::pair<CefString, CefString>>& script_regex_rules,
       bool is_transfer_finished) override {}
   void RemoveJavaScriptOnDocumentStart() override {}
   void JavaScriptOnDocumentEnd(
       const CefString& script,
       const std::vector<CefString>& script_rules,
+      const std::vector<std::pair<CefString, CefString>>& script_regex_rules,
       bool is_transfer_finished) override {}
   void RemoveJavaScriptOnDocumentEnd() override {}
 #if BUILDFLAG(ARKWEB_UNITTESTS)
@@ -302,6 +309,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void JavaScriptOnHeadReady(
       const CefString& script,
       const std::vector<CefString>& script_rules,
+      const std::vector<std::pair<CefString, CefString>>& script_regex_rules,
       bool is_transfer_finished) override {}
   void RemoveJavaScriptOnHeadReady() override {}
 #endif
@@ -317,9 +325,13 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void SetBrowserZoomLevel(double zoomFactor) override {}
   int GetTopControlsOffset() override { return 0; }
   MOCK_METHOD0(GetShrinkViewportHeight, int());
+  void OnEyeDropperResult(bool success, uint32_t color) override {}
   void SetPrintBackground(bool enable) override {}
   bool GetPrintBackground() override { return false; }
+#if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   void SetScrollable(bool enable, int scrollType) override {}
+  void SetImeShow(bool visible) override {}
+#endif
   void StartCamera() override {}
   void StopCamera() override {}
   void CloseCamera() override {}
@@ -346,6 +358,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   MOCK_METHOD(void,
               SendTouchpadFlingEvent,
               (const CefMouseEvent&, double, double),
+              (override));
+  MOCK_METHOD(void,
+              SendCancelFlingEvent, (const CefMouseEvent&),
               (override));
   void SetFitContentMode(int mode) override {}
   void UpdateDrawRect() override {}
@@ -386,6 +401,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
       CefRefPtr<ArkWebBrowserHostExt> frontend_browser,
       CefRefPtr<CefDevToolsMessageHandlerDelegate> delegate,
       const CefPoint& inspect_element_at) override {}
+  void ShowDevToolsWithByPb(
+      CefRefPtr<ArkWebBrowserHostExt> frontend_browser,
+      CefRefPtr<CefDevToolsMessageHandlerDelegate> delegate,
+      const CefPoint& inspect_element_at,
+      const CefOpenDevToolsExtOpt& ext_opt) override {}
   bool IsFullscreen() override { return false; }
   void ExitFullscreen(bool will_cause_resize) override {}
   bool CanExecuteChromeCommand(int command_id) override { return false; }
@@ -457,6 +477,8 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   bool IsAdsBlockEnabledForCurPage() override { return false; }
   void EnableAdsBlock(bool enable) override {}
   int SetUrlTrustListWithErrMsg(const CefString& urlTrustList,
+                                bool allowOpaqueOrigin,
+                                bool supportWildcard,
                                 CefString& detailErrMsg) override {
     return 0;
   }
@@ -467,9 +489,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
   int InsertBackForwardEntry(int index, const CefString& url) override { return 0; }
   int UpdateNavigationEntryUrl(int index, const CefString& url) override { return 0; }
   void ClearForwardList() override {}
+#endif
   void ExtensionSetTabId(int tab_id) override {}
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
   void SetAdBlockEnabledForSite(bool is_adblock_enabled, int main_frame_tree_node_id) override {}
@@ -483,6 +507,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   CefString GetCustomUserAgent() override { return CefString(); }
   void GetLastHitData(int& type, CefString& extra_data) override {}
   std::string GetSelectedTextFromContextParam() override { return ""; }
+  bool JudgeTextInputState() override { return true; }
   void SetNeedsReload(bool needs_reload) override {}
   void SetOptimizeParserBudgetEnabled(bool enable) override {}
   void OnDestroyImageAnalyzerOverlay() override {}
@@ -498,10 +523,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void PutWebMediaAVSessionEnabled(bool enable) override {}
   void SetEnableHalfFrameRate(bool enabled) override {}
   bool SetFocusByPosition(float x, float y) override { return false; }
-  void OnSafeBrowsingDetectionResult(int code,
-                                     int policy,
-                                     const std::string& mappingType,
-                                     const std::string& url) override {}
   int ExtensionGetTabId() override {}
   bool GetHasComposition() override {}
   void SetMediaResumeFromBFCachePage(bool resume) override {}
@@ -534,6 +555,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void RunJavaScriptInFrames(const std::string& jsString, FrameInfos rootFrame,
                              bool recursive, IsolatedWorld world,
                              CefRefPtr<CefJavaScriptResultCallback> callback) override {}
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+  void GetAllFrameInfos(CefRefPtr<CefFrameInfosCallback> callback) override {}
+  void GetLastJavaScriptProxyCallingFrameInfo(
+    CefRefPtr<CefLastJavaScriptProxyCallingFrameInfoCallback> callback) override {}
+#endif
 #if BUILDFLAG(ARKWEB_READER_MODE)
   void Distill(const std::string& guid, const DistillOptions& distill_options,
     CefRefPtr<CefDistillCallback> callback) override {}
@@ -542,6 +568,8 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   void GetFocusedFrameInfo(int32_t& frame_id, CefString& frame_url) override {}
 #endif  // ARKWEB_ARKWEB_EXTENSIONS
+
+#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   void LoadUrlWithParams(const std::string& url,
                          const LoadUrlType& load_type,
                          const std::string& refer,
@@ -550,7 +578,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
                          const bool& allow_https_upgrade,
                          int32_t transition_type) override {}
 
-#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   void EnableHttpsUpgrades(bool enable) override {}
 #endif
 #endif  // BUILDFLAG(IS_OHOS)
@@ -662,6 +689,8 @@ class MockCefBrowserExt : public ArkWebBrowserExt {
   bool IsAdsBlockEnabledForCurPage() override { return false; }
   void EnableAdsBlock(bool enable) override {}
   int SetUrlTrustListWithErrMsg(const CefString& urlTrustList,
+                                bool allowOpaqueOrigin,
+                                bool supportWildcard,
                                 CefString& detailErrMsg) override {
     return -1;
   }
@@ -1818,6 +1847,7 @@ TEST_F(NWebInputMethodHandlerTest, SendEnterKeyEventOnUI_002) {
 }
 
 TEST_F(NWebInputMethodHandlerTest, SendEnterKeyEventOnUI_003) {
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
   CefRefPtr<MockCefBrowserHost> mockHost = new MockCefBrowserHost();
   testing::Mock::AllowLeak(mockHost.get());
   std::unique_ptr<MockCefBrowser> mock_browser = std::make_unique<MockCefBrowser>(mockHost);
@@ -1835,9 +1865,11 @@ TEST_F(NWebInputMethodHandlerTest, SendEnterKeyEventOnUI_003) {
 	::testing::AtLeast(1)).WillRepeatedly(testing::Return(false));
   enterKeyType = static_cast<int32_t>(IMFAdapterEnterKeyType::UNSPECIFIED);
   inputmethod_handler_->SendEnterKeyEventOnUI(enterKeyType);
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
 }
 
 TEST_F(NWebInputMethodHandlerTest, SendEnterKeyEventOnUI_004) {
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
   CefRefPtr<MockCefBrowserHost> mockHost = new MockCefBrowserHost();
   testing::Mock::AllowLeak(mockHost.get());
   std::unique_ptr<MockCefBrowser> mock_browser = std::make_unique<MockCefBrowser>(mockHost);
@@ -1865,6 +1897,7 @@ TEST_F(NWebInputMethodHandlerTest, SendEnterKeyEventOnUI_004) {
   inputmethod_handler_->input_flags_ |= CEF_TEXT_INPUT_FLAG_HAS_BEEN_PASSWORD;
   enterKeyType = static_cast<int32_t>(IMFAdapterEnterKeyType::PREVIOUS);
   inputmethod_handler_->SendEnterKeyEventOnUI(enterKeyType);
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
 }
 
 #if BUILDFLAG(ARKWEB_CLIPBOARD)
@@ -2793,7 +2826,6 @@ TEST_F(NWebInputMethodHandlerTest, TestAttach_001) {
   handler->focus_status_ = true;
   handler->focus_rect_status_ = true;
   handler->inputmethod_adapter_ = std::make_unique<MockIMFAdapterImpl>();
-  fakeAttachReturnValue = false;
   handler->Attach(browser, inputInfo, is_need_reset_listener, enterKeyType, requestKeyboardReason);
   EXPECT_FALSE(handler->isAttached_);
 }
@@ -2806,7 +2838,6 @@ TEST_F(NWebInputMethodHandlerTest, TestAttach_002) {
   bool is_need_reset_listener = true;
   int32_t enterKeyType = 0;
   int32_t requestKeyboardReason = 0;
-  fakeAttachReturnValue = true;
   handler->Attach(browser, inputInfo, is_need_reset_listener, enterKeyType, requestKeyboardReason);
   EXPECT_FALSE(handler->isAttached_);
 }
@@ -2928,7 +2959,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatus_001) {
   CefRefPtr<MockCefBrowserHost> mockHost = new MockCefBrowserHost();
   testing::Mock::AllowLeak(mockHost.get());
   EXPECT_CALL(*mockHost, PostTaskToUIThread(testing::_)).Times(0);
-  inputmethod_handler_->UpdateTextFieldStatus();
+  inputmethod_handler_->UpdateTextFieldStatus(true, true);
 }
 
 TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatus_002) {
@@ -2939,7 +2970,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatus_002) {
   EXPECT_CALL(*mock_browser, GetHost()).WillOnce(testing::Return(mockHost));
   EXPECT_CALL(*mockHost, PostTaskToUIThread(testing::_)).Times(1);
   inputmethod_handler_->browser_ = mock_browser.release();
-  inputmethod_handler_->UpdateTextFieldStatus();
+  inputmethod_handler_->UpdateTextFieldStatus(true, true);
   EXPECT_NE(inputmethod_handler_->browser_, nullptr);
 }
 
@@ -2950,7 +2981,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatus_003) {
   testing::Mock::AllowLeak(mock_browser.get());
   EXPECT_CALL(*mock_browser, GetHost()).WillOnce(testing::Return(nullptr));
   inputmethod_handler_->browser_ = mock_browser.release();
-  inputmethod_handler_->UpdateTextFieldStatus();
+  inputmethod_handler_->UpdateTextFieldStatus(true, true);
   EXPECT_NE(inputmethod_handler_->browser_, nullptr);
 }
 
@@ -2959,7 +2990,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatusHandlerOnUI_001) {
   CefRefPtr<MockCefBrowserHost> mockHost = new MockCefBrowserHost();
   testing::Mock::AllowLeak(mockHost.get());
   EXPECT_CALL(*mockHost, PostTaskToUIThread(testing::_)).Times(0);
-  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI();
+  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI(true, true);
 }
 
 TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatusHandlerOnUI_002) {
@@ -2970,7 +3001,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatusHandlerOnUI_002) {
   EXPECT_CALL(*mock_browser, GetHost()).WillOnce(testing::Return(mockHost));
   EXPECT_CALL(*mockHost, PostTaskToUIThread(testing::_)).Times(1);
   inputmethod_handler_->browser_ = mock_browser.release();
-  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI();
+  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI(true, true);
   EXPECT_NE(inputmethod_handler_->browser_, nullptr);
 }
 
@@ -2981,7 +3012,7 @@ TEST_F(NWebInputMethodHandlerTest, UpdateTextFieldStatusHandlerOnUI_003) {
   testing::Mock::AllowLeak(mock_browser.get());
   EXPECT_CALL(*mock_browser, GetHost()).WillOnce(testing::Return(nullptr));
   inputmethod_handler_->browser_ = mock_browser.release();
-  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI();
+  inputmethod_handler_->UpdateTextFieldStatusHandlerOnUI(true, true);
   EXPECT_NE(inputmethod_handler_->browser_, nullptr);
 }
 
@@ -3048,7 +3079,6 @@ TEST_F(NWebInputMethodHandlerTest, HandleSecurityLayer_003) {
 }
 
 TEST_F(NWebInputMethodHandlerTest, TextInputActionToIMFAdapter) {
-  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
   NWebInputMethodClient::InputInfo inputInfo;
   inputInfo.input_action = CEF_TEXT_INPUT_ACTION_DEFAULT;
   inputInfo.input_mode = CEF_TEXT_INPUT_MODE_DEFAULT;
@@ -3101,6 +3131,7 @@ TEST_F(NWebInputMethodHandlerTest, TextInputActionToIMFAdapter) {
   inputInfo.input_action = CEF_TEXT_INPUT_ACTION_SEND;
   result = inputmethod_handler_->TextInputActionToIMFAdapter(inputInfo);
   EXPECT_EQ(result, IMFAdapterEnterKeyType::SEND);
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
 }
 
 TEST_F(NWebInputMethodHandlerTest, TextInputTypeToIMFAdapter) {

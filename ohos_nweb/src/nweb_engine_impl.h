@@ -132,15 +132,25 @@ class NWebEngineImpl : public NWebEngine {
   void EnablePrivateNetworkAccess(bool enable) override;
   bool IsPrivateNetworkAccessEnabled() override;
   void SetWebDestroyMode(WebDestroyMode mode) override;
+  void SetScrollbarMode(ScrollbarMode mode) override;
 
 #if BUILDFLAG(ARKWEB_NETWORK_SERVICE)
   void SetSocketIdleTimeout(int32_t timeout) override;
 #endif
 
-#if BUILDFLAG(ARKWEB_SOFTKEYBOARD_AVOID)
-  void SetSoftKeyboardBehaviorMode(WebSoftKeyboardBehaviorMode mode) override;
+#if BUILDFLAG(ARKWEB_COOKIE)
+  void LibraryLoaded(std::shared_ptr<NWebEngineInitArgs> init_args,
+                     bool lazy) override;
 #endif
 
+#if BUILDFLAG(ARKWEB_DFX_DUMP)
+  std::string DumpArkWebInfo(const std::string& param) override;
+#endif
+
+#if BUILDFLAG(ARKWEB_USERAGENT)
+ 	void SetUserAgentClientHintsEnabled(bool enabled) override;
+ 	bool GetUserAgentClientHintsEnabled() override;
+#endif
  private:
   std::shared_ptr<NWebDataBase> nweb_data_base_ = nullptr;
   std::shared_ptr<NWebWebStorage> nweb_web_storage_ = nullptr;

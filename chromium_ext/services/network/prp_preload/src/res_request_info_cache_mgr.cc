@@ -49,6 +49,7 @@ bool ParseResReqInfoList(LinkedHashMap& info_list,
   for (auto info : info_list) {
     if (mode == PRPPreloadMode::PRELOAD &&
         (((info.second->preload_flag() & PRPP_FLAGS_VISIBLE) != PRPP_FLAGS_VISIBLE) ||
+        (info.second->cache_type() != PRRequestCacheType::FORCE_CACHE) ||
         (DoNotNeedToStore(info.second, page_index)))) {
       continue;
     }
@@ -84,9 +85,9 @@ bool ResReqPreloadInfoListToJson(const std::string& page_origin,
     dict.Set(PARAM_PAGE_ORIGIN, page_origin);
   }
   list.Append(std::move(dict));
-  need_store |= ParseResReqInfoList(preload_info_list, list, mode, 0, false);
-  need_store |= ParseResReqInfoList(load_prelaod_info_list, list, mode, page_index, false);
-  need_store |= ParseResReqInfoList(precommect_limit_list, list, mode, 0, true);
+  need_store = ParseResReqInfoList(preload_info_list, list, mode, 0, false) || need_store;
+  need_store = ParseResReqInfoList(load_prelaod_info_list, list, mode, page_index, false) || need_store;
+  need_store = ParseResReqInfoList(precommect_limit_list, list, mode, 0, true) || need_store;
 
   bool write_success = base::JSONWriter::Write(list, &entry_content);
   if (!write_success) {
@@ -215,7 +216,7 @@ void ResReqInfoCacheMgr::UpdateResRequestInfo(const std::shared_ptr<PRRequestInf
   } else {
     UpdatePreloadInfo(key, info);
   }
-  checkflush_immediately |= UpdatePreconnectInfo(info);
+  checkflush_immediately = UpdatePreconnectInfo(info) || checkflush_immediately;
   if (checkflush_immediately) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
       base::BindOnce(&ResReqInfoCacheMgr::CheckFlush, weak_factory_.GetWeakPtr(), checkflush_immediately));

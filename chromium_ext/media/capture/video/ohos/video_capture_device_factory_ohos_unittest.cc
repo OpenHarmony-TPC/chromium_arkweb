@@ -285,6 +285,14 @@ class OhosAdapterHelperMock : public OhosAdapterHelper {
               CreateNetEventAdapter,
               (),
               (override));
+    MOCK_METHOD(ColorPickerAdapter&,
+              GetColorPickerAdapter,
+              (),
+              (override));
+    MOCK_METHOD(HiAppeventAdapter&,
+              GetHiAppeventAdapterInstance,
+              (),
+              (override));
 };
 
 class VideoControlSupportAdapterMock : public VideoControlSupportAdapter {

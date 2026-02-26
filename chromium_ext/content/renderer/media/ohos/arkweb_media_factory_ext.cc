@@ -197,6 +197,8 @@ blink::WebNativeBridge* ArkwebMediaFactoryExt::CreateWebNativeBridge(
     std::unique_ptr<blink::WebVideoFrameSubmitter> submitter =
         CreateSubmitter(main_thread_compositor_task_runner, cc::LayerTreeSettings(),
             media_log.get(), render_frame_);
+    float device_scale_factor = render_frame_->GetDeviceScaleFactor();
+    submitter->SetDeviceScaleFactor(device_scale_factor);
     submitter->SetHasNativeLayer(true);
     auto vfc = std::make_unique<blink::VideoFrameCompositor>(
         video_frame_compositor_task_runner, std::move(submitter));
@@ -211,11 +213,18 @@ blink::WebNativeBridge* ArkwebMediaFactoryExt::CreateWebNativeBridge(
     return web_native_bridge;
 }
 
-media::RendererWebNativeDelegate* ArkwebMediaFactoryExt::GetWebNativeDelegate() {
+float ArkwebMediaFactoryExt::GetDeviceScaleFactor() {
+  if (render_frame_) {
+    return render_frame_->GetDeviceScaleFactor();
+  }
+  return 1.0f;
+}
+
+base::WeakPtr<media::RendererWebNativeDelegate> ArkwebMediaFactoryExt::GetWebNativeDelegate() {
   if (!web_native_delegate_) {
     web_native_delegate_ = new media::RendererWebNativeDelegate(render_frame_);
   }
-  return web_native_delegate_;
+  return web_native_delegate_->GetWeakPtr();
 }
 #endif
 

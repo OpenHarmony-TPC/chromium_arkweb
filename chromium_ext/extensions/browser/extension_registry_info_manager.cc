@@ -64,15 +64,21 @@ enum LoadPhase {
 };
  
 LoadPhase g_load_phase = kNormalLoad;
-std::set<std::string> g_initial_loaded_extensions;
+std::set<std::string>& g_initial_loaded_extensions() {
+  static base::NoDestructor<std::set<std::string>> initial_loaded_extensions;
+  return *initial_loaded_extensions;
+}
 
 constexpr char kExtensionsHost[] = "extensions";
 constexpr char kUrlSeparator[] = "://";
 constexpr int kTabIdNone = -1;
 constexpr float kBrowserIconScale = 2.0f;
 
-base::NoDestructor<std::shared_ptr<NWebExtensionManagerCallBack>>
-    g_extension_manager_listener(nullptr);
+std::shared_ptr<NWebExtensionManagerCallBack>& g_extension_manager_listener() {
+  static base::NoDestructor<std::shared_ptr<NWebExtensionManagerCallBack>>
+      extension_manager_listener(nullptr);
+  return *extension_manager_listener;
+}
 
 std::string GetTypeStr(extensions::MenuItem::Type type) {
   switch (type) {
@@ -358,6 +364,7 @@ ExtensionRegistryInfoManager::BrowserNotifier::BrowserNotifier(
     content::BrowserContext* browser_context,
     ExtensionRegistryInfoManager* info_manager)
     : extension_(extension),
+      extension_id_(extension.id()),
       browser_context_(browser_context),
       info_manager_(info_manager),
       action_icon_is_ready_(false),
@@ -397,6 +404,22 @@ ExtensionRegistryInfoManager::BrowserNotifier::~BrowserNotifier() {
 
 void ExtensionRegistryInfoManager::BrowserNotifier::HandleImageEvent(
     IconImage* icon_image) {
+  if (!IsExtensionValid() || !icon_image->is_valid()) {
+    LOG(INFO) << "extension has been unloaded";
+
+    if (g_load_phase != kNormalLoad) {
+      g_initial_loaded_extensions().erase(extension_id_);
+      if (g_load_phase == kEndInitialLoad &&
+          g_initial_loaded_extensions().empty()) {
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+        NWebExtensionManagerDispatcher::OnExtensionInitLoadEndCallBack();
+#endif
+        g_load_phase = kNormalLoad;
+      }
+    }
+    return;
+  }
+
   if (icon_image == action_icon_image()) {
     PopulateActionIcon(icon_image->image());
   } else if (icon_image == manifest_icon_image()) {
@@ -411,12 +434,12 @@ void ExtensionRegistryInfoManager::BrowserNotifier::NotifyIfReady() {
   if (!action_icon_is_ready_ || !manifest_icon_is_ready_) {
     return;
   }
-  LOG(INFO) << "BrowserNotifier ready to notify extension: " << extension_.id();
+  LOG(INFO) << "BrowserNotifier ready to notify extension: " << extension_id_;
   NotifyManagerExtensionLoaded();
 
   if (g_load_phase != kNormalLoad) {
-    g_initial_loaded_extensions.erase(extension_.id());
-    if (g_load_phase == kEndInitialLoad && g_initial_loaded_extensions.empty()) {
+    g_initial_loaded_extensions().erase(extension_id_);
+    if (g_load_phase == kEndInitialLoad && g_initial_loaded_extensions().empty()) {
 #if BUILDFLAG(ARKWEB_NWEB_EX)
       NWebExtensionManagerDispatcher::OnExtensionInitLoadEndCallBack();
 #endif
@@ -464,27 +487,36 @@ void ExtensionRegistryInfoManager::BrowserNotifier::PopulateAllSyncInfo() {
   if (!management_policy) {
     return;
   }
-  loaded_info_.info.extensionId = extension_.id();
+  loaded_info_.info.extensionId = extension_->id();
   loaded_info_.info.mustRemainInstalled =
-      management_policy->MustRemainInstalled(&extension_, nullptr);
+      management_policy->MustRemainInstalled(&extension_.get(), nullptr);
 
   loaded_info_.info.action =
-      info_manager_->GetExtensionActionInfo(extension_, kTabIdNone);
+      info_manager_->GetExtensionActionInfo(*extension_, kTabIdNone);
   loaded_info_.info.sidePanel =
-      info_manager_->GetExtensionSidePanelInfo(extension_, std::nullopt);
+      info_manager_->GetExtensionSidePanelInfo(*extension_, std::nullopt);
   loaded_info_.info.contextMenus =
-      info_manager_->GetAllExtensionContextMenus(extension_.id());
-  info_manager_->GetExtensionManifestInfo(extension_,
+      info_manager_->GetAllExtensionContextMenus(extension_->id());
+  info_manager_->GetExtensionManifestInfo(*extension_,
                                           loaded_info_.manifest_info);
   loaded_info_.is_incognito_enabled =
-      util::IsIncognitoEnabled(extension_.id(), browser_context_);
+      util::IsIncognitoEnabled(extension_->id(), browser_context_);
   loaded_info_.contextMenusV2 =
-      info_manager_->GetAllExtensionContextMenusV2(extension_.id());
+      info_manager_->GetAllExtensionContextMenusV2(extension_->id());
   loaded_info_.action_v2 =
-      info_manager_->GetExtensionActionInfoV2(extension_, kTabIdNone);
-  loaded_info_.install_time =
-      ExtensionPrefs::Get(browser_context_)->GetFirstInstallTime(extension_.id()).InMillisecondsFSinceUnixEpoch();
+      info_manager_->GetExtensionActionInfoV2(*extension_, kTabIdNone);
+  loaded_info_.install_time = ExtensionPrefs::Get(browser_context_)
+                                  ->GetFirstInstallTime(extension_->id())
+                                  .InMillisecondsFSinceUnixEpoch();
 #endif
+}
+
+bool ExtensionRegistryInfoManager::BrowserNotifier::IsExtensionValid() const {
+  ExtensionRegistry* registry = ExtensionRegistry::Get(browser_context_);
+  const Extension* extension =
+      registry ? registry->enabled_extensions().GetByID(extension_id_)
+               : nullptr;
+  return extension != nullptr;
 }
 
 void ExtensionRegistryInfoManager::BrowserNotifier::
@@ -661,6 +693,7 @@ void ExtensionRegistryInfoManager::GetExtensionManifestInfo(
       std::make_optional<ExtensionIncognitoMode>(GetExtensionIncognitoMode(&extension));
 #endif
   manifest.omnibox = GetManifestOmnibox(&extension);
+  manifest.short_name = extension.short_name();
 }
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
@@ -697,7 +730,7 @@ void ExtensionRegistryInfoManager::Loaded(const std::string& extension_id) {
   }
 
   if (g_load_phase == kStartInitialLoad) {
-    g_initial_loaded_extensions.insert(extension_id);
+    g_initial_loaded_extensions().insert(extension_id);
   }
 
   StartNotifyingExtensionLoaded(*extension);
@@ -739,64 +772,64 @@ void ExtensionRegistryInfoManager::OnExtensionUninstalled(content::BrowserContex
 void ExtensionRegistryInfoManager::RegisterWebExtensionManagerListener(
     std::shared_ptr<NWebExtensionManagerCallBack> web_extension_manager_listener) {
   LOG(INFO) << "ExtensionRegistryInfoManager::RegisterWebExtensionManagerListener";
-  *g_extension_manager_listener = web_extension_manager_listener;
+  g_extension_manager_listener() = web_extension_manager_listener;
 }
 
 // static
 void ExtensionRegistryInfoManager::UnRegisterWebExtensionManagerListener() {
   LOG(INFO) << "ExtensionRegistryInfoManager::UnRegisterWebExtensionManagerListener";
-  *g_extension_manager_listener = nullptr;
+  g_extension_manager_listener() = nullptr;
 }
 
 //static
 NO_SANITIZE("cfi-icall")
 void ExtensionRegistryInfoManager::OnExtensionLoadedCallBack(const WebExtensionInfo& loadedInfo) {
   LOG(INFO) << "ExtensionRegistryInfoManager::OnExtensionLoadedCallBack";
-  if (!(*g_extension_manager_listener)) {
+  if (!g_extension_manager_listener()) {
     LOG(ERROR) << "No web extension manager listener";
     return;
   }
 
-  if (!(*g_extension_manager_listener)->OnWebExtensionLoaded) {
+  if (!g_extension_manager_listener()->OnWebExtensionLoaded) {
     LOG(ERROR) << "No OnWebExtensionLoaded listener";
     return;
   }
 
-  (*g_extension_manager_listener)->OnWebExtensionLoaded(loadedInfo);
+  g_extension_manager_listener()->OnWebExtensionLoaded(loadedInfo);
 }
 
 //static
 NO_SANITIZE("cfi-icall")
 void ExtensionRegistryInfoManager::OnExtensionUnLoadedCallBack(const std::string& eid) {
   LOG(INFO) << "ExtensionRegistryInfoManager::OnExtensionUnLoadedCallBack";
-  if (!(*g_extension_manager_listener)) {
+  if (!g_extension_manager_listener()) {
     LOG(ERROR) << "No web extension manager listener";
     return;
   }
 
-  if (!(*g_extension_manager_listener)->OnWebExtensionUnLoaded) {
+  if (!g_extension_manager_listener()->OnWebExtensionUnLoaded) {
     LOG(ERROR) << "No OnWebExtensionUnLoaded listener";
     return;
   }
 
-  (*g_extension_manager_listener)->OnWebExtensionUnLoaded(eid);
+  g_extension_manager_listener()->OnWebExtensionUnLoaded(eid);
 }
 
 //static
 NO_SANITIZE("cfi-icall")
 void ExtensionRegistryInfoManager::OnExtensionOpenUrlCallBack(const std::string& url) {
   LOG(INFO) << "ExtensionRegistryInfoManager::OnExtensionOpenUrlCallBack";
-  if (!(*g_extension_manager_listener)) {
+  if (!g_extension_manager_listener()) {
     LOG(ERROR) << "No web extension manager listener";
     return;
   }
 
-  if (!(*g_extension_manager_listener)->OnWebExtensionOpenUrlFun) {
+  if (!g_extension_manager_listener()->OnWebExtensionOpenUrlFun) {
     LOG(ERROR) << "No OnWebExtensionOpenUrlFun listener";
     return;
   }
 
-  (*g_extension_manager_listener)->OnWebExtensionOpenUrlFun(url);
+  g_extension_manager_listener()->OnWebExtensionOpenUrlFun(url);
 }
 
 void ExtensionRegistryInfoManager::OnExtensionIconImageChanged(
@@ -864,7 +897,7 @@ void ExtensionRegistryInfoManager::StartInitialLoad() {
  
 void ExtensionRegistryInfoManager::StopInitialLoad() {
   g_load_phase = kEndInitialLoad;
-  if (g_initial_loaded_extensions.empty()) {
+  if (g_initial_loaded_extensions().empty()) {
 #if BUILDFLAG(ARKWEB_NWEB_EX)
     NWebExtensionManagerDispatcher::OnExtensionInitLoadEndCallBack();
 #endif

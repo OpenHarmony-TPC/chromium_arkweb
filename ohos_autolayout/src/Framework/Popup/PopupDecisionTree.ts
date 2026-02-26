@@ -20,8 +20,8 @@ export class PopupDecisionTree {
      * 检查中心弹窗是否含有与兄弟节点重叠的“绝对定位”关闭按钮
      * @returns {boolean} true 如果存在重叠的按钮, 否则 false
      */
-    private static hasOverlappingCloseButton(rootNode: HTMLElement, allNodes: HTMLElement[], popupInfo: PopupInfo): boolean {
-        const closeElements: HTMLElement[] = PopupDecisionTree.getCloseButtons(rootNode, allNodes) as HTMLElement[];
+    private static hasOverlappingCloseButton(allContentNodes: HTMLElement[], popupInfo: PopupInfo): boolean {
+        const closeElements: HTMLElement[] = PopupDecisionTree.getCloseButtons(popupInfo.root_node, allContentNodes) as HTMLElement[];
 
         // 如果没有关闭按钮，直接返回 false
         if (closeElements.length === 0) {
@@ -29,7 +29,7 @@ export class PopupDecisionTree {
             return false;
         }
 
-        const isAbsoluteFlags: boolean[] = PopupDecisionTree.isCloseElementAbsolute(closeElements, rootNode, popupInfo);
+        const isAbsoluteFlags: boolean[] = PopupDecisionTree.isCloseElementAbsolute(closeElements, popupInfo.root_node, popupInfo);
 
         const isOverlay = closeElements.some((element, index) => {
             // 修正了原始代码中可能存在的bug（index不会在循环中重置）
@@ -49,15 +49,23 @@ export class PopupDecisionTree {
     /**
      * 根据弹窗的视觉和结构属性（如位置、关闭按钮状态等），判断并归类弹窗的具体类型。
      *
-     * @param allNodes - 页面上所有相关节点的集合数组，用于上下文分析。
+     * @param allContentNodes - 页面上弹窗相关节点的集合数组，用于上下文分析。
      * @param popupInfo - 包含弹窗核心信息的对象，其中最重要的属性是 `root_node` (弹窗的根节点)。
      * @returns {PopupDecisionTreeType} - 返回一个 PopupDecisionTreeType 枚举值，表示该弹窗的最终分类（例如 Center, Bottom, Center_Button_Overlap 等）。
      */
-    public static judgePopupDecisionTreeType(allNodes: HTMLElement[], popupInfo: PopupInfo): PopupDecisionTreeType {
-        const rootNode = popupInfo.root_node;
-        
-        const isBottomPopup = PopupDecisionTree.isModalWin(allNodes, rootNode, popupInfo);
+    public static judgePopupDecisionTreeType(allContentNodes: HTMLElement[], popupInfo: PopupInfo): PopupDecisionTreeType {
+        const isInputPopup = PopupDecisionTree.isInputPopup(allContentNodes);
+        if (isInputPopup) {
+            Log.d('判定为可编辑弹窗', Tag.popupDecisionTree);
+            return PopupDecisionTreeType.Input;
+        }
 
+        const isPickerPopup = PopupDecisionTree.isTimePickerPopup(allContentNodes);
+        if (isPickerPopup) {
+            return PopupDecisionTreeType.Picker;
+        }
+        
+        const isBottomPopup = PopupDecisionTree.isModalWin(allContentNodes, popupInfo);
         if (isBottomPopup) {
             // @ts-ignore
             window.popWin = 'bottom';
@@ -69,7 +77,7 @@ export class PopupDecisionTree {
         window.popWin = 'center';
         Log.d('判定为中心弹窗', Tag.popupDecisionTree);
 
-        if (this.hasOverlappingCloseButton(rootNode, allNodes, popupInfo)) {
+        if (this.hasOverlappingCloseButton(allContentNodes, popupInfo)) {
             return PopupDecisionTreeType.Center_Button_Overlap;
         } else {
             return PopupDecisionTreeType.Center;
@@ -82,9 +90,9 @@ export class PopupDecisionTree {
      * @param {Element | null} el - 要搜索的根元素
      * @returns {Element | null} - 返回关闭按钮
      */
-    private static getCloseButtons(rootNode: HTMLElement, allNodes: HTMLElement[]): HTMLElement[] {
+    private static getCloseButtons(rootNode: HTMLElement, allContentNodes: HTMLElement[]): HTMLElement[] {
 
-        const tmpCloseButtons: HTMLElement[] = allNodes.filter(node => {
+        const tmpCloseButtons: HTMLElement[] = allContentNodes.filter(node => {
             if (!rootNode.contains(node)) {
                 return false;
             }
@@ -314,72 +322,187 @@ export class PopupDecisionTree {
     }
 
     /**
-     * 获取给定节点的最上层子节点（或节点集合）
-     * @param {HTMLElement} parentNode - 父节点
-     * @return {HTMLElement[]} - 最上层的子节点数组（可能多个并列）
+     * 检查一个弹窗是否包含一个“滚轮选择器”(Picker)。
+     *
+     * 检查三个核心特征：
+     * 1. 存在 'picker' 类名。
+     * 2. 存在一个具有统一内联高度子元素的列表。
+     * 3. 存在一个带有 'linear-gradient' 背景的元素。
+     *
+     *
+     * @param rootNode - 要检查的弹窗元素集合 (如 .a-view.ant-popup)。
+     * @returns {boolean} - 如果是，则返回 true。
      */
-    private static getTopmostChildren(parentNode: HTMLElement, popupInfo: PopupInfo): HTMLElement[] {
-        const children = Array.from(parentNode.children)
-        .filter(child => {
-            // 过滤掉不可见或未设置定位的元素
-            const style = window.getComputedStyle(child);
-            return style.display !== 'none' && 
-                style.visibility !== 'hidden' &&
-                child instanceof HTMLElement &&
-                // parseFloat(style.height) > 0 &&
-                // parseFloat(style.width) > 0 &&
-                parseFloat(style.opacity) === 1 &&
-                !Utils.isBackgroundSemiTransparent(style)
-        });
-    
-        if (children.length === 0) {
-            return [];
-        }
-        // 获取 mask 节点的 z-index
-        const maskStyle = window.getComputedStyle(popupInfo.mask_node);
-        let maskZIndex: string | number = maskStyle.zIndex;
-        if (popupInfo.popup_type === PopupType.C || popupInfo.popup_type === PopupType.A) {
-            maskZIndex = -1;
-        } else {
-            if (maskZIndex === 'auto') {
-                maskZIndex = 0; // auto 默认权重为 0
-            } else {
-                maskZIndex = parseInt(maskZIndex, 10);
-            }
-        }
-    
-        // 计算每个子节点的 z-index 权重
-        const weightedChildren = children.map(child => {
-            const style = window.getComputedStyle(child);
-            let zIndex: string|number = style.zIndex;
-        
-            // 处理 z-index: auto（按 DOM 顺序，后出现的权重更高）
-            if (zIndex === 'auto') {
-                zIndex = 0; // auto 默认权重为 0，但 DOM 顺序会影响最终比较
-            } else {
-                zIndex = parseInt(zIndex, 10);
-            }
-        
-            return { element: child as HTMLElement, zIndex: zIndex, domOrder: children.indexOf(child) };
-        });
-    
-        // 筛选出比 mask 节点 z-index 更大的节点（至少等于）
-        const filteredChildren = weightedChildren.filter(child => child.zIndex >= maskZIndex);
-    
-        // 按 z-index 降序 + DOM 顺序升序排序
-        filteredChildren.sort((a, b) => {
-            if (a.zIndex !== b.zIndex) {
-                return b.zIndex - a.zIndex; // z-index 大的在前
-            } else {
-                return b.domOrder - a.domOrder; // DOM 顺序靠后的在前
-            }
-        });
+    private static isTimePickerPopup(rootNode: HTMLElement[]): boolean {
+        // 初始化三个特征的“信号旗”
+        let hasPickerClass = false;
+        let hasUniformInlineHeight = false;
+        let hasLinearGradient = false;
 
-        // 提取元素
-        const topmostChildren = filteredChildren.map(child => child.element);
+        for (const element of Array.from(rootNode)) {
+            if (!(element instanceof HTMLElement)) {
+                continue;
+            }
+            
+            // 特征 1: 检查 'picker' 类名
+            if (!hasPickerClass) {
+                hasPickerClass = this.checkPickerClass(element);
+            }
 
-        Log.d(`topmostChildren 数量: ${topmostChildren.length}`, Tag.popupDecisionTree);
-        return topmostChildren;
+            // 特征 2: 检查统一内联高度的子元素
+            if (!hasUniformInlineHeight) {
+                // 我们检查 *当前元素* 的 *子元素* 是否满足条件
+                hasUniformInlineHeight = this.checkUniformHeight(element);
+            }
+
+            // 特征 3: 检查 'linear-gradient'
+            if (!hasLinearGradient) {
+                hasLinearGradient = this.checkLinearGradient(element);
+            }
+            
+            // 如果三个特征都已找到，立即停止遍历
+            if (hasPickerClass && hasUniformInlineHeight && hasLinearGradient) {
+                break; 
+            }
+        }
+
+        Log.d(
+            `检测结果: 'picker' 类名=${hasPickerClass}, 统一内联高度=${hasUniformInlineHeight}, linear-gradient=${hasLinearGradient}`,
+            Tag.popupDecisionTree
+        );
+
+        // 4. 最终裁决
+        return hasPickerClass && hasUniformInlineHeight && hasLinearGradient;
+    }
+
+    /**
+     * 判断弹窗内是否包含可编辑输入元素。
+     *
+     * @param contentNodes - 弹窗节点集合
+     * @returns {boolean} - 存在可见输入元素则返回 true
+     */
+    private static isInputPopup(rootNodes: HTMLElement[]): boolean {
+        return rootNodes.some(root => {
+            // 创建 TreeWalker
+            const walker = document.createTreeWalker(
+                root,
+                NodeFilter.SHOW_ELEMENT,
+                {
+                    acceptNode: (node: Node) => {
+                        const el = node as HTMLElement;
+                        
+                        // 1. 先判断是不是可能是输入框 (粗筛)
+                        const name = el.tagName.toLowerCase();
+                        const isCandidate = name === Constant.input || name === Constant.textarea;
+                        
+                        if (!isCandidate) {
+                            return NodeFilter.FILTER_SKIP;
+                        }
+    
+                        // 2. 精确判断是否为用户需要打字输入进行交互的编辑元素
+                        if (Utils.isUserTextEditable(el)) {
+                            return NodeFilter.FILTER_ACCEPT;
+                        }
+    
+                        return NodeFilter.FILTER_SKIP;
+                    }
+                }
+            );
+    
+            while (walker.nextNode()) {
+                return true;
+            }
+    
+            return false;
+        });
+    }
+
+    /**
+     * 【辅助函数】检查单个元素是否在其类名中包含 'picker'。
+     */
+    private static checkPickerClass(element: HTMLElement): boolean {
+        return typeof element.className === 'string' && element.className.includes('picker');
+    }
+
+    /**
+     * 【辅助函数】检查单个元素的 *直接子元素* 是否具有统一的实际高度（Computed Height）。
+     * * @param element 要检查的 HTML 元素。
+     * @returns 如果所有子元素的计算高度相同，则返回 true。
+     */
+    private static checkUniformHeight(element: HTMLElement): boolean {
+        const children = element.children;
+
+        // 1. 必须有至少2个子元素才能判断“统一性”
+        if (children.length < 2) {
+            return false;
+        }
+
+        // --- 获取第一个子元素的实际计算高度 ---
+        const firstChild = children[0] as HTMLElement;
+        
+        // 使用 clientHeight 获取元素的可见高度（包含 padding，不包含 border, margin, 滚动条）
+        // 或者使用 getBoundingClientRect().height / offsetHeight，但 clientHeight 适用于获取元素内容高度的常见场景。
+        const firstChildHeight = firstChild.clientHeight;
+
+        // 如果第一个子元素的高度为 0，通常说明元素未渲染或被隐藏，不认为是有效的统一高度。
+        if (firstChildHeight === 0) {
+            return false;
+        }
+
+        // 2. 遍历剩余子元素，并比较它们的实际高度
+        for (let i = 1; i < children.length; i++) {
+            const child = children[i] as HTMLElement;
+            const childHeight = child.clientHeight;
+
+            // 只要有一个子元素的实际高度与第一个子元素的高度不相等，就返回 false
+            if (childHeight !== firstChildHeight) {
+                return false;
+            }
+        }
+
+        // 3. 如果循环完成，说明所有子元素都具有统一的实际高度
+        return true;
+    }
+
+    /**
+     * 【辅助函数】检查单个元素的计算样式是否包含 'linear-gradient' 
+     * 并且该渐变中包含半透明颜色（用于判断是否实现了虚化/渐隐效果）。
+     * @param element 要检查的 HTML 元素。
+     * @returns 如果找到包含半透明颜色的 linear-gradient，则返回 true。
+     */
+    private static checkLinearGradient(element: HTMLElement): boolean {
+        const computedStyle = window.getComputedStyle(element);
+
+        // --- 增加对 mask-image 的检查 ---
+        const bgImage = computedStyle.backgroundImage;
+        const maskImage = computedStyle.maskImage;
+
+        // 将所有需要检查的属性值放入一个数组
+        const checkValues = [bgImage, maskImage].filter(Boolean) as string[];
+
+        for (const cssValue of checkValues) {
+            // 1. 快速失败：如果连 "linear-gradient" 字符串都没有，跳过
+            if (!cssValue.includes('linear-gradient')) {
+                continue;
+            }
+
+            // 2. 使用正则表达式提取所有可能的颜色值
+            const colorRegex = /(rgba?\(.*?\)|hsla?\(.*?\)|#\w{3,8}|transparent)/gi;
+            const foundColors = cssValue.match(colorRegex);
+
+            if (!foundColors) {
+                continue;
+            }
+
+            // 3. 检查是否有半透明颜色或 'transparent' 关键字
+            const isFaded = foundColors.some(color => Utils.isColorSemiTransparent(color));
+
+            if (isFaded) {
+                return true; // 只要在一个属性中找到，就返回 true
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -389,14 +512,14 @@ export class PopupDecisionTree {
      * 3、boxSizing == 'border-box'
      * 4、top可能有radius，bottom没有radius
      */
-    static isModalWin(allNodes: HTMLElement[], rootNode: HTMLElement, popupInfo: PopupInfo): boolean {
+    static isModalWin(allContentNodes: HTMLElement[], popupInfo: PopupInfo): boolean {
         // 查找作为主要内容的节点（z-index 最高）。
-        const contentNode = this.findMainContentNode(rootNode, popupInfo);
+        const contentNode = this.findMainContentNode(popupInfo);
         if (!contentNode) {
             return false;
         }
 
-        if (this.CheckCenterCloseButton(contentNode, allNodes)) {
+        if (this.CheckCenterCloseButton(contentNode, allContentNodes)) {
             return false;
         }
  
@@ -422,16 +545,16 @@ export class PopupDecisionTree {
      * 特征3：该关闭按钮大小有限制。
      * @returns {boolean} 
      */
-    private static CheckCenterCloseButton(rootNode: HTMLElement, allNodes: HTMLElement[]): boolean {
-        const closeElements = PopupDecisionTree.getCloseButtons(rootNode, allNodes) as HTMLElement[];
+    private static CheckCenterCloseButton(contentNode: HTMLElement, allContentNodes: HTMLElement[]): boolean {
+        const closeElements = PopupDecisionTree.getCloseButtons(contentNode, allContentNodes) as HTMLElement[];
         if (closeElements.length < 1) {
             return false;
         }
         
         const rect = closeElements[0].getBoundingClientRect();
-        const isTypicalCenterCloseButton = closeElements.length === 1 
-                                        && rect.height < window.innerHeight * Constant.maxCloseButtonSizeRatio 
-                                        && rect.bottom > window.innerHeight * Constant.bottomCloseButtonRatio;                               
+        const isTypicalCenterCloseButton = closeElements.length === 1 && 
+            rect.height < window.innerHeight * Constant.maxCloseButtonSizeRatio &&
+            rect.bottom > window.innerHeight * Constant.bottomCloseButtonRatio;                               
         return isTypicalCenterCloseButton; 
     }
 
@@ -472,11 +595,11 @@ export class PopupDecisionTree {
      * 在 B 类型弹窗的子节点中，根据 z-index 找到作为“前景内容”的节点。
      * @returns {HTMLElement | null} 返回找到的内容节点，如果找不到或存在多个 z-index 最高的节点，则返回 null。
      */
-    private static findMainContentNode(rootNode: HTMLElement, popupInfo: PopupInfo): HTMLElement | null {
+    private static findMainContentNode(popupInfo: PopupInfo): HTMLElement | null {
         // 找到作为直接子节点的 mask 元素
         let directMaskChild = popupInfo.mask_node;
         if (popupInfo.popup_type === PopupType.B) {
-            while (directMaskChild.parentElement !== rootNode) {
+            while (directMaskChild.parentElement !== popupInfo.root_node) {
                 directMaskChild = directMaskChild.parentElement!;
                 if (!directMaskChild) {
                     return null; // 如果找不到，则结构异常
@@ -485,7 +608,7 @@ export class PopupDecisionTree {
         }
 
         // 过滤掉 mask，剩下的就是内容节点
-        const contentNodes = Array.from(rootNode.children).filter(node => node !== directMaskChild) as HTMLElement[];
+        const contentNodes = Array.from(popupInfo.root_node.children).filter(node => node !== directMaskChild) as HTMLElement[];
 
         if (contentNodes.length === 0) {
             return null;
@@ -584,10 +707,10 @@ export class PopupDecisionTree {
     static specialBottomCondition(rootNode: HTMLElement, contentNode: HTMLElement): boolean {
         const style = window.getComputedStyle(contentNode);
         const rootStyle = window.getComputedStyle(rootNode);
-        return (style.flexDirection === 'column' && (style.justifyContent === 'flex-end' || style.justifyContent === 'end'))
-               || (style.flexDirection === 'row' && (style.alignItems === 'flex-end' || style.alignItems === 'end')) 
-               || (rootStyle.flexDirection === 'column' && (rootStyle.justifyContent === 'flex-end' || rootStyle.justifyContent === 'end')) 
-               || (rootStyle.flexDirection === 'row' && (rootStyle.alignItems === 'flex-end' || rootStyle.alignItems === 'end'))
+        return (style.flexDirection === 'column' && (style.justifyContent === 'flex-end' || style.justifyContent === 'end')) ||
+            (style.flexDirection === 'row' && (style.alignItems === 'flex-end' || style.alignItems === 'end')) ||
+            (rootStyle.flexDirection === 'column' && (rootStyle.justifyContent === 'flex-end' || rootStyle.justifyContent === 'end')) ||
+            (rootStyle.flexDirection === 'row' && (rootStyle.alignItems === 'flex-end' || rootStyle.alignItems === 'end'))
     }
 
     /**
@@ -597,8 +720,8 @@ export class PopupDecisionTree {
      */
     static specialCenterCondition(contentNode: HTMLElement): boolean {
         const style = window.getComputedStyle(contentNode);
-        return (style.flexDirection === 'row' && style.alignItems === 'center')
-               || (style.flexDirection === 'column' && style.justifyContent === 'center');
+        return (style.flexDirection === 'row' && style.alignItems === 'center') ||
+            (style.flexDirection === 'column' && style.justifyContent === 'center');
     }
 
     // 校验满宽条件，允许存在偏差discrepancy
@@ -612,9 +735,9 @@ export class PopupDecisionTree {
         }
         
         // boxSizing = content-box
-        if (isNaN(parseFloat(paddingLeft)) || isNaN(parseFloat(paddingRight)) 
-            || isNaN(parseFloat(borderLeft)) || isNaN(parseFloat(borderRight)) 
-            || boxSizing !== 'content-box') {
+        if (isNaN(parseFloat(paddingLeft)) || isNaN(parseFloat(paddingRight)) ||
+            isNaN(parseFloat(borderLeft)) || isNaN(parseFloat(borderRight)) ||
+            boxSizing !== 'content-box') {
             return false;
         }
         return Math.abs(parseFloat(width) + parseFloat(paddingLeft) + parseFloat(paddingRight) - window.innerWidth) < discrepancy;

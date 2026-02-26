@@ -2,9 +2,11 @@
 // Use of this source code is governed by a BSD-style license that
 // can be found in the LICENSE file.
 
+#include "base/no_destructor.h"
 #include "arkweb/chromium_ext/content/common/arkweb_user_agent_ext.h"
 
 #if !defined(COMPONENT_BUILD)
+#include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "cef/ohos_cef_ext/libcef/browser/useragent/ua_push_config.h"
 #endif
 namespace content {
@@ -12,20 +14,27 @@ namespace content {
 #if BUILDFLAG(ARKWEB_USERAGENT)
 #if BUILDFLAG(ARKWEB_TEST)
 std::atomic<bool> is_compatible_type_setted{false};
-static std::string compatible_device_type;
+std::string& g_compatible_device_type() {
+  static base::NoDestructor<std::string> compatible_device_type;
+  return *compatible_device_type;
+}
 void SetArkwebUserAgentExtStateForTest(bool is_setted) {
   is_compatible_type_setted.store(is_setted, std::memory_order_relaxed);
 }
 
 void ResetArkwebUserAgentExtStateForTest() {
   SetArkwebUserAgentExtStateForTest(false);
-  compatible_device_type.clear();
+  g_compatible_device_type().clear();
 }
 #else
 namespace {
 std::atomic<bool> is_compatible_type_setted{false};
-static std::string compatible_device_type;
+std::string& g_compatible_device_type() {
+  static base::NoDestructor<std::string> compatible_device_type;
+  return *compatible_device_type;
+}
 }  // namespace
+
 #endif
 
 std::string GetDistVersion() {
@@ -68,17 +77,17 @@ std::string GetOhosFullname() {
   }
 
   if (!is_compatible_type_setted) {
-    compatible_device_type = base::ohos::CompatibleDeviceType();
+    g_compatible_device_type() = base::ohos::CompatibleDeviceType();
     is_compatible_type_setted = true;
   }
 
-  if (!compatible_device_type.empty()) {
-    if (compatible_device_type == "Phone" || compatible_device_type == "PC" ||
-        compatible_device_type == "Tablet") {
-      LOG(DEBUG) << "compatible device type is: " << compatible_device_type;
-      device_type_string = compatible_device_type;
+  if (!g_compatible_device_type().empty()) {
+    if (g_compatible_device_type() == "Phone" || g_compatible_device_type() == "PC" ||
+        g_compatible_device_type() == "Tablet") {
+      LOG(DEBUG) << "compatible device type is: " << g_compatible_device_type();
+      device_type_string = g_compatible_device_type();
     } else {
-      LOG(DEBUG) << "unknown compatible device type: " << compatible_device_type;
+      LOG(DEBUG) << "unknown compatible device type: " << g_compatible_device_type();
     }
   }
 
@@ -117,7 +126,7 @@ void SetProductString(std::string& user_agent) {
   std::string product_string = "";
 
   if (!is_compatible_type_setted) {
-    compatible_device_type = base::ohos::CompatibleDeviceType();
+    g_compatible_device_type() = base::ohos::CompatibleDeviceType();
     is_compatible_type_setted = true;
   }
 
@@ -125,13 +134,33 @@ void SetProductString(std::string& user_agent) {
   if (base::ohos::IsMobileDevice()) {
     product_string += " Mobile";
   } else if (base::ohos::IsTabletDevice() &&
-             (compatible_device_type == "Phone")) {
+             (g_compatible_device_type() == "Phone")) {
     product_string += " Mobile";
-  } else if (base::ohos::IsPcDevice() && (compatible_device_type == "Phone")) {
+  } else if (base::ohos::IsPcDevice() && (g_compatible_device_type() == "Phone")) {
     product_string += " Mobile";
   }
 
   base::StringAppendF(&user_agent, "%s", product_string.c_str());
+}
+
+void UpdateHighEntropyCh(blink::UserAgentMetadata& metadata) {
+  metadata.architecture = "";
+  metadata.bitness = base::ohos::IsPcDevice() ? base::ohos::kBitness64 : "";
+  metadata.full_version = "";
+  metadata.form_factors.clear();
+  metadata.form_factors = {base::ohos::GetDeviceTypeString()};
+  metadata.model =
+      base::ohos::IsMobileDevice() ? base::ohos::GetProductModel() : "";
+  metadata.platform_version = base::ohos::GetOSDistVersion();
+  metadata.brand_full_version_list.emplace_back(base::ohos::kWebName,
+                                                ARKWEB_VERSION);
+}
+ 
+void UpdateLowEntropyCh(blink::UserAgentMetadata& metadata) {
+  metadata.brand_version_list.emplace_back(base::ohos::kWebName,
+                                           GetDistVersion());
+  metadata.mobile = base::ohos::IsMobileDevice();
+  metadata.platform = base::ohos::kPlatformName;
 }
 #endif  // ARKWEB_USERAGENT
 

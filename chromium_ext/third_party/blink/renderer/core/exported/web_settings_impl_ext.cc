@@ -37,6 +37,20 @@ void WebSettingsImplExt::SetScrollBarColor(uint32_t value) {
 }
 #endif  // ARKWEB_SCROLLBAR
 
+#if BUILDFLAG(ARKWEB_AI)
+void WebSettingsImplExt::SetImageAnalyzerEnabled(bool enabled) {
+  settings_->SetImageAnalyzerEnabled(enabled);
+}
+
+void WebSettingsImplExt::SetArkwebAgentEnabled(bool enabled) {
+  settings_->SetArkwebAgentEnabled(enabled);
+}
+
+void WebSettingsImplExt::SetAgentNeedHighlight(bool enabled) {
+  settings_->SetAgentNeedHighlight(enabled);
+}
+#endif
+
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
 void WebSettingsImplExt::SetVerticalHideScrollbars(bool enabled) {
   settings_->SetVerticalHideScrollbars(enabled);
@@ -183,6 +197,25 @@ double WebSettingsImplExt::GetBorderRadiusBottomRight()
 }
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
 
+#if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+void WebSettingsImplExt::SetEnableAutoFill(bool enable)
+{
+  settings_->SetEnableAutoFill(enable);
+}
+
+bool  WebSettingsImplExt::GetEnableAutoFill()
+{
+  return settings_->GetEnableAutoFill();
+}
+#endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+
+#if BUILDFLAG(ARKWEB_CLIPBOARD)
+void WebSettingsImplExt::SetClipboardSitePermissionEnabled(bool enable)
+{
+  settings_->SetClipboardSitePermissionEnabled(enable);
+}
+#endif  // BUILDFLAG(ARKWEB_CLIPBOARD)
+
 #if BUILDFLAG(ARKWEB_MENU)
 void WebSettingsImplExt::SetTouchHandleExistState(bool touchHandleExist)
 {
@@ -204,6 +237,12 @@ bool WebSettingsImplExt::IsViewportScale()
   return settings_->IsViewportScale();
 }
 #endif  // BUILDFLAG(ARKWEB_MENU)
+
+#if BUILDFLAG(ARKWEB_MEDIA_CAST)
+void WebSettingsImplExt::SetCastEnabled(bool enabled) {
+  settings_->SetCastEnabled(enabled);
+}
+#endif
 // LCOV_EXCL_STOP
 
 }  // namespace blink

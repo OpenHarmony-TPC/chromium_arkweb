@@ -25,6 +25,7 @@
 #include "third_party/blink/public/web/web_frame_content_dumper.h"
 #include "third_party/blink/public/web/web_language_detection_details.h"
 #include "third_party/blink/public/web/web_local_frame.h"
+#include "third_party/blink/public/web/web_local_frame_client.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/events/web_input_event_conversion.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
@@ -148,6 +149,17 @@ void WebFrameWidgetImplExt::SelectRangeV2(const gfx::Point& position,
   focused_frame->SelectRangeV2(widget_base_->DIPsToRoundedBlinkSpace(position),
                                is_base);
 }
+
+void WebFrameWidgetImplExt::NotifySelectionRangeEmpty(
+    blink::WebRange range,
+    WebLocalFrame* focused_frame) {
+  if (range.IsNull()) {
+    if (focused_frame && focused_frame->Client()) {
+      focused_frame->Client()->DidChangeSelection(
+          true, blink::SyncCondition::kNotForced);
+    }
+  }
+}
 #endif
 
 #if BUILDFLAG(ARKWEB_DRAG_DROP)
@@ -170,6 +182,13 @@ gfx::Vector2dF WebFrameWidgetImplExt::GetOverScrollOffset() {
   }
   return widget_base_->utils()->GetOverScrollOffset();
 }
+
+void WebFrameWidgetImplExt::OnOverScrollOffsetChanged(float offset_x,
+                                                      float offset_y) {
+  if (local_root_ && local_root_->GetFrame()) {
+    local_root_->GetFrame()->OnOverScrollOffsetChanged(offset_x, offset_y);
+  }
+}
 #endif
 // LCOV_EXCL_STOP
 
@@ -181,6 +200,10 @@ void WebFrameWidgetImplExt::CreateOverlay(
     GetAbsImageRectCallback get_rect_callback,
     OnTextSelectedCallback callback,
     OnDestroyImageAnalyzerOverlayCallback destroy_callback) {
+  if (!ForTopMostMainFrame()) {
+    LOG(WARNING) << "CreateOverlay stopped: not top most main frame.";
+    return;
+  }
   get_rect_callback_ = std::move(get_rect_callback);
   on_text_selected_callback_ = std::move(callback);
   on_destroy_image_overlay_callback_ = std::move(destroy_callback);

@@ -37,7 +37,7 @@ public:
 
 class TestConnection : public DirectPtraceConnection {
 public:
-    TestConnection(int pid) : pid_(pid) {}
+    explicit TestConnection(int pid) : pid_(pid) {}
     pid_t GetProcessID() override { return pid_; }
     bool ReadFileContents(const base::FilePath& path, std::string* contents) override {
         *contents = "test maps content";
@@ -51,6 +51,7 @@ TEST_F(OhosDfxDataSourceTest, OhosDfxDataSourceTest001) {
     const char* test_data = "test_data";
     size_t data_size = strlen(test_data);
     OhosDfxDataSource source(KMinidumpStreamTypeOhosDfxInfo, test_data, data_size);
+
     TestDelegate delegate{};
     source.ReadStreamData(&delegate);
     source.ReadStreamData(nullptr);

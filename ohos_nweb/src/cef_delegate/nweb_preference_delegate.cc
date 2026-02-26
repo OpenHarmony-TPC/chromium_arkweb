@@ -40,6 +40,10 @@
 #include "ohos_nweb/src/cef_delegate/nweb_application.h"
 #include "arkweb/chromium_ext/base/feature_list_utils.h"
 
+#if BUILDFLAG(ARKWEB_CLIPBOARD)
+#include "nweb_impl.h"
+#endif  // BUILDFLAG(ARKWEB_CLIPBOARD)
+
 namespace OHOS::NWeb {
 
 constexpr int fontMinSize = 1;
@@ -199,10 +203,21 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
   browser_settings.border_radius_bottom_left = border_radius_bottom_left_;
   browser_settings.border_radius_bottom_right = border_radius_bottom_right_;
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
+#if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+  browser_settings.is_autofill_enabled = is_autofill_enabled_;
+#endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 #if BUILDFLAG(ARKWEB_MENU)
   browser_settings.touch_handle_exist = touch_handle_exist_;
   browser_settings.viewport_scale = viewport_scale_;
 #endif  // BUILDFLAG(ARKWEB_MENU)
+#if BUILDFLAG(ARKWEB_AI)
+  browser_settings.image_analyzer_enabled =
+      GetImageAnalyzerEnabled() ? STATE_ENABLED : STATE_DISABLED;
+  browser_settings.arkweb_agent_enabled =
+      GetArkwebAgentEnabled() ? STATE_ENABLED : STATE_DISABLED;
+  browser_settings.agent_need_highlight =
+      GetAgentNeedHighlight() ? STATE_ENABLED : STATE_DISABLED;
+#endif
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   browser_settings.hide_horizontal_scrollbars =
       !IsHorizontalScrollBarAccess() ? STATE_ENABLED : STATE_DISABLED;
@@ -237,6 +252,9 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
 #if BUILDFLAG(ARKWEB_COPY_OPTION)
   browser_settings.copy_option = static_cast<int>(GetCopyOptionMode());
 #endif  // BUILDFLAG(ARKWEB_COPY_OPTION)
+#if BUILDFLAG(ARKWEB_CLIPBOARD)
+  browser_settings.clipboard_site_permission_enabled = OHOS::NWeb::NWebImpl::IsClipboardSitePermissionEnabled();
+#endif  // BUILDFLAG(ARKWEB_CLIPBOARD)
 #if BUILDFLAG(ARKWEB_SCROLLBAR)
   browser_settings.scrollbar_color = GetScrollBarColor();
 #endif  // ARKWEB_SCROLLBAR
@@ -283,6 +301,11 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
   browser_settings.delay_for_background_tab_freezing =
       GetDelayDurationForBackgroundTabFreezing();
 #endif
+
+#if BUILDFLAG(ARKWEB_MEDIA_CAST)
+  browser_settings.cast_enabled =
+      GetCastEnabled() ? STATE_ENABLED : STATE_DISABLED;
+#endif  // ARKWEB_MEDIA_CAST
 
 #if BUILDFLAG(ARKWEB_MEDIA_NETWORK_TRAFFIC_PROMPT)
   browser_settings.enable_media_network_traffic_prompt =
@@ -379,13 +402,25 @@ void NWebPreferenceDelegate::SetBorderRadiusFromWeb(
     double borderRadiusBottomLeft,
     double borderRadiusBottomRight)
 {
-  border_radius_top_left_ = borderRadiusTopLeft;
-  border_radius_top_right_ = borderRadiusTopRight;
-  border_radius_bottom_left_ = borderRadiusBottomLeft;
-  border_radius_bottom_right_ = borderRadiusBottomRight;
-  WebPreferencesChanged();
+  if ((border_radius_top_left_ != borderRadiusTopLeft) ||
+      (border_radius_top_right_ != borderRadiusTopRight) ||
+      (border_radius_bottom_left_ != borderRadiusBottomLeft) ||
+      (border_radius_bottom_right_ != borderRadiusBottomRight)) {
+    border_radius_top_left_ = borderRadiusTopLeft;
+    border_radius_top_right_ = borderRadiusTopRight;
+    border_radius_bottom_left_ = borderRadiusBottomLeft;
+    border_radius_bottom_right_ = borderRadiusBottomRight;
+    WebPreferencesChanged();
+  }
 }
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
+
+#if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+void NWebPreferenceDelegate::SetEnableAutoFill(bool enable) {
+  is_autofill_enabled_ = enable;
+  WebPreferencesChanged();
+}
+#endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 
 #if BUILDFLAG(ARKWEB_MENU)
 void NWebPreferenceDelegate::SetTouchHandleExistState(bool touchHandleExist) {
@@ -400,11 +435,23 @@ void NWebPreferenceDelegate::SetViewportScaleState(bool viewportScale) {
 #endif  // BUILDFLAG(ARKWEB_MENU)
 
 void NWebPreferenceDelegate::PutForceDarkModeEnabled(int forceDark) {
+  int nweb_id = -1;
+  if (browser_.get() && browser_->GetHost()) {
+    nweb_id = browser_->GetHost()->GetNWebId();
+  }
+  LOG(INFO) << "NWebPreferenceDelegate::PutForceDarkModeEnabled nweb_id: " << nweb_id
+            << ", forceDark: " << forceDark;
   force_dark_mode_enabled_ = forceDark;
   WebPreferencesChanged();
 }
 
 void NWebPreferenceDelegate::PutDarkSchemeEnabled(int darkScheme) {
+  int nweb_id = -1;
+  if (browser_.get() && browser_->GetHost()) {
+    nweb_id = browser_->GetHost()->GetNWebId();
+  }
+  LOG(INFO) << "NWebPreferenceDelegate::PutDarkSchemeEnabled nweb_id: " << nweb_id
+            << ", darkScheme: " << darkScheme;
   dark_prefer_color_scheme_enabled_ = darkScheme;
   WebPreferencesChanged();
 }
@@ -770,6 +817,35 @@ bool NWebPreferenceDelegate::IsMultiWindowAccess() {
   return multiWindow_access_;
 }
 
+#if BUILDFLAG(ARKWEB_AI)
+void NWebPreferenceDelegate::PutImageAnalyzerEnabled(bool enabled) {
+  image_analyzer_enabled_ = enabled;
+  WebPreferencesChanged();
+}
+
+bool NWebPreferenceDelegate::GetImageAnalyzerEnabled() {
+  return image_analyzer_enabled_;
+}
+
+void NWebPreferenceDelegate::PutArkwebAgentEnabled(bool enabled) {
+  arkweb_agent_enabled_ = enabled;
+  WebPreferencesChanged();
+}
+
+bool NWebPreferenceDelegate::GetArkwebAgentEnabled() {
+  return arkweb_agent_enabled_;
+}
+
+void NWebPreferenceDelegate::PutAgentNeedHighlight(bool enabled) {
+  agent_need_highlight_ = enabled;
+  WebPreferencesChanged();
+}
+
+bool NWebPreferenceDelegate::GetAgentNeedHighlight() {
+  return agent_need_highlight_;
+}
+#endif
+
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
 bool NWebPreferenceDelegate::IsHorizontalScrollBarAccess() {
   return horizontal_scrollBar_access_;
@@ -812,6 +888,7 @@ int NWebPreferenceDelegate::GetBlurEnable() {
 }
 
 void NWebPreferenceDelegate::SetScrollable(bool enable) {
+  LOG(INFO) << "SetScrollable enable:" << enable;
   scroll_enabled_ = enable;
   WebPreferencesChanged();
   if (!(browser_.get()) || !(browser_->GetHost())) {
@@ -823,6 +900,8 @@ void NWebPreferenceDelegate::SetScrollable(bool enable) {
 }
 
 void NWebPreferenceDelegate::SetScrollable(bool enable, int32_t scrollType) {
+  LOG(INFO) << "SetScrollable enable:" << enable
+            << " scrollType:" << scrollType;
   scroll_enabled_ = enable;
   setting_scroll_enabled_ = enable;
   if (scrollType == static_cast<int32_t>(WebScrollType::UNKNOWN)) {
@@ -894,8 +973,15 @@ bool NWebPreferenceDelegate::IsEnableCustomVideoPlayer() {
   return std::get<0>(native_video_player_config_);
 }
 #endif
+
 #if BUILDFLAG(ARKWEB_VIEWPORT)
 void NWebPreferenceDelegate::SetViewportEnable(bool enable) {
+  int nweb_id = -1;
+  if (browser_.get() && browser_->GetHost()) {
+    nweb_id = browser_->GetHost()->GetNWebId();
+  }
+  LOG(INFO) << "NWebPreferenceDelegate::SetViewportEnable nweb_id: " << nweb_id
+            << ", metaViewport: " << enable;
   viewport_enabled_ = enable;
   WebPreferencesChanged();
 }
@@ -1060,13 +1146,19 @@ void NWebPreferenceDelegate::PutJavaScriptOnDocumentStart(
 
 void NWebPreferenceDelegate::PutJavaScriptOnDocumentStartByOrder(
     const ScriptItems& scriptItems,
+    const ScriptRegexItems& scriptRegexItems,
     const ScriptItemsByOrder& scriptItemsByOrder) {
   script_items_start_ = scriptItems;
+  script_regex_items_start_ = scriptRegexItems;
   script_items_start_by_order_ = scriptItemsByOrder;
 }
 
 ScriptItems NWebPreferenceDelegate::GetJavaScriptOnDocumentStart() {
   return script_items_start_;
+}
+
+ScriptRegexItems NWebPreferenceDelegate::GetJavaScriptRegexItemsOnDocumentStart() {
+  return script_regex_items_start_;
 }
 
 ScriptItemsByOrder
@@ -1081,13 +1173,19 @@ void NWebPreferenceDelegate::PutJavaScriptOnDocumentEnd(
 
 void NWebPreferenceDelegate::PutJavaScriptOnDocumentEndByOrder(
     const ScriptItems& scriptItems,
+    const ScriptRegexItems& scriptRegexItems,
     const ScriptItemsByOrder& scriptItemsByOrder) {
   script_items_end_ = scriptItems;
+  script_regex_items_end_ = scriptRegexItems;
   script_items_end_by_order_ = scriptItemsByOrder;
 }
 
 ScriptItems NWebPreferenceDelegate::GetJavaScriptOnDocumentEnd() {
   return script_items_end_;
+}
+
+ScriptRegexItems NWebPreferenceDelegate::GetJavaScriptRegexItemsOnDocumentEnd() {
+  return script_regex_items_end_;
 }
 
 ScriptItemsByOrder NWebPreferenceDelegate::GetJavaScriptOnDocumentEndByOrder() {
@@ -1101,13 +1199,19 @@ void NWebPreferenceDelegate::PutJavaScriptOnHeadReady(
 
 void NWebPreferenceDelegate::PutJavaScriptOnHeadReadyByOrder(
     const ScriptItems& scriptItems,
+    const ScriptRegexItems& scriptRegexItems,
     const ScriptItemsByOrder& scriptItemsByOrder) {
   script_items_head_ready_ = scriptItems;
+  script_regex_items_head_ready_ = scriptRegexItems;
   script_items_head_ready_by_order_ = scriptItemsByOrder;
 }
 
 ScriptItems NWebPreferenceDelegate::GetJavaScriptOnHeadReady() {
   return script_items_head_ready_;
+}
+
+ScriptRegexItems NWebPreferenceDelegate::GetJavaScriptRegexItemsOnHeadReady() {
+  return script_regex_items_head_ready_;
 }
 
 ScriptItemsByOrder NWebPreferenceDelegate::GetJavaScriptOnHeadReadyByOrder() {
@@ -1212,6 +1316,16 @@ void NWebPreferenceDelegate::SetAutofillCallback(
     CefRefPtr<CefWebMessageReceiver> callback) {
   autofill_callback_ = callback;
 }
+
+std::shared_ptr<NWebVaultPlainTextCallback> NWebPreferenceDelegate::GetVaultPlainTextCallback() {
+  return vault_plain_text_callback_;
+}
+
+void NWebPreferenceDelegate::PutVaultPlainTextCallback(
+    std::shared_ptr<NWebVaultPlainTextCallback> callback) {
+  vault_plain_text_callback_ = callback;
+}
+
 #endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 
 #if BUILDFLAG(ARKWEB_MEDIA_AVSESSION)
@@ -1223,8 +1337,24 @@ void NWebPreferenceDelegate::PutWebMediaAVSessionEnabled(bool enable) {
   LOG(INFO) << "NWebPreferenceDelegate::PutWebMediaAVSessionEnabled enable:"
             << enable;
   browser_->GetHost()->PutWebMediaAVSessionEnabled(enable);
+
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+  auto currentProcess = base::CommandLine::ForCurrentProcess();
+  if (currentProcess && !currentProcess->HasSwitch(::switches::kEnableMediaAvsession)) {
+    cast_enabled_ = true;
+  }
+#endif // ARKWEB_NWEB_EX
+  cast_enabled_ = cast_enabled_ && enable;
+  LOG(INFO) << "NWebPreferenceDelegate::PutWebMediaAVSessionEnabled cast_enabled_:"
+            << cast_enabled_;
 }
 #endif  // ARKWEB_MEDIA_AVSESSION
+
+#if BUILDFLAG(ARKWEB_MEDIA_CAST)
+  bool NWebPreferenceDelegate::GetCastEnabled() {
+    return cast_enabled_;
+  }
+#endif  // ARKWEB_MEDIA_CAST
 
 #if BUILDFLAG(ARKWEB_ERROR_PAGE)
 void NWebPreferenceDelegate::PutErrorPageEnabled(bool enable) {

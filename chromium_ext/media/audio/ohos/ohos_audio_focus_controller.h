@@ -7,13 +7,6 @@
 
 #include "media/base/audio_parameters.h"
 #include "content/browser/media/session/media_session_impl.h"
-#if BUILDFLAG(ARKWEB_TEST)
-#undef private
-#endif  // ARKWEB_TEST
-#include "content/browser/web_contents/web_contents_impl.h"
-#if BUILDFLAG(ARKWEB_TEST)
-#define private public
-#endif  // ARKWEB_TEST
 #include "content/public/browser/web_contents.h"
 
 namespace media {
@@ -51,10 +44,7 @@ public:
 
   static bool GetMediaPlayerMuteState(const AudioParameters& parameters);
 
-  // Suspend other Avplayer and OhosAudioOutputStream playback.
-  static void SuspendOtherPlaybacks(const content::WebContentsImpl* webContentsImpl);
-
-  static void SuspendOtherPlaybacks(const AudioParameters& params);
+  static bool IsWebContentCurrentlyAudible(const AudioParameters& parameters);
 private:
   // OHOSAudioOutputStream mediaSession State
   static bool CheckActiveOnUIThread(const AudioParameters& params);
@@ -83,9 +73,7 @@ private:
 
   static bool CheckGetMediaPlayerMuteStateOnUIThread(const AudioParameters& params);
 
-  static void CheckSuspendOtherPlaybacksUIThread(const content::WebContentsImpl* webContentsImpl);
-
-  static void CheckSuspendOtherPlaybacksUIThread(const AudioParameters& params);
+  static bool IsWebContentCurrentlyAudibleOnUIThread(const AudioParameters& params);
 };
 
 } // media

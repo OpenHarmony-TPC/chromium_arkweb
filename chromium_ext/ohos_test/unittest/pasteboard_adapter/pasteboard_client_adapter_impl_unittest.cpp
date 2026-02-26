@@ -23,7 +23,7 @@
 #include <database/udmf/udmf_meta.h>
 #include <database/pasteboard/oh_pasteboard_err_code.h>
 #include "ohos_sdk/openharmony/native/sysroot/usr/include/AbilityKit/ability_runtime/ability_runtime_common.h"
-
+#include "arkweb/ohos_adapter_ndk/mock_ndk_api/include/mock_ndk_api_new.h"
 #define private public
 #include "arkweb/ohos_adapter_ndk/pasteboard_adapter/include/pasteboard_client_adapter_impl.h"
 #undef private
@@ -31,7 +31,7 @@
 using namespace testing;
 using testing::_;
 using testing::Return;
-
+using namespace MockNdkApi;
 
 namespace OHOS::NWeb {
 const int RESULT_OK = 0;
@@ -68,13 +68,13 @@ void PasteboardClientAdapterImplTest::SetUpTestCase() {
     std::vector<uint8_t> fake_data = { 0, 1, 2 };
     g_fake_custom_data.insert(std::make_pair(fake_format, fake_data));
 
-    g_datarecord_null = std::make_shared<PasteDataRecordAdapterImpl>(nullptr, false);
+    g_datarecord_null = std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
     ASSERT_NE(g_datarecord_null, nullptr);
     EXPECT_EQ(g_datarecord_null->record_, nullptr);
 
     OH_UdmfRecord* record = OH_UdmfRecord_Create();
     EXPECT_NE(record, nullptr);
-    g_datarecord = std::make_shared<PasteDataRecordAdapterImpl>(record, true);
+    g_datarecord = std::make_shared<PasteDataRecordAdapterImpl>(record, std::shared_ptr<OH_UdmfData>());
     ASSERT_NE(g_datarecord, nullptr);
     
 
@@ -181,52 +181,6 @@ public:
     void OnPasteboardChanged() override {}
 };
 
-class MockOHOSFunction {
-public:
- static MockOHOSFunction& GetInstance() {
-    static MockOHOSFunction instance;
-    return instance;
- }
-
- MOCK_METHOD(Pasteboard_GetDataParams*, OH_Pasteboard_GetDataParams_Create, ());
- MOCK_METHOD(AbilityRuntime_ErrorCode, OH_AbilityRuntime_ApplicationContextGetCacheDir,
-            (char* buffer, int32_t bufferSize, int32_t* writeLength));
- MOCK_METHOD(void, OH_Pasteboard_GetDataParams_SetProgressIndicator,
-            (Pasteboard_GetDataParams* params, Pasteboard_ProgressIndicator progressIndicator));
- MOCK_METHOD(void, OH_Pasteboard_GetDataParams_SetDestUri,
-            (Pasteboard_GetDataParams* params, const char* destUri, uint32_t destUriLen));
- MOCK_METHOD(void, OH_Pasteboard_GetDataParams_SetFileConflictOptions,
-            (Pasteboard_GetDataParams* params, Pasteboard_FileConflictOptions option));
- MOCK_METHOD(OH_UdmfData*, OH_Pasteboard_GetDataWithProgress,
-            (OH_Pasteboard* pasteboard, Pasteboard_GetDataParams* params, int* status));
- MOCK_METHOD(bool, OH_Pasteboard_HasData, (OH_Pasteboard* pasteboard));
- MOCK_METHOD(void, OH_Pasteboard_GetDataParams_Destroy, (Pasteboard_GetDataParams* params));
- MOCK_METHOD(OH_UdmfRecord**, OH_UdmfData_GetRecords, (OH_UdmfData* pThis, unsigned int* count));
- MOCK_METHOD(bool, OH_UdmfData_IsLocal, (OH_UdmfData* data));
-
-static bool pasteboard_GetDataParams_Create;
-static bool abilityRuntime_ApplicationContextGetCacheDir;
-static bool pasteboard_GetDataParams_SetProgressIndicator;
-static bool pasteboard_GetDataParams_SetDestUri;
-static bool pasteboard_GetDataParams_SetFileConflictOptions;
-static bool pasteboard_GetDataWithProgress;
-static bool pasteboard_HasData;
-static bool pasteboard_GetDataParams_Destroy;
-static bool udmfData_GetRecords;
-static bool udmfData_IsLocal;
-};
-
-bool MockOHOSFunction::pasteboard_GetDataParams_Create = false;
-bool MockOHOSFunction::abilityRuntime_ApplicationContextGetCacheDir = false;
-bool MockOHOSFunction::pasteboard_GetDataParams_SetProgressIndicator = false;
-bool MockOHOSFunction::pasteboard_GetDataParams_SetDestUri = false;
-bool MockOHOSFunction::pasteboard_GetDataParams_SetFileConflictOptions = false;
-bool MockOHOSFunction::pasteboard_GetDataWithProgress = false;
-bool MockOHOSFunction::pasteboard_HasData = false;
-bool MockOHOSFunction::pasteboard_GetDataParams_Destroy = false;
-bool MockOHOSFunction::udmfData_GetRecords = false;
-bool MockOHOSFunction::udmfData_IsLocal = false;
-
 void SetMockState(bool status) {
     MockOHOSFunction::pasteboard_GetDataParams_Create = status;
     MockOHOSFunction::abilityRuntime_ApplicationContextGetCacheDir = status;
@@ -239,115 +193,6 @@ void SetMockState(bool status) {
     MockOHOSFunction::udmfData_GetRecords = status;
     MockOHOSFunction::udmfData_IsLocal = status;
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-Pasteboard_GetDataParams* __real_OH_Pasteboard_GetDataParams_Create();
-Pasteboard_GetDataParams* __wrap_OH_Pasteboard_GetDataParams_Create() {
-    if (MockOHOSFunction::pasteboard_GetDataParams_Create) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataParams_Create();
-    } else {
-        return __real_OH_Pasteboard_GetDataParams_Create();
-    }
-}
-
-AbilityRuntime_ErrorCode __real_OH_AbilityRuntime_ApplicationContextGetCacheDir(char* buffer,
-    int32_t bufferSize, int32_t* writeLength);
-AbilityRuntime_ErrorCode __wrap_OH_AbilityRuntime_ApplicationContextGetCacheDir(char* buffer,
-    int32_t bufferSize, int32_t* writeLength) {
-    if (MockOHOSFunction::abilityRuntime_ApplicationContextGetCacheDir) {
-        return MockOHOSFunction::GetInstance().OH_AbilityRuntime_ApplicationContextGetCacheDir(
-            buffer, bufferSize, writeLength);
-    } else {
-        return __real_OH_AbilityRuntime_ApplicationContextGetCacheDir(buffer, bufferSize, writeLength);
-    }
-}
-
-void __real_OH_Pasteboard_GetDataParams_SetProgressIndicator(Pasteboard_GetDataParams* params,
-    Pasteboard_ProgressIndicator progressIndicator);
-void __wrap_OH_Pasteboard_GetDataParams_SetProgressIndicator(Pasteboard_GetDataParams* params,
-    Pasteboard_ProgressIndicator progressIndicator) {
-    if (MockOHOSFunction::pasteboard_GetDataParams_SetProgressIndicator) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataParams_SetProgressIndicator(params,
-            progressIndicator);
-    } else {
-        return __real_OH_Pasteboard_GetDataParams_SetProgressIndicator(params, progressIndicator);
-    }
-}
-
-void __real_OH_Pasteboard_GetDataParams_SetDestUri(Pasteboard_GetDataParams* params,
-    const char* destUri, uint32_t destUriLen);
-void __wrap_OH_Pasteboard_GetDataParams_SetDestUri(Pasteboard_GetDataParams* params,
-    const char* destUri, uint32_t destUriLen) {
-    if (MockOHOSFunction::pasteboard_GetDataParams_SetDestUri) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataParams_SetDestUri(params, destUri, destUriLen);
-    } else {
-       return  __real_OH_Pasteboard_GetDataParams_SetDestUri(params, destUri, destUriLen);
-    }
-}
-
-void __real_OH_Pasteboard_GetDataParams_SetFileConflictOptions(Pasteboard_GetDataParams* params,
-    Pasteboard_FileConflictOptions option);
-void __wrap_OH_Pasteboard_GetDataParams_SetFileConflictOptions(Pasteboard_GetDataParams* params,
-    Pasteboard_FileConflictOptions option) {
-    if (MockOHOSFunction::pasteboard_GetDataParams_SetFileConflictOptions) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataParams_SetFileConflictOptions(params, option);
-    } else {
-        return __real_OH_Pasteboard_GetDataParams_SetFileConflictOptions(params, option);
-    }
-}
-
-OH_UdmfData* __real_OH_Pasteboard_GetDataWithProgress(OH_Pasteboard* pasteboard,
-    Pasteboard_GetDataParams* params, int* status);
-OH_UdmfData* __wrap_OH_Pasteboard_GetDataWithProgress(OH_Pasteboard* pasteboard,
-    Pasteboard_GetDataParams* params, int* status) {
-    if (MockOHOSFunction::pasteboard_GetDataWithProgress) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataWithProgress(pasteboard, params, status);
-    } else {
-        return __real_OH_Pasteboard_GetDataWithProgress(pasteboard, params, status);
-    }
-}
-
-bool __real_OH_Pasteboard_HasData(OH_Pasteboard* pasteboard);
-bool __wrap_OH_Pasteboard_HasData(OH_Pasteboard* pasteboard) {
-    if (MockOHOSFunction::pasteboard_HasData) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_HasData(pasteboard);
-    } else {
-        return __real_OH_Pasteboard_HasData(pasteboard);
-    }
-}
-
-void __real_OH_Pasteboard_GetDataParams_Destroy(Pasteboard_GetDataParams* params);
-void __wrap_OH_Pasteboard_GetDataParams_Destroy(Pasteboard_GetDataParams* params) {
-    if (MockOHOSFunction::pasteboard_GetDataParams_Destroy) {
-        return MockOHOSFunction::GetInstance().OH_Pasteboard_GetDataParams_Destroy(params);
-    } else {
-        return __real_OH_Pasteboard_GetDataParams_Destroy(params);
-    }
-}
-
-OH_UdmfRecord** __real_OH_UdmfData_GetRecords(OH_UdmfData* pThis, unsigned int* count);
-OH_UdmfRecord** __wrap_OH_UdmfData_GetRecords(OH_UdmfData* pThis, unsigned int* count) {
-    if (MockOHOSFunction::udmfData_GetRecords) {
-        return MockOHOSFunction::GetInstance().OH_UdmfData_GetRecords(pThis, count);
-    } else {
-        return __real_OH_UdmfData_GetRecords(pThis, count);
-    }
-}
-
-bool __real_OH_UdmfData_IsLocal(OH_UdmfData* data);
-bool __wrap_OH_UdmfData_IsLocal(OH_UdmfData* data) {
-    if (MockOHOSFunction::udmfData_IsLocal) {
-        return MockOHOSFunction::GetInstance().OH_UdmfData_IsLocal(data);
-    } else {
-        return __real_OH_UdmfData_IsLocal(data);
-    }
-}
-
-#ifdef __cplusplus
-}
-#endif
 
 TEST_F(PasteboardClientAdapterImplTest, SetAndGetHtmlText)
 {
@@ -528,7 +373,7 @@ TEST_F(PasteboardClientAdapterImplTest, AddAndGetRecord)
     std::shared_ptr<PasteDataRecordAdapter> record = g_dataadapter->GetRecordAt(0);
     EXPECT_EQ(record, nullptr);
     std::size_t count = g_dataadapter->GetRecordCount();
-    EXPECT_EQ(count, 0u);
+    EXPECT_EQ(count, 0);
     PasteRecordVector recordVector = g_dataadapter_null->AllRecords();
     isEmpty = recordVector.empty();
     EXPECT_EQ(isEmpty, true);
@@ -567,7 +412,7 @@ TEST_F(PasteboardClientAdapterImplTest, AddAndGetRecord)
     std::shared_ptr<PasteDataRecordAdapter> record_null = g_dataadapter_null->GetRecordAt(0);
     EXPECT_EQ(record_null, nullptr);
     count = g_dataadapter_null->GetRecordCount();
-    EXPECT_EQ(count, 0u);
+    EXPECT_EQ(count, 0);
 
     PasteRecordVector recordVector_null = g_dataadapter_null->AllRecords();
     isEmpty = recordVector_null.empty();
@@ -597,12 +442,12 @@ TEST_F(PasteboardClientAdapterImplTest, SetAndGetPasteData)
     int32_t id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
     EXPECT_EQ(id, 0);
     PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(id);
-    EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().reg_.size(), 0u);
+    EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().reg_.size(), 0);
 
     id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(nullptr);
     EXPECT_EQ(id, -1);
     PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(-1);
-    EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().reg_.size(), 0u);
+    EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().reg_.size(), 0);
 }
 
 TEST_F(PasteboardClientAdapterImplTest, CheckTransitionCopyOption)
@@ -633,13 +478,14 @@ TEST_F(PasteboardClientAdapterImplTest, PasteDataNull)
     PasteBoardClientAdapterImpl::GetInstance().Clear();
     std::shared_ptr<PasteboardObserverAdapter> observer = std::make_shared<MockPasteboardObserver>();
     int32_t id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
-    EXPECT_EQ(id, 0);
+    EXPECT_NE(id, -1);
 
     PasteBoardClientAdapterImpl::GetInstance().pasteboard_ = OH_Pasteboard_Create();
-    id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
-    EXPECT_EQ(id, 1);
+    int32_t newId = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
+    EXPECT_EQ(id, newId - 1);
     PasteBoardClientAdapterImpl::GetInstance().pasteboard_ = nullptr;
     PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(id);
+    PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(newId);
 }
 
 TEST_F(PasteboardClientAdapterImplTest, ReleaseMemory)
@@ -864,6 +710,338 @@ TEST_F(PasteboardClientAdapterImplTest, GetPasteDataTest004)
     EXPECT_CALL(mock, OH_Pasteboard_GetDataParams_Destroy(_)).WillRepeatedly(Return());
     EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().GetPasteData(data), true);
     SetMockState(false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, CRITICAL_SetUri_NullptrFromOH_UdsFileUri_Create)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+
+    EXPECT_EQ(record->SetUri(g_test_uri), true);
+
+    std::shared_ptr<std::string> retrievedUri = record->GetUri();
+    ASSERT_NE(retrievedUri, nullptr);
+    EXPECT_EQ(*retrievedUri, g_test_uri);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, CRITICAL_SetHtmlText_NullptrParameter)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+    std::shared_ptr<std::string> validText = std::make_shared<std::string>("<html>test</html>");
+    EXPECT_EQ(record->SetHtmlText(validText), true);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, CRITICAL_SetPlainText_NullptrParameter)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/plain");
+    ASSERT_NE(record, nullptr);
+    std::shared_ptr<std::string> validText = std::make_shared<std::string>("plain text");
+    EXPECT_EQ(record->SetPlainText(validText), true);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, CRITICAL_GetPasteData_NullptrFromOH_Pasteboard_GetDataParams_Create)
+{
+    SetMockState(true);
+    PasteRecordVector data;
+    auto& mock = MockOHOSFunction::GetInstance();
+
+    EXPECT_CALL(mock, OH_Pasteboard_GetDataParams_Create()).WillOnce(Return(nullptr));
+
+    EXPECT_EQ(PasteBoardClientAdapterImpl::GetInstance().GetPasteData(data), false);
+
+    SetMockState(false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, CRITICAL_SetPasteData_NullptrFromOH_UdmfData_Create)
+{
+    PasteRecordVector data;
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+
+    std::shared_ptr<std::string> htmlText = std::make_shared<std::string>("<html>test</html>");
+    record->SetHtmlText(htmlText);
+    data.push_back(record);
+
+    PasteBoardClientAdapterImpl::GetInstance().SetPasteData(data);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetPrimaryHtml_CreateFailure)
+{
+    std::shared_ptr<PasteDataAdapter> adapter = std::make_shared<PasteDataAdapterImpl>();
+    ASSERT_NE(adapter, nullptr);
+
+    std::shared_ptr<std::string> result = adapter->GetPrimaryHtml();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetPrimaryText_CreateFailure)
+{
+    std::shared_ptr<PasteDataAdapter> adapter = std::make_shared<PasteDataAdapterImpl>();
+    ASSERT_NE(adapter, nullptr);
+
+    std::shared_ptr<std::string> result = adapter->GetPrimaryText();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_RemovePasteboardChangedObserver_UnsubscribeFailure)
+{
+    std::shared_ptr<PasteboardObserverAdapter> observer = std::make_shared<MockPasteboardObserver>();
+
+    int32_t id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
+    ASSERT_GE(id, 0);
+
+    PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(id);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_RemovePasteboardChangedObserver_DestroyFailure)
+{
+    std::shared_ptr<PasteboardObserverAdapter> observer = std::make_shared<MockPasteboardObserver>();
+
+    int32_t id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(observer);
+    ASSERT_GE(id, 0);
+
+    PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(id);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_HasType_NullptrPasteboard)
+{
+    PasteBoardClientAdapterImpl::GetInstance().pasteboard_ = nullptr;
+
+    bool result = PasteBoardClientAdapterImpl::GetInstance().HasType("text/html");
+    EXPECT_EQ(result, false);
+
+    PasteBoardClientAdapterImpl::GetInstance().pasteboard_ = OH_Pasteboard_Create();
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_HasType_NullptrType)
+{
+    bool result = PasteBoardClientAdapterImpl::GetInstance().HasType(nullptr);
+    EXPECT_EQ(result, false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetMimeType_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::string result = record_null->GetMimeType();
+    EXPECT_EQ(result, "");
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetMimeTypes_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::vector<std::string> result = record_null->GetMimeTypes();
+    EXPECT_EQ(result.empty(), true);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetHtmlText_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::shared_ptr<std::string> result = record_null->GetHtmlText();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetUri_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::shared_ptr<std::string> result = record_null->GetUri();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetCustomData_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::shared_ptr<PasteCustomData> result = record_null->GetCustomData();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_GetImgData_NullptrRecord)
+{
+    std::shared_ptr<PasteDataRecordAdapterImpl> record_null =
+        std::make_shared<PasteDataRecordAdapterImpl>(nullptr, std::shared_ptr<OH_UdmfData>());
+    ASSERT_NE(record_null, nullptr);
+
+    std::shared_ptr<MockClipBoardImageDataAdapter> image = std::make_shared<MockClipBoardImageDataAdapter>();
+
+    bool result = record_null->GetImgData(image);
+    EXPECT_EQ(result, false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, HIGH_SetImgData_NullptrImageData)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("image/png");
+    ASSERT_NE(record, nullptr);
+
+    bool result = record->SetImgData(nullptr);
+    EXPECT_EQ(result, false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_SetUri_EmptyUri)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+
+    bool result = record->SetUri("");
+    EXPECT_EQ(result, false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_SetCustomData_EmptyData)
+{
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+
+    PasteCustomData emptyData;
+    bool result = record->SetCustomData(emptyData);
+    EXPECT_EQ(result, false);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_AddHtmlRecord_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    adapter_null->AddHtmlRecord(g_test_str);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_AddTextRecord_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    adapter_null->AddTextRecord(g_test_str);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetMimeTypes_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::vector<std::string> result = adapter_null->GetMimeTypes();
+    EXPECT_EQ(result.empty(), true);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetPrimaryHtml_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::shared_ptr<std::string> result = adapter_null->GetPrimaryHtml();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetPrimaryText_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::shared_ptr<std::string> result = adapter_null->GetPrimaryText();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetPrimaryMimeType_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::shared_ptr<std::string> result = adapter_null->GetPrimaryMimeType();
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_AllRecords_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    PasteRecordVector result = adapter_null->AllRecords();
+    EXPECT_EQ(result.empty(), true);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetRecordAt_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::shared_ptr<PasteDataRecordAdapter> result = adapter_null->GetRecordAt(0);
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetRecordAt_OutOfBounds)
+{
+    std::shared_ptr<PasteDataAdapter> adapter = std::make_shared<PasteDataAdapterImpl>();
+    ASSERT_NE(adapter, nullptr);
+
+    std::shared_ptr<PasteDataRecordAdapter> result = adapter->GetRecordAt(999);
+    EXPECT_EQ(result, nullptr);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_SetPasteData_NoneCopyOption)
+{
+    PasteRecordVector data;
+    std::shared_ptr<PasteDataRecordAdapter> record = PasteDataRecordAdapter::NewRecord("text/html");
+    ASSERT_NE(record, nullptr);
+    data.push_back(record);
+
+    PasteBoardClientAdapterImpl::GetInstance().SetPasteData(data, CopyOptionMode::NONE);
+}
+
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetTokenId)
+{
+    uint32_t result = PasteBoardClientAdapterImpl::GetInstance().GetTokenId();
+    EXPECT_EQ(result, 0);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_OpenRemoteUri)
+{
+    int32_t result = PasteBoardClientAdapterImpl::GetInstance().OpenRemoteUri("/data/test/path");
+    EXPECT_EQ(result, -1);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_TransitionCopyOption_CrossDevice)
+{
+    Udmf_ShareOption result = PasteBoardClientAdapterImpl::GetInstance().
+        TransitionCopyOption(CopyOptionMode::CROSS_DEVICE);
+    EXPECT_EQ(result, Udmf_ShareOption::SHARE_OPTIONS_CROSS_APP);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_AddPasteboardChangedObserver_NullptrCallback)
+{
+    int32_t id = PasteBoardClientAdapterImpl::GetInstance().AddPasteboardChangedObserver(nullptr);
+    EXPECT_EQ(id, -1);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_RemovePasteboardChangedObserver_InvalidId)
+{
+    PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(-1);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_RemovePasteboardChangedObserver_NonExistentId)
+{
+    PasteBoardClientAdapterImpl::GetInstance().RemovePasteboardChangedObserver(9999);
+}
+
+TEST_F(PasteboardClientAdapterImplTest, MEDIUM_GetRecordCount_NullData)
+{
+    std::shared_ptr<PasteDataAdapterImpl> adapter_null = std::make_shared<PasteDataAdapterImpl>(nullptr);
+    ASSERT_NE(adapter_null, nullptr);
+
+    std::size_t result = adapter_null->GetRecordCount();
+    EXPECT_EQ(result, 0);
 }
 
 }

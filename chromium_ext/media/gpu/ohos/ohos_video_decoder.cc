@@ -323,7 +323,10 @@ bool OhosVideoDecoder::SurfaceTransitionPending() {
 void OhosVideoDecoder::TransitionToTargetSurface() {
   LOG(INFO) << "OhosVideoDecoder::TransitionToTargetSurface";
   DCHECK(SurfaceTransitionPending());
-
+  if (!codec_) {
+    LOG(ERROR) << "OhosVideoDecoder::TransitionToTargetSurface, codec is nullptr";
+    return;
+  }
   if (!codec_->SetSurface(target_surface_bundle_)) {
     video_frame_factory_->SetSurfaceBundle(nullptr);
     EnterTerminalState(State::kError, "Could not switch codec output surface");
@@ -430,8 +433,13 @@ void OhosVideoDecoder::OnCodecConfigured(
     LOG(ERROR) << "codec_ is null.";
   }
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
+  if (target_timestamp_ > -1) {
+    codec_->SetPreciseSeekTarget(target_timestamp_);
+    target_timestamp_ = -1;
+  }
+
   if (pending_surface_id_ > 0) {
-    codec_->SetVideoSurface(pending_surface_id_);
+    codec_->SetVideoSurface(pending_surface_id_, true);
     pending_surface_id_ = -1;
   }
 #endif // ARKWEB_VIDEO_ASSISTANT
@@ -538,6 +546,10 @@ bool OhosVideoDecoder::QueueInput() {
   PendingDecode& pending_decode = pending_decodes_.front();
 
   auto status = codec_->QueueInputBuffer(*pending_decode.buffer);
+#if BUILDFLAG(ARKWEB_REPORT_SYS_EVENT)
+  ReportDrmVideoBehavior(*pending_decode.buffer);
+#endif
+
   // fix
   switch (status) {
     case CodecWrapper::QueueStatus::kOk:
@@ -788,9 +800,21 @@ int OhosVideoDecoder::GetMaxDecodeRequests() const {
 void OhosVideoDecoder::SetVideoSurface(int32_t widget_id) {
   LOG(INFO) << "SetVideoSurface(" << widget_id << "), codec_[" << (!!codec_) << "]";
   if (codec_) {
-    codec_->SetVideoSurface(widget_id);
+    codec_->SetVideoSurface(widget_id, false);
+    if (widget_id == -1 && texture_owner_bundle_) {
+      texture_owner_bundle_->OnVideoSurfaceChanged();
+    }
   } else {
     pending_surface_id_ = widget_id;
+  }
+}
+
+void OhosVideoDecoder::SetPreciseSeekTarget(int64_t target_timestamp) {
+  LOG(INFO) << "OhosVideoDecoder::SetPreciseSeek";
+  if (codec_) {
+    codec_->SetPreciseSeekTarget(target_timestamp);
+  } else {
+    target_timestamp_ = target_timestamp;
   }
 }
 #endif // ARKWEB_VIDEO_ASSISTANT
@@ -824,6 +848,37 @@ void OhosVideoDecoder::ResumeDmaBuffer() {
 #if BUILDFLAG(ARKWEB_TEST)
 void OhosVideoDecoder::TestOutputBufferReleased(base::RepeatingClosure pump_cb, bool has_work) {
   OutputBufferReleased(pump_cb, has_work);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_REPORT_SYS_EVENT)
+void OhosVideoDecoder::ReportDrmVideoBehavior(const DecoderBuffer& buffer) {
+  const DecryptConfig* decrypt_config = buffer.decrypt_config();
+  if (is_reported || !decrypt_config) {
+    return;
+  }
+  std::string encryptedAlgo = "";
+  std::string drmSystem = "";
+  switch (decrypt_config->encryption_scheme()) {
+    case EncryptionScheme::kCenc:
+      encryptedAlgo = "DRM_ALG_CENC_AES_CTR";
+      break;
+    case EncryptionScheme::kCbcs:
+      encryptedAlgo = "DRM_ALG_CENC_AES_CBC";
+      break;
+    default:
+      encryptedAlgo = "DRM_ALG_CENC_UNENCRYPTED";
+  }
+  if (ohos_crypto_context_) {
+    std::vector<uint8_t> schemeUUID = ohos_crypto_context_->GetUUID();
+    static const char hex_chars[] = "0123456789abcdef";
+    for (uint8_t byte : schemeUUID) {
+      drmSystem += hex_chars[byte >> 4];    // 高4位
+      drmSystem += hex_chars[byte & 0x0F];  // 低4位
+    }
+  }
+  ReportDrmEncryptedPlayback("video", drmSystem, encryptedAlgo);
+  is_reported = true;
 }
 #endif
 }  // namespace media

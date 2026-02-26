@@ -35,6 +35,11 @@
 #include "content/renderer/logger_report.h"
 #endif
 
+#if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
+#include "third_party/blink/renderer/platform/weborigin/kurl.h"
+#include "third_party/blink/renderer/platform/weborigin/security_origin.h"
+#endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
+
 namespace {
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
@@ -180,9 +185,12 @@ void RenderThreadImpl::SetDrawMode(int mode, base::PassKey<AgentSchedulingGroup>
 #endif
 
 #if BUILDFLAG(ARKWEB_THEME_FONT)
-void RenderThreadImpl::UpdateThemeFontFile(base::File theme_font) {
+void RenderThreadImpl::UpdateThemeFontFile(const std::vector<base::File> theme_fonts) {
+  std::vector<int> fds(theme_fonts.size());
+  std::transform(theme_fonts.begin(), theme_fonts.end(), fds.begin(),
+      [] (const base::File& f) { return f.GetPlatformFile(); });
   blink::FontCache::Get().Invalidate();
-  skia::DefaultFontMgr().get()->InvalidateThemeFont(theme_font.GetPlatformFile());
+  skia::DefaultFontMgr().get()->InvalidateThemeFont(fds);
   blink::FontCache::Get().InvalidateSystemFontFamily();
 }
 #endif
@@ -229,8 +237,6 @@ void RenderThreadImpl::OnChannelListenError() {
           .HasSwitch(switches::kEnableLoggerReport)) {
     if (logging::GetLogMessageHandler()) {
       logging::SetLogMessageHandler(nullptr);
-      LOG(INFO) << "remove log message handler for "
-                << base::GetCurrentProcId();
       LOG_FEEDBACK(INFO) << "remove log message handler for "
                          << base::GetCurrentProcId();
     }
@@ -245,8 +251,6 @@ void RenderThreadImpl::OnChannelConnected(int32_t peer_pid) {
     if (!logging::GetLogMessageHandler()) {
       logging::SetLogMessageHandler(RenderProcessLogMessageHandler);
     } else {
-      LOG(INFO) << "maybe you runs in single process mode, log message handler "
-                   "had been setted by other";
       LOG_FEEDBACK(INFO)
           << "maybe you runs in single process mode, log message handler "
              "had been setted by other";
@@ -257,6 +261,89 @@ void RenderThreadImpl::OnChannelConnected(int32_t peer_pid) {
 }
 #endif
 // LCOV_EXCL_STOP
+
+
+#if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
+void RenderThreadImpl::UpdateVideoLoadOptimizationConfigData(
+    const bool enable,
+    const int preload_video_time,
+    const int min_cache_time,
+    const int max_cache_time,
+    const int moov_size,
+    const int bit_rate,
+    const std::vector<std::string>& support_domains) {
+  LOG(INFO) << "VideoOpt: global cloudControl enable:" << enable
+            << ", preload_video_time:" << preload_video_time
+            << ", min_cache_time:" << min_cache_time
+            << ", max_cache_time:" << max_cache_time
+            << ", moov_size:" << moov_size
+            << ", bit_rate:" << bit_rate;
+  std::lock_guard<std::mutex> cloudConfigMutexLock(cloud_control_config_mutex);
+  video_load_opt_enable_ = enable;
+  preload_video_time_ = preload_video_time;
+  min_cache_time_ = min_cache_time;
+  max_cache_time_ = max_cache_time;
+  moov_size_ = moov_size;
+  bit_rate_ = bit_rate;
+  support_domains_ = support_domains;
+}
+
+bool RenderThreadImpl::IsVideoLoadOptimizationEnabled(const std::string& url) const {
+  std::lock_guard<std::mutex> cloudConfigMutexLock(cloud_control_config_mutex);
+  if (!video_load_opt_enable_) {
+    LOG(INFO) << "VideoOpt: cloudControl VLO GlobalEnabled is false";
+    return false;
+  }
+  if (!IsVideoLoadOptSupportDomainMatch(url)) {
+    LOG(INFO) << "VideoOpt: cloudControl VLO LocalEnabled is false";
+    return false;
+  }
+  return true;
+}
+
+int RenderThreadImpl::GetVideoPreloadTimeDefault() const {
+  return preload_video_time_;
+}
+
+int RenderThreadImpl::GetVideoMinCacheTimeDefault() const {
+  return min_cache_time_;
+}
+
+int RenderThreadImpl::GetVideoMaxCacheTimeDefault() const {
+  return max_cache_time_;
+}
+
+int RenderThreadImpl::GetVideoMoovSizeDefault() const {
+  return moov_size_;
+}
+
+int RenderThreadImpl::GetVideoBitrateDefault() const {
+  return bit_rate_;
+}
+
+bool RenderThreadImpl::IsVideoLoadOptSupportDomainMatch(const std::string& url) const {
+  // Exact match
+  auto exact_iter = std::find(support_domains_.begin(), support_domains_.end(), url);
+  if (exact_iter != support_domains_.end()) {
+    LOG(INFO) << "VideoOpt: IsVideoLoadOptSupportDomain exact match url";
+    return true;
+  }
+
+  WTF::String url_string(url.c_str());
+  const blink::KURL kurl(url_string);
+  for (auto& domain : support_domains_) {
+    WTF::String url_domain_string(domain.c_str());
+    const blink::KURL domain_kurl(url_domain_string);
+    if (blink::SecurityOrigin::AreSameOrigin(kurl, domain_kurl)) {
+      LOG(INFO) << "VideoOpt: IsVideoLoadOptSupportDomain regular expression match url";
+      return true;
+    }
+  }
+
+  return false;
+}
+
+#endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
 
 #if BUILDFLAG(ARKWEB_TEST)
   const base::TimeDelta& GetMaxIPCLoginInterval() {

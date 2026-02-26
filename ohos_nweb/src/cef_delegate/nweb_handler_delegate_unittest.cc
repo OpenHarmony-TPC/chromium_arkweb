@@ -194,7 +194,7 @@ class MockCefBrowser : public ArkWebBrowserExt {
                                   int current,
                                   bool animate) override {}
   void UpdateBrowserControlsHeight(int height, bool animate) override {}
-  void PrefetchPage(CefString& url, CefString& additionalHttpHeaders) override {
+  void PrefetchPage(const OHOS::NWeb::PrefetchOptions& prefetch_options) override {
   }
   void ReloadOriginalUrl() override {}
   bool CanStoreWebArchive() override { return false; }
@@ -219,6 +219,8 @@ class MockCefBrowser : public ArkWebBrowserExt {
   bool IsAdsBlockEnabledForCurPage() override { return false; }
   void EnableAdsBlock(bool enable) override {}
   int SetUrlTrustListWithErrMsg(const CefString& urlTrustList,
+                                bool allowOpaqueOrigin,
+                                bool supportWildcard,
                                 CefString& detailErrMsg) override {
     return 0;
   }
@@ -552,14 +554,16 @@ TEST_F(NWebHandlerDelegateTest, OnFileDialog) {
   std::vector<CefString> accept_extensions;
   std::vector<CefString> accept_descriptions;
   std::vector<CefString> mime_filters;
+  CefString accepts = u"";
+  CefString start_in = u"";
+  bool is_exclude_accept_all_options = false;
   bool capture = false;
   CefRefPtr<CefFileDialogCallback> callback;
 
-
   EXPECT_FALSE(delegate->OnFileDialog(browser_, FILE_DIALOG_OPEN, title,
                                       default_path, accept_filters, accept_extensions,
-                                      accept_descriptions, capture, mime_filters,
-                                      callback));
+                                      accept_descriptions, accepts, start_in, is_exclude_accept_all_options,
+                                      capture, mime_filters, callback));
 }
 
 TEST_F(NWebHandlerDelegateTest, OnBeforeContextMenu) {
@@ -603,3 +607,67 @@ TEST_F(NWebHandlerDelegateTest, IsShowHandle) {
   auto result = delegate->IsShowHandle();
   EXPECT_FALSE(result);
 }
+
+#if BUILDFLAG(ARKWEB_AI)
+// Tests for RegisterOnLoadStartedCbForContentChange
+
+TEST_F(NWebHandlerDelegateTest, RegisterOnLoadStartedCbForContentChange_TEST001) {
+  bool callback_invoked = false;
+  std::function<void(void)> callback = [&callback_invoked]() {
+    callback_invoked = true;
+  };
+
+  delegate->RegisterOnLoadStartedCbForContentChange(std::move(callback));
+
+  // Verify the callback is stored by invoking it
+  ASSERT_NE(delegate->onLoadStartedCbForContentChange_, nullptr);
+  delegate->onLoadStartedCbForContentChange_();
+  EXPECT_TRUE(callback_invoked);
+}
+
+TEST_F(NWebHandlerDelegateTest, RegisterOnLoadStartedCbForContentChange_TEST002) {
+  // Test that registering a new callback replaces the previous one
+  int first_callback_invoked = 0;
+  int second_callback_invoked = 0;
+
+  std::function<void(void)> first_callback = [&first_callback_invoked]() {
+    first_callback_invoked = 1;
+  };
+
+  std::function<void(void)> second_callback = [&second_callback_invoked]() {
+    second_callback_invoked = 2;
+  };
+
+  delegate->RegisterOnLoadStartedCbForContentChange(std::move(first_callback));
+
+  // Invoke first callback
+  delegate->onLoadStartedCbForContentChange_();
+  EXPECT_EQ(first_callback_invoked, 1);
+  EXPECT_EQ(second_callback_invoked, 0);
+
+  // Register second callback (should replace first)
+  delegate->RegisterOnLoadStartedCbForContentChange(std::move(second_callback));
+
+  // Invoke second callback
+  delegate->onLoadStartedCbForContentChange_();
+  EXPECT_EQ(first_callback_invoked, 1);  // First callback should not be invoked again
+  EXPECT_EQ(second_callback_invoked, 2);  // Second callback should be invoked
+}
+
+TEST_F(NWebHandlerDelegateTest, RegisterOnLoadStartedCbForContentChange_TEST003) {
+  // Test registering empty callback (nullptr)
+  std::function<void(void)> empty_callback = nullptr;
+  delegate->RegisterOnLoadStartedCbForContentChange(std::move(empty_callback));
+
+  EXPECT_EQ(delegate->onLoadStartedCbForContentChange_, nullptr);
+}
+#endif  // BUILDFLAG(ARKWEB_AI)
+
+#if BUILDFLAG(ARKWEB_AI)
+TEST_F(NWebHandlerDelegateTest, RegisterOnLoadStartedCbForHighlightContent) {
+  ASSERT_NE(delegate, nullptr);
+  std::function<void(void)> callback = []() {};
+  delegate->RegisterOnLoadStartedCbForHighlightContent(std::move(callback));
+  EXPECT_NE(delegate->onLoadStartedCbForHighlightContent_, nullptr);
+}
+#endif

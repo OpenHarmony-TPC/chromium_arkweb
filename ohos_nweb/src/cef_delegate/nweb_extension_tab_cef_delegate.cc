@@ -21,8 +21,8 @@
 #include "nweb_extension_utils.h"
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-#include "ohos_nweb_ex/core/extension/nweb_extension_tabs_dispatcher.h"
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#include "ohos_nweb_ex/core/extension/nweb_extension_tabs_dispatcher.h"
 #endif
 
 namespace OHOS::NWeb {
@@ -386,6 +386,18 @@ void NWebExtensionTabCefDelegate::OnTabCreated(std::unique_ptr<NWebExtensionTab>
   int tabId = tab->id ? tab->id.value() : -1;
   extensions::TabsWindowsAPI::Get(browserContext)
       ->TabCreated(tabId, browserContextInUse, std::move(tab));
+}
+
+void NWebExtensionTabCefDelegate::OnTabHighlighted(
+    const NWebExtensionTabHighlightInfo& highlightInfo) {
+  LOG(INFO) << "OnTabHighlighted, windowId: " << highlightInfo.windowId.value();
+  auto browser_context = GetBrowserContext();
+  if (!browser_context) {
+    return;
+  }
+
+  extensions::TabsWindowsAPI::Get(browser_context)
+      ->TabHighlighted(browser_context, highlightInfo);
 }
 
 }  // namespace OHOS::NWeb

@@ -41,6 +41,12 @@ bool IsEnableVulkan()
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_VULKAN)
+BASE_FEATURE(kInsertVKEndSemaphore,
+             "InsertVKEndSemaphore",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
 #if BUILDFLAG(ARKWEB_DRDC)
 bool IsDrDcForVulkan()
 {
@@ -57,6 +63,18 @@ bool IsDrDcForVulkan()
   }
   return false;
 }
+#endif
+
+#if BUILDFLAG(ARKWEB_WEBGL)
+BASE_FEATURE(kPreferDrawToCopy,
+             "PreferDrawToCopy",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
+#if BUILDFLAG(ARKWEB_ANGLE)
+BASE_FEATURE(kDefaultANGLE,
+             "DefaultANGLE",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 }

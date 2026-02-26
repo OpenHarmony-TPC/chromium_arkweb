@@ -226,6 +226,8 @@ declare_args() {
   arkweb_ex_refresh_iframe = true
   arkweb_notification = true
   arkweb_vulkan = true
+  arkweb_angle = !is_component_build
+  arkweb_gpu = !is_component_build
   arkweb_pull_to_refresh = true
   arkweb_ex_http_dns_fallback = false
   arkweb_d_vsync = true
@@ -233,6 +235,7 @@ declare_args() {
   arkweb_screen_size = true
   arkweb_canvas_commit = true
   arkweb_vsync_schedule = true
+  arkweb_throttle_frame = true
   arkweb_pip = true
   arkweb_immediate_destory = false
   arkweb_cwnd = true
@@ -242,6 +245,7 @@ declare_args() {
   arkweb_ext_password=false
   arkweb_ex_free_copy=false
   arkweb_blank_optimize = true
+  arkweb_first_screen_paint = true
   arkweb_viewport_avoid = true
   arkweb_error_page = true
   arkweb_gwp_asan = true
@@ -251,8 +255,19 @@ declare_args() {
   arkweb_blank_screen_detection = true
   arkweb_blank_prop_config = true
   arkweb_autolayout = true
-  enable_mojom_gni = false
+  arkweb_enable_prebuild = false
+  arkweb_ex_fallback_proxy = true
   arkweb_ext_https_upgrades=false
+  arkweb_console_logging=true
+  arkweb_offline_web_evict_back_buffers = true
+  arkweb_ohos_mem_usage_report = true
+  arkweb_media_cast = true
+  arkweb_ext_http_dns_fallback_on_dns_hijacking = false
+  arkweb_ext_receive_response = false
+  arkweb_custom_viewport_width = true
+  arkweb_evict_unlock_frames = !is_component_build
+  arkweb_not_load_iframe = true
+  arkweb_ext_navigation = false
 }
 
 # Features enabled in mojom bindings.
@@ -303,6 +318,10 @@ if (is_android || (defined(arkweb_cookie) && arkweb_cookie)) {
   arkweb_mojo_features += [ "is_android_or_arkweb_cookie" ]
 }  #endif  // BUILDFLAG(ARKWEB_COOKIE)
 
+if (defined(arkweb_ex_fallback_proxy) && arkweb_ex_fallback_proxy) {
+  arkweb_mojo_features += [ "arkweb_ex_fallback_proxy" ]
+}
+
 #if BUILDFLAG(ARKWEB_CUSTOM_DNS)
 if (defined(arkweb_custom_dns) && arkweb_custom_dns) {
   arkweb_mojo_features += [ "arkweb_custom_dns" ]
@@ -313,6 +332,8 @@ if (defined(enable_arkweb_ext) && enable_arkweb_ext) {
   arkweb_mojo_features += [
     "arkweb_ext_network_connection",
     "arkweb_ext_http_dns_fallback",
+    "arkweb_ext_video_load_optimization",
+    "arkweb_ext_http_dns_fallback_on_dns_hijacking",
   ]
 }  #endif  // BUILDFLAG(ARKWEB_EXT)
 
@@ -337,3 +358,9 @@ if (defined(arkweb_network_service) && arkweb_network_service) {
   arkweb_mojo_features += [ "arkweb_network_service" ]
 }
 #endif // BUILDFLAG(ARKWEB_NETWORK_SERVICE)
+
+#if BUILDFLAG(ARKWEB_CUSTOM_VIEWPORT_WIDTH)
+if (defined(arkweb_custom_viewport_width) && arkweb_custom_viewport_width) {
+  arkweb_mojo_features += [ "arkweb_custom_viewport_width" ]
+}
+#endif // BUILDFLAG(ARKWEB_CUSTOM_VIEWPORT_WIDTH)

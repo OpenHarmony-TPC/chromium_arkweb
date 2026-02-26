@@ -50,7 +50,13 @@ const std::string DUMP_FILE_PNG_TYPE = ".png";
 const std::string DUMP_FILE_HEIC_TYPE = ".heic";
 const double SSIM_THRESHOLD = 0.95;
 const int DUMP_TASK_DELAY_TIME = 1000; // Milliseconds
+const int REMOVE_TASK_DELAY_TIME_LONG = 400; // Milliseconds
+const int REMOVE_TASK_DELAY_TIME_SHORT = 200; // Milliseconds
 const int SCREEN_MAX_RESOLUTION = 8000;
+
+// static
+std::unordered_map<int64_t, int64_t> BlanklessDataController::expiration_time_info_;
+std::mutex BlanklessDataController::expiration_time_info_mutex_;
 
 static double Mean(const std::vector<double>& data) {
   if (data.size() == 0) {
@@ -537,7 +543,28 @@ void BlanklessDataController::DumpTask(viz::mojom::BlanklessSendInfoPtr infoPtr,
 
   snapshotDataItem.historySimilarity = similarity;
   snapshotDataItem.staticPath = newFile;
-  OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(infoPtr->blankless_key, snapshotDataItem);
+  int64_t expirationTime = 0;
+  {
+    std::lock_guard<std::mutex> expiration_time_info_guard(expiration_time_info_mutex_);
+    auto iter = expiration_time_info_.find(infoPtr->blankless_key);
+    if (iter != expiration_time_info_.end()) {
+      expirationTime = iter->second;
+    }
+  }
+  
+  if (expirationTime != 0) {
+    OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(
+      infoPtr->blankless_key, snapshotDataItem, expirationTime);
+  } else {
+    OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(infoPtr->blankless_key, snapshotDataItem);
+  }
+}
+
+void BlanklessDataController::RemoveFrame(uint32_t nweb_id, uint64_t blankless_key)
+{
+  auto& instance = base::ohos::BlanklessController::GetInstance();
+  instance.CancelFrameInsertCallback(nweb_id, blankless_key);
+  instance.FireFrameRemoveCallback(nweb_id, blankless_key);
 }
 
 void BlanklessDataController::DumpBlanklessSnapshot(viz::mojom::BlanklessSendInfoPtr infoPtr,
@@ -574,8 +601,19 @@ void BlanklessDataController::DumpBlanklessSnapshot(viz::mojom::BlanklessSendInf
     LOG(DEBUG) << "blankless CalculateSimilarity nweb_id: " << nweb_id
                << ", blankless_key: " << blankless_key << ", similarity: " << similarity;
     if (similarity >= base::ohos::BlanklessController::CALLBACK_SIMILARITY_THRESHOLD) {
-      instance.CancelFrameInsertCallback(nweb_id, blankless_key);
-      instance.FireFrameRemoveCallback(nweb_id, blankless_key);
+      RemoveFrame(nweb_id, blankless_key);
+    } else if (similarity >= base::ohos::BlanklessController::CALLBACK_SIMILARITY_THRESHOLD_MIDDLE) {
+      if (task_manager_) {
+        auto removeTask = base::BindOnce(&BlanklessDataController::RemoveFrame, nweb_id, blankless_key);
+        task_manager_->PostNewRemoveDelayedTask(blankless_key,
+          std::move(removeTask), base::Milliseconds(REMOVE_TASK_DELAY_TIME_SHORT));
+      }
+    } else if (similarity >= base::ohos::BlanklessController::CALLBACK_SIMILARITY_THRESHOLD_LOW) {
+      if (task_manager_) {
+        auto removeTask = base::BindOnce(&BlanklessDataController::RemoveFrame, nweb_id, blankless_key);
+        task_manager_->PostNewRemoveDelayedTask(blankless_key,
+          std::move(removeTask), base::Milliseconds(REMOVE_TASK_DELAY_TIME_LONG));
+      }
     }
   }
 
@@ -595,6 +633,14 @@ void BlanklessDataController::ClearSnapshot(int64_t blankless_key)
 
 void BlanklessDataController::ClearSnapshotDataItem(const std::vector<int64_t>& blankless_keys)
 {
+  {
+    std::lock_guard<std::mutex> expiration_time_info_guard(expiration_time_info_mutex_);
+    for (int64_t blankless_key : blankless_keys) {
+      if (expiration_time_info_.find(blankless_key) != expiration_time_info_.end()) {
+        expiration_time_info_.erase(blankless_key);
+      }
+    }
+  }
   OhosWebSnapshotDataBase::GetInstance().ClearSnapshotDataItem(blankless_keys);
 }
 
@@ -647,6 +693,12 @@ void BlanklessDataController::CreateTaskManager()
   if (!task_manager_) {
     task_manager_ = std::make_unique<viz::CancelableDelayedTaskManager>();
   }
+}
+
+void BlanklessDataController::InsertExpirationInfo(int64_t blankless_key, int64_t expirationTime)
+{
+  std::lock_guard<std::mutex> expiration_time_info_guard(expiration_time_info_mutex_);
+  expiration_time_info_[blankless_key] = expirationTime;
 }
 }  // namespace ohos
 }  // namespace base

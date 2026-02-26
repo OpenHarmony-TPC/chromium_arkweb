@@ -43,6 +43,8 @@ class ArkOhosAdapterHelperWrapper : public NWeb::OhosAdapterHelper {
 
   NWeb::PasteBoardClientAdapter& GetPasteBoard() override;
 
+  NWeb::ColorPickerAdapter& GetColorPickerAdapter() override;
+
   std::unique_ptr<NWeb::AudioRendererAdapter> CreateAudioRendererAdapter()
       override;
 
@@ -153,6 +155,8 @@ class ArkOhosAdapterHelperWrapper : public NWeb::OhosAdapterHelper {
   std::unique_ptr<NWeb::BackgroundTaskAdapter> CreateBackgroundTaskAdapter() override;
 
   std::unique_ptr<NWeb::NetEventAdapter> CreateNetEventAdapter() override;
+
+  NWeb::HiAppeventAdapter& GetHiAppeventAdapterInstance() override;
 
  private:
   ArkWebRefPtr<ArkOhosAdapterHelper> ctocpp_;

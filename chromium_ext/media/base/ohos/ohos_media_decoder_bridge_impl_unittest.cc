@@ -13,30 +13,30 @@
  * limitations under the License.
  */
 
+#include <memory>
+
 #include "base/functional/callback_helpers.h"
 #define private public
 #include "ohos_media_decoder_bridge_impl.h"
 #undef private
-#include "ohos_adapter_helper.h" 
-#include "testing/gmock/include/gmock/gmock.h"
-#include <memory>
-#include "base/logging.h"
-#include "base/task/single_thread_task_executor.h"
-#include "base/task/task_runner.h"
-#include "base/trace_event/trace_event.h"
-#include "media/base/ohos/decoder_format_adapter_impl.h"
-#include "ohos_adapter_helper.h"
-#include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/ohos_ndk/includes/ohos_adapter/adapter_base.h"
-
 #include "base/base_paths.h"
 #include "base/command_line.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/location.h"
+#include "base/logging.h"
+#include "base/task/single_thread_task_executor.h"
+#include "base/task/task_runner.h"
 #include "base/threading/thread.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
+#include "base/trace_event/trace_event.h"
+#include "media/base/ohos/decoder_format_adapter_impl.h"
+#include "ohos_adapter_helper.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/ohos_ndk/includes/ohos_adapter/adapter_base.h"
+
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -121,12 +121,16 @@ class MockSystemPropertiesAdapter : public OHOS::NWeb::SystemPropertiesAdapter {
   MOCK_METHOD(std::string, GetScrollVelocityScale, (), (override));
   MOCK_METHOD(std::string, GetScrollFriction, (), (override));
   MOCK_METHOD(std::string, GetBundleName, (), (override));
-  MOCK_METHOD(std::string, GetStringParameter, 
-              (const std::string& key, const std::string& defaultValue), (override));
+  MOCK_METHOD(std::string,
+              GetStringParameter,
+              (const std::string& key, const std::string& defaultValue),
+              (override));
   MOCK_METHOD(int32_t, GetInitialCongestionWindowSize, (), (override));
-  MOCK_METHOD(int32_t, GetIntParameter, (const std::string& key, int32_t defaultValue), (override));
+  MOCK_METHOD(int32_t,
+              GetIntParameter,
+              (const std::string& key, int32_t defaultValue),
+              (override));
 };
-
 
 class MockWindowAdapter : public WindowAdapter {
  public:
@@ -151,14 +155,8 @@ class MockWindowAdapter : public WindowAdapter {
               SetTransformHint,
               (uint32_t rotation, NWebNativeWindow window),
               (override));
-  MOCK_METHOD(void,
-              AddNativeWindowRef,
-              (NWebNativeWindow window),
-              (override));
-  MOCK_METHOD(void,
-              NativeWindowUnRef,
-              (NWebNativeWindow window),
-              (override));
+  MOCK_METHOD(void, AddNativeWindowRef, (NWebNativeWindow window), (override));
+  MOCK_METHOD(void, NativeWindowUnRef, (NWebNativeWindow window), (override));
 };
 
 class MockMediaCodecDecoderAdapter : public MediaCodecDecoderAdapter {
@@ -355,10 +353,7 @@ class MockOhosAdapterHelper : public OhosAdapterHelper {
               CreateAudioCodecDecoderAdapter,
               (),
               (override));
-  MOCK_METHOD(std::unique_ptr<DrmAdapter>,
-              CreateDrmAdapter,
-              (),
-              (override));
+  MOCK_METHOD(std::unique_ptr<DrmAdapter>, CreateDrmAdapter, (), (override));
   MOCK_METHOD(OhosDrawingTextFontAdapter&,
               GetOhosDrawingTextFontAdapter,
               (),
@@ -385,6 +380,11 @@ class MockOhosAdapterHelper : public OhosAdapterHelper {
               (override));
   MOCK_METHOD(std::unique_ptr<NetEventAdapter>,
               CreateNetEventAdapter,
+              (),
+              (override));
+  MOCK_METHOD(ColorPickerAdapter&, GetColorPickerAdapter, (), (override));
+  MOCK_METHOD(HiAppeventAdapter&,
+              GetHiAppeventAdapterInstance,
               (),
               (override));
   static MockOhosAdapterHelper& GetInstance() {
@@ -423,7 +423,9 @@ class MockSequencedTaskRunner : public base::SequencedTaskRunner {
               ());
   MOCK_METHOD(bool,
               PostNonNestableDelayedTask,
-              (const base::Location& location, base::OnceClosure onceClosure, base::TimeDelta timeDelta),
+              (const base::Location& location,
+               base::OnceClosure onceClosure,
+               base::TimeDelta timeDelta),
               (override));
   MOCK_METHOD(base::DelayedTaskHandle,
               PostCancelableDelayedTask,
@@ -453,7 +455,10 @@ class MockSequencedTaskRunner : public base::SequencedTaskRunner {
               DeleteOrReleaseSoonInternal,
               (const base::Location&, void (*)(const void*), const void*),
               (override));
-  MOCK_METHOD(bool, PostDelayedTask, (const base::Location&, base::OnceClosure, base::TimeDelta), (override));
+  MOCK_METHOD(bool,
+              PostDelayedTask,
+              (const base::Location&, base::OnceClosure, base::TimeDelta),
+              (override));
 };
 
 class MockDecoderFormatAdapter : public DecoderFormatAdapter {
@@ -464,20 +469,25 @@ class MockDecoderFormatAdapter : public DecoderFormatAdapter {
   MOCK_METHOD(void, SetWidth, (int32_t width), (override));
   MOCK_METHOD(void, SetHeight, (int32_t height), (override));
   MOCK_METHOD(void, SetFrameRate, (double frameRate), (override));
-  MOCK_METHOD(DecoderAdapterCode, SetParameterDecoder, (const std::shared_ptr<DecoderFormatAdapter> format));
+  MOCK_METHOD(DecoderAdapterCode,
+              SetParameterDecoder,
+              (const std::shared_ptr<DecoderFormatAdapter> format));
   MOCK_METHOD(DecoderAdapterCode, PrepareDecoder, ());
 };
 
 class InheritBufferInfoAdapter : public BufferInfoAdapter {
  public:
   int64_t GetPresentationTimeUs() override { return 100; }
+
   int32_t GetSize() override { return 1; }
+
   int32_t GetOffset() override { return 0; }
 };
 
 class InheritOhosBufferAdapter : public OhosBufferAdapter {
  public:
   uint8_t* GetAddr() override { return nullptr; }
+
   uint32_t GetBufferSize() override { return 8; }
 };
 
@@ -487,7 +497,8 @@ class MediaCodecDecoderBridgeImplTest : public ::testing::Test {
     bridge_->signal_ = signal;
   }
 
-  void SetCodecEncodeBridgeCallback(std::shared_ptr<CodecBridgeCallback> callback) {
+  void SetCodecEncodeBridgeCallback(
+      std::shared_ptr<CodecBridgeCallback> callback) {
     bridge_->cb_ = callback;
   }
 
@@ -495,51 +506,38 @@ class MediaCodecDecoderBridgeImplTest : public ::testing::Test {
     bridge_->videoDecoder_ = std::move(decoder);
   }
 
-  void SetIsFirstDecFrame(bool is_first_dec_frame) {
-  }
-
-  void SetIsRunning(bool is_running) {
-    bridge_->isRunning_.store(is_running);
-  }
+  void SetIsRunning(bool is_running) { bridge_->isRunning_.store(is_running); }
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
-  void SetVideoSurfaceId(int32_t id) {
-    bridge_->video_surface_id_ = id;
-  }
+  void SetVideoSurfaceId(int32_t id) { bridge_->video_surface_id_ = id; }
 
   void SetWindowFromSurface(void* surface) {
     bridge_->window_from_surface_ = surface;
   }
-  #endif
+#endif
 
   std::shared_ptr<CodecBridgeCallback> GetCodecEncodeBridgeCallback() {
     return bridge_->cb_;
   }
 
-  std::shared_ptr<DecoderBridgeSignal> GetSignal() {
-    return bridge_->signal_;
-  }
+  std::shared_ptr<DecoderBridgeSignal> GetSignal() { return bridge_->signal_; }
 
   DecoderAdapterCode PrepareForCallback() {
     return bridge_->PrepareForCallback();
   }
 
-  void PopInqueueDec() {
-    bridge_->PopInqueueDec();
-  }
+  void PopInqueueDec() { bridge_->PopInqueueDec(); }
 
-  void PopOutqueueDec() {
-    bridge_->PopOutqueueDec();
-  }
+  void PopOutqueueDec() { bridge_->PopOutqueueDec(); }
+
   DecoderAdapterCode PushInbufferDec(const uint32_t index,
                                      const uint32_t& bufferSize,
                                      const int64_t& time,
-                                     bool is_key_frame)
-  {
+                                     bool is_key_frame) {
     return bridge_->PushInbufferDec(index, bufferSize, time, is_key_frame);
   }
-  DecoderAdapterCode PushInbufferDecEos(const uint32_t index)
-  {
+
+  DecoderAdapterCode PushInbufferDecEos(const uint32_t index) {
     return bridge_->PushInbufferDecEos(index);
   }
 
@@ -594,7 +592,8 @@ class MediaCodecDecoderBridgeImplTest : public ::testing::Test {
   MockMediaCodecDecoderAdapter* video_decoder_;
 };
 
-TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_WhenCodecTypeIsH264) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       CreateVideoDecoder_WhenCodecTypeIsH264) {
   VideoBridgeCodecConfig config;
   config.codec = media::VideoCodec::kH264;
   config.on_buffers_available_cb = base::DoNothing();
@@ -602,7 +601,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_WhenCodecTypeIsH264) 
   ASSERT_NE(bridge_impl, nullptr);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_WhenCodecTypeIsHEVC) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       CreateVideoDecoder_WhenCodecTypeIsHEVC) {
   VideoBridgeCodecConfig config;
   config.codec = media::VideoCodec::kHEVC;
   config.on_buffers_available_cb = base::DoNothing();
@@ -610,7 +610,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_WhenCodecTypeIsHEVC) 
   ASSERT_NE(bridge_impl, nullptr);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_ShouldReturnNull_WhenCodecTypeIsAV1) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       CreateVideoDecoder_ShouldReturnNull_WhenCodecTypeIsAV1) {
   VideoBridgeCodecConfig config;
   config.codec = media::VideoCodec::kAV1;
   config.on_buffers_available_cb = base::DoNothing();
@@ -618,42 +619,48 @@ TEST_F(MediaCodecDecoderBridgeImplTest, CreateVideoDecoder_ShouldReturnNull_When
   ASSERT_EQ(bridge_impl, nullptr);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenSignalAndCbAreNullptr) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PrepareForCallback_WhenSignalAndCbAreNullptr) {
   SetSignal(nullptr);
   SetCodecEncodeBridgeCallback(nullptr);
-  std::shared_ptr<DecoderCallbackAdapter> codec_cb = GetCodecEncodeBridgeCallback();
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec(testing::_))
+  std::shared_ptr<DecoderCallbackAdapter> codec_cb =
+      GetCodecEncodeBridgeCallback();
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec(testing::_))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
   DecoderAdapterCode result = PrepareForCallback();
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenSignalAndCbAreNotNullptr) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PrepareForCallback_WhenSignalAndCbAreNotNullptr) {
   SetSignal(make_shared<NiceMock<MockDecoderBridgeSignal>>());
   SetCodecEncodeBridgeCallback(make_shared<CodecBridgeCallback>(signal_));
-  std::shared_ptr<DecoderCallbackAdapter> codec_cb = GetCodecEncodeBridgeCallback();
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec(codec_cb))
+  std::shared_ptr<DecoderCallbackAdapter> codec_cb =
+      GetCodecEncodeBridgeCallback();
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec(codec_cb))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result = PrepareForCallback();
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenSignalIsNullptr) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PrepareForCallback_WhenSignalIsNullptr) {
   SetSignal(nullptr);
   SetCodecEncodeBridgeCallback(make_shared<CodecBridgeCallback>(signal_));
-  std::shared_ptr<DecoderCallbackAdapter> codec_cb = GetCodecEncodeBridgeCallback();
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec(codec_cb))
+  std::shared_ptr<DecoderCallbackAdapter> codec_cb =
+      GetCodecEncodeBridgeCallback();
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec(codec_cb))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result = PrepareForCallback();
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
@@ -662,17 +669,17 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenSignalIsNullptr) 
 TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenCbIsNullptr) {
   SetSignal(make_shared<NiceMock<MockDecoderBridgeSignal>>());
   SetCodecEncodeBridgeCallback(nullptr);
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec)
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec)
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result = PrepareForCallback();
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
+TEST_F(MediaCodecDecoderBridgeImplTest,
        CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   mock_adapter_ = std::make_unique<NiceMock<MockMediaCodecDecoderAdapter>>();
@@ -683,37 +690,40 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
-       CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenCreateDecoderByMineFails) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenCreateDecoderByMineFails) {
   std::string codec_name = "video/h264";
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, CreateVideoDecoderByMime(codec_name))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByMime(codec_name))
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
-  SetVideoDecoder(std::move(mock_video_decoder));
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result =
       bridge_->CreateVideoBridgeDecoderByMime(codec_name);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
-       CreateVideoBridgeDecoderByMime_ShouldReturnOk_WhenCreateDecoderByMineSucceeds) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    CreateVideoBridgeDecoderByMime_ShouldReturnOk_WhenCreateDecoderByMineSucceeds) {
   std::string codec_name = "video/h264";
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, CreateVideoDecoderByMime(codec_name))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByMime(codec_name))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec(testing::_))
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec(testing::_))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result =
       bridge_->CreateVideoBridgeDecoderByMime(codec_name);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
-       CreateVideoBridgeDecoderByName_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    CreateVideoBridgeDecoderByName_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   std::string codec_name = "video/h264";
   DecoderAdapterCode result =
@@ -721,37 +731,40 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
-       CreateVideoBridgeDecoderByName_ShouldReturnOk_WhenCreateVideoDecoderByNameSucceeds) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    CreateVideoBridgeDecoderByName_ShouldReturnOk_WhenCreateVideoDecoderByNameSucceeds) {
   std::string codec_name = "video/h264";
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, CreateVideoDecoderByName(codec_name))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByName(codec_name))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, SetCallbackDec(testing::_))
+  EXPECT_CALL(*mock_video_decode, SetCallbackDec(testing::_))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result =
       bridge_->CreateVideoBridgeDecoderByName(codec_name);
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
-       CreateVideoBridgeDecoderByName_ShouldReturnError_WhenCreateVideoDecoderByNameFails) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    CreateVideoBridgeDecoderByName_ShouldReturnError_WhenCreateVideoDecoderByNameFails) {
   std::string codec_name = "video/h264";
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, CreateVideoDecoderByName(codec_name))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByName(codec_name))
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result =
       bridge_->CreateVideoBridgeDecoderByName(codec_name);
   EXPECT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ConfigureBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ConfigureBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   DecoderFormat format;
   format.width = 640;
   format.height = 480;
@@ -766,7 +779,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, ConfigureBridgeDecoder_ShouldReturnError
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ConfigureBridgeDecoder_ShouldReturnOk_WhenConfigureDecoderSucceeds) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ConfigureBridgeDecoder_ShouldReturnOk_WhenConfigureDecoderSucceeds) {
   DecoderFormat format;
   format.width = 640;
   format.height = 480;
@@ -774,11 +788,11 @@ TEST_F(MediaCodecDecoderBridgeImplTest, ConfigureBridgeDecoder_ShouldReturnOk_Wh
   scoped_refptr<base::SequencedTaskRunner> decoder_task_runner = nullptr;
   auto signal = std::make_shared<MockDecoderBridgeSignal>();
   SetCodecEncodeBridgeCallback(std::make_shared<CodecBridgeCallback>(signal));
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, ConfigureDecoder(testing::_))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, ConfigureDecoder(testing::_))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result =
       bridge_->ConfigureBridgeDecoder(format, decoder_task_runner);
@@ -796,7 +810,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeParameterDecoder) {
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeParameterDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       SetBridgeParameterDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   DecoderFormat format;
   format.width = 640;
   format.height = 480;
@@ -806,13 +821,15 @@ TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeParameterDecoder_ShouldReturnEr
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeOutputSurface_ShouldReturnError_WhenWindowIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       SetBridgeOutputSurface_ShouldReturnError_WhenWindowIsNull) {
   void* window = nullptr;
   DecoderAdapterCode result = bridge_->SetBridgeOutputSurface(window);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeOutputSurface_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       SetBridgeOutputSurface_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   int32_t value = 1;
   intptr_t int_as_ptr = reinterpret_cast<intptr_t>(&value);
@@ -821,21 +838,22 @@ TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeOutputSurface_ShouldReturnError
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, SetBridgeOutputSurface_ShouldReturnOk_WhenSetOutPutSurfaceSucceds) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       SetBridgeOutputSurface_ShouldReturnOk_WhenSetOutPutSurfaceSucceds) {
   int32_t value = 1;
   intptr_t int_as_ptr = reinterpret_cast<intptr_t>(&value);
   void* window = reinterpret_cast<void*>(int_as_ptr);
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, SetOutputSurface(window))
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, SetOutputSurface(window))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result = bridge_->SetBridgeOutputSurface(window);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, 
+TEST_F(MediaCodecDecoderBridgeImplTest,
        GetOutputFormatBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   DecoderFormat format;
   format.width = 0;
@@ -847,7 +865,9 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, GetOutputFormatBridgeDecoder_ShouldReturnOk_WhenGetOutputFormatDecSucceeds) {
+TEST_F(
+    MediaCodecDecoderBridgeImplTest,
+    GetOutputFormatBridgeDecoder_ShouldReturnOk_WhenGetOutputFormatDecSucceeds) {
   DecoderFormat format;
   format.width = 640;
   format.height = 480;
@@ -861,13 +881,15 @@ TEST_F(MediaCodecDecoderBridgeImplTest, GetOutputFormatBridgeDecoder_ShouldRetur
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PrepareBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PrepareBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   DecoderAdapterCode result = bridge_->PrepareBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PrepareBridgeDecoder_ShouldReturnOk_WhenPrepareBridgeDecoderSucceeds) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PrepareBridgeDecoder_ShouldReturnOk_WhenPrepareBridgeDecoderSucceeds) {
   auto video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*video_decoder, PrepareDecoder())
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
@@ -877,46 +899,52 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PrepareBridgeDecoder_ShouldReturnOk_When
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, StartBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       StartBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   DecoderAdapterCode result = bridge_->StartBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, StartBridgeDecoder_ShouldReturnOk_WhenStartDecoderSucceeds) {
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, StartDecoder())
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       StartBridgeDecoder_ShouldReturnOk_WhenStartDecoderSucceeds) {
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, StartDecoder())
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
 
   DecoderAdapterCode result = bridge_->StartBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, StopBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       StopBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   DecoderAdapterCode result = bridge_->StopBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, StopBridgeDecoder_ShouldReturnOk_WhenStopDecoderSucceeds) {
-  auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
-  EXPECT_CALL(*mock_video_decoder, StopDecoder())
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       StopBridgeDecoder_ShouldReturnOk_WhenStopDecoderSucceeds) {
+  auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
+  EXPECT_CALL(*mock_video_decode, StopDecoder())
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
-  EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
-  SetVideoDecoder(std::move(mock_video_decoder));
+  EXPECT_CALL(*mock_video_decode, ReleaseDecoder()).Times(1);
+  SetVideoDecoder(std::move(mock_video_decode));
   DecoderAdapterCode result = bridge_->StopBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, FlushBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       FlushBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   auto result = bridge_->FlushBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, FlushBridgeDecoder_ShouldReturnError_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       FlushBridgeDecoder_ShouldReturnError_WhenSignalIsNull) {
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   SetVideoDecoder(std::move(mock_video_decoder));
   SetSignal(nullptr);
@@ -924,24 +952,27 @@ TEST_F(MediaCodecDecoderBridgeImplTest, FlushBridgeDecoder_ShouldReturnError_Whe
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, FlushBridgeDecoder_ShouldReturnError_WhenFlushDecoderFails) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       FlushBridgeDecoder_ShouldReturnError_WhenFlushDecoderFails) {
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decoder, FlushDecoder())
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
   EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
   SetVideoDecoder(std::move(mock_video_decoder));
-  
+
   auto result = bridge_->FlushBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ResetBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ResetBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   auto result = bridge_->ResetBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ResetBridgeDecoder_ShouldReturnError_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ResetBridgeDecoder_ShouldReturnError_WhenSignalIsNull) {
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   SetVideoDecoder(std::move(mock_video_decoder));
   SetSignal(nullptr);
@@ -949,7 +980,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, ResetBridgeDecoder_ShouldReturnError_Whe
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ResetBridgeDecoder_ShouldReturnError_WhenResetDecoderFails) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ResetBridgeDecoder_ShouldReturnError_WhenResetDecoderFails) {
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decoder, ResetDecoder())
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
@@ -960,19 +992,22 @@ TEST_F(MediaCodecDecoderBridgeImplTest, ResetBridgeDecoder_ShouldReturnError_Whe
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ReleaseBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ReleaseBridgeDecoder_ShouldReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   auto result = bridge_->ReleaseBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PopInqueueDec_ShouldReturn_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PopInqueueDec_ShouldReturn_WhenSignalIsNull) {
   SetSignal(nullptr);
   PopInqueueDec();
   ASSERT_EQ(GetSignal(), nullptr);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PopInqueueDec_ShouldReturn_WhenIsOnErrorIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PopInqueueDec_ShouldReturn_WhenIsOnErrorIsTrue) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = true;
   SetSignal(mock_signal);
@@ -980,7 +1015,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PopInqueueDec_ShouldReturn_WhenIsOnError
   ASSERT_NE(GetSignal(), nullptr);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PopInqueueDec_ShouldReturn_WhenInputQueueIsEmpty) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PopInqueueDec_ShouldReturn_WhenInputQueueIsEmpty) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
   SetSignal(mock_signal);
@@ -991,23 +1027,21 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PopInqueueDec_ShouldReturn_WhenInputQueu
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, PushInbufferDec001) {
-  SetIsFirstDecFrame(true);
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   uint32_t index = 0;
   uint32_t bufferSize = 1024;
   int64_t time = 100000000;
   EXPECT_CALL(*mock_video_decoder,
               QueueInputBufferDec(index, time, bufferSize, 0,
-                                  BufferFlag::CODEC_BUFFER_FLAG_CODEC_DATA))
+                                  BufferFlag::CODEC_BUFFER_FLAG_SYNC_FRAME))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
   EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
   SetVideoDecoder(std::move(mock_video_decoder));
-  auto result = PushInbufferDec(index, bufferSize, time, false);
+  auto result = PushInbufferDec(index, bufferSize, time, true);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, PushInbufferDec002) {
-  SetIsFirstDecFrame(false);
   auto mock_video_decoder = make_unique<MockMediaCodecDecoderAdapter>();
   uint32_t index = 0;
   uint32_t bufferSize = 1024;
@@ -1018,7 +1052,6 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PushInbufferDec002) {
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
   EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
   SetVideoDecoder(std::move(mock_video_decoder));
-
   auto result = PushInbufferDec(index, bufferSize, time, false);
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
@@ -1036,41 +1069,45 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PushInbufferDecEos001) {
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenDataIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnError_WhenDataIsNull) {
   SetIsRunning(true);
   const uint8_t* data = nullptr;
   size_t data_size = 1;
   int64_t presentation_time = 1000000;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenDataSizeIsZero) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnError_WhenDataSizeIsZero) {
   SetIsRunning(true);
   const uint8_t* data = reinterpret_cast<const uint8_t*>("testdata");
   size_t data_size = 0;
   int64_t presentation_time = 1000000;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnError_WhenSignalIsNull) {
   SetIsRunning(true);
   SetSignal(nullptr);
   const uint8_t* data = reinterpret_cast<const uint8_t*>("testdata");
   size_t data_size = strlen(reinterpret_cast<const char*>(data));
   int64_t presentation_time = 1000000;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenIsOnErrorIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnError_WhenIsOnErrorIsTrue) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = true;
   SetSignal(mock_signal);
@@ -1078,12 +1115,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenI
   size_t data_size = strlen(reinterpret_cast<const char*>(data));
   int64_t presentation_time = 1000000;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1094,12 +1132,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenI
   int64_t presentation_time = 1000000;
 
   auto expected_result = DecoderAdapterCode::DECODER_RETRY;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenInputQueueIsEmpty) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnRetry_WhenInputQueueIsEmpty) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1110,12 +1149,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenI
   int64_t presentation_time = 1000000;
 
   auto expected_result = DecoderAdapterCode::DECODER_RETRY;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenIsRunningIsFalse) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnRetry_WhenIsRunningIsFalse) {
   SetIsRunning(false);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1129,12 +1169,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnRetry_WhenI
   mock_signal->inputQueue_.push(buffer);
   SetSignal(mock_signal);
   auto expected_result = DecoderAdapterCode::DECODER_RETRY;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnError_WhenDecoderIsNull) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1149,12 +1190,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnError_WhenD
   SetSignal(mock_signal);
   SetVideoDecoder(nullptr);
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnOk_WhenPushInbufferDecSucceeds) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBuffer_ShouldReturnOk_WhenPushInbufferDecSucceeds) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1170,18 +1212,19 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBuffer_ShouldReturnOk_WhenPush
   auto mock_video_decoder = std::make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decoder,
               QueueInputBufferDec(testing::_, testing::_, testing::_, 0,
-                                  BufferFlag::CODEC_BUFFER_FLAG_CODEC_DATA))
+                                  BufferFlag::CODEC_BUFFER_FLAG_NONE))
       .WillOnce(Return(DecoderAdapterCode::DECODER_OK));
   EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
   SetVideoDecoder(std::move(mock_video_decoder));
 
   auto expected_result = DecoderAdapterCode::DECODER_OK;
-  auto actual_result = bridge_->QueueInputBuffer(data, data_size, presentation_time,
-      nullptr, false);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, false);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnError_WhenSignalIsNull) {
   SetIsRunning(true);
   SetSignal(nullptr);
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
@@ -1189,7 +1232,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_WhenIsOnErrorIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnError_WhenIsOnErrorIsTrue) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = true;
   SetSignal(mock_signal);
@@ -1198,7 +1242,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1209,7 +1254,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_WhenInputQueueIsEmpty) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnRetry_WhenInputQueueIsEmpty) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1221,7 +1267,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_WhenIsRunningIsFalse) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnRetry_WhenIsRunningIsFalse) {
   SetIsRunning(false);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1239,7 +1286,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnRetry_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       QueueInputBufferEOS_ShouldReturnError_WhenDecoderIsNull) {
   SetIsRunning(true);
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
@@ -1258,14 +1306,16 @@ TEST_F(MediaCodecDecoderBridgeImplTest, QueueInputBufferEOS_ShouldReturnError_Wh
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, ReleaseOutputBuffer_ShoulReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       ReleaseOutputBuffer_ShoulReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
   auto actual_result = bridge_->ReleaseOutputBuffer(0, true);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, PopOutqueueDec_ShoulReturn_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       PopOutqueueDec_ShoulReturn_WhenSignalIsNull) {
   SetSignal(nullptr);
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
   PopOutqueueDec();
@@ -1273,17 +1323,20 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PopOutqueueDec_ShoulReturn_WhenSignalIsN
   ASSERT_NE(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnError_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnError_WhenSignalIsNull) {
   SetSignal(nullptr);
   base::TimeDelta presentation_time;
   uint32_t index = 1;
   bool eos = true;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnError_WhenIsOnErrorIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnError_WhenIsOnErrorIsTrue) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = true;
   SetSignal(mock_signal);
@@ -1291,11 +1344,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnError_Wh
   uint32_t index = 1;
   bool eos = true;
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnRetry_WhenIsDecoderFlushingIsTrue) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
   mock_signal->isDecoderFlushing_.store(true);
@@ -1304,11 +1359,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnRetry_Wh
   uint32_t index = 1;
   bool eos = true;
   auto expected_result = DecoderAdapterCode::DECODER_RETRY;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnRetry_WhenOuputQueueIsEmpty) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnRetry_WhenOuputQueueIsEmpty) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
   mock_signal->isDecoderFlushing_.store(false);
@@ -1317,11 +1374,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnRetry_Wh
   uint32_t index = 1;
   bool eos = true;
   auto expected_result = DecoderAdapterCode::DECODER_RETRY;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnError_WhenDecoderIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnError_WhenDecoderIsNull) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
   mock_signal->isDecoderFlushing_.store(false);
@@ -1336,11 +1395,13 @@ TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnError_Wh
   SetSignal(mock_signal);
   SetVideoDecoder(nullptr);
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnOk_WhenPushInbufferDecSucceeds) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DequeueOutputBuffer_ShouldReturnOk_WhenPushInbufferDecSucceeds) {
   auto mock_signal = make_shared<NiceMock<MockDecoderBridgeSignal>>();
   mock_signal->isOnError_ = false;
   mock_signal->isDecoderFlushing_.store(false);
@@ -1359,23 +1420,16 @@ TEST_F(MediaCodecDecoderBridgeImplTest, DequeueOutputBuffer_ShouldReturnOk_WhenP
   SetVideoDecoder(std::move(mock_video_decoder));
 
   auto expected_result = DecoderAdapterCode::DECODER_OK;
-  auto actual_result = bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
+  auto actual_result =
+      bridge_->DequeueOutputBuffer(&presentation_time, index, eos);
   ASSERT_EQ(expected_result, actual_result);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, DestoryNativeWindow_ShouldReturn_WhenWindowIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       DestoryNativeWindow_ShouldReturn_WhenWindowIsNull) {
   void* window = nullptr;
   bridge_->DestoryNativeWindow(window);
   ASSERT_FALSE(window);
-}
-
-TEST_F(MediaCodecDecoderBridgeImplTest, OnError_ShouldReturn_WhenSignalIsNull) {
-  SetSignal(nullptr);
-  ErrorType errorType = ErrorType::CODEC_ERROR_INTERNAL;
-  int32_t errorCode = 12;
-  callback_->signal_ = nullptr;
-  callback_->OnError(errorType, errorCode);
-  ASSERT_EQ(callback_->signal_, nullptr);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData) {
@@ -1392,7 +1446,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData) {
   ASSERT_FALSE(signal_->inputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData_ShouldReturn_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedInputData_ShouldReturn_WhenSignalIsNull) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1407,7 +1462,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData_ShouldReturn_WhenSignalI
   ASSERT_TRUE(signal_->inputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData_ShouldReturn_WhenDecoderFlushingIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedInputData_ShouldReturn_WhenDecoderFlushingIsTrue) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1422,7 +1478,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData_ShouldReturn_WhenDecoder
   ASSERT_TRUE(signal_->inputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedInputData_ShouldReturn_WhenBufferIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedInputData_ShouldReturn_WhenBufferIsNull) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1451,7 +1508,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData) {
   ASSERT_FALSE(signal_->outputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData_ShouldReturn_WhenInfoIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedOutputData_ShouldReturn_WhenInfoIsNull) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1466,7 +1524,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData_ShouldReturn_WhenInfoIs
   ASSERT_TRUE(signal_->outputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData_ShouldReturn_WhenSignalIsNull) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedOutputData_ShouldReturn_WhenSignalIsNull) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1482,7 +1541,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData_ShouldReturn_WhenSignal
   ASSERT_TRUE(signal_->outputQueue_.empty());
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest, OnNeedOutputData_ShouldReturn_WhenDecoderFlushingIsTrue) {
+TEST_F(MediaCodecDecoderBridgeImplTest,
+       OnNeedOutputData_ShouldReturn_WhenDecoderFlushingIsTrue) {
   base::Thread thread("ExampleThread");
   CHECK(thread.Start());
   scoped_refptr<base::SequencedTaskRunner> task_runner = thread.task_runner();
@@ -1531,9 +1591,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct001) {
   testing::internal::CaptureStderr();
   std::make_unique<MediaCodecDecoderBridgeImpl>("test", base::DoNothing());
   std::string log_output = testing::internal::GetCapturedStderr();
-  EXPECT_NE(log_output.find(
-                "create decoder failed"),
-            std::string::npos);
+  EXPECT_NE(log_output.find("create decoder failed"), std::string::npos);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct002) {
@@ -1547,9 +1605,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct003) {
   testing::internal::CaptureStderr();
   std::make_unique<MediaCodecDecoderBridgeImpl>("video/h264");
   std::string log_output = testing::internal::GetCapturedStderr();
-  EXPECT_EQ(log_output.find(
-                "create decoder failed"),
-            std::string::npos);
+  EXPECT_EQ(log_output.find("create decoder failed"), std::string::npos);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest,
@@ -1570,8 +1626,8 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
   SetVideoDecoder(std::move(mock_video_decoder));
 
   auto expected_result = DecoderAdapterCode::DECODER_ERROR;
-  auto actual_result =
-      bridge_->QueueInputBuffer(data, data_size, presentation_time, nullptr, true);
+  auto actual_result = bridge_->QueueInputBuffer(
+      data, data_size, presentation_time, nullptr, true);
   ASSERT_EQ(expected_result, actual_result);
 }
 

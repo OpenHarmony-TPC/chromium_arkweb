@@ -28,6 +28,10 @@ using namespace OHOS::NWeb;
 
 namespace OHOS {
 
+constexpr int32_t kFuzzMaxOriginalStreamNums = 2048;
+static int64_t kFuzzMaxOriginalStream = 0;
+static int64_t kFuzzMaxOriginalStreamNull = 0;
+
 class MediaAVSessionCallbackAdapterMock : public MediaAVSessionCallbackAdapter {
 public:
     MediaAVSessionCallbackAdapterMock() = default;
@@ -56,19 +60,19 @@ public:
     MediaAVSessionMetadataAdapterMock() = default;
     void SetTitle(const std::string& title) {}
 
-    std::string GetTitle() { return ""; }
+    std::string GetTitle() { return "test1"; }
 
     void SetArtist(const std::string& artist) {}
 
-    std::string GetArtist() { return ""; }
+    std::string GetArtist() { return "test2"; }
 
     void SetAlbum(const std::string& album) {}
 
-    std::string GetAlbum() { return ""; }
+    std::string GetAlbum() { return "test3"; }
 
     void SetImageUrl(const std::string& imageUrl) {}
 
-    std::string GetImageUrl() { return ""; }
+    std::string GetImageUrl() { return "test4"; }
 };
 
 class MediaAVSessionPositionAdapterMock : public MediaAVSessionPositionAdapter {
@@ -77,15 +81,15 @@ public:
 
     void SetDuration(int64_t duration) {}
 
-    int64_t GetDuration() { return 0; }
+    int64_t GetDuration() { return 20; }
 
     void SetElapsedTime(int64_t elapsedTime) {}
 
-    int64_t GetElapsedTime() { return 0; }
+    int64_t GetElapsedTime() { return 10; }
 
     void SetUpdateTime(int64_t updateTime) {}
 
-    int64_t GetUpdateTime() { return 0; }
+    int64_t GetUpdateTime() { return 10; }
 };
 
 bool MediaAVSessionAdapterImplFuzzTest(FuzzedDataProvider* fdp)
@@ -96,11 +100,20 @@ bool MediaAVSessionAdapterImplFuzzTest(FuzzedDataProvider* fdp)
         std::make_shared<MediaAVSessionPositionAdapterMock>();
     std::shared_ptr<MediaAVSessionAdapterImpl> avSessionAdapter = std::make_shared<MediaAVSessionAdapterImpl>();
     std::shared_ptr<MediaAVSessionKey> key = std::make_shared<MediaAVSessionKey>();
-
     auto type = MediaAVSessionType::MEDIA_TYPE_AUDIO;
-    avSessionAdapter->CreateAVSession(type);
-    type = MediaAVSessionType::MEDIA_TYPE_VIDEO;
-    avSessionAdapter->CreateAVSession(type);
+    if (kFuzzMaxOriginalStream <= kFuzzMaxOriginalStreamNums) {
+        kFuzzMaxOriginalStream++;
+        OH_AVSession_Create(SESSION_TYPE_AUDIO, "OH_AVSession_Create_001",
+            "com.xxx.hmxx", "ndkxx", &(avSessionAdapter->avSession_));
+    } else if (kFuzzMaxOriginalStreamNull <= kFuzzMaxOriginalStreamNums) {
+        kFuzzMaxOriginalStreamNull++;
+        avSessionAdapter->CreateAVSession(type);
+        type = MediaAVSessionType::MEDIA_TYPE_VIDEO;
+        avSessionAdapter->CreateAVSession(type);
+
+    } else {
+        return false;
+    }
 
     key->Init();
     key->GetPID();
@@ -126,9 +139,9 @@ bool MediaAVSessionAdapterImplFuzzTest(FuzzedDataProvider* fdp)
     avSessionAdapter->SetPlaybackState(playState);
 
     avSessionAdapter->SetPlaybackPosition(pointeradapter);
-    avSessionAdapter->UpdateMetaDataCache(metadataadapter);
-    avSessionAdapter->UpdateMetaDataCache(pointeradapter);
-    avSessionAdapter->UpdatePlaybackStateCache(playState);
+    avSessionAdapter->UpdateMetaData(metadataadapter);
+    avSessionAdapter->UpdateDuration(pointeradapter);
+    avSessionAdapter->UpdatePlaybackState(playState);
     avSessionAdapter->UpdateAVMetadata();
     avSessionAdapter->DeActivate();
     avSessionAdapter->DestroyAVSession();

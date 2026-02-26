@@ -22,7 +22,7 @@
 
 #undef private
 #define private public
-#include "background_task_policy.h"
+#include "background_task_holder.h"
 #undef private
 #define private public
 
@@ -32,13 +32,13 @@ using namespace performance_manager;
 using namespace performance_manager::mechanism;
 
 class MockApplicationStateChangeCallback : public ApplicationStateChangeCallback {
-public: 
+public:
     MockApplicationStateChangeCallback() = default;
     ~MockApplicationStateChangeCallback() = default;
 
     bool foregroundCalled = false;
     bool backgroundCalled = false;
-    
+
     void NotifyApplicationForeground() override {
         foregroundCalled = true;
     }
@@ -56,7 +56,7 @@ protected:
     }
 
     void TearDown() override {
-        delete backgroundStateChangeCallback
+        delete backgroundStateChangeCallback;
     }
 
     std::shared_ptr<MockApplicationStateChangeCallback> callback;
@@ -74,8 +74,8 @@ TEST_F(BackgroundStateChangeCallbackTest, RegisterCallback) {
 }
 
 TEST_F(BackgroundStateChangeCallbackTest, MultipleCallbacks) {
-    auto callback1 = std::make_shared<>(MockApplicationStateChangeCallback);
-    auto callback2 = std::make_shared<>(MockApplicationStateChangeCallback);
+    auto callback1 = std::make_shared<MockApplicationStateChangeCallback>();
+    auto callback2 = std::make_shared<MockApplicationStateChangeCallback>();
 
     backgroundStateChangeCallback->RegisterBackgroundTaskPolicyCallback(callback1);
     backgroundStateChangeCallback->RegisterBackgroundTaskPolicyCallback(callback2);
