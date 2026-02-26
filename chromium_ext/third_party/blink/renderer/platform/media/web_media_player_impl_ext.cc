@@ -206,8 +206,6 @@ void WebMediaPlayerImplExt::DoReloadForPrimitive() {
 
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
 void WebMediaPlayerImplExt::RestartForPrimitive() {
-  LOG(INFO) << "RestartForPrimitive, primitive_renderer_type_["
-            << GetRendererName(primitive_renderer_type_) << "]";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "RestartForPrimitive, primitive_renderer_type_["
                      << GetRendererName(primitive_renderer_type_) << "]";
@@ -290,14 +288,34 @@ void WebMediaPlayerImplExt::OnLayerBoundsChange(const gfx::Rect& bounds) {
 }
 
 void WebMediaPlayerImplExt::SetVideoSurface(int32_t widget_id) {
-  LOG(INFO) << "SetVideoSurface(" << widget_id << ")";
+  LOG(INFO) << "SetVideoSurface(" << widget_id
+            << "), has_page_hidden_when_paused:"
+            << has_page_hidden_when_paused_;
   video_surface_id_ = widget_id;
   if (surface_created_cb_) {
     surface_created_cb_.Run(widget_id);
   }
 
   if (paused_ && !seeking_) {
-    Seek(CurrentTime());
+    HandleSurfaceSwitchWhenPaused();
+  }
+}
+
+void WebMediaPlayerImplExt::HandleSurfaceSwitchWhenPaused() {
+  if (has_page_hidden_when_paused_ && pipeline_controller_) {
+    has_page_hidden_when_paused_ = false;
+    pipeline_controller_->SetPreciseSeekTarget(last_frame_timestamp_);
+  }
+
+  Seek(CurrentTime());
+}
+
+void WebMediaPlayerImplExt::SaveLastFrameTimeStamp() {
+  auto frame = compositor_->GetCurrentFrameOnAnyThread();
+  if (frame) {
+    last_frame_timestamp_ = (frame->timestamp()).InMicroseconds();
+    LOG(DEBUG) << "WebMediaPlayerImplExt::SaveLastFrameTimeStamp:"
+               << last_frame_timestamp_;
   }
 }
 
@@ -358,6 +376,28 @@ void WebMediaPlayerImplExt::OnWebURLError(int reason) {
 int WebMediaPlayerImplExt::GetWebURLErrorReason() const {
   return web_url_error_reason_;
 }
+
+WebString WebMediaPlayerImplExt::GetMimeType() const {
+  if (demuxer_manager_) {
+    std::string mime_type = demuxer_manager_->GetMimeType();
+    return blink::WebString::FromUTF8(mime_type);
+  }
+  return WebString();
+}
+
+bool WebMediaPlayerImplExt::UsingMediaPlayer() const {
+  return using_media_player_renderer_;
+}
+
+void WebMediaPlayerImplExt::OnHiddenVideoReport(bool storing_in_bfcache) {
+  if (IsPageHidden() || (IsHidden() && should_pause_when_frame_is_hidden_)) {
+    if (storing_in_bfcache && client_) {
+      LOG(INFO) << "OhMedia, ReportVideoExperienceToBI when page hidden";
+      client_->ReportVideoExperienceToBI();
+    }
+  }
+}
+
 #endif  // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
 
 #if BUILDFLAG(ARKWEB_MEDIA_POLICY)
@@ -368,8 +408,15 @@ bool WebMediaPlayerImplExt::IsFrameHidden() {
 
 #if BUILDFLAG(ARKWEB_PIP)
 void WebMediaPlayerImpl::PipEnable(bool enable) {
-  LOG(INFO) << "PIC WebMediaPlayerImpl::PipEnable" << enable << "]";
-  pipeline_controller_->PipEnable(enable);
+  LOG(INFO) << "Pip WebMediaPlayerImpl::PipEnable" << enable << "]";
+  if (pipeline_controller_) {
+    pipeline_controller_->PipEnable(enable);
+  } else {
+    LOG(ERROR) << "Pip pipeline_controller_ is null.";
+  }
+  if (!enable) {
+    video_surface_id_ = -1;
+  }
 }
 #endif
 

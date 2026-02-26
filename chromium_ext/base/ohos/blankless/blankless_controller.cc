@@ -116,7 +116,7 @@ void BlanklessController::BlankOptWhiteList::LoadAppWhiteList()
   }
   m_is_app_loaded_ = true;
 
-  static std::string bundleName =
+  const std::string bundleName =
       OhosAdapterHelper::GetInstance().GetSystemPropertiesInstance().GetBundleName();
   if (bundleName.empty()) {
     LOG(WARNING) << "blankless BlankOptWhiteList get app bundle name failed.";
@@ -129,8 +129,8 @@ void BlanklessController::BlankOptWhiteList::LoadAppWhiteList()
     return;
   }
 
-  std::vector<char> buffer(tfile.GetLength());
-  int bytes_read = tfile.Read(0, buffer.data(), buffer.size());
+  std::vector<char> buffer(static_cast<size_t>(tfile.GetLength()));
+  int bytes_read = tfile.Read(0, buffer.data(), static_cast<int>(buffer.size()));
   if (bytes_read == -1) {
     LOG(WARNING) << "blankless BlankOptWhiteList read app white list failed.";
     return;
@@ -166,6 +166,10 @@ void BlanklessController::BlankOptWhiteList::ParseAppWhiteList(std::vector<char>
       }
       const std::string* url_value = dict_val->FindString("url");
       const base::Value::List* query_keys = dict_val->FindList("query_keys");
+      if (!url_value || !query_keys) {
+        LOG(WARNING) << "blankless BlankOptWhiteList read app url or query keys failed.";
+        continue;
+      }
       std::unordered_set<std::string> query_keys_set;
       for (const auto& key : *query_keys) {
         const std::string key_str = key.GetString();

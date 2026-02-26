@@ -25,6 +25,25 @@
   bool GetScrollable() { return scroll_enabled_; }
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
+#if BUILDFLAG(ARKWEB_AI)
+  void SetImageAnalyzerEnabled(bool enabled) {
+    image_analyzer_enabled_ = enabled;
+  }
+  bool GetImageAnalyzerEnabled() { return image_analyzer_enabled_; }
+
+  void SetArkwebAgentEnabled(bool enabled) {
+    arkweb_agent_enabled_ = enabled;
+  }
+  bool GetArkwebAgentEnabled() { return arkweb_agent_enabled_; }
+
+  void SetAgentNeedHighlight(bool enabled) {
+    agent_need_highlight_ = enabled;
+  }
+  bool GetAgentNeedHighlight() { 
+    return agent_need_highlight_; 
+  }
+#endif  // BUILDFLAG(ARKWEB_AI)
+
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   void SetVerticalHideScrollbars(bool hide_vertical_scrollbars) {
     hide_vertical_scrollbars_ = hide_vertical_scrollbars;
@@ -141,6 +160,13 @@
   double GetBorderRadiusBottomRight() { return border_radius_bottom_right_; }
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
 
+#if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+  void SetEnableAutoFill(bool enable) {
+    is_autofill_enabled_ = enable;
+  }
+  bool GetEnableAutoFill() { return is_autofill_enabled_; }
+#endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+
 #if BUILDFLAG(ARKWEB_MENU)
   void SetTouchHandleExistState(bool touchHandleExist) {
     touch_handle_exist_ = touchHandleExist;
@@ -155,5 +181,14 @@
     return viewport_scale_;
   }
 #endif  // BUILDFLAG(ARKWEB_MENU)
+
+#if BUILDFLAG(ARKWEB_CLIPBOARD)
+  void SetClipboardSitePermissionEnabled(bool enable) {
+    clipboard_site_permission_enabled_ = enable;
+  }
+  bool GetClipboardSitePermissionEnabled() {
+    return clipboard_site_permission_enabled_;
+  }
+#endif  // BUILDFLAG(ARKWEB_CLIPBOARD)
 
 #endif

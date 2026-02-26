@@ -176,6 +176,8 @@ public:
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   void OnLayerBoundsChange(const gfx::Rect& bounds);
   void OnLayerOpacityChange(float opacity);
+  void SaveLastFrameTimeStamp();
+  void HandleSurfaceSwitchWhenPaused();
 #endif  // ARKWEB_VIDEO_ASSISTANT
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
@@ -225,6 +227,9 @@ public:
   media::PipelineStatusCodes GetPipelineStatus() const override;
   void OnWebURLError(int reason);
   int GetWebURLErrorReason() const override;
+  WebString GetMimeType() const override;
+  bool UsingMediaPlayer() const override;
+  void OnHiddenVideoReport(bool storing_in_bfcache) override;
 #endif  // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
 
 #if BUILDFLAG(ARKWEB_MEDIA_CAPABILITIES_ENHANCE)

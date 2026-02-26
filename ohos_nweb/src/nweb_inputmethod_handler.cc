@@ -46,7 +46,7 @@ const std::string AUTO_FILL_CANCEL_PRIVATE_COMMAND = "autofill.cancel";
 
 class OnTextChangedListenerImpl : public IMFTextListenerAdapter {
  public:
-  OnTextChangedListenerImpl(NWebInputMethodHandler* handler)
+  explicit OnTextChangedListenerImpl(NWebInputMethodHandler* handler)
       : handler_(handler) {}
   ~OnTextChangedListenerImpl() = default;
 
@@ -161,9 +161,8 @@ class InputMethodTask : public CefTask {
   InputMethodTask(const InputMethodTask&) = delete;
   InputMethodTask& operator=(const InputMethodTask&) = delete;
 
-  virtual void Execute() override {
+  void Execute() override {
     std::move(closure_).Run();
-    // closure_.Reset();
   }
 
  private:
@@ -347,7 +346,7 @@ void NWebInputMethodHandler::HandleSecurityLayerHandlerOnUI() {
 }
 // LCOV_EXCL_STOP
 
-void NWebInputMethodHandler::UpdateTextFieldStatus() {
+void NWebInputMethodHandler::UpdateTextFieldStatus(bool isImeShowKeyboard, bool isTextInputfocus) {
   if (browser_ == nullptr) {
     return;
   }
@@ -358,11 +357,11 @@ void NWebInputMethodHandler::UpdateTextFieldStatus() {
   }
 
   CefRefPtr<CefTask> task = new InputMethodTask(base::BindOnce(
-      &NWebInputMethodHandler::UpdateTextFieldStatusHandlerOnUI, this));
+      &NWebInputMethodHandler::UpdateTextFieldStatusHandlerOnUI, this, isImeShowKeyboard, isTextInputfocus));
   host->PostTaskToUIThread(task);
 }
 
-void NWebInputMethodHandler::UpdateTextFieldStatusHandlerOnUI() {
+void NWebInputMethodHandler::UpdateTextFieldStatusHandlerOnUI(bool isImeShowKeyboard, bool isTextInputfocus) {
   if (browser_ == nullptr) {
     return;
   }
@@ -370,7 +369,7 @@ void NWebInputMethodHandler::UpdateTextFieldStatusHandlerOnUI() {
   if (host == nullptr) {
     return;
   }
-  host->UpdateTextFieldStatus(NeedKeyboardShow(), isAttachSuccess_);
+  host->UpdateTextFieldStatus(isImeShowKeyboard, isTextInputfocus);
 }
 
 void NWebInputMethodHandler::ComputeEditorInfo(InputInfo inputInfo,
@@ -502,10 +501,16 @@ void NWebInputMethodHandler::Attach(CefRefPtr<CefBrowser> browser,
 
 bool NWebInputMethodHandler::Reattach(uint32_t nwebId, ReattachType type) {
   nweb_id_ = nwebId;
+  bool textInputState = true;
+  if (browser_ && browser_->GetHost()) {
+    textInputState = browser_->GetHost()->JudgeTextInputState();
+  }
   if (type == ReattachType::FROM_CONTINUE) {
     if (!isNeedReattachOncontinue_ || !is_editable_node_) {
-      LOG(INFO) << "don't need reattach input method";
-      return false;
+      LOG(INFO) << "don't need reattach input method " << textInputState;
+      if (textInputState) {
+        return false;
+      }
     }
     isNeedReattachOncontinue_ = false;
   }
@@ -852,6 +857,7 @@ void NWebInputMethodHandler::SetIMEStatusOnUI(bool status) {
     isManualCloseKeyboard_ = false;
   }
   ime_shown_ = status;
+  UpdateTextFieldStatus(status, status);
 }
 
 // LCOV_EXCL_START
@@ -865,6 +871,7 @@ void NWebInputMethodHandler::WebBlurKeyboardHideOnUI() {
 // LCOV_EXCL_STOP
 
 void NWebInputMethodHandler::InsertTextHandlerOnUI(const std::u16string& text) {
+  LOG(INFO) << "NWebInputMethodHandler::InsertTextHandlerOnUI text length:" << text.length();
   if (text.empty()) {
     LOG(ERROR) << "insert text empty!";
     return;

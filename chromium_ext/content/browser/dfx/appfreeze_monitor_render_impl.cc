@@ -14,8 +14,27 @@
  */
 
 #include "appfreeze_monitor_render_impl.h"
+
+#include <fstream>
+
+#include "arkweb/chromium_ext/base/process/process_handle_posix_ex.h"
+#include "base/command_line.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
+
+std::string GetProcessName() {
+  std::ifstream input_file("/proc/self/cmdline");
+  if (!input_file.is_open()) {
+    LOG(ERROR) << "Error: Could not open /proc/self/cmdline";
+    return "";
+  }
+
+  std::string processName = "";
+  if (!std::getline(input_file, processName)) {
+    LOG(ERROR) << "Error: Failed to read process name from /proc/self/cmdline";
+  }
+  return processName;
+}
 
 void ReportRenderFreeze() {
   std::shared_ptr<AppfreezeMonitorImpl> instance = AppfreezeMonitorImpl::GetInstance();
@@ -47,7 +66,9 @@ std::shared_ptr<AppfreezeMonitorImpl> AppfreezeMonitorImpl::GetInstance() {
 
 void AppfreezeMonitorImpl::GetRemoteAndSend() {
   if (remote_.is_bound()) {
-    remote_->ReportRenderFreeze(""); // the param may be used in the future
+    dfx::mojom::FreezeInfoPtr freezeInfoPtr = dfx::mojom::FreezeInfo::New(base::GetCurrentRealPid(), GetProcessName(),
+      "render freeze", static_cast<int32_t>(getuid()));
+    remote_->ReportRenderFreeze(std::move(freezeInfoPtr));
     reported_ = true;
   }
 }

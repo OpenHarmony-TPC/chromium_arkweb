@@ -27,23 +27,23 @@ class COMPONENT_EXPORT(URL) LogUtils {
  public:
   static bool IsURLSlash(char ch) { return ch == '/' || ch == '\\'; }
 
-  static bool IsSupportScheme(const std::string& url,
+  static bool IsSupportScheme(const std::string_view url,
                               unsigned int urlLen,
                               unsigned int& colonIndex);
-  static void FixupUrlPart(const std::string& text,
+  static void FixupUrlPart(const std::string_view text,
                            const url::Component& part,
                            std::string& converted);
-  static void ConvertUrlHost(const std::string& url,
+  static void ConvertUrlHost(const std::string_view url,
                              url::Parsed& parsed,
                              std::string& converted,
                              bool is_for_report = false);
-  static void ConvertUrlPath(const std::string& url,
+  static void ConvertUrlPath(const std::string_view url,
                              const url::Component& part,
                              std::string& converted);
-  static void ConvertUrlQuery(const std::string& url,
+  static void ConvertUrlQuery(const std::string_view url,
                               const url::Component& part,
                               std::string& converted);
-  static void ConvertUrlRef(const std::string& url,
+  static void ConvertUrlRef(const std::string_view url,
                             const url::Component& part,
                             std::string& converted);
   // Rules for URL anonymization using ConvertUrl.
@@ -55,16 +55,18 @@ class COMPONENT_EXPORT(URL) LogUtils {
                                 int32_t scenario_type = 99,
                                 bool should_noise_url = true);
   static std::string ConvertUrlWithMask(const std::string& url);
+  static std::string ConvertPathWithMask(const std::string& file_path);
+  static std::string ConvertUrlParamWithMask(const std::string& url);
 
  private:
   FRIEND_TEST_ALL_PREFIXES(LogUtilsTest, IsSupportScheme);
   FRIEND_TEST_ALL_PREFIXES(LogUtilsTest, ConvertUrl);
 
-  static bool IsSupportScheme(const std::string& scheme);
+  static bool IsSupportScheme(const std::string_view scheme);
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   static bool IsSupportParam(const std::string& param);
 #endif
-  static std::string MaskHost(const std::string& host);
+  static std::string MaskHost(const std::string_view host);
 };
 }  // namespace url
 

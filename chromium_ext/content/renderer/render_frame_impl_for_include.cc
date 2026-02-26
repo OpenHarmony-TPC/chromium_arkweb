@@ -29,6 +29,10 @@ blink::WebNativeBridge* RenderFrameImpl::CreateWebNativeBridge(
     return media_factory_.CreateWebNativeBridge(client, GetLocalRootWebFrameWidget()->GetFrameSinkId(),
         agent_scheduling_group_->agent_group_scheduler().CompositorTaskRunner());
 }
+
+float RenderFrameImpl::DeviceScaleFactor() {
+  return media_factory_.GetDeviceScaleFactor();
+}
 #endif
 
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
@@ -46,17 +50,19 @@ gfx::RectF RenderFrameImpl::ElementBoundsInWindow(
 #endif
 
 #if BUILDFLAG(ARKWEB_MULTI_WINDOW)
-bool RenderFrameImpl::GetNewWindowWebView(const GURL& target_url,
-                                          blink::WebNavigationPolicy policy,
-                                          bool allow_popup) {
+bool RenderFrameImpl::GetNewWindowWebView(
+    const GURL& target_url,
+    blink::WebNavigationPolicy policy,
+    bool allow_popup,
+    const blink::WebWindowFeatures& features) {
   mojom::CreateNewWindowStatus status = mojom::CreateNewWindowStatus::kBlocked;
   auto* frame_host = GetFrameHost();
   if (!frame_host) {
     return false;
   }
-  if (!frame_host->GetCreateNewWindow(target_url,
-                                      NavigationPolicyToDisposition(policy),
-                                      allow_popup, &status) ||
+  if (!frame_host->GetCreateNewWindow(
+          target_url, NavigationPolicyToDisposition(policy), allow_popup,
+          ConvertWebWindowFeaturesToMojoWindowFeatures(features), &status) ||
       status != mojom::CreateNewWindowStatus::kSuccess) {
     return false;
   }
@@ -136,5 +142,71 @@ void RenderFrameImpl::OnPdfLoadEvent(int32_t result, const std::string& url) {
     GetFrameHost()->OnPdfLoadEvent(result, url);
   }
 }
+
+void RenderFrameImpl::SetIsPDF(bool is_pdf) {
+  is_pdf_ = is_pdf;
+}
+
+bool RenderFrameImpl::IsPDF() {
+  return is_pdf_;
+}
+
 #endif  // BUILDFLAG(ARKWEB_PDF)
+
+#if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
+bool RenderFrameImpl::IsVideoLoadOptimizationEnabled(const std::string& url) {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->IsVideoLoadOptimizationEnabled(url);
+  }
+  return false;
+}
+
+int RenderFrameImpl::GetVideoPreloadTimeDefault() const {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->GetVideoPreloadTimeDefault();
+  }
+  return INT_MAX;
+}
+
+int RenderFrameImpl::GetVideoMinCacheTimeDefault() const {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->GetVideoMinCacheTimeDefault();
+  }
+  return INT_MAX;
+}
+
+int RenderFrameImpl::GetVideoMaxCacheTimeDefault() const {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->GetVideoMaxCacheTimeDefault();
+  }
+  return INT_MAX;
+}
+
+int RenderFrameImpl::GetVideoMoovSizeDefault() const {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->GetVideoMoovSizeDefault();
+  }
+  return INT_MAX;
+}
+
+int RenderFrameImpl::GetVideoBitrateDefault() const {
+  if (auto* thread = RenderThreadImpl::current()) {
+    return thread->GetVideoBitrateDefault();
+  }
+  return INT_MAX;
+}
+
+bool RenderFrameImpl::SetNewsFeedPageFitted() {
+  return media_factory_.SetNewsFeedPageFitted();
+}
+#endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
+
+#if BUILDFLAG(ARKWEB_JS_ON_DOCUMENT_END)
+void RenderFrameImpl::OnDocumentEndReady() {
+  if (GetFrameHost()) {
+    GetFrameHost()->OnDocumentEndReady();
+  }
+}
+#endif
+
 // LCOV_EXCL_STOP

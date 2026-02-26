@@ -87,6 +87,12 @@ class RenderWidgetHostImplExt : public RenderWidgetHostImpl {
   void DidNativeEmbedMouseEvent(blink::mojom::NativeEmbedMouseEventPtr mouseEvent) override;
 #endif
 
+#if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
+  void SetFocusWebId(int32_t nweb_id);
+
+  void SetScrollable(bool enable);
+#endif
+
 protected:
 #if BUILDFLAG(ARKWEB_SLIDE_LTPO)
   void ReportSlidingFrameRate(const blink::WebGestureEvent& gesture_event);

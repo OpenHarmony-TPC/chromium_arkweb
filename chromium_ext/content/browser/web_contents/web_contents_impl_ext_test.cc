@@ -428,6 +428,12 @@ TEST_F(WebContentsImplExtTest, ShowFreeCopyMenu001) {
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_AI)
+TEST_F(WebContentsImplExtTest, OnDataDetectorSelectText001) {
+  ExtendContent()->OnDataDetectorSelectText();
+}
+#endif
+
 TEST_F(WebContentsImplExtTest, GetTargetFramesIncludingPending001) {
   int routing_id = 0;
   auto ptr = ExtendContent()->GetTargetFramesIncludingPending(routing_id);
@@ -1594,4 +1600,11 @@ TEST_F(WebContentsImplExtTest, RenderViewReady002) {
       RenderViewHost::FromID(render_process_id, render_view_id);
   ExtendContent()->RenderViewReady(view_host);
 }
+
+#if BUILDFLAG(ARKWEB_JS_ON_DOCUMENT_END)
+TEST_F(WebContentsImplExtTest, OnDocumentEndReady001) {
+  FrameInfos frameInfo;
+  ExtendContent()->OnDocumentEndReady(frameInfo);
+}
+#endif
 }  // namespace content

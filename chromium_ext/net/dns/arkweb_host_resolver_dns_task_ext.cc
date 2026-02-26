@@ -28,8 +28,12 @@
 
 #if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
+#include "arkweb/chromium_ext/net/dns/secure_dns_fallback_utils.h"
 #include "base/base_switches.h"
 #include "base/command_line.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/overrides/net/dns/secure_dns_fallback_utils.h"
+#endif  // BUILDFLAG(IS_ARKWEB_EXT)
 #endif
 
 namespace net {
@@ -44,7 +48,7 @@ void ArkWebHostResolverDnsTaskExt::ArkWebSetNotNeedQueryType(int legacy_results_
   }
 }
 
-void ArkWebHostResolverDnsTaskExt::ArkWebFailedTransaction(
+bool ArkWebHostResolverDnsTaskExt::ArkWebFailedTransaction(
     int net_error, std::optional<DnsQueryType> failed_transaction_type) {
   if (failed_transaction_type.has_value() &&
       IsAddressType(failed_transaction_type.value())) {
@@ -58,9 +62,10 @@ void ArkWebHostResolverDnsTaskExt::ArkWebFailedTransaction(
       RecordFailedTransactionInfo(completed_transaction_index, net_error,
                                   dns_query_type);
       hostResolverDnsTask->OnTransactionsFinished(/*single_transaction_results=*/std::nullopt);
-      return;
+      return true;
     }
   }
+  return false;
 }
 
 bool ArkWebHostResolverDnsTaskExt::AnyAOrAAAATransactionRemain() {
@@ -79,12 +84,6 @@ void ArkWebHostResolverDnsTaskExt::RecordFailedTransactionInfo(
     int index,
     int net_error,
     DnsQueryType dns_query_type) {
-  LOG(INFO) << "The completed transaction [" << index << "] is failed "
-            << net_error << ", failedQueryType "
-            << static_cast<int>(dns_query_type) << ", host "
-            << url::LogUtils::ConvertUrlWithMask(std::string(
-                   hostResolverDnsTask->host_.GetHostnameWithoutBrackets()))
-            << ", and needed tranactions num is 2";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO)
       << "The completed transaction [" << index << "] is failed " << net_error
@@ -109,6 +108,43 @@ void ArkWebHostResolverDnsTaskExt::SetNotNeedMoreAttemptIPQueryType(
     }
   }
 }
+
+void ArkWebHostResolverDnsTaskExt::MaybeModifyInsecureDnsTaskResolveResults(
+    const std::string& host,
+    bool secure_dns_fallback_available,
+    HostCache::Entry& out_results,
+    std::vector<IPEndPoint>& truncation_results) {
+  if (hostResolverDnsTask->secure_fallback()) {
+    return;
+  }
+
+  if (out_results.error() != OK) {
+    return;
+  }
+  if (out_results.ip_endpoints().empty()) {
+    return;
+  }
+
+  bool need_to_modify_resolve_result = false;
+  std::vector<IPEndPoint> ip_endpoints_modified;
+  bool need_to_replace_address = MaybeNeedToProcessAddressList(
+      host, out_results.ip_endpoints(), secure_dns_fallback_available,
+      ip_endpoints_modified, need_to_modify_resolve_result, truncation_results);
+  if (!need_to_replace_address) {
+    return;
+  }
+
+#if BUILDFLAG(IS_ARKWEB_EXT)
+  ReportDnsHijackHitInfo(host, RecordQueryType::UDP,
+                         out_results.ip_endpoints());
+#endif  // BUILDFLAG(IS_ARKWEB_EXT)
+
+  out_results.set_ip_endpoints(ip_endpoints_modified);
+  if (need_to_modify_resolve_result) {
+    out_results.set_error(ERR_NAME_NOT_RESOLVED);
+  }
+}
+
 #endif  // BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
 
 }  // namespace net

@@ -49,6 +49,11 @@ void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
                              WebView* web_view,
                              WebSettings* settings,
                              WebViewImpl* web_view_impl) {
+#if BUILDFLAG(ARKWEB_AI)
+  settings->SetImageAnalyzerEnabled(prefs.image_analyzer_enabled);
+  settings->SetArkwebAgentEnabled(prefs.arkweb_agent_enabled);
+  settings->SetAgentNeedHighlight(prefs.agent_need_highlight);
+#endif  // BUILDFLAG(ARKWEB_AI)
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   settings->SetVerticalHideScrollbars(prefs.hide_vertical_scrollbars);
   settings->SetHorizontalHideScrollbars(prefs.hide_horizontal_scrollbars);
@@ -86,6 +91,10 @@ void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
       prefs.border_radius_top_left, prefs.border_radius_top_right,
       prefs.border_radius_bottom_left, prefs.border_radius_bottom_right);
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
+
+#if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+  settings->SetEnableAutoFill(prefs.is_autofill_enabled);
+#endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 
 #if BUILDFLAG(ARKWEB_MENU)
   settings->SetTouchHandleExistState(prefs.touch_handle_exist);
@@ -149,6 +158,14 @@ void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
 #if BUILDFLAG(ARKWEB_SCROLLBAR)
   settings->SetScrollBarColor(prefs.scrollbar_color);
 #endif
+
+#if BUILDFLAG(ARKWEB_CLIPBOARD)
+  settings->SetClipboardSitePermissionEnabled(prefs.clipboard_site_permission_enabled);
+#endif  // BUILDFLAG(ARKWEB_CLIPBOARD)
+
+#if BUILDFLAG(ARKWEB_MEDIA_CAST)
+  settings->SetCastEnabled(prefs.cast_enabled);
+#endif  // BUILDFLAG(ARKWEB_MEDIA_CAST)
 }
 
 void WebView::ApplyWebPreferencesForInclude(
@@ -167,6 +184,10 @@ void WebView::ApplyWebPreferencesForInclude(
   LOG(DEBUG) << "WebViewImpl::UpdateMainFrameLayoutSize,forceZeroLayoutHeight:"
              << prefs.force_zero_layout_height;
   RuntimeEnabledFeatures::SetMediaCaptureEnabled(true);
+  RuntimeEnabledFeatures::SetEyeDropperAPIEnabled(
+      OHOS::NWeb::OhosAdapterHelper::GetInstance()
+          .GetSystemPropertiesInstance()
+          .GetBoolParameter("web.eyedropper.enabled", false));
   if (!base::ohos::IsPcDevice()) {
     settings->SetAllowCustomScrollbarInMainFrame(false);
     settings->SetAccessibilityFontScaleFactor(prefs.font_scale_factor);
@@ -340,6 +361,30 @@ bool WebViewImpl::GetAdBlockEnableForSite() {
   }
   LocalFrame& root_frame = frame->LocalFrameRoot();
   return root_frame.GetAdBlockEnableForSite();
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_FLING)
+void WebViewImpl::UpdateFlingVelocityLimit(const gfx::Vector2dF& velocity) {
+  if (!GetPage() || !(GetPage()->MainFrame())) {
+    LOG(DEBUG) << "[flingTracker] May not use a FlingTracker object "
+                    "associated with a Page that is not fully active.";
+    return;
+  }
+
+  if (velocity == limit_fling_velocity_) {
+    LOG(DEBUG) << "Store value hasn't change, no need to limit Velocity";
+    return;
+  }
+
+  limit_fling_velocity_ = velocity;
+
+  if (GetPage()->MainFrame()->IsLocalFrame()) {
+    DCHECK(local_main_frame_host_remote_);
+    if (local_main_frame_host_remote_) {
+      local_main_frame_host_remote_->UpdateFlingVelocityLimit(velocity);
+    }
+  }
 }
 #endif
 

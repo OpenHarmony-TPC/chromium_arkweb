@@ -73,6 +73,10 @@ class ArkwebDisplayUtils {
                    gfx::Size current_surface_size,
                    AggregatedFrame& frame);
 
+#if BUILDFLAG(ARKWEB_VULKAN)
+  void JudgePartialSwap();
+#endif
+
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
   void DumpSnapshotForBlankLess(AggregatedFrame& frame);
 
@@ -83,6 +87,10 @@ class ArkwebDisplayUtils {
 
 #if BUILDFLAG(ARKWEB_OCCLUDED_OPT)
   void DiscardBackbuffer();
+#endif
+
+#if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
+  void CleanBufferAfterSwapBuffer(bool delay_clean);
 #endif
 
  private:
@@ -113,7 +121,7 @@ class ArkwebDisplayUtils {
 #endif  // ARKWEB_MAXIMIZE_RESIZE
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
-  GpuServiceImpl* gpu_service_impl_ {nullptr};
+  raw_ptr<GpuServiceImpl> gpu_service_impl_ {nullptr};
   uint32_t client_id_ = 0;
 #endif
   base::WeakPtrFactory<ArkwebDisplayUtils> weak_factory_{this};

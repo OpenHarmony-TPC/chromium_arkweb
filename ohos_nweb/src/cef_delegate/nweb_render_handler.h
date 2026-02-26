@@ -57,6 +57,9 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
       std::function<void(double, double)>&& callback);
   void RegisterRenderCb(std::function<void(const char*)> render_update_cb);
   void RegisterNWebHandler(std::shared_ptr<NWebHandler> handler);
+#if BUILDFLAG(ARKWEB_AI)
+  void RegisterNWebAgentHandler(std::shared_ptr<NWebAgentHandler> handler);
+#endif
   void Resize(uint32_t width, uint32_t height);
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   void ResizeVisibleViewport(uint32_t width, uint32_t height);
@@ -83,7 +86,11 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
                                     const CefString& text,
                                     const CefRange& selected_range,
                                     const CefRange& compositon_range) override;
+  void EnableVirtualKeyboardRequestFocus(bool isNeedRequestFocus);
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
+#if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
+  void SetViewportAvoidHeight(int32_t viewportAvoidHeight);
+#endif
 #if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
   void SendDynamicFrameLossEvent(CefRefPtr<CefBrowser> browser,
                                  const CefString& sceneId,
@@ -103,9 +110,7 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   void UpdateSecurityLayer(bool isNeedSecurityLayer) override;
   void UpdateTextFieldStatus(bool isShowKeyboard, bool isAttachIME) override;
 #endif
-#if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
-  void SetViewportAvoidHeight(int32_t viewportAvoidHeight);
-#endif
+
 #if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
   void SetFillContent(const CefString& content) override;
 #endif
@@ -178,11 +183,9 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
                      DragOperationsMask allowed_ops,
                      int x,
                      int y) override;
+  void SetIrregularDragBackground(bool is_irregular_background);
   void FreePixlMapData();
   void NotifySelectAllClicked(bool select_all) override;
-  void SelectionBoundsChanged(const CefRect& anchor_rect,
-                              const CefRect& focus_rect,
-                              bool is_anchor_first) override;
 #endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
 
 #if BUILDFLAG(IS_OHOS)
@@ -273,6 +276,8 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   uint32_t GetContentHeight() const { return content_height_; }
 
   uint32_t GetContentWidth() const { return content_width_; }
+
+  void OpenEyeDropper(CefRefPtr<CefBrowser> browser) override;
 #endif
 
   std::shared_ptr<NWebTouchHandleState> GetTouchHandleState(
@@ -281,6 +286,8 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   std::shared_ptr<NWebTouchHandleState> GetDefalutTouchHandleState(
       NWebTouchHandleState::TouchHandleType type);
   void OnSelectAreaChanged(CefRect& select_area) override; 
+  void OnClippedSelectionBoundsChanged(const CefRect& rect,
+                                       bool need_report) override;
 #endif
   CefRefPtr<CefDragData> GetDragData();
 
@@ -299,6 +306,12 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   void OnDetectedBlankScreen(const std::string& url,
                              int32_t blankScreenReason,
                              int32_t detectedContentfulNodesCount) override;
+#endif
+
+#if BUILDFLAG(ARKWEB_FIRST_SCREEN_PAINT)
+  void OnFirstScreenPaint(const std::string& url,
+                          int64_t navigationStartTime,
+                          int64_t firstScreenPaintTime) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_ACCESSIBILITY)
@@ -321,6 +334,7 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
       const CefTouchHandleState& touch_handle);
 #if BUILDFLAG(ARKWEB_MENU)
   CefRect ConvertSelectAreaDisplayRatio(const CefRect& rect);
+  CefRect clipped_selection_bounds_;
 #endif
 
   std::function<void(const char*)> render_update_cb_ = nullptr;
@@ -335,6 +349,7 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   bool needFocusViewport_ = false;
   int32_t node_id_ = -1;
   bool noNeedKeyboardByInput_ = false;
+  bool virtualKeyboardRequestFocus_ = true;
 #endif
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   float scroll_offset_x_ = 0.0f;
@@ -354,13 +369,12 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   CefRefPtr<CefDragData> drag_data_ = nullptr;
 #if BUILDFLAG(ARKWEB_DRAG_DROP)
   std::shared_ptr<NWebDragData> nweb_drag_data_ = nullptr;
+  bool is_irregular_drag_background_ = true;
   bool select_all_ = false;
-  CefPoint start_edge_top_;
-  CefPoint start_edge_bottom_;
-  CefPoint end_edge_top_;
-  CefPoint end_edge_bottom_;
 #endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
-
+#if BUILDFLAG(ARKWEB_AI)
+  std::weak_ptr<NWebAgentHandler> nweb_agent_handler_;
+#endif
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   std::weak_ptr<NWebDelegateInterface> delegate_interface_;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)

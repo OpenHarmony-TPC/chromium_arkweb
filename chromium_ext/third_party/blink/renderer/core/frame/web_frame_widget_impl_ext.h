@@ -58,6 +58,7 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
       gfx::Rect clipped_selection_bounds) override;
   void CleanFocusCache() override;
   void SelectRangeV2(const gfx::Point& position, bool is_base) override;
+  void NotifySelectionRangeEmpty(blink::WebRange range, WebLocalFrame* focused_frame);
 #endif
 
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
@@ -71,6 +72,7 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
 
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   gfx::Vector2dF GetOverScrollOffset() override;
+  void OnOverScrollOffsetChanged(float offset_x, float offset_y) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_EXT_FREE_COPY)

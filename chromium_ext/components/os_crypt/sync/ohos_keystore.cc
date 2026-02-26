@@ -61,11 +61,21 @@ bool ValidateKeyAndGetEncryptedData(const base::FilePath& key_file_path, std::st
   LOG(ERROR) << "validate key fail encrypted data length: " << encryptedData.length();
   return false;
 }
+
+base::FilePath GetPath() {
+  base::FilePath cache_path;
+  base::FilePath data_path;
+  if (base::PathService::Get(base::DIR_USER_DATA, &data_path)) {
+    return data_path;
+  }
+
+  base::PathService::Get(base::DIR_CACHE, &cache_path);
+  return cache_path;
+}
 }
 
 std::string GetKey(const std::string& alias) {
-  base::FilePath cache_path;
-  base::PathService::Get(base::DIR_CACHE, &cache_path);
+  base::FilePath cache_path = GetPath();
   if (cache_path.empty()) {
     return std::string();
   }
@@ -101,7 +111,11 @@ std::string GetKey(const std::string& alias) {
                           .GetKeystoreAdapterInstance()
                           .EncryptKey(alias, local_key);
       if (!encryptedData.empty()) {
-        base::WriteFile(key_file, encryptedData.c_str());
+        base::WriteFile(
+            key_file,
+            base::span<const uint8_t>(
+                reinterpret_cast<const uint8_t*>(encryptedData.data()),
+                encryptedData.size()));
         return local_key;
       }
     }
@@ -110,8 +124,7 @@ std::string GetKey(const std::string& alias) {
 }
 
 std::string GetKeyForOta(const std::string& alias) {
-  base::FilePath cache_path;
-  base::PathService::Get(base::DIR_CACHE, &cache_path);
+  base::FilePath cache_path = GetPath();
   if (cache_path.empty()) {
     return std::string();
   }

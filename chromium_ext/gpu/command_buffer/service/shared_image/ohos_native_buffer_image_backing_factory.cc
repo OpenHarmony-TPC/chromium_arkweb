@@ -335,10 +335,9 @@ OHOSNativeBufferImageBackingFactory::MakeBackingWithValidateConfig(
     int dst_stride = configAdapterTmp->GetBufferStride();
     int src_stride = bytes_per_pixel * size.width();
 
-    size_t expected_size = src_stride * size.height();
-    if (pixel_data.size() != expected_size) {
+    if (pixel_data.size() != src_stride * size.height()) {
         LOG(ERROR) << "Invalid initial pixel data size: expected " 
-                   << expected_size << ", got " << pixel_data.size();
+                   << src_stride * size.height() << ", got " << pixel_data.size();
         return nullptr;
     }
 
@@ -369,7 +368,7 @@ OHOSNativeBufferImageBackingFactory::MakeBackingWithValidateConfig(
       mailbox, format, size, color_space, surface_origin, alpha_type, usage,
       /*debug_label=*/"OhosNativeBuffer", std::move(handle),
       estimated_size.value() /*estimated_size*/, is_thread_safe, std::move(initial_upload_fd),
-      false /*use_passthrough_*/, gl_format_caps_);
+      use_passthrough_ /*use_passthrough_*/, gl_format_caps_);
 
   // If we uploaded initial data, set the backing as cleared.
   if (!pixel_data.empty()) {

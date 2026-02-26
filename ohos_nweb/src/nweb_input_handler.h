@@ -28,7 +28,7 @@ class NWebInputHandler {
   static std::shared_ptr<NWebInputHandler> Create(
       std::shared_ptr<NWebDelegateInterface> nweb_delegate);
 
-  NWebInputHandler(std::shared_ptr<NWebDelegateInterface> nweb_delegate);
+  explicit NWebInputHandler(std::shared_ptr<NWebDelegateInterface> nweb_delegate);
   ~NWebInputHandler() = default;
 
   bool Init();
@@ -79,6 +79,7 @@ class NWebInputHandler {
                                  double vx,
                                  double vy,
                                  const std::vector<int32_t>& pressedCodes);
+  void WebSendCancelFlingEvent();
   void WebSendMouseEvent(
       const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent);
 #endif

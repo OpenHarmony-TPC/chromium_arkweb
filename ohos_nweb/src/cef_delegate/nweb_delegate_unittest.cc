@@ -123,6 +123,11 @@ TEST_F(NWebDelegateTest, Resize) {
   nweb_delegate_->Resize(width, height, isKeyboard);
 }
 
+TEST_F(NWebDelegateTest, SetIsOfflineWebComponent) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  nweb_delegate_->SetIsOfflineWebComponent();
+}
+
 TEST_F(NWebDelegateTest, OnTouchPress) {
   ASSERT_NE(nweb_delegate_, nullptr);
   int32_t id = 1;
@@ -330,6 +335,11 @@ TEST_F(NWebDelegateTest, WebSendTouchpadFlingEvent) {
   nweb_delegate_->WebSendTouchpadFlingEvent(x, y, vx, vy, pressedCodes);
 }
 
+TEST_F(NWebDelegateTest, WebSendCancelFlingEvent) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  nweb_delegate_->WebSendCancelFlingEvent();
+}
+
 TEST_F(NWebDelegateTest, SetVirtualKeyBoardArg) {
   ASSERT_NE(nweb_delegate_, nullptr);
   int32_t width = 100;
@@ -362,6 +372,36 @@ TEST_F(NWebDelegateTest, GetSelectInfo) {
 TEST_F(NWebDelegateTest, OnTextSelected) {
   ASSERT_NE(nweb_delegate_, nullptr);
   nweb_delegate_->OnTextSelected();
+}
+
+TEST_F(NWebDelegateTest, RegisterOnLoadStartedCbForHighlightContent_001) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  std::function<void(void)> callback = []() {};
+  nweb_delegate_->handler_delegate_ = nullptr;
+  nweb_delegate_->RegisterOnLoadStartedCbForHighlightContent(std::move(callback));
+}
+
+TEST_F(NWebDelegateTest, RegisterOnLoadStartedCbForHighlightContent_002) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  std::function<void(void)> callback = []() {};
+  nweb_delegate_->RegisterOnLoadStartedCbForHighlightContent(std::move(callback));
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
+TEST_F(NWebDelegateTest, SetFocusWebId) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  int32_t nweb_id = 1;
+  nweb_delegate_->SetFocusWebId(nweb_id);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_SCREEN_OFFSET)
+TEST_F(NWebDelegateTest, SetScreenOffset) {
+  ASSERT_NE(nweb_delegate_, nullptr);
+  double x = 20.0;
+  double y = 30.0;
+  nweb_delegate_->SetScreenOffset(x, y);
 }
 #endif
 

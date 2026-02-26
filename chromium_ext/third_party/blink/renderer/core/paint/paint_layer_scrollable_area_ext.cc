@@ -31,7 +31,6 @@
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/public/web/web_view.h"
-#include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/public/web/web_settings.h"
 
 #if BUILDFLAG(ARKWEB_EXT_TOPCONTROLS) || BUILDFLAG(ARKWEB_SCROLLBAR)
@@ -54,8 +53,9 @@ float PaintLayerScrollableAreaExt::ComputeVisibleAreaScale() const {
   Page* page = GetLayoutBox()->GetDocument().GetPage();
   DCHECK(page);
   float scale_factor = page->PageScaleFactor();
+  bool will_be_overlay = GetPageScrollbarTheme().UsesOverlayScrollbars();
   if (is_pinch_gesture_active_ && !base::ohos::IsPcDevice() &&
-      scale_factor > 1.f && layer_->IsRootLayer()) {
+      scale_factor > 1.f && layer_->IsRootLayer() && will_be_overlay) {
     return scale_factor;
   }
   return 1.f;
@@ -121,15 +121,15 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForHorizontalScrollbar() const {
 #if BUILDFLAG(ARKWEB_SCROLLBAR_AVOID_CORNER)
   ChromeClient* client = GetLayoutBox()->GetFrameView()->GetChromeClient();
   if (!client) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForHorizontalScrollbar();
   }
   auto webview = client->GetWebView();
   if (!webview) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForHorizontalScrollbar();
   }
   auto setting = webview->GetSettings();
   if (!setting) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForHorizontalScrollbar();
   }
 
   auto borderRadiusBottomLeft =
@@ -164,6 +164,10 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForHorizontalScrollbar() const {
   borderRadiusBottomRight = borderRadiusBottomRight > scroll_corner.width()
                                 ? borderRadiusBottomRight
                                 : 0.0f;
+  if (layer_ && !layer_->IsRootLayer()) {
+    borderRadiusBottomLeft = 0.0f;
+    borderRadiusBottomRight = 0.0f;
+  }
   if (rectWidth > rectHeight) {
     // Horizontal scrollbar rect
     return gfx::Rect(
@@ -230,15 +234,15 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForVerticalScrollbar() const {
 #if BUILDFLAG(ARKWEB_SCROLLBAR_AVOID_CORNER)
   ChromeClient* client = GetLayoutBox()->GetFrameView()->GetChromeClient();
   if (!client) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForVerticalScrollbar();
   }
   auto webview = client->GetWebView();
   if (!webview) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForVerticalScrollbar();
   }
   auto setting = webview->GetSettings();
   if (!setting) {
-    return gfx::Rect();
+    return PaintLayerScrollableArea::RectForVerticalScrollbar();
   }
 
   auto borderRadiusTopRight =
@@ -258,6 +262,10 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForVerticalScrollbar() const {
   borderRadiusBottomRight = borderRadiusBottomRight > scroll_corner.height()
                                 ? borderRadiusBottomRight
                                 : 0.0f;
+  if (layer_ && !layer_->IsRootLayer()) {
+    borderRadiusTopRight = 0.0f;
+    borderRadiusBottomRight = 0.0f;
+  }
   if (rectWidth > rectHeight) {
     // Horizontal scrollbar rect
     return gfx::Rect(
@@ -525,7 +533,7 @@ void PaintLayerScrollableAreaExt::ComputeScrollbarExistence(
   if (is_vertical_scrollbars_hide) {
     needs_vertical_scrollbar = false;
   }
-#endif  // OH_INPUT_EVENT
+#endif  // ARKWEB_INPUT_EVENTS
   // If this is being performed before layout, we want to only update scrollbar
   // existence if its based on purely style based reasons.
   if (option == kOverflowIndependent) {

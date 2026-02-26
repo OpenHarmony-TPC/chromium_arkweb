@@ -146,6 +146,8 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
 
   void WasOccluded(bool occluded) override {}
 
+  void SetIsOfflineWebComponent() override {}
+
   void OnWindowShow() override {}
 
   void OnWindowHide() override {}
@@ -654,7 +656,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   bool IsAdsBlockEnabledForCurPage() override { return false; }
   void EnableAdsBlock(bool enable) override {}
   int SetUrlTrustListWithErrMsg(const CefString& urlTrustList,
-                                CefString& detailErrMsg) override {
+      bool allowOpaqueOrigin, bool supportWildcard, CefString& detailErrMsg) override {
     return 0;
   }
   void SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) override {}
@@ -688,6 +690,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   CefString GetCustomUserAgent() override { return CefString(); }
   void GetLastHitData(int& type, CefString& extra_data) override {}
   std::string GetSelectedTextFromContextParam() override { return ""; }
+  bool JudgeTextInputState() override { return true; }
   void SetNeedsReload(bool needs_reload) override {}
   void SetOptimizeParserBudgetEnabled(bool enable) override {}
   void OnDestroyImageAnalyzerOverlay() override {}
@@ -727,6 +730,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
       bool recursive,
       IsolatedWorld world,
       CefRefPtr<CefJavaScriptResultCallback> callback) override {}
+void GetAllFrameInfos(CefRefPtr<CefFrameInfosCallback> callback) override {}
+void GetLastJavaScriptProxyCallingFrameInfo(
+    CefRefPtr<CefLastJavaScriptProxyCallingFrameInfoCallback> callback) override {}
 #endif
 #endif  // BUILDFLAG(IS_OHOS)
   int PrerenderPage(const CefString& url,
@@ -757,6 +763,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
     return 0;
   }
   void EnableHttpsUpgrades(bool enable) override {}
+#endif
+#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
+  int32_t GetLastCommittedEntryPageTransition() override { return 0; }
 #endif
 };
 

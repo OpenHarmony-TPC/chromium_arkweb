@@ -16,7 +16,7 @@
 #ifndef OHOS_NWEB_SRC_NWEB_APP_CLIENT_EXTENSION_CALLBACK_H_
 #define OHOS_NWEB_SRC_NWEB_APP_CLIENT_EXTENSION_CALLBACK_H_
 
-#include <stddef.h>
+#include <cstddef>
 
 #include <map>
 #include <string>
@@ -25,6 +25,9 @@
 #include "ohos_nweb/src/capi/nweb_extension_javascript_item.h"
 #include "ohos_nweb/src/capi/nweb_native_embed_first_frame_paint_event.h"
 #include "ohos_nweb/src/capi/nweb_permission_request.h"
+#if BUILDFLAG(ARKWEB_SAFEBROWSING)
+#include "ohos_nweb/src/capi/nweb_extension_safe_browsing_params.h"
+#endif
 
 #if BUILDFLAG(ARKWEB_NAVIGATION)
 #include "arkweb/ohos_nweb/src/capi/nweb_icon_size.h"
@@ -45,6 +48,10 @@ struct NWebAppClientExtensionCallback {
   void (*OnLoadStarted)(bool toDifferentDocument, int nweb_id);
   void (*OnActivityStateChanged)(int state, int type, int nweb_id);
   void (*OnOpenURLFromTab)(std::string target_url,
+                           int type,
+                           bool user_gesture,
+                           int nweb_id);
+  bool (*OnOpenURLFromTabV2)(std::string target_url,
                            int type,
                            bool user_gesture,
                            int nweb_id);
@@ -137,6 +144,8 @@ struct NWebAppClientExtensionCallback {
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
   const char* (*OnRewriteUrlForNavigation)(const char* original_url,
                                            const char* referrer,
+                                           int transition_type,
+                                           bool is_key_request,
                                            int32_t nweb_id);
 #endif
 };

@@ -939,6 +939,13 @@ void InputHandlerProxyUtils::NativeTouchCancelProcess(
           break;
     }
   }
+  int32_t changeIndex = GetTouchChangeIndex(touch_event);
+  if (!CheckFingerIdOutOfIndex(changeIndex)) {
+    int32_t finger_id = touch_event.touches[changeIndex].id;
+    std::shared_ptr<NativeEmbedEventQueue> touchEventQueue =
+        NativeTouchEventQueues_[finger_id];
+    touchEventQueue->SetStatus(INIT);
+  }
   SendToBlink(std::move(event_with_callback));
 }
 
@@ -1316,6 +1323,14 @@ gfx::Vector2dF InputHandlerProxyUtils::GetOverScrollOffset() {
     return overscroll_offset;
   }
   return proxy_->elastic_overscroll_controller_->GetUtils()->GetOverScrollOffset();
+}
+
+void InputHandlerProxyUtils::SetClientForElasticOverScrollController() {
+  if (proxy_ && proxy_->elastic_overscroll_controller_ &&
+      proxy_->elastic_overscroll_controller_->GetUtils()) {
+    proxy_->elastic_overscroll_controller_->GetUtils()
+        ->SetInputHandlerProxyClient(proxy_->client_);
+  }
 }
 #endif
 // LCOV_EXCL_STOP

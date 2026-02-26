@@ -20,12 +20,22 @@ export interface Breakpoint {
 export interface AppRuleInfo {
   'id': string;
   'pg': string[];
+  'strategy' ?: number;
+  'alphabetIdentificationMinSize' ?: number;
+  'alphabetHeightWidthMinRatio' ?: number;
+  'targetHeightRatio' ?: number;
+}
+
+export enum AutoLayoutStrategyType {
+  popupScale = 1,
+  alphabetNavigator = 1 << 1
 }
 
 export enum CheckRuleStateResult {
+  skipCheck = 0,
   initial = 1,
   inWhiteList = 2,
-  outOfWhiteList =3
+  outOfWhiteList = 3
 }
 
 export interface ICCMConfigBase {
@@ -58,6 +68,38 @@ export interface ICCMConfigBase {
    */
   minScaleFactor: number;
 
+  /**
+   * 识别为字母导航条所需最长单调递增字串长度的最小值
+   * 即最长单调递增字串长度 > alphabetIdentificationMinSize 才判断为字母导航条
+   */
+  alphabetIdentificationMinSize?: number;
+
+  /**
+   * 识别为字母导航条元素高宽比的最小值
+   * 即元素 高 > 宽 * alphabetHeightWidthMinRatio 才判断为字母导航条
+   */
+  alphabetHeightWidthMinRatio?: number;
+
+  /**
+   * 弹窗缩放时，目标高度与视口高度的比值。单位为%，targetHeightRatio=70表示70%.
+   * 即弹窗缩放因子scale = 弹窗高度 / (视口高度 * (targetHeightRatio /100)).
+   */
+  targetHeightRatio?: number;
+
+  /**
+   * 是否需要校验id和page，为true时为小程序逻辑，为false时为H5网页url校验
+   */
+  needCheckIdAndPage: boolean;
+
+  /**
+   * 自动调整布局策略
+   * 0x1表示弹窗缩放， 0x2表示字母导航条截断修复，0x3 = 0x1 | 0x2
+   */
+  strategy?: number;
+
+  /**
+   * 小程序白名单
+   */
   appRuleInfos: AppRuleInfo[];
 }
 
@@ -106,10 +148,13 @@ const defaultCCMConfig: ICCMConfig = {
   minScaleFactor: 55,
   breakpoints: [
     { widthRange: { min: 320, max: 500 }, aspectRatioRange: { min: 0.61, max: 1.63 } },
-    { widthRange: { min: 580, max: 900 }, aspectRatioRange: { min: 0.7, max: 2.0 } },
+    { widthRange: { min: 580, max: 950 }, aspectRatioRange: { min: 0.7, max: 2.0 } },
     { widthRange: { min: 1000, max: 1150 }, aspectRatioRange: { min: 1.3, max: 1.45 } }
   ],
   appRuleInfos: [{'id':'000','pg':['home']}],
+  needCheckIdAndPage: true,
+  strategy: 3,
+  targetHeightRatio: 70,
   minSARTofStickyComponent:5,
   maxSARTofStickyComponent:45,
 };
@@ -131,8 +176,11 @@ export class CCMConfig {
   private _buttonPattern: string[];
   private _scaleAnimationDuration: number;
   private _minScaleFactor: number;
+  private _alphabetIdentificationMinSize: number;
+  private _alphabetHeightWidthMinRatio: number;
   private _breakpoints: Breakpoint[];
   private _appRuleInfos:AppRuleInfo[];
+  private _needCheckIdAndPage:boolean;
 
   private _minSARTofStickyComponent:number;
   private _maxSARTofStickyComponent:number;
@@ -141,6 +189,13 @@ export class CCMConfig {
   private page:string;
 
   private checkRuleStateResult:CheckRuleStateResult;
+
+  // 默认是弹窗缩放
+  private strategy: number = AutoLayoutStrategyType.popupScale;
+  // 记录是否已执行字母导航条修复
+  private isAlphabetNavigatorFixExecuted: boolean = false;
+  // 默认比值为70%，与之前算法保持一致
+  private _targetHeightRatio: number = 70;
 
   /**
    * 构造函数，用于初始化 ProductConfig 实例
@@ -155,11 +210,13 @@ export class CCMConfig {
     this._buttonPattern = data.buttonPattern;
     this._scaleAnimationDuration = data.scaleAnimationDuration;
     this._minScaleFactor = data.minScaleFactor;
+    this._alphabetIdentificationMinSize = data.alphabetIdentificationMinSize;
+    this._alphabetHeightWidthMinRatio = data.alphabetHeightWidthMinRatio;
     this._breakpoints = data.breakpoints;
     this._appRuleInfos = data.appRuleInfos;
+    this._needCheckIdAndPage = data.needCheckIdAndPage;
     this.appId = '';
     this.page = '';
-    this.checkRuleStateResult = CheckRuleStateResult.initial;
     this._minSARTofStickyComponent = data.minSARTofStickyComponent;
     this._maxSARTofStickyComponent = data.maxSARTofStickyComponent;
   }
@@ -199,6 +256,7 @@ export class CCMConfig {
   public getButtonPattern(): string[] {
     return this._buttonPattern;
   }
+
   public getScaleAnimationDuration(): number {
     return this._scaleAnimationDuration;
   }
@@ -206,13 +264,34 @@ export class CCMConfig {
   public getMinScaleFactor(): number {
     return this._minScaleFactor;
   }
+
   public getAppID(): string {
     return this.appId;
   }
+
   public getPage(): string {
     return this.page;
   }
 
+  public getAutoLayoutStrategyType(): number {
+    return this.strategy;
+  }
+
+  public getAlphabetIdentificationMinSize(): number {
+    return this._alphabetIdentificationMinSize;
+  }
+
+  public getAlphabetHeightWidthMinRatio(): number {
+    return this._alphabetHeightWidthMinRatio;
+  }
+
+  public getTargetHeightRatio(): number {
+    return this._targetHeightRatio;
+  }
+
+  public setAlphabetNavigatorFixExecuted(isExecuted: boolean): void {
+    this.isAlphabetNavigatorFixExecuted = isExecuted;
+  }
 
   /**
    * 根据输入的宽度值，在断点配置中查找匹配的宽高比范围
@@ -238,7 +317,19 @@ export class CCMConfig {
       this._minContentAreaRatioThreshold = data.minContentAreaRatioThreshold;
       this._scaleAnimationDuration = data.scaleAnimationDuration;
       this._minScaleFactor = data.minScaleFactor ;
+      this._alphabetIdentificationMinSize = data.alphabetIdentificationMinSize;
+      this._alphabetHeightWidthMinRatio = data.alphabetHeightWidthMinRatio;
+      if (data.targetHeightRatio > 0) {
+        this._targetHeightRatio = data.targetHeightRatio;
+      }
       this._appRuleInfos = typeof data.appRuleInfos === 'string' ? JSON.parse(data.appRuleInfos) : data.appRuleInfos;
+      this._needCheckIdAndPage = data.needCheckIdAndPage;
+      // 若needCheckIdAndPage为false，跳过id和page的校验
+      if (data.needCheckIdAndPage) {
+        this.checkRuleStateResult = CheckRuleStateResult.initial;
+      } else {
+        this.checkRuleStateResult = CheckRuleStateResult.skipCheck;
+      }
   }
 
   /**
@@ -278,8 +369,11 @@ export class CCMConfig {
    * @returns 如果找到匹配的规则，则返回 true，否则返回 false。
    */
   public checkRule(): CheckRuleStateResult {
+    if (this.checkRuleStateResult === CheckRuleStateResult.skipCheck) {
+      Log.info('H5网页修复，跳过id和page校验', Tag.ccmConfig);
+    }
     if(this.checkRuleStateResult !== CheckRuleStateResult.initial) {
-        return this.checkRuleStateResult;
+      return this.checkRuleStateResult;
     }
     // 要检查的App ID。
     // @ts-ignore
@@ -309,10 +403,48 @@ export class CCMConfig {
       if (isIdMatch && isPgMatch) {
         // 立即返回 true，因为已经找到了一个匹配项
         this.checkRuleStateResult = CheckRuleStateResult.inWhiteList;
+        this.parseMiniappOptionalConfig(rule);
         return this.checkRuleStateResult;
       }
     }
     this.checkRuleStateResult = CheckRuleStateResult.outOfWhiteList;
     return this.checkRuleStateResult;
+  }
+
+  /**
+   * 解析AppRuleInfo内可选参数
+   */
+  private parseMiniappOptionalConfig(appRuleInfo :AppRuleInfo): void {
+    Log.info('id, page 检查成功，查询策略...', Tag.ccmConfig);
+    if (appRuleInfo.strategy) {
+      this.strategy = appRuleInfo.strategy;
+      Log.info(`当前页面策略为：${this.strategy}`, Tag.ccmConfig);
+    }
+    if (appRuleInfo.alphabetIdentificationMinSize) {
+      this._alphabetIdentificationMinSize = appRuleInfo.alphabetIdentificationMinSize;
+    }
+    if (appRuleInfo.alphabetHeightWidthMinRatio) {
+      this._alphabetHeightWidthMinRatio = appRuleInfo.alphabetHeightWidthMinRatio;
+    }
+    if (appRuleInfo.targetHeightRatio && appRuleInfo.targetHeightRatio > 0) {
+      this._targetHeightRatio = appRuleInfo.targetHeightRatio;
+    }
+  }
+
+  /**
+   * 判断是否应用弹窗缩放策略
+   * @returns 是否应用弹窗缩放策略
+   */
+  public isPopupScaleEnable(strategy: number): boolean {
+    return (strategy & AutoLayoutStrategyType.popupScale) > 0;
+  }
+  
+  /**
+   * 判断是否应用字母导航条修复策略
+   * @returns 是否应用字母导航条修复策略
+   */
+  public isAlphabetNavigatorEnable(strategy: number): boolean {
+    let strategyEnable: boolean = (strategy & AutoLayoutStrategyType.alphabetNavigator) > 0;
+    return strategyEnable && !this.isAlphabetNavigatorFixExecuted;
   }
 }

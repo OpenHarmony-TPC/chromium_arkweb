@@ -33,6 +33,9 @@
 #include "base/task/thread_pool/thread_pool_instance.h"
 #endif
 
+#if BUILDFLAG(ARKWEB_DFX_DUMP)
+#include "arkweb/chromium_ext/base/debug/arkweb_dump_info.h"
+#endif
 namespace OHOS::NWeb {
 
 namespace {
@@ -239,11 +242,9 @@ void NWebEngineImpl::SetWebDestroyMode(WebDestroyMode mode) {
     NWebImpl::SetWebDestroyMode(mode);
 }
 
-#if BUILDFLAG(ARKWEB_SOFTKEYBOARD_AVOID)
-void NWebEngineImpl::SetSoftKeyboardBehaviorMode(WebSoftKeyboardBehaviorMode mode) {
-    NWebImpl::SetSoftKeyboardBehaviorMode(mode);
+void NWebEngineImpl::SetScrollbarMode(ScrollbarMode mode) {
+    NWebImpl::SetScrollbarMode(mode);
 }
-#endif
 
 void NWebEngineImpl::ClearPrefetchedResource(
     const std::vector<std::string>& cache_key_list) {
@@ -364,4 +365,34 @@ void NWebEngineImpl::SetSocketIdleTimeout(int32_t timeout) {
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_COOKIE)
+void NWebEngineImpl::LibraryLoaded(
+    std::shared_ptr<NWebEngineInitArgs> init_args,
+    bool lazy) {
+  NWebImpl::LibraryLoaded(init_args, lazy);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_DFX_DUMP)
+std::string NWebEngineImpl::DumpArkWebInfo(const std::string& param) {
+  base::debug::ArkWebDumpInfo& arkwebDumpInfo = base::debug::ArkWebDumpInfo::GetInstance();
+  if (!arkwebDumpInfo.IsDumpEnabled()) {
+    return "web.debug.dump.on = false";
+  }
+
+  std::string result;
+  arkwebDumpInfo.ParseCmdParamAndDump(param, result);
+  return result;
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_USERAGENT)
+void NWebEngineImpl::SetUserAgentClientHintsEnabled(bool enabled) {
+  NWebImpl::SetUserAgentClientHintsEnabled(enabled);
+}
+
+bool NWebEngineImpl::GetUserAgentClientHintsEnabled() {
+  return NWebImpl::GetUserAgentClientHintsEnabled();
+}
+#endif
 }  // namespace OHOS::NWeb

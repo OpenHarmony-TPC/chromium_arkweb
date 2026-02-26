@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "media/audio/ohos/ohos_audio_focus_controller.h"
-#include "base/hash/hash.h"
 #include "base/logging.h"
 #include "base/synchronization/waitable_event.h"
 #include "content/public/browser/browser_task_traits.h"
@@ -323,6 +322,29 @@ bool OHOSAudioFocusController::GetPlayingState(const AudioParameters &parameters
         base::BindOnce(
             [](const media::AudioParameters &params, bool *out_result, base::WaitableEvent *out_event) {
                 *out_result = CheckGetPlayingStateOnUIThread(params);
+                out_event->Signal();
+            },
+            parameters,
+            &result,
+            &event));
+    event.Wait();
+    return result;
+}
+
+bool OHOSAudioFocusController::IsWebContentCurrentlyAudible(const AudioParameters &parameters)
+{
+    if (content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
+        return CheckGetPlayingStateOnUIThread(parameters);
+    }
+
+    bool result = false;
+    base::WaitableEvent event(
+        base::WaitableEvent::ResetPolicy::AUTOMATIC, base::WaitableEvent::InitialState::NOT_SIGNALED);
+
+    content::GetUIThreadTaskRunner({})->PostTask(FROM_HERE,
+        base::BindOnce(
+            [](const media::AudioParameters &params, bool *out_result, base::WaitableEvent *out_event) {
+                *out_result = IsWebContentCurrentlyAudibleOnUIThread(params);
                 out_event->Signal();
             },
             parameters,
@@ -678,90 +700,27 @@ bool OHOSAudioFocusController::CheckGetMediaPlayerMuteStateOnUIThread(
     return media_session->GetMediaPlayerMuteState();
 }
 
-void OHOSAudioFocusController::SuspendOtherPlaybacks(const content::WebContentsImpl* webContentsImpl)
-{
-    if (content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
-        CheckSuspendOtherPlaybacksUIThread(webContentsImpl);
-        return;
-    }
-
-    base::WaitableEvent event(
-        base::WaitableEvent::ResetPolicy::AUTOMATIC, base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-    content::GetUIThreadTaskRunner({})->PostTask(FROM_HERE,
-        base::BindOnce(
-            [](const content::WebContentsImpl* webContentsImpl, base::WaitableEvent *out_event) {
-                CheckSuspendOtherPlaybacksUIThread(webContentsImpl);
-                out_event->Signal();
-            },
-            webContentsImpl,
-            &event));
-    event.Wait();
-}
-
-void OHOSAudioFocusController::SuspendOtherPlaybacks(const AudioParameters& params)
-{
-    if (content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
-        CheckSuspendOtherPlaybacksUIThread(params);
-        return;
-    }
-
-    base::WaitableEvent event(
-        base::WaitableEvent::ResetPolicy::AUTOMATIC, base::WaitableEvent::InitialState::NOT_SIGNALED);
-
-    content::GetUIThreadTaskRunner({})->PostTask(FROM_HERE,
-        base::BindOnce(
-            [](const media::AudioParameters &params, base::WaitableEvent *out_event) {
-                CheckSuspendOtherPlaybacksUIThread(params);
-                out_event->Signal();
-            },
-            params,
-            &event));
-    event.Wait();
-}
-
-void OHOSAudioFocusController::CheckSuspendOtherPlaybacksUIThread(const content::WebContentsImpl* webContentsImpl)
-{
-    LOG(INFO) << "OHOSAudioFocusController suspend the audio in other web." << "hash: "
-              << std::hex << base::FastHash(base::byte_span_from_ref(webContentsImpl));
-    if (!webContentsImpl) {
-        LOG(ERROR) << "CheckSuspendOtherPlaybacksUIThread webContentsImpl is null";
-        return;
-    }
-    for (content::WebContentsImpl* webContents : webContentsImpl->GetAllWebContents()) {
-        if (!webContents) {
-            LOG(ERROR) << "CheckSuspendOtherPlaybacksUIThread webContents is null";
-            continue;
-        }
-        if(webContentsImpl == webContents) {
-            continue;
-        }
-        content::MediaSessionImpl* mediaSession = content::MediaSessionImpl::FromWebContents(webContents);
-        if (!mediaSession) {
-            LOG(ERROR) << "CheckSuspendOtherPlaybacksUIThread MediaSession not available for WebContents";
-            continue;
-        }
-        mediaSession->Suspend(content::MediaSession::SuspendType::kSystem);
-    }
-}
-
-void OHOSAudioFocusController::CheckSuspendOtherPlaybacksUIThread(const AudioParameters& params)
-{
+bool OHOSAudioFocusController::IsWebContentCurrentlyAudibleOnUIThread(
+    const AudioParameters& params) {
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-    content::RenderFrameHost* renderFrameHost =
-        content::RenderFrameHost::FromID(params.render_process_id(), params.render_frame_id());
-    if (!renderFrameHost) {
-        LOG(ERROR) << "CheckSuspendOtherPlaybacksUIThread RenderFrameHost not found for PID: "
-                   << params.render_process_id() << ", FrameID: " << params.render_frame_id();
-        return;
+
+    content::RenderFrameHost* render_frame_host =
+        content::RenderFrameHost::FromID(params.render_process_id(),
+                                         params.render_frame_id());
+    if (!render_frame_host) {
+        LOG(ERROR) << __func__ << "render_frame_host not found for PID: "
+                   << params.render_process_id()
+                   << ", frame_id: " << params.render_frame_id();
+        return true;
     }
 
-    content::WebContents* webContents = content::WebContents::FromRenderFrameHost(renderFrameHost);
-    if (!webContents) {
-        LOG(ERROR) << "CheckSuspendOtherPlaybacksUIThread WebContents not found for RenderFrameHost";
-        return;
+    content::WebContents* web_contents =
+        content::WebContents::FromRenderFrameHost(render_frame_host);
+    if (!web_contents) {
+        LOG(ERROR) << "web_contents not found for render_frame_host";
+        return true;
     }
-    CheckSuspendOtherPlaybacksUIThread(static_cast<content::WebContentsImpl*>(webContents));
+    return web_contents->IsCurrentlyAudible();
 }
 
 }  // namespace media

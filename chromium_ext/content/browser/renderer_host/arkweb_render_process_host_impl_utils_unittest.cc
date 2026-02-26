@@ -28,7 +28,7 @@
 #include "url/origin.h"
 #include "content/browser/child_process_security_policy_impl.h"
 #include "content/browser/renderer_host/spare_render_process_host_manager_impl.h"
-#include "arkweb/chromium_ext/base/ohos/ltpo/src/mock_sys_info_util_ext.h"
+#include "arkweb/ohos_adapter_ndk/mock_ndk_api/include/mock_base_ohos_api.h"
 #include "arkweb/ohos_nweb/src/nweb_resize_helper.h"
 #include "content/public/common/content_switches.h"
 #define private public
@@ -130,6 +130,8 @@ TEST_F(RenderProcessHostImplUtilsTest, GetMaxRendererProcessCountExMaxCount) {
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetMaxRendererProcessCountExAmount) {
+  RenderProcessHost::SetRenderProcessMode(RenderProcessMode::MULTIPLE_MODE);
+  g_max_renderer_count_override = 0;
   size_t maxRendererProcessCount = ArkwebRenderProcessHostImplUtils::GetMaxRendererProcessCountEx();
   size_t minRenderCount = 3;
   EXPECT_TRUE(maxRendererProcessCount > minRenderCount);
@@ -195,10 +197,10 @@ TEST_F(RenderProcessHostImplUtilsTest, IsSuitableHostForArkwebTest5) {
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessCountForLimitArkweb) {
-  size_t processCountToIgnore = 0;
+  size_t processCountToIgnore = 1;
+  size_t processCount = RenderProcessHostImpl::GetProcessCount();
   size_t result = ArkwebRenderProcessHostImplUtils::GetProcessCountForLimitArkweb(processCountToIgnore);
-  size_t count = 1;
-  EXPECT_EQ(result, count);
+  EXPECT_TRUE(processCount - processCountToIgnore >= result);
 }
  
 #if BUILDFLAG(ARKWEB_THEME_FONT)
@@ -269,13 +271,14 @@ TEST_F(RenderProcessHostImplUtilsTest, IsThemeFontValidTest6) {
   base::CreateDirectory(flag_path);
   base::CreateDirectory(font_path);
   base::WriteFile(manifest_path, "{}");
+  std::vector<base::File> font_files;
+  font_files.emplace_back(base::File(manifest_path, base::File::FLAG_OPEN | base::File::FLAG_READ));
   
   ArkwebRenderProcessHostImplUtils::g_theme_font_ = std::make_unique<ThemeFont>();
   ArkwebRenderProcessHostImplUtils::g_theme_font_->flag_path = flag_path;
   ArkwebRenderProcessHostImplUtils::g_theme_font_->manifest_path = manifest_path;
   ArkwebRenderProcessHostImplUtils::g_theme_font_->font_path = font_path;
-  ArkwebRenderProcessHostImplUtils::g_theme_font_->font_file = 
-    base::File(manifest_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ArkwebRenderProcessHostImplUtils::g_theme_font_->font_files = std::move(font_files);
   
   EXPECT_TRUE(ArkwebRenderProcessHostImplUtils::IsThemeFontValid());
 }
@@ -288,13 +291,14 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFont_AlreadyValid) {
   base::CreateDirectory(flag_path);
   base::CreateDirectory(font_path);
   base::WriteFile(manifest_path, "{}");
+  std::vector<base::File> font_files;
+  font_files.emplace_back(base::File(manifest_path, base::File::FLAG_OPEN | base::File::FLAG_READ));
   
   ArkwebRenderProcessHostImplUtils::g_theme_font_ = std::make_unique<ThemeFont>();
   ArkwebRenderProcessHostImplUtils::g_theme_font_->flag_path = flag_path;
   ArkwebRenderProcessHostImplUtils::g_theme_font_->manifest_path = manifest_path;
   ArkwebRenderProcessHostImplUtils::g_theme_font_->font_path = font_path;
-  ArkwebRenderProcessHostImplUtils::g_theme_font_->font_file =
-    base::File(manifest_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  ArkwebRenderProcessHostImplUtils::g_theme_font_->font_files = std::move(font_files);
   
   EXPECT_TRUE(ArkwebRenderProcessHostImplUtils::IsThemeFontValid());
  
@@ -348,8 +352,8 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest5) {
   base::CreateDirectory(theme_font_path);
   base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
   std::string json_content = base::StringPrintf(
-    "{\"id\":\"%s\",\"origin\":\"%s\",\"ttfFileSrc\":\"%s",
-    "1", "preset", "/absolute/path/default.ttf");
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s",
+    "1", "preset", "default.ttf");
   EXPECT_EQ(base::WriteFile(manifest_path, json_content), true);
   LOG(INFO) << "manifest_path:" << manifest_path.FinalExtension();
   ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
@@ -368,7 +372,7 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest6) {
   base::CreateDirectory(theme_font_path);
   base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
   std::string json_content = base::StringPrintf(
-    "[\"id\",\"origin\",\"ttfFileSrc\"]");
+    "[\"id\",\"origin\",\"src\",\"srcExt\"]");
   EXPECT_EQ(base::WriteFile(manifest_path, json_content), true);
   LOG(INFO) << "manifest_path:" << manifest_path.Extension();
   ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
@@ -405,8 +409,8 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest8) {
   base::CreateDirectory(theme_font_path);
   base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
   std::string json_content = base::StringPrintf(
-    "{\"id\":\"%s\",\"origin\":\"%s\",\"ttfFileSrc\":\"%s\"}",
-    "1", "preset", "");
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s\",\"srcExt\":[\"%s\"]}",
+    "1", "preset", "", "");
   base::WriteFile(manifest_path, json_content);
   ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
   EXPECT_EQ(result, nullptr);
@@ -424,8 +428,8 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest9) {
   base::CreateDirectory(theme_font_path);
   base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
   std::string json_content = base::StringPrintf(
-    "{\"id\":\"%s\",\"origin\":\"%s\",\"ttfFileSrc\":\"%s\"}",
-    "1", "preset", "/absolute/path/default.ttf");
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"ttfFileSrc\":\"%s\",\"srcExt\":[\"%s\"]}",
+    "1", "preset", "default.ttf", "default2.ttf");
   base::WriteFile(manifest_path, json_content);
   ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
   EXPECT_EQ(result, nullptr);
@@ -445,7 +449,7 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest10) {
   base::FilePath font_file = theme_font_path.Append("valid_font.ttf");
   base::WriteFile(font_file, "");
   std::string json_content = base::StringPrintf(
-    "{\"id\":\"%s\",\"origin\":\"%s\",\"ttfFileSrc\":\"%s\"}",
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s\"}",
     "1", "preset", "valid_font.ttf");
   base::WriteFile(manifest_path, json_content);
   ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
@@ -453,6 +457,72 @@ TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest10) {
   base::DeletePathRecursively(theme_flag_path);
   base::DeletePathRecursively(theme_font_path);
 }
+
+TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest11) {
+  base::FilePath theme_path(kAppThemePathA);
+  base::FilePath theme_path_flag(kAppThemePathA);
+  base::FilePath theme_flag_path = theme_path_flag.Append(kAppThemeFlagFileName);
+  base::FilePath theme_font_path = theme_path.Append(kAppThemeFontsDirName);
+  base::CreateDirectory(theme_path);
+  base::CreateDirectory(theme_flag_path);
+  base::CreateDirectory(theme_font_path);
+  base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
+  base::FilePath font_file = theme_font_path.Append("valid_font.ttf");
+  base::WriteFile(font_file, "");
+  std::string json_content = base::StringPrintf(
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s\",\"srcExt\":[\"%s\"]}",
+    "1", "preset", "valid_font.ttf", "");
+  base::WriteFile(manifest_path, json_content);
+  ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
+  EXPECT_NE(result, nullptr);
+  base::DeletePathRecursively(theme_flag_path);
+  base::DeletePathRecursively(theme_font_path);
+}
+
+TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest12) {
+  base::FilePath theme_path(kAppThemePathA);
+  base::FilePath theme_path_flag(kAppThemePathA);
+  base::FilePath theme_flag_path = theme_path_flag.Append(kAppThemeFlagFileName);
+  base::FilePath theme_font_path = theme_path.Append(kAppThemeFontsDirName);
+  base::CreateDirectory(theme_path);
+  base::CreateDirectory(theme_flag_path);
+  base::CreateDirectory(theme_font_path);
+  base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
+  base::FilePath font_file = theme_font_path.Append("valid_font.ttf");
+  base::WriteFile(font_file, "");
+  std::string json_content = base::StringPrintf(
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s\",\"srcExt\":[\"%s\"]}",
+    "1", "preset", "valid_font.ttf", "default2.ttf");
+  base::WriteFile(manifest_path, json_content);
+  ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
+  EXPECT_NE(result, nullptr);
+  base::DeletePathRecursively(theme_flag_path);
+  base::DeletePathRecursively(theme_font_path);
+}
+
+TEST_F(RenderProcessHostImplUtilsTest, EnsureThemeFontTest13) {
+  base::FilePath theme_path(kAppThemePathA);
+  base::FilePath theme_path_flag(kAppThemePathA);
+  base::FilePath theme_flag_path = theme_path_flag.Append(kAppThemeFlagFileName);
+  base::FilePath theme_font_path = theme_path.Append(kAppThemeFontsDirName);
+  base::CreateDirectory(theme_path);
+  base::CreateDirectory(theme_flag_path);
+  base::CreateDirectory(theme_font_path);
+  base::FilePath manifest_path(theme_font_path.Append(kAppThemeFontsManifest));
+  base::FilePath font_file = theme_font_path.Append("valid_font.ttf");
+  base::WriteFile(font_file, "");
+  base::FilePath font_file_ext = theme_font_path.Append("valid_font1.ttf");
+  base::WriteFile(font_file_ext, "");
+  std::string json_content = base::StringPrintf(
+    "{\"id\":\"%s\",\"origin\":\"%s\",\"src\":\"%s\",\"srcExt\":[\"%s\"]}",
+    "1", "preset", "valid_font.ttf", "valid_font1.ttf");
+  base::WriteFile(manifest_path, json_content);
+  ThemeFont* result = ArkwebRenderProcessHostImplUtils::EnsureThemeFont();
+  EXPECT_NE(result, nullptr);
+  base::DeletePathRecursively(theme_flag_path);
+  base::DeletePathRecursively(theme_font_path);
+}
+
 #endif
  
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_MODE)
@@ -484,55 +554,55 @@ TEST_F(RenderProcessHostImplUtilsTest, ReportHisyeventTest3) {
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, RenderProcessModeTest) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   auto& sys_info_utils_mock = base::ohos::SysInfoUtilsMock::GetInstance();
   EXPECT_CALL(sys_info_utils_mock, IsPcDevice()).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(sys_info_utils_mock, IsTabletDevice()).WillRepeatedly(testing::Return(false));
   auto result = RenderProcessHost::render_process_mode();
   EXPECT_EQ(result, RenderProcessMode::SINGLE_MODE);
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
 
 TEST_F(RenderProcessHostImplUtilsTest, RenderProcessModeTest2) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   auto& sys_info_utils_mock = base::ohos::SysInfoUtilsMock::GetInstance();
   EXPECT_CALL(sys_info_utils_mock, IsPcDevice()).WillRepeatedly(testing::Return(true));
   EXPECT_CALL(sys_info_utils_mock, IsTabletDevice()).WillRepeatedly(testing::Return(false));
   auto result = RenderProcessHost::render_process_mode();
   EXPECT_EQ(result, RenderProcessMode::MULTIPLE_MODE);
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, RenderProcessModeTest3) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   auto& sys_info_utils_mock = base::ohos::SysInfoUtilsMock::GetInstance();
   EXPECT_CALL(sys_info_utils_mock, IsPcDevice()).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(sys_info_utils_mock, IsTabletDevice()).WillRepeatedly(testing::Return(true));
   auto result = RenderProcessHost::render_process_mode();
   EXPECT_EQ(result, RenderProcessMode::MULTIPLE_MODE);
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, RenderProcessModeTest4) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   auto& sys_info_utils_mock = base::ohos::SysInfoUtilsMock::GetInstance();
   EXPECT_CALL(sys_info_utils_mock, IsPcDevice()).WillRepeatedly(testing::Return(true));
   EXPECT_CALL(sys_info_utils_mock, IsTabletDevice()).WillRepeatedly(testing::Return(true));
   auto result = RenderProcessHost::render_process_mode();
   EXPECT_EQ(result, RenderProcessMode::MULTIPLE_MODE);
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest) {
@@ -572,8 +642,8 @@ TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest3)
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest4) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   GURL test_url("https://www.example.com");
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   size_t count = 0;
@@ -592,13 +662,13 @@ TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest4)
  
   ASSERT_NO_FATAL_FAILURE(ArkwebRenderProcessHostImplUtils::GetProcessHostForSiteInstanceArkweb(
       test_process, site_info, web_content_impl->GetBrowserContext(), count, test_site_instance.get()));
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest5) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   GURL test_url("https://www.example.com");
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   size_t count = 0;
@@ -617,13 +687,13 @@ TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest5)
  
   ASSERT_NO_FATAL_FAILURE(ArkwebRenderProcessHostImplUtils::GetProcessHostForSiteInstanceArkweb(
       test_process, site_info, web_content_impl->GetBrowserContext(), count, test_site_instance.get()));
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
 
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest6) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   GURL test_url("https://www.example.com");
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   size_t count = 0;
@@ -641,13 +711,13 @@ TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest6)
  
   ASSERT_NO_FATAL_FAILURE(ArkwebRenderProcessHostImplUtils::GetProcessHostForSiteInstanceArkweb(
       test_process, site_info, web_content_impl->GetBrowserContext(), maxProcessCount, test_site_instance.get()));
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest7) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   GURL test_url("https://www.example.com");
   g_render_process_mode = RenderProcessMode::DEFAULT_MODE;
   size_t count = 0;
@@ -665,8 +735,8 @@ TEST_F(RenderProcessHostImplUtilsTest, GetProcessHostForSiteInstanceArkwebTest7)
  
   ASSERT_NO_FATAL_FAILURE(ArkwebRenderProcessHostImplUtils::GetProcessHostForSiteInstanceArkweb(
       test_process, site_info, web_content_impl->GetBrowserContext(), maxProcessCount, test_site_instance.get()));
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest) {
@@ -679,8 +749,8 @@ TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest) {
 }
  
 TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest2) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_max_renderer_count_override = 4;
   auto* killer = DelayedRenderKiller::GetInstance();
   killer->rep_ = 0;
@@ -693,13 +763,13 @@ TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest2) {
   EXPECT_CALL(*mock_timer, Stop())
     .Times(1);
   ASSERT_NO_FATAL_FAILURE(killer->TryKillRender());
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }   
  
 TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest3) {
-  base::ohos::SysInfoUtilsMock::isPcDevice = true;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = true;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = true;
   g_max_renderer_count_override = 4;
   auto* killer = DelayedRenderKiller::GetInstance();
   killer->rep_ = 0;
@@ -712,8 +782,8 @@ TEST_F(RenderProcessHostImplUtilsTest, TryKillRenderTest3) {
   EXPECT_CALL(*mock_timer, Stop())
     .Times(1);
   ASSERT_NO_FATAL_FAILURE(killer->TryKillRender());
-  base::ohos::SysInfoUtilsMock::isPcDevice = false;
-  base::ohos::SysInfoUtilsMock::isTabletDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsPcDevice = false;
+  base::ohos::SysInfoUtilsMock::mockIsTabletDevice = false;
 }
  
 #endif

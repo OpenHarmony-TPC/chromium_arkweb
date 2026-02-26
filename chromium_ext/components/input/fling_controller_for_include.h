@@ -33,4 +33,17 @@
   void StopWebPageFling();
 #endif
 
+#if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
+  void SetFocusWebId(int32_t nweb_id);
+  void SetScrollable(bool enable);
+#endif
+
+#if BUILDFLAG(ARKWEB_FLING)
+  void UpdateFlingVelocityLimit(const gfx::Vector2dF& velocity);
+#endif
+
+#if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
+  bool scroll_enabled_ = true;
+#endif
+
 #endif

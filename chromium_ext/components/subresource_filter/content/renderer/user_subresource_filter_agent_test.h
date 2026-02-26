@@ -243,6 +243,10 @@ class MockRenderFrame : public content::RenderFrame {
    bool OnMessageReceived(const IPC::Message& message) override {}
    bool Send(IPC::Message* msg) override {}
    gfx::Vector2dF GetOverScrollOffset() override {}
+
+#if BUILDFLAG(ARKWEB_JS_ON_DOCUMENT_END)
+  void OnDocumentEndReady() override {}
+#endif
  private:
   TestRenderFrameCondition condition_;
   MockWebLocalFrame* web_local_frame_;
@@ -619,6 +623,14 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
       const blink::WebAssociatedURLLoaderOptions&) override {
     return nullptr;
   }
+
+#if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
+  virtual std::unique_ptr<blink::WebAssociatedURLLoader> CreateVideoURLLoader(
+      const blink::WebAssociatedURLLoaderOptions&) override {
+    return nullptr;
+  }
+#endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
+
   void DeprecatedStopLoading() override {}
   gfx::PointF GetScrollOffset() const override {
     return gfx::PointF(0, 0);

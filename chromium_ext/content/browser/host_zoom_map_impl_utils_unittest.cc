@@ -1,4 +1,5 @@
-/* Copyright (c) 2025 Huawei Device Co., Ltd.
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -38,10 +39,11 @@ class HostZoomMapImplUtilsTest : public testing::Test {
  * @tc.type: FUNC
  */
 TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit) {
+  std::string host = "test.com";
   base::Time now = base::Time::Now();
   double level = 1.0;
-  utils_->IsZoomTooFast(now, level);
-  EXPECT_TRUE(utils_->IsZoomTooFast(now, level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, now, level));
+  EXPECT_TRUE(utils_->IsZoomTooFast(host, now, level));
 }
 
 /**
@@ -50,11 +52,12 @@ TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit) {
  * @tc.type: FUNC
  */
 TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit1) {
+  std::string host = "test.com";
   base::Time now = base::Time::Now();
   double level = 1.0;
-  utils_->IsZoomTooFast(now, level);
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, now, level));
   base::Time second_time = now + base::Milliseconds(20);
-  EXPECT_TRUE(utils_->IsZoomTooFast(second_time, level));
+  EXPECT_TRUE(utils_->IsZoomTooFast(host, second_time, level));
 }
 
 /**
@@ -63,11 +66,12 @@ TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit1) {
  * @tc.type: FUNC
  */
 TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit2) {
+  std::string host = "test.com";
   base::Time now = base::Time::Now();
   double level = 1.0;
-  utils_->IsZoomTooFast(now, level);
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, now, level));
   base::Time second_time = now + base::Milliseconds(30);
-  EXPECT_FALSE(utils_->IsZoomTooFast(second_time, level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, second_time, level));
 }
 
 /**
@@ -76,11 +80,12 @@ TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit2) {
  * @tc.type: FUNC
  */
 TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit3) {
+  std::string host = "test.com";
   base::Time now = base::Time::Now();
   double level = 1.0;
-  utils_->IsZoomTooFast(now, level);
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, now, level));
   base::Time second_time = now + base::Milliseconds(40);
-  EXPECT_FALSE(utils_->IsZoomTooFast(second_time, level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, second_time, level));
 }
 
 /**
@@ -89,17 +94,18 @@ TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit3) {
  * @tc.type: FUNC
  */
 TEST_F(HostZoomMapImplUtilsTest, IsZoomTooFast_FrequencyLimit4) {
+  std::string host = "test.com";
   base::Time time = base::Time::Now();
   double zoom_level = 1.0;
-  EXPECT_FALSE(utils_->IsZoomTooFast(time, zoom_level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, time, zoom_level));
   time += base::Milliseconds(20);
-  EXPECT_TRUE(utils_->IsZoomTooFast(time, zoom_level));
+  EXPECT_TRUE(utils_->IsZoomTooFast(host, time, zoom_level));
   time += base::Milliseconds(20);
-  EXPECT_FALSE(utils_->IsZoomTooFast(time, zoom_level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, time, zoom_level));
   time += base::Milliseconds(25);
-  EXPECT_TRUE(utils_->IsZoomTooFast(time, zoom_level));
+  EXPECT_TRUE(utils_->IsZoomTooFast(host, time, zoom_level));
   time += base::Milliseconds(30);
-  EXPECT_FALSE(utils_->IsZoomTooFast(time, zoom_level));
+  EXPECT_FALSE(utils_->IsZoomTooFast(host, time, zoom_level));
 }
 #endif
 }  // namespace content

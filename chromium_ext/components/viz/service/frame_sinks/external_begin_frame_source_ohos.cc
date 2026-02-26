@@ -35,6 +35,10 @@
 #include "arkweb/chromium_ext/base/ohos/d_vsync/include/d_vsync_controller.h"
 #endif
 
+#if BUILDFLAG(ARKWEB_PERFORMANCE_JITTER)
+#include "components/viz/common/features.h"
+#endif
+
 namespace viz {
 using namespace OHOS::NWeb;
 
@@ -171,16 +175,17 @@ ReportLossFrame::GetInstance()->SetVsyncPeriod(vsync_period_);
 #endif
 
 #if BUILDFLAG(ARKWEB_PERFORMANCE_JITTER)
+  static bool isAlreadyThrottle = false;
+  static bool isHalfAlreadyThrottle = false;
 #if BUILDFLAG(ARKWEB_PIP)
   if (!pip_active_) {
 #endif
-    static bool isAlreadyThrottle = false;
-    static bool isHalfAlreadyThrottle = false;
     if (lower_frame_rate_enabled_) {
       if (!isAlreadyThrottle) {
-        frame_sink_manager_->StartThrottlingAllFrameSinks(base::Hertz(0.01));
+        double Extreme_Throttle_Frame_Rate = features::kExtremeThrottleFrameRate.Get();
+        frame_sink_manager_->StartThrottlingAllFrameSinks(base::Hertz(Extreme_Throttle_Frame_Rate));
         isAlreadyThrottle = true;
-        LOG(DEBUG) << "OnVSyncImpl StartThrottlingAllFrameSinks";
+        LOG(DEBUG) << "OnVSyncImpl StartThrottlingAllFrameSinks:" << Extreme_Throttle_Frame_Rate;
       }
     } else if (isAlreadyThrottle && !half_frame_rate_enabled_) {
       frame_sink_manager_->StopThrottlingAllFrameSinks();
@@ -204,6 +209,14 @@ ReportLossFrame::GetInstance()->SetVsyncPeriod(vsync_period_);
 #if BUILDFLAG(ARKWEB_PIP)
   }
 #endif
+#if BUILDFLAG(ARKWEB_PIP)
+  if (pip_active_ && isAlreadyThrottle) {
+    if (frame_sink_manager_) {
+      frame_sink_manager_->StopThrottlingAllFrameSinks();
+      isAlreadyThrottle = false;
+    }
+  }
+#endif  // ARKWEB_PIP
 #endif
 
 #if BUILDFLAG(ARKWEB_D_VSYNC)

@@ -19,11 +19,12 @@
 #include <memory>
 #include <vector>
 
+#include "cef_browser.h"
 #include "capi/nweb_download_delegate_callback.h"
+#include "mock_nweb_delegate.h"
 #define private public
 #include "arkweb/build/features/features.h"
 #include "arkweb/ohos_nweb/src/capi/nweb_devtools_message_handler.h"
-#include "build/build_config.h"
 #include "nweb_delegate_interface.h"
 #include "nweb_input_handler.h"
 
@@ -466,6 +467,25 @@ TEST_F(NWebInputHandlerTest,
       .Times(1);
 
   input_handler_->WebSendTouchpadFlingEvent(x, y, vx, vy, pressedCodes);
+  EXPECT_NE(input_handler_->nweb_delegate_, nullptr);
+}
+
+TEST_F(NWebInputHandlerTest,
+       NWebInputHandlerTest_WebSendCancelFlingEvent_001) {
+  input_handler_->nweb_delegate_ = nullptr;
+  EXPECT_CALL(*mock_delegate_, WebSendCancelFlingEvent())
+      .Times(0);
+
+  input_handler_->WebSendCancelFlingEvent();
+  EXPECT_EQ(input_handler_->nweb_delegate_, nullptr);
+}
+
+TEST_F(NWebInputHandlerTest,
+       NWebInputHandlerTest_WebSendCancelFlingEvent_002) {
+  EXPECT_CALL(*mock_delegate_, WebSendCancelFlingEvent())
+      .Times(1);
+
+  input_handler_->WebSendCancelFlingEvent();
   EXPECT_NE(input_handler_->nweb_delegate_, nullptr);
 }
 

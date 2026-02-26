@@ -277,12 +277,16 @@ void BackgroundTaskPolicy::SetBrowserBackground(const PageNode* page_node)
 #endif
 
 #if BUILDFLAG(ARKWEB_PERFORMANCE_PERSISTENT_TASK)
-void BackgroundTaskPolicy::OnAudioContextPlaybackStarted(const AudioContextId& audio_context_id) {
-  audio_context_players_num_.insert(audio_context_id);
+void BackgroundTaskPolicy::OnAudioContextPlaybackStarted(content::GlobalRenderFrameHostId rfh_id,
+                                                         int audio_context_id) {
+  AudioContextIdPlayer player{rfh_id, audio_context_id};
+  audio_context_players_num_.insert(player);
 }
 
-void BackgroundTaskPolicy::OnAudioContextPlaybackStopped(const AudioContextId& audio_context_id) {
-  audio_context_players_num_.erase(audio_context_id);
+void BackgroundTaskPolicy::OnAudioContextPlaybackStopped(content::GlobalRenderFrameHostId rfh_id,
+                                                         int audio_context_id) {
+  AudioContextIdPlayer player{rfh_id, audio_context_id};
+  audio_context_players_num_.erase(player);
 }
 
 bool BackgroundTaskPolicy::IsWebAudioRequestBackgroundRunning() {
@@ -340,7 +344,8 @@ void BackgroundTaskPolicy::ProcessAudioContextPlayersOnUIThread(const PageNode* 
             << audio_context_players_num_.size();
   for (auto iter = audio_context_players_num_.begin();
        iter != audio_context_players_num_.end();) {
-    content::RenderFrameHost* render_frame_host = iter->first;
+    content::GlobalRenderFrameHostId rfh_id = iter->first;
+    content::RenderFrameHost* render_frame_host = content::RenderFrameHost::FromID(rfh_id);
     if (!render_frame_host) {
       continue;
     }
@@ -384,18 +389,23 @@ bool BackgroundTaskPolicy::GetWebAudioStartBackgroundTaskOnUIThread() {
     return true;
   }
   bool result = false;
-  for (const auto& audio_context_id : audio_context_players_num_) {
-    content::RenderFrameHost* render_frame_host = audio_context_id.first;
+  for (const auto& player : audio_context_players_num_) {
+    content::GlobalRenderFrameHostId rfh_id = player.first;
+    content::RenderFrameHost* render_frame_host = content::RenderFrameHost::FromID(rfh_id);
     if (!render_frame_host) {
         continue;
     }
-    auto webContent = content::WebContents::FromRenderFrameHost(render_frame_host);
-    if (!webContent) {
-        LOG(ERROR) << "GetWebAudioStartBackgroundTaskOnUIThread get webContent "
-                      "failed.";
+    if (!render_frame_host->IsRenderFrameLive()) {
         continue;
     }
-    result = webContent->OnStartBackgroundTask(WEB_AUDIO_PLAYBACK,
+    auto web_content = content::WebContents::FromRenderFrameHost(render_frame_host);
+    if (!web_content || web_content->IsBeingDestroyed() ||
+        !web_content->GetPrimaryMainFrame()) {
+        LOG(ERROR) << "GetWebAudioStartBackgroundTaskOnUIThread get web_content "
+                      "failed or it is being destroyed or get PrimaryMainFrame failed.";
+        continue;
+    }
+    result = web_content->OnStartBackgroundTask(WEB_AUDIO_PLAYBACK,
                                                "web audio playback scenarios");
     if (result) {
         break;

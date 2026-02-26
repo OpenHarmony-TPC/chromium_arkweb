@@ -45,6 +45,7 @@ class MockAafwkAppMgrClientAdapter
   MOCK_METHOD(void,AttachRenderProcess,(std::shared_ptr<OHOS::NWeb::AafwkRenderSchedulerHostAdapter>),(override));
   MOCK_METHOD(int,StartChildProcess,(const std::string&,int32_t,int32_t,int32_t,pid_t&,const std::string&),(override));
   MOCK_METHOD(void,SaveBrowserConnect,(std::shared_ptr<OHOS::NWeb::AafwkBrowserHostAdapter>),(override));
+  MOCK_METHOD(bool, IsRenderProcessByUid, (int), (override));
 };
 #endif
 
@@ -179,7 +180,10 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode001)
     bool known_dead = false;
     base::TerminationStatus temp = base::TERMINATION_STATUS_PROCESS_CRASHED;
     auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
-    EXPECT_EQ(result, temp);
+    EXPECT_EQ(result, temp); 
+    ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
+    std::string log_output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(log_output.find(TERMINAL_REASONS[2]) != std::string::npos);
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode002) {
@@ -236,6 +240,9 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode008)
     base::TerminationStatus temp = base::TERMINATION_STATUS_NORMAL_TERMINATION;
     auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
     EXPECT_EQ(result, temp);
+    ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
+    std::string log_output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(log_output.find(TERMINAL_REASONS[0]) != std::string::npos);
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode009) {
@@ -247,6 +254,9 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode009)
 #endif
     auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
     EXPECT_EQ(result, temp);
+    ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
+    std::string log_output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(log_output.find(TERMINAL_REASONS[3]) != std::string::npos);
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode010) {
@@ -279,6 +289,9 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode013)
     base::TerminationStatus temp = base::TERMINATION_STATUS_ABNORMAL_TERMINATION;
     auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
     EXPECT_EQ(result, temp);
+    ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
+    std::string log_output = testing::internal::GetCapturedStderr();
+    EXPECT_TRUE(log_output.find(TERMINAL_REASONS[1]) != std::string::npos);
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest,GetProcessStatusByExitCode014) {
@@ -528,6 +541,10 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, LaunchChildProcess_CommandLine
   }
 
   auto mock_adapter = std::make_unique<MockAafwkAppMgrClientAdapter>();
+  EXPECT_CALL(*mock_adapter, IsRenderProcessByUid(20300002))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*mock_adapter, IsRenderProcessByUid(100000))
+      .WillOnce(testing::Return(false));
   std::string captured_argv;
   EXPECT_CALL(*mock_adapter, StartChildProcess(testing::_, testing::_, testing::_, testing::_,
                                 testing::_, testing::_))

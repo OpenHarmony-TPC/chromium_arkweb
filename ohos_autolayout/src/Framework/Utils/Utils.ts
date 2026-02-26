@@ -3,6 +3,10 @@ import Log from '../../Debug/Log';
 import Tag from '../../Debug/Tag';
 import LayoutUtils from './LayoutUtils';
 import { CCMConfig } from '../Common/CCMConfig';
+import ModifyObserver from '../Observer/Observers/ModifyObserver';
+import ObserverHandler from '../Observer/ObserverHandler';
+import Constant from '../Common/Constant';
+
 export default class Utils {
     private static TAG = Tag.util;
 
@@ -350,7 +354,7 @@ export default class Utils {
     /**
      * 从CSS颜色字符串中提取alpha通道值。
      * @param {string} colorValue - CSS颜色字符串 (e.g., "rgba(0, 0, 0, 0.5)", "#ff0000", "transparent")
-     * @returns {boolean} - 是否是半透明。
+     * @returns {boolean} - 是否是透明。
      */
     static isColorTransparent(colorValue: string): boolean {
         if (!colorValue) {
@@ -368,7 +372,7 @@ export default class Utils {
         if (colorValue.startsWith('rgba') || colorValue.startsWith('hsla')) {
             const alpha = parseFloat(colorValue.split(',')[3]);
             // 有alpha通道且值小于1,大于0
-            return !isNaN(alpha) && alpha === 0 ;
+            return !isNaN(alpha) && alpha === 0;
         }
         
         // HEX 带透明度 (#RRGGBBAA/#RGBA)
@@ -482,10 +486,12 @@ export default class Utils {
      */
     static isBackgroundSemiTransparent(style:  CSSStyleDeclaration): boolean {
         if(!style) {
+            Log.d(`isBackgroundSemiTransparent: Style is null or undefined, returning false`, Tag.util);
             return false;
         }
         // 2. 检查背景颜色透明度,98%是这种情况,即使opacity是1，也不影响背景透明
         if (Utils.isColorSemiTransparent(style.backgroundColor)) {
+            Log.d(`isBackgroundSemiTransparent: Background color is semi-transparent, returning true`, Tag.util);
             return true;
         }
 
@@ -493,28 +499,69 @@ export default class Utils {
         const op = parseFloat(style.opacity);
         const opacityRange = CCMConfig.getInstance().getOpacityFilter();
         if ( op > opacityRange[0] / 100 && op < opacityRange[1] / 100) {
+            Log.d(`isBackgroundSemiTransparent: style.opacity: ${style.opacity}, Opacity is within range (${opacityRange[0]}%,${opacityRange[1]}%), returning true`, Tag.util);
             return true;
         }
         // 3. 检查背景图片中的渐变透明
         if (Utils.hasSemiTransparentGradient(style.backgroundImage)) {
+            Log.d(`isBackgroundSemiTransparent: Background image has semi-transparent gradient, returning true`, Tag.util);
             return true;
         }
         // 4. 检查滤镜透明度
         if (Utils.hasSemiTransparentFilter(style.filter)) {
+            Log.d(`isBackgroundSemiTransparent: Filter has semi-transparent effect, returning true`, Tag.util);
             return true;
         }
         // 5. 检查背景滤镜（毛玻璃效果）
         if (style.backdropFilter !== 'none') {
+            Log.d(`isBackgroundSemiTransparent: Backdrop filter is not none, returning true`, Tag.util);
             return true;
         }
         // 6. 检查混合模式（可能产生透明叠加效果）
         if (/overlay|multiply|screen|soft-light/.test(style.mixBlendMode)) {
+            Log.d(`isBackgroundSemiTransparent: Mix blend mode is semi-transparent, returning true`, Tag.util);
             return true;
         }
         // 7. 检查CSS遮罩
         if (style.mask !== 'none') {
+            Log.d(`isBackgroundSemiTransparent: Mask is not none, returning true`, Tag.util);
             return true;
         }
+        return false;
+    }
+
+    /**
+     * 判断一个元素是否为用户需要打字输入进行交互的编辑元素
+     */
+    static isUserTextEditable(element: HTMLElement): boolean {
+        // 1. 基础检查：禁用状态
+        if ('disabled' in element && (element as { disabled?: boolean }).disabled) {
+            return false;
+        }
+
+        const tagName = element.tagName.toLowerCase();
+
+        // 2. 处理 Input 元素
+        if (tagName === Constant.input) {
+            const inputEl = element as HTMLInputElement;
+            
+            // 排除只读
+            if (inputEl.readOnly) {
+                return false;
+            }
+
+            if (Constant.textTypes.has(inputEl.type)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        // 3. 处理 Textarea
+        if (tagName === Constant.textarea) {
+            return !(element as HTMLTextAreaElement).readOnly;
+        }
+
         return false;
     }
 
@@ -608,21 +655,57 @@ export default class Utils {
      * @returns {Element[]} - 可见的兄弟节点数组。
      */
     static getVisibleSiblings(node:Element): Element[] {
+        Log.d(`========== 查找可见兄弟节点 ==========`, Utils.TAG);
+        Log.d(`目标节点: ${(node as HTMLElement).className || node.tagName}`, Utils.TAG);
+        
         // 确保节点及其父节点存在
         if (!node || !node.parentNode) {
+            Log.d(`❌ 节点或父节点不存在`, Utils.TAG);
             return [];
         }
 
-        return Array.from(node.parentNode.children).filter(el => {
+        const allChildren = Array.from(node.parentNode.children);
+        Log.d(`父节点总子元素数: ${allChildren.length}`, Utils.TAG);
+
+        let selfCount = 0;
+        let invisibleCount = 0;
+        let visibleCount = 0;
+
+        const visibleSiblings = allChildren.filter(el => {
             // 排除节点自身
             if (el === node) {
+                selfCount++;
                 return false;
             }
+            
             const style = getComputedStyle(el);
-            // 过滤掉不可见的元素 (display:none, visibility:hidden, opacity:0)
-            // 返回true的条件是元素必须是可见的
-            return style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) > 0;
+            // 注意：如果找到的兄弟节点的opacity为0，可能是动画开始前的状态，所以需要检查它的AnimationDuration
+            if (style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) === 0) {
+                // 检查动画持续时间
+               const animationDuration = ModifyObserver.getDurationFromElement(el as HTMLElement);
+               if (animationDuration > 0) {
+                   Log.d(`存在动画节点：: ${(el as HTMLElement).className || el.tagName} (display=${style.display}, visibility=${style.visibility}, opacity=${style.opacity})，动画时长: ${animationDuration}ms`, Utils.TAG);
+                   ObserverHandler.postTask();
+               }
+            }
+            const isVisible = style.display !== 'none' && 
+                style.visibility !== 'hidden' && 
+                parseFloat(style.opacity) > 0;
+            if (!isVisible) {
+                invisibleCount++;
+                Log.d(`  ⚫ 不可见兄弟: ${(el as HTMLElement).className || el.tagName} (display=${style.display}, visibility=${style.visibility}, opacity=${style.opacity})`, Utils.TAG);
+                return false;
+            }
+            
+            visibleCount++;
+            Log.d(`  ✅ 可见兄弟: ${(el as HTMLElement).className || el.tagName}`, Utils.TAG);
+            return true;
         });
+
+        Log.d(`统计结果: 自身=${selfCount}, 不可见=${invisibleCount}, 可见=${visibleCount}`, Utils.TAG);
+        Log.d(`${visibleSiblings.length > 0 ? '✅' : '❌'} 找到 ${visibleSiblings.length} 个可见兄弟节点`, Utils.TAG);
+        
+        return visibleSiblings;
     };
 
     static visualFilter(el :Element) : boolean {
