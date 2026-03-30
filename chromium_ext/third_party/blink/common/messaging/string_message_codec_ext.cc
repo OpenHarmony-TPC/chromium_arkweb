@@ -21,7 +21,6 @@
 #include "base/check_op.h"
 #include "base/containers/buffer_iterator.h"
 #include "base/containers/span.h"
-#include "base/functional/overloaded.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/numerics/checked_math.h"
@@ -91,7 +90,6 @@ const uint32_t kErrorVersion = 20;
 const uint32_t kLatestVersion = 14;
 #endif
 
-// LCOV_EXCL_START
 static size_t BytesNeededForUint32(uint32_t value) {
   size_t result = 0;
   do {
@@ -128,7 +126,6 @@ bool ReadUint8(base::BufferIterator<const uint8_t>& iter, uint8_t* value) {
   }
   return false;
 }
-// LCOV_EXCL_STOP
 
 bool ReadUint32(base::BufferIterator<const uint8_t>& iter, uint32_t* value) {
   *value = 0;
@@ -144,7 +141,6 @@ bool ReadUint32(base::BufferIterator<const uint8_t>& iter, uint32_t* value) {
   return true;
 }
 
-// LCOV_EXCL_START
 bool ContainsOnlyLatin1(const std::u16string& data) {
   char16_t x = 0;
   for (char16_t c : data)
@@ -432,7 +428,6 @@ TransferableMessage EncodeWebMessagePayload(
 
   return message;
 }
-// LCOV_EXCL_STOP
 
 bool ReadOneByteString(base::BufferIterator<const uint8_t>& iter,
                        std::u16string& str) {
@@ -538,7 +533,6 @@ bool ReadInt32InArray(base::BufferIterator<const uint8_t>& iter,
   return false;
 }
 
-// LCOV_EXCL_START
 bool IsBoolElement(uint8_t element_tag) {
   return element_tag == kTrue || element_tag == kFalse;
 }
@@ -551,7 +545,6 @@ bool IsNumberElement(uint8_t element_tag) {
   return element_tag == kDouble || element_tag == kInt32 ||
          element_tag == kUint32;
 }
-// LCOV_EXCL_STOP
 
 bool ReadArray(base::BufferIterator<const uint8_t>& iter,
                struct WebMessagePort::Message& decoded_msg) {
@@ -692,7 +685,6 @@ bool ReadArray(base::BufferIterator<const uint8_t>& iter,
   return true;
 }
 
-// LCOV_EXCL_START
 std::u16string GetProtoTypeName(ErrorTag tag) {
   std::u16string name = u"Error";
   switch (tag) {
@@ -773,7 +765,6 @@ bool ReadError(base::BufferIterator<const uint8_t>& iter,
   }
   return true;
 }
-// LCOV_EXCL_STOP
 
 bool ReadHeaderTag(base::BufferIterator<const uint8_t>& iter, uint8_t& tag) {
   // Discard the outer envelope, including trailer info if applicable.

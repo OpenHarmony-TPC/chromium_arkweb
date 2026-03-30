@@ -16,6 +16,7 @@
 #include "arkweb/chromium_ext/third_party/blink/renderer/platform/media/video_common_data_provider.h"
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
+#include "base/notimplemented.h"
 #include "net/http/http_byte_range.h"
 #include "net/http/http_request_headers.h"
 #include "services/network/public/cpp/cors/cors.h"
@@ -226,7 +227,6 @@ void VideoRangeURLLoaderClient::Start() {
 }
 
 // WebAssociatedURLLoaderClient implementation.
-
 bool VideoRangeURLLoaderClient::WillFollowRedirect(
     const WebURL& new_url,
     const WebURLResponse& redirect_response) {
@@ -465,17 +465,17 @@ void VideoRangeURLLoaderClient::DidReceiveData(base::span<const char> data) {
 
   while (!data.empty()) {
     if (fifo_ptr_->empty() ||
-        fifo_ptr_->back()->data_size() == provider_->block_size()) {
+        fifo_ptr_->back()->size() == provider_->block_size()) {
       fifo_ptr_->push_back(new media::DataBuffer(provider_->block_size()));
-      fifo_ptr_->back()->set_data_size(0);
+      fifo_ptr_->back()->set_size(0);
     }
 
-    int last_block_size = fifo_ptr_->back()->data_size();
+    int last_block_size = fifo_ptr_->back()->size();
     auto to_append =
         std::min<int64_t>(data.size(), provider_->block_size() - last_block_size);
     DCHECK_GT(to_append, 0);
     errno_t result =
-        memcpy_s(fifo_ptr_->back()->writable_data() + last_block_size,
+        memcpy_s(fifo_ptr_->back()->writable_data().data() + last_block_size,
                  static_cast<size_t>(to_append), data.data(), static_cast<size_t>(to_append));
     if (result != EOK) {
       LOG(INFO) << "VideoOpt: " << __func__
@@ -484,7 +484,7 @@ void VideoRangeURLLoaderClient::DidReceiveData(base::span<const char> data) {
       return;
     }
     data = data.subspan(static_cast<size_t>(to_append));
-    fifo_ptr_->back()->set_data_size(static_cast<int>(last_block_size + to_append));
+    fifo_ptr_->back()->set_size(static_cast<int>(last_block_size + to_append));
 
     byte_pos_ += to_append;
     if (last_block_size + to_append == provider_->block_size()) {

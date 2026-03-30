@@ -1,0 +1,20 @@
+shared_library("libwebjs_dfx") {
+  if (is_ohos) {
+
+    include_dirs = [
+      "include"
+    ]
+
+    sources = [
+      "include/dfx.h",
+      "../v8/perf-jit-common.h",
+      "../v8/parse-jitcode.h",
+      "../v8/parse-jitcode.cc",
+      "dfx_api.cpp"
+    ]
+
+    deps = [ "//third_party:huawei_securec" ]
+
+    defines = ["USING_OHOS_WEB"]
+  }
+}

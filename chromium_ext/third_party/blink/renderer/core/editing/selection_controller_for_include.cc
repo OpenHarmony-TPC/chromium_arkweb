@@ -15,13 +15,15 @@
 #if BUILDFLAG(ARKWEB_AI)
 #include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #endif
-
 namespace blink {
 
 #if BUILDFLAG(ARKWEB_AI)
 static constexpr int MAX_LENGTH = 100;
 static constexpr int HALF_LENGTH = 50;
 static constexpr int MAX_DEPTH = 64; //HandleEmptyLine max calling depth
+#endif
+
+#if BUILDFLAG(ARKWEB_EXT_FREE_COPY) || BUILDFLAG(ARKWEB_AI)
 // LCOV_EXCL_START
 void SelectionController::FocusDocumentView() {
   Page* page = frame_->GetPage();
@@ -162,21 +164,24 @@ bool SelectionController::HandleGestureTapIfSelectionExist(
   bool ret = false;
   if (!Selection().Contains(v_point, false)) {
     LOG(INFO) << "Tap outside the selected range to clear selection";
-    if (web_local_frame && event.GetHitTestResult().GetImage()) {
+    if (web_local_frame) {
       const blink::WebRange& range =
           web_local_frame->GetInputMethodController()->GetSelectionOffsets();
-      if (!range.IsNull()) {
+      if (!range.IsNull() && event.GetHitTestResult().GetImage()) {
         web_local_frame->SelectRange(
             blink::WebRange(range.EndOffset(), 0),
             blink::WebLocalFrame::kHideSelectionHandle,
             mojom::blink::SelectionMenuBehavior::kHide,
             WebLocalFrame::SelectionSetFocusBehavior::kSelectionSetFocus);
+      } else if (web_local_frame->Client() && web_local_frame->Client()->AsWebLocalFrameClientExt()) {
+        LOG(INFO)<< "Tap out selected range to change visibility of quick menu";
+        web_local_frame->Client()->AsWebLocalFrameClientExt()->HideQuickMenu();
       }
     }
   } else if (web_local_frame && web_local_frame->Client()) {
     LOG(INFO)
         << "Tap within the selected range to change visibility of quick menu";
-    web_local_frame->Client()->AsWebLocalFrameClientExt()->HideQuickMenu();
+    web_local_frame->Client()->AsWebLocalFrameClientExt()->ChangeVisibilityOfQuickMenu();
     ret = true;
   }
   if (mouse_menu_show_) {
@@ -276,14 +281,14 @@ SelectionInFlatTree SelectionControllerUtils::HandleArkWebAISelectionExt(Selecti
                                                                          bool layout_change) {
 #if BUILDFLAG(ARKWEB_AI)
   if (!inner_node) {
-    return;
+    return SelectionInFlatTree();
   }
-  WTF::String str;
+  String str;
   bool after_line_select_tail = is_double_click;
   if (after_line_select_tail) {
     if (pos.IsNotNull()) {
       str = pos.AnchorNode()->textContent(true);
-    } else if (inner_node != nullptr) {
+    } else {
       str = inner_node->textContent(true);
     }
     const PositionInFlatTree pos_no_empty_line =
@@ -324,7 +329,7 @@ SelectionInFlatTree SelectionControllerUtils::HandleArkWebAISelectionExt(Selecti
   OffsetAdjustWhiteSpace(offset, temp_offset, str, after_line_select_tail);
 #endif
 
-  WTF::Vector<int8_t> select =
+  Vector<int8_t> select =
       obj->frame_->View()->GetChromeClient()->AsChromeClientExt()->GetWordSelection(
           obj->frame_, str, temp_offset);
   LOG(INFO) << "GetWordSelection, start: "
@@ -336,7 +341,7 @@ SelectionInFlatTree SelectionControllerUtils::HandleArkWebAISelectionExt(Selecti
   TextControlElement* text_control =
       EnclosingTextControl(obj->Selection().GetSelectionInDOMTree().Anchor());
   if (pos.IsNotNull()) {
-    if (select.at(0) != -1 && select.at(1) != -1 &&
+    if (IsValidAISelection(select) &&
         (!text_control ||
          text_control->type() != input_type_names::kPassword)) {
       temp_selection =
@@ -358,7 +363,8 @@ SelectionInFlatTree SelectionControllerUtils::HandleArkWebAISelectionExt(Selecti
   return temp_selection;
 }
 
-unsigned SelectionControllerUtils::MaxOffsetTrimTailWhiteSpace(WTF::String& str,
+#if BUILDFLAG(ARKWEB_AI)
+unsigned SelectionControllerUtils::MaxOffsetTrimTailWhiteSpace(String& str,
                                                               unsigned len) {
   if (len == 0) {
     return 0;
@@ -377,7 +383,7 @@ PositionInFlatTree SelectionControllerUtils::HandleEmptyLine(
   if (!inner_node || !pos.IsNotNull()) {
     return pos;
   }
-  WTF::String str = pos.AnchorNode()->textContent(true);
+  String str = pos.AnchorNode()->textContent(true);
   if (str.ContainsOnlyWhitespaceOrEmpty()) {
     inner_node = UpdateAnchorIfWhiteSpace(inner_node, pos);
     str = inner_node->textContent(true);
@@ -389,7 +395,7 @@ PositionInFlatTree SelectionControllerUtils::HandleEmptyLine(
 
 void SelectionControllerUtils::OffsetAdjustWhiteSpace(int& offset,
                                                  int& temp_offset,
-                                                 WTF::String& str,
+                                                 String& str,
                                                  bool permission)
 {
   if (!permission) {
@@ -409,6 +415,7 @@ void SelectionControllerUtils::OffsetAdjustWhiteSpace(int& offset,
     }
   }
 }
+#endif
 
 Node* SelectionControllerUtils::SameEditablePreviousSibling(Node* inner_node)
 {
@@ -440,7 +447,7 @@ Node* SelectionControllerUtils::UpdateAnchorIfWhiteSpace(Node* inner_node,
                                                          const PositionInFlatTree& pos)
 {
   Node* anchor = pos.AnchorNode();
-  WTF::String str;
+  String str;
   for (int i = MAX_DEPTH; anchor && i > 0; i--) {
     if (SameEditablePreviousSibling(anchor)) {
       anchor = anchor->previousSibling();
@@ -457,5 +464,9 @@ Node* SelectionControllerUtils::UpdateAnchorIfWhiteSpace(Node* inner_node,
     }
   }
   return pos.AnchorNode();
+}
+
+bool SelectionControllerUtils::IsValidAISelection(const Vector<int8_t>& select) {
+  return select.at(0) != -1 && select.at(1) != -1 && select.at(0) != select.at(1);
 }
 } // namespace blink

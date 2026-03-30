@@ -56,14 +56,13 @@ class ArkWebHostResolverManagerJobExt : public HostResolverManager::Job {
       override {
     return this;
   }
-  bool CanUseSecureDnsFallback(ResolveContext* resolve_context) override;
 #endif
 
  private:
   friend class Job;
 #if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
   bool CheckDnsFallBackTask(int net_error);
-  void ReportDnsFallBackTaskResult(HostCache::Entry results,
+  void ReportDnsFallBackTaskResult(HostResolverDnsTask::Results&& results,
                                    base::TimeDelta duration);
   using DnsTransactionAddressFailedType =
       HostResolverManager::DnsTransactionAddressFailedType;
@@ -72,14 +71,6 @@ class ArkWebHostResolverManagerJobExt : public HostResolverManager::Job {
   void InitReportInfoForDohFallback() override;
   void InSecureCacheLookupWithoutRunTask(
       std::optional<HostCache::Entry>& resolved);
-  void MaybeModifyProcResolveResults(
-      const std::string& host,
-      bool secure_dns_fallback_available,
-      int& net_error,
-      AddressList& out_addr_list,
-      std::vector<IPEndPoint>& truncation_results);
-  void RecordIllegalIPAddrToLog(const std::string& host,
-                               const AddressList& addrlist);
 
   int resolved_result_for_ipv4_{0};
   int resolved_result_for_ipv6_{0};

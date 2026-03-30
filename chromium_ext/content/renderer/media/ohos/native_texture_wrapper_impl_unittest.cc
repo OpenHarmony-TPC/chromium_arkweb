@@ -69,10 +69,11 @@ class MockClientSharedImageInterface : public gpu::ClientSharedImageInterface {
                                  scoped_refptr<gpu::GpuChannelHost> channel)
       : gpu::ClientSharedImageInterface(proxy, channel) {};
   // gpu::SharedImageInterface implementation.
-  MOCK_METHOD2(
+  MOCK_METHOD3(
       CreateSharedImage,
       scoped_refptr<gpu::ClientSharedImage>(const gpu::SharedImageInfo& si_info,
-                                            gpu::SurfaceHandle surface_handle));
+                                            gpu::SurfaceHandle surface_handle,
+                                            std::optional<gpu::SharedImagePoolId>));
   MOCK_METHOD2(CreateSharedImage,
                scoped_refptr<gpu::ClientSharedImage>(
                    const gpu::SharedImageInfo& si_info,
@@ -87,8 +88,6 @@ class MockClientSharedImageInterface : public gpu::ClientSharedImageInterface {
                scoped_refptr<gpu::ClientSharedImage>(
                    const gpu::SharedImageInfo& si_info,
                    gfx::GpuMemoryBufferHandle buffer_handle));
-  MOCK_METHOD1(CreateSharedImage,
-               SharedImageMapping(const gpu::SharedImageInfo& si_info));
   MOCK_METHOD2(UpdateSharedImage,
                void(const gpu::SyncToken& sync_token,
                     const gpu::Mailbox& mailbox));
@@ -100,14 +99,7 @@ class MockClientSharedImageInterface : public gpu::ClientSharedImageInterface {
                     scoped_refptr<gpu::ClientSharedImage> client_shared_image));
   MOCK_METHOD1(ImportSharedImage,
                scoped_refptr<gpu::ClientSharedImage>(
-                   const gpu::ExportedSharedImage& exported_shared_image));
-  MOCK_METHOD6(CreateSwapChain,
-               SwapChainSharedImages(viz::SharedImageFormat format,
-                                     const gfx::Size& size,
-                                     const gfx::ColorSpace& color_space,
-                                     GrSurfaceOrigin surface_origin,
-                                     SkAlphaType alpha_type,
-                                     gpu::SharedImageUsageSet usage));
+                  gpu::ExportedSharedImage exported_shared_image));
   MOCK_METHOD2(PresentSwapChain,
                void(const gpu::SyncToken& sync_token,
                     const gpu::Mailbox& mailbox));
@@ -142,17 +134,6 @@ class MockClientSharedImageInterface : public gpu::ClientSharedImageInterface {
                                             SkAlphaType alpha_type,
                                             gpu::SharedImageUsageSet usage,
                                             uint32_t texture_target));
-  virtual scoped_refptr<gpu::ClientSharedImage> NotifyMailboxAdded(
-      const gpu::Mailbox& mailbox,
-      viz::SharedImageFormat format,
-      const gfx::Size& size,
-      const gfx::ColorSpace& color_space,
-      GrSurfaceOrigin surface_origin,
-      SkAlphaType alpha_type,
-      gpu::SharedImageUsageSet usage) override {
-    return NotifyMailboxAdded1(mailbox, format, size, color_space,
-                               surface_origin, alpha_type, usage);
-  }
 
   virtual scoped_refptr<gpu::ClientSharedImage> NotifyMailboxAdded(
       const gpu::Mailbox& mailbox,
@@ -162,7 +143,8 @@ class MockClientSharedImageInterface : public gpu::ClientSharedImageInterface {
       GrSurfaceOrigin surface_origin,
       SkAlphaType alpha_type,
       gpu::SharedImageUsageSet usage,
-      uint32_t texture_target) override {
+      uint32_t texture_target,
+      std::string_view debug_label) override {
     return NotifyMailboxAddedWithTarget(mailbox, format, size, color_space,
                                         surface_origin, alpha_type, usage,
                                         texture_target);

@@ -53,8 +53,7 @@ public:
         const media::AudioBus* audio_source,
         base::TimeTicks audio_capture_time,
         const media::AudioGlitchInfo& glitch_info,
-        double volume,
-        bool key_pressed), (override));
+        double volume), (override));
 
     MOCK_METHOD(void, OnCaptureError, (
         media::AudioCapturerSource::ErrorCode code,
@@ -378,7 +377,7 @@ TEST_F(OHOSAudioCapturerSourceTest, ReadData03) {
       .Times(1);
   EXPECT_CALL(*mock_capturer_ptr, Enqueue(testing::_))
       .Times(1);
-  EXPECT_CALL(*mock_callback_ptr, Capture(testing::_, testing::_, testing::_, testing::_, testing::_))
+  EXPECT_CALL(*mock_callback_ptr, Capture(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
   audio_capturer_source_->ReadData();
 }

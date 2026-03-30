@@ -12,28 +12,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef NWEB_JS_VERIFY_PIN_RESULT_IMPL_H
 #define NWEB_JS_VERIFY_PIN_RESULT_IMPL_H
- 
+
 #include "cef/include/cef_request_handler.h"
 #include "nweb_js_verify_pin_result.h"
- 
+
 namespace OHOS::NWeb {
 class NWebJSVerifyPinResultImpl : public NWebJSVerifyPinResult {
  public:
   NWebJSVerifyPinResultImpl() = default;
- 
+
   explicit NWebJSVerifyPinResultImpl(
       CefRefPtr<CefVerifyPinCallback> callback);
- 
+
   ~NWebJSVerifyPinResultImpl() = default;
- 
+
   void Confirm(int32_t verifyResult) override;
- 
+
  private:
   CefRefPtr<CefVerifyPinCallback> callback_;
 };
 }  // namespace OHOS::NWeb
- 
+
 #endif

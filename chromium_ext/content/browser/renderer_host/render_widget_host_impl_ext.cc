@@ -17,6 +17,7 @@
 #include "content/browser/renderer_host/dip_util.h"
 #include "content/browser/renderer_host/render_view_host_delegate_view.h"
 #include "arkweb/chromium_ext/third_party/blink/public/mojom/page/text_recognize_result.mojom.h"
+#include "ui/gfx/image/image_skia.h"
 
 #if BUILDFLAG(ARKWEB_SLIDE_LTPO)
 #include "base/ohos/ltpo/include/sliding_observer.h"
@@ -42,8 +43,7 @@ RenderWidgetHostImplExt::RenderWidgetHostImplExt(
     base::SafeRef<SiteInstanceGroup> site_instance_group,
     int32_t routing_id,
     bool hidden,
-    bool renderer_initiated_creation,
-    std::unique_ptr<FrameTokenMessageQueue> frame_token_message_queue)
+    bool renderer_initiated_creation)
     : RenderWidgetHostImpl(frame_tree,
                            self_owned,
                            frame_sink_id,
@@ -51,8 +51,7 @@ RenderWidgetHostImplExt::RenderWidgetHostImplExt(
                            site_instance_group,
                            routing_id,
                            hidden,
-                           renderer_initiated_creation,
-                           std::move(frame_token_message_queue)) {}
+                           renderer_initiated_creation) {}
 
 #if BUILDFLAG(ARKWEB_CLIPBOARD)
 void RenderWidgetHostImplExt::ForwardTouchEventWithLatencyInfo(
@@ -82,7 +81,6 @@ void RenderWidgetHostImplExt::GetWordSelection(const std::string& text,
   std::move(callback).Run(select);
 }
 
-// LCOV_EXCL_START
 gfx::Rect RenderWidgetHostImplExt::GetImageRect() {
   gfx::Rect image_rect;
   blink_frame_widget_->GetImageRect(&image_rect);
@@ -104,7 +102,6 @@ void RenderWidgetHostImplExt::OnFoldStatusChanged(uint32_t foldstatus) {
 void RenderWidgetHostImplExt::NotifyOverlayStateChanged() {
   blink_frame_widget_->NotifyOverlayStateChanged();
 }
-// LCOV_EXCL_STOP
 
 void RenderWidgetHostImplExt::OnOverlayStateChanged(const gfx::Rect& image_rect) {
   RenderViewHostDelegateView* view = delegate_->GetDelegateView();
@@ -166,7 +163,6 @@ void RenderWidgetHostImplExt::ReportSlidingFrameRate(
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
 void RenderWidgetHostImplExt::DynamicFrameLossEvent(const std::string& sceneId,
                                                     bool isStart) {
@@ -198,8 +194,16 @@ void RenderWidgetHostImplExt::SendCurrentLanguage(const std::string& ans) {
     view_->SendCurrentLanguage(ans);
   }
 }
+
+void RenderWidgetHostImplExt::ReSendCurrentLanguage() {
+  if (blink_frame_widget_) {
+    LOG(INFO) << "RenderWidgetHostImpl:Try ReSendCurrentLanguage";
+    blink_frame_widget_->ReSendLanguage();
+  } else {
+    LOG(WARNING) << "blink_frame_widget_ is null";
+  }
+}
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
 void RenderWidgetHostImplExt::SetFocusWebId(int32_t nweb_id) {

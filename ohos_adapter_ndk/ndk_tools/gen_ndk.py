@@ -45,7 +45,7 @@ class ApiParse:
             ndks[name]["apis"] = {}
             for version, apis in data['apiList'].items():
                 ndks[name]["apis"][version] = []
-                if version <= version_limit:
+                if version <= version_limit and name != "ohcamera" :
                     continue
                 for api in apis:
                     try:
@@ -98,3 +98,4 @@ if __name__ == "__main__":
     if args.input:
         parse_result = ApiParse(args.input, args.version)
         parse_result.generate(args.output, args.absolute)
+

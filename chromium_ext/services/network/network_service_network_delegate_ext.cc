@@ -20,7 +20,6 @@
 
 #include "base/debug/dump_without_crashing.h"
 #include "base/functional/bind.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/types/optional_util.h"
 #include "build/build_config.h"
@@ -47,7 +46,6 @@
 #if BUILDFLAG(ARKWEB_EXT_LOG_MESSAGE)
 #include "base/base_switches.h"
 #include "base/command_line.h"
-#include "base/strings/stringprintf.h"
 #include "net/base/ip_endpoint.h"
 #include "net/nqe/network_quality_estimator.h"
 #include "net/url_request/url_request_context.h"
@@ -62,6 +60,7 @@ namespace network {
 #if BUILDFLAG(ARKWEB_EXT_LOG_MESSAGE)
 void NetworkServiceNetworkDelegateExt::RecordErrorInfo(net::URLRequest* request,
                                                        int net_error) {
+  int downlink_kbps = GetDownStreamThroughputKbps();
   int extended_error_code = 0;
   if (net_error == net::ERR_QUIC_PROTOCOL_ERROR) {
     net::NetErrorDetails details;
@@ -79,21 +78,16 @@ void NetworkServiceNetworkDelegateExt::RecordErrorInfo(net::URLRequest* request,
     resource_type = url_loader->GetResourceType();
   }
 
-  const auto& proxy_servers = request->proxy_chain().proxy_servers_if_valid();
-  int proxy_servers_len =
-      (proxy_servers.has_value() ? proxy_servers.value().size() : -1);
-
-  std::string log_content = base::StringPrintf(
-      "FinalUrlRequestOccursError netCode:%s resourceType:%d "
-      "useHttpDNS:%d useQuic:%d proxyServersNum:%d %s "
-      "duration:%" PRId64 "ms url:%s",
-      net::ErrorToDebugString(net_error).c_str(),
-      static_cast<int>(resource_type), request->used_http_dns() ? 1 : 0,
-      request->response_info().DidUseQuic() ? 1 : 0, proxy_servers_len,
-      GetNetworkQualityInfo().c_str(), duration_time.InMilliseconds(),
-      url::LogUtils::ConvertUrlWithMask(request->url().spec()).c_str());
+  std::ostringstream ostr;
+  ostr << ", error_code " << net_error << "(" << error_code_info
+       << ", resource_type: " << resource_type
+       << ", downstream throughput kbps: " << downlink_kbps
+       << ", duration_time(ms) " << duration_time.InMilliseconds();
+  LOG(INFO) << "final url: *** " << ostr.str();
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO, kNavigation) << log_content;
+  LOG_FEEDBACK(INFO) << "final url: "
+                     << url::LogUtils::ConvertUrlWithMask(request->url().spec())
+                     << ostr.str();
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           ::switches::kEnableLoggerReport)) {
     if (!network_context_->IsDestructing() &&
@@ -104,7 +98,7 @@ void NetworkServiceNetworkDelegateExt::RecordErrorInfo(net::URLRequest* request,
         url_info = url_info.substr(0, url_print_len);
         url_info.append("...");
       }
-      LOG(URL) << log_content << " urlInfo:" << url_info;
+      LOG(URL) << "final url " << url_info << ostr.str();
     }
   }
 #endif
@@ -120,17 +114,6 @@ int32_t NetworkServiceNetworkDelegateExt::GetDownStreamThroughputKbps() {
   }
 
   return 0;
-}
-
-std::string NetworkServiceNetworkDelegateExt::GetNetworkQualityInfo() {
-  if (!network_context_->network_service() ||
-      !network_context_->network_service()->network_quality_estimator()) {
-    return "NQE:notObtained";
-  }
-
-  return network_context_->network_service()
-      ->network_quality_estimator()
-      ->DebugString();
 }
 
 #endif

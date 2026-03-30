@@ -26,7 +26,7 @@ class OHOSAudioOutputStream;
 
 class OHOSAudioOutputCallback {
 public:
-    OHOSAudioOutputCallback(
+    explicit OHOSAudioOutputCallback(
         base::WeakPtr<OHOSAudioOutputStream> audio_output_stream);
 
     void AudioRendererOnWriteData(void* buffer, int32_t length);

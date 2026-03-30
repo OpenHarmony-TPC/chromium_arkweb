@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-#if defined(OH_ENABLE_HEAP_DUMP) && \
-    (defined(USING_OHOS) || defined(OH_ENABLE_HEAP_DUMP_TEST))
+#if (defined(ON_ENABLE_HEAP_TRANSLATE) || defined(OH_ENABLE_HEAP_DUMP_TEST))
 #include "translate_string_tables.h"
 
 #include <sstream>
 
-#include "v8_ohlog.h"
+#include "arkweb/chromium_ext/v8/v8_ohlog.h"
 
 namespace dfx {
 StringTableTranslator::StringTableTranslator(BinaryReaderBase* reader,
@@ -37,14 +36,18 @@ StringTableTranslator::StringTableTranslator(BinaryReaderBase* reader,
 
 void StringTableTranslator::Translate() {
   StringTableElementInfo info;
-  for (int i = 0; i < static_cast<int>(GetObjectCount()); i++) {
-    bool ret = reader_->ReadData(sizeof(info.string_address_),
-        reinterpret_cast<uint8_t*>(&info.string_address_), sizeof(info.string_address_));
+  for (uint32_t i = 0; i < GetObjectCount(); ++i) {
+    bool ret =
+        reader_->ReadData(sizeof(info.string_address_),
+                          reinterpret_cast<uint8_t*>(&info.string_address_),
+                          sizeof(info.string_address_));
     if (!ret) {
       LogInfo("fail to read addr");
       CHECK(ret);
     }
-    ret = reader_->ReadData(sizeof(info.len), reinterpret_cast<uint8_t*>(&info.len), sizeof(info.len));
+    ret = reader_->ReadData(sizeof(info.len_),
+                            reinterpret_cast<uint8_t*>(&info.len_),
+                            sizeof(info.len_));
     if (!ret) {
       LogInfo("fail to read length");
       CHECK(ret);

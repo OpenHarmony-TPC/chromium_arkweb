@@ -35,7 +35,7 @@ namespace blink {
 class StubWidgetBaseClient : public WidgetBaseClient {
  public:
   void OnCommitRequested() override {}
-  void BeginMainFrame(base::TimeTicks) override {}
+  void BeginMainFrame(const viz::BeginFrameArgs&) override {}
   void UpdateLifecycle(WebLifecycleUpdate, DocumentUpdateReason) override {}
   std::unique_ptr<cc::LayerTreeFrameSink> AllocateNewLayerTreeFrameSink()
       override {
@@ -69,7 +69,7 @@ class StubWidgetBaseClient : public WidgetBaseClient {
 };
 
 class WidgetBaseUtilsTest : public testing::Test {
-protected:
+ protected:
   base::test::TaskEnvironment task_environment_;
 
   void SetUp() override {
@@ -163,7 +163,7 @@ TEST_F(WidgetBaseUtilsTest, DidNativeEmbedEvent_AllTypes) {
       WebInputEvent::Type::kTouchEnd,
       WebInputEvent::Type::kTouchCancel
   };
-
+  
   for (auto type : types) {
     utils_->DidNativeEmbedEvent(type, "embed1", 1, 10.0f, 20.0f);
   }
@@ -200,7 +200,7 @@ TEST_F(WidgetBaseUtilsTest, DidNativeEmbedMouseEvent_AllTypesAndButtons) {
       WebInputEvent::Modifiers::kMiddleButtonDown,
       WebInputEvent::Modifiers::kNoModifiers
   };
-
+  
   for (auto type : types) {
     for (auto button : buttons) {
       utils_->DidNativeEmbedMouseEvent(

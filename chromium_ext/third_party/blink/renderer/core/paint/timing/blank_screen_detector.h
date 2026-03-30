@@ -35,7 +35,7 @@ class BlankScreenDetector : public GarbageCollected<BlankScreenDetector> {
  public:
   explicit BlankScreenDetector(LocalFrame* local_frame)
       : local_frame_(local_frame) {}
-  void DetectBlankScreen(const WTF::String& url,
+  void DetectBlankScreen(const String& url,
                          const std::vector<double>& detection_timing,
                          const std::vector<int32_t>& detection_methods,
                          int32_t contentful_nodes_count_threshold);
@@ -61,7 +61,7 @@ class BlankScreenDetector : public GarbageCollected<BlankScreenDetector> {
   std::set<BlankScreenDetectionMethod> detection_methods_;
   size_t current_task_index_ = 0;
   int32_t contentful_nodes_count_threshold_ = 0;
-  WTF::String url_;
+  String url_;
   const std::vector<int32_t> default_task_delays_ms_ = {1000, 3000, 5000};
   base::TimeTicks task_timestamp_;
 };

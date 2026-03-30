@@ -42,6 +42,7 @@ struct binder_sender_info {
 #define BINDER_ENABLE_ONEWAY_SPAM_DETECTION _IOW('b', 16, __u32)
 #define BINDER_FEATURE_SET _IOWR('b', 30, __u64)
 #define BINDER_GET_SENDER_INFO	_IOWR('b', 32, struct binder_sender_info)
+#define ACCESS_TOKENID_GET_TOKENID _IOR('A', 1, unsigned long long)
 
 using sandbox::bpf_dsl::AllOf;
 using sandbox::bpf_dsl::Allow;
@@ -304,7 +305,7 @@ constexpr unsigned int QOS_CTRL_IPC_MAGIC = 0xCC;
             .Cases({ASHMEM_SET_NAME, ASHMEM_GET_NAME, ASHMEM_SET_SIZE,
                     ASHMEM_GET_SIZE, ASHMEM_SET_PROT_MASK, ASHMEM_GET_PROT_MASK,
                     ASHMEM_PIN, ASHMEM_UNPIN, ASHMEM_GET_PIN_STATUS,
-                    kBinderWriteRead64},
+                    kBinderWriteRead64, ACCESS_TOKENID_GET_TOKENID},
                     Allow())
             .Cases({kBinderWriteRead32, BINDER_SET_MAX_THREADS,
                     BINDER_THREAD_EXIT, BINDER_VERSION, BINDER_ENABLE_ONEWAY_SPAM_DETECTION,

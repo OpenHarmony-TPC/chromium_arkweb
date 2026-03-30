@@ -33,7 +33,7 @@ bool ScopedBoxContentsPaintState::IsEllipisTextOverFlowInSelection(
   if ((box.GetSelectionState() == SelectionState::kNone)) {
     return false;
   }
-  return box.Style() && box.Style()->TextOverflow() == ETextOverflow::kEllipsis;
+  return box.Style() && box.Style()->TextOverflow().IsEllipsis();
 }
 #endif
 

@@ -46,6 +46,11 @@ void StyleCascadeUtil::LookupAndApplyDeclarationExt(
           ->utils->DidMatchCssRule(
               StyleCascadeObj->state_.GetElement().GetDocument().Url(),
               GetDomPath(StyleCascadeObj->state_.GetElement(), false, true));
+      LOG(INFO) << "[AdBlock] Element("
+                << StyleCascadeObj->state_.GetElement().ToString()
+                << " ) dom path:"
+                << GetDomPath(StyleCascadeObj->state_.GetElement(), false,
+                              true);
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
       LOG_FEEDBACK(INFO) << "[AdBlock] Element("
                          << StyleCascadeObj->state_.GetElement().ToString()
@@ -76,6 +81,11 @@ void StyleCascadeUtil::LookupAndApplyDeclarationExt(
           ->utils->DidMatchCssRule(
               StyleCascadeObj->state_.GetElement().GetDocument().Url(),
               GetDomPath(StyleCascadeObj->state_.GetElement(), false, true));
+      LOG(INFO) << "[User AdBlock] Element("
+                << StyleCascadeObj->state_.GetElement().ToString()
+                << ") dom path:"
+                << GetDomPath(StyleCascadeObj->state_.GetElement(), false,
+                              true);
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
       LOG_FEEDBACK(INFO) << "[User AdBlock] Element("
                          << StyleCascadeObj->state_.GetElement().ToString()
@@ -87,11 +97,10 @@ void StyleCascadeUtil::LookupAndApplyDeclarationExt(
   }
 }
 
-// LCOV_EXCL_START
 CSSVariableData* StyleCascadeUtil::GetEnvironmentVariableExt(
     raw_ptr<const StyleCascade> StyleCascadeObj,
     const AtomicString& name,
-    WTF::Vector<unsigned>& indices,
+    Vector<unsigned>& indices,
     bool is_ua_scope) {
   CSSVariableData* result =
       StyleCascadeObj->state_.GetDocument()
@@ -102,6 +111,5 @@ CSSVariableData* StyleCascadeUtil::GetEnvironmentVariableExt(
              << (result ? result->OriginalText().Utf8() : std::string("null"));
   return result;
 }
-// LCOV_EXCL_STOP
 
 }  // namespace blink

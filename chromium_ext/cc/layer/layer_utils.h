@@ -27,7 +27,7 @@
 
 namespace cc {
 
-class LayerUtils {
+class CC_EXPORT LayerUtils {
  public:
   LayerUtils(Layer* layerl);
 

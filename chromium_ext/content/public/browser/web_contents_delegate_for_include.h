@@ -38,10 +38,6 @@ virtual void OnActivateContent() {}
 #endif
 
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
-virtual void WebExtensionUpdateTab(
-    int32_t tab_id,
-    const NWebExtensionTabUpdateProperties* update_properties);
-virtual void WebExtensionUpdateTabUrl(int32_t tab_id, const GURL& url) {}
 virtual int32_t ExtensionGetTabId() {
   return -1;
 }
@@ -122,6 +118,20 @@ virtual std::unique_ptr<MediaPlayerListener> OnFullScreenOverlayEnter(
     const MediaPlayerId& media_player_id);
 #endif  // ARKWEB_VIDEO_ASSISTANT
 
+#if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
+virtual void OnShowConfirmInfoBar(const std::string& title,
+                                  const std::string& infoId,
+                                  const std::string& message,
+                                  int buttons,
+                                  const std::string& buttonLabelOK,
+                                  const std::string& buttonLabelCancel);
+virtual void OnHideConfirmInfoBar(const std::string& title,
+                                  const std::string& infoId,
+                                  const std::string& message,
+                                  int buttons,
+                                  const std::string& buttonLabelOK,
+                                  const std::string& buttonLabelCancel);
+#endif  // ARKWEB_ARKWEB_EXTENSIONS
 #if BUILDFLAG(ARKWEB_PDF)
 virtual void OnPdfScrollAtBottom(const std::string& url) {}
 virtual void OnPdfLoadEvent(int32_t result, const std::string& url) {}
@@ -137,10 +147,11 @@ virtual bool IsForDistillerPage();
 #endif
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
-virtual std::string OnRewriteUrlForNavigation(const std::string& original_url,
-                                              const std::string& referrer,
-                                              int transition_type,
-                                              bool is_key_request) { return ""; }
+virtual std::string OnRewriteUrlForNavigation(
+    const std::string& original_url,
+    const std::string& referrer,
+    int transition_type,
+    bool is_key_request) { return ""; }
 #endif
 
 #if BUILDFLAG(ARKWEB_WEBRTC)

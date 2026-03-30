@@ -44,10 +44,14 @@ TEST_F(KeySystemSupportOhosTest, KeySystemNotSupported) {
   GetOHOSCdmCapability(
       kUnsupportedKeySystem, CdmInfo::Robustness::kSoftwareSecure,
       base::BindLambdaForTesting(
-          [&](std::optional<::media::CdmCapability> capability) {
-            result = std::move(capability);
+        [&](base::expected<::media::CdmCapability, ::media::CdmCapabilityQueryStatus> capability_result) {
+            if (capability_result.has_value()) {
+                result = std::make_optional(capability_result.value());
+            } else {
+                result = std::nullopt;
+            }
             loop.Quit();
-          }));
+        }));
   loop.Run();
 
   EXPECT_FALSE(result.has_value());
@@ -61,10 +65,14 @@ TEST_F(KeySystemSupportOhosTest, KeySystemSupported1) {
   GetOHOSCdmCapability(
       kUnsupportedKeySystem, CdmInfo::Robustness::kHardwareSecure,
       base::BindLambdaForTesting(
-          [&](std::optional<::media::CdmCapability> capability) {
-            result = std::move(capability);
+        [&](base::expected<::media::CdmCapability, ::media::CdmCapabilityQueryStatus> capability_result) {
+            if (capability_result.has_value()) {
+                result = std::make_optional(capability_result.value());
+            } else {
+                result = std::nullopt;
+            }
             loop.Quit();
-          }));
+        }));
   loop.Run();
 
   EXPECT_TRUE(result.has_value());

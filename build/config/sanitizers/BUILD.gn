@@ -1,4 +1,4 @@
-import("//build/config/sanitizers/sanitizers.gni")
+import("//arkweb/build/config/sanitizers/sanitizers.gni")
 config("cfi_config") {
   if (is_ohos) {
     _cfi_blocklist_path = "//tools/cfi/ignores.txt"
@@ -12,7 +12,6 @@ config("cfi_config") {
         "-fsanitize-blacklist=" +
             rebase_path(_cfi_blocklist_path, root_build_dir),
       ]
-
       ldflags = [
         "-fno-lto",
         "-fno-emulated-tls",
@@ -34,5 +33,37 @@ config("cfi_config") {
         "-fsanitize-cfi-icall-generalize-pointers",
       ]
     }
+  }
+}
+
+config("ptrauth_base") {
+  if (enable_cfi_protection) {
+    pac_plugin_path = rebase_path("//ohos_sdk/PAC/lib/libPacCompatible.so", root_build_dir)
+    no_pac_path = rebase_path("//arkweb/build/config/pac/Nopacconfig.txt", root_build_dir)
+    cflags = [
+      "-mllvm",
+      "-global-isel=0",
+      "-fptrauth-vcall",
+      "-fptrauth-mangle-class",
+      "-fplugin=$pac_plugin_path",
+      "-fplugin-arg-nopac-config=$no_pac_path"
+    ]
+  }
+}
+ 
+config("armv83a") {
+  if (enable_cfi_protection) {
+    cflags = [ "-march=armv8-a+pauth-hint-only" ]
+  }
+}
+
+config("blink_gc_check") {
+  if (enable_blink_gc_check) {
+    cflags = [
+      "-Xclang",
+      "-add-plugin",
+      "-Xclang",
+      "blink-gc-plugin",
+    ]
   }
 }

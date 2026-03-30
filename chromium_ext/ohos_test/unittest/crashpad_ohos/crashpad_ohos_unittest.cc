@@ -33,13 +33,6 @@ class TestCrashReporterClient : public crash_reporter::CrashReporterClient {
 public:
     TestCrashReporterClient() = default;
     ~TestCrashReporterClient() = default;
-    void GetProductNameAndVersion(std::string* product_name,
-                                  std::string* version,
-                                  std::string* channel) override {
-        *product_name = PRODUCT_NAME;
-        *version = VERSION;
-        *channel = channel_;
-    }
     void SetChannel(const std::string& channel) {
         channel_ = channel;
     }
@@ -120,9 +113,10 @@ TEST_F(CrashPadOhosTest, PlatformCrashpadInitializationTest) {
     std::string user_data_dir;
     base::FilePath exe_path; // must be empty
     std::vector<std::string> initial_arguments; // must be empty
+    std::vector<base::FilePath> attachments;
     base::FilePath database_path;
     bool ret = internal::PlatformCrashpadInitialization(initial_client, browser_process, embedded_handler,
-                                              user_data_dir, exe_path, initial_arguments,
+                                              user_data_dir, exe_path, initial_arguments, attachments,
                                               &database_path);
     EXPECT_EQ(true, ret);
 
@@ -132,9 +126,10 @@ TEST_F(CrashPadOhosTest, PlatformCrashpadInitializationTest) {
     user_data_dir.clear();
     exe_path.clear(); // must be empty
     initial_arguments.clear(); // must be empty
+    attachments.clear();
     database_path.clear();
     ret = internal::PlatformCrashpadInitialization(initial_client, browser_process, embedded_handler,
-                                              user_data_dir, exe_path, initial_arguments,
+                                              user_data_dir, exe_path, initial_arguments, attachments,
                                               &database_path);
     EXPECT_EQ(true, ret);
 }

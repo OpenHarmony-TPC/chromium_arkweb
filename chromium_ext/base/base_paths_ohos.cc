@@ -15,6 +15,7 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/logging.h"
+#include "base/notimplemented.h"
 #include "base/notreached.h"
 #include "base/process/process_metrics.h"
 
@@ -90,6 +91,9 @@ bool PathProviderOHOS(int key, FilePath* result) {
       return true;
     case base::DIR_OHOS_EXTERNAL_STORAGE:
       return false;
+    case base::DIR_SRC_TEST_DATA_ROOT:
+      *result = FilePath("/data/local/tmp");
+      return true;
     default:
       return false;
   }

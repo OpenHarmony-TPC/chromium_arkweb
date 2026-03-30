@@ -22,6 +22,7 @@
 #if BUILDFLAG(IS_ARKWEB)
 #include "third_party/blink/renderer/core/dom/events/native_event_listener.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
+#include "third_party/blink/renderer/platform/heap/weak_cell.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #endif
 
@@ -53,6 +54,7 @@ class MouseEventManagerExt
   MouseEventManagerExt& operator=(const MouseEventManagerExt&) = delete;
   virtual ~MouseEventManagerExt();
   MouseEventManagerExt* AsMouseEventManagerExt() override { return this; }
+  const MouseEventManagerExt* AsMouseEventManagerExt() const override { return this; }
 #if BUILDFLAG(ARKWEB_UNITTESTS)
   friend class MouseEventManagerExtTest;
 #endif
@@ -88,7 +90,7 @@ class MouseEventManagerExt
   void OnFoldStatusChanged(uint32_t foldstatus);
   void CloseImageOverlayWhenMousePress(const MouseEventWithHitTestResults& event);
   bool IsImageAnalyzerEnabled();
-  void Trace(Visitor*) const override;
+  void Trace(Visitor*) const;
 #endif
 
 #if BUILDFLAG(IS_ARKWEB)

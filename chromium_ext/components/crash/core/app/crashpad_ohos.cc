@@ -145,7 +145,7 @@ void SetClientInformation(ExceptionInformation* exception,
       FromPointerCast<decltype(info->sanitization_information_address)>(
           sanitization);
 #if BUILDFLAG(ARKWEB_CRASHPAD)
-  info->signo = exception->signo;
+    info->signo = exception->signo;
 #endif
 }
 
@@ -297,13 +297,11 @@ void BuildHandlerArgs(CrashReporterClient* crash_reporter_client,
 
   *url = std::string();
 
-  std::string product_name;
-  std::string product_version;
-  std::string channel;
-  crash_reporter_client->GetProductNameAndVersion(&product_name,
-                                                  &product_version, &channel);
-  (*process_annotations)["prod"] = product_name;
-  (*process_annotations)["ver"] = product_version;
+  crash_reporter::ProductInfo product_info;
+  crash_reporter_client->GetProductInfo(&product_info);
+
+  (*process_annotations)["prod"] = product_info.product_name;
+  (*process_annotations)["ver"] = product_info.version;
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   // Empty means stable.
@@ -311,8 +309,8 @@ void BuildHandlerArgs(CrashReporterClient* crash_reporter_client,
 #else
   const bool allow_empty_channel = false;
 #endif
-  if (allow_empty_channel || !channel.empty()) {
-    (*process_annotations)["channel"] = channel;
+  if (allow_empty_channel || !product_info.channel.empty()) {
+    (*process_annotations)["channel"] = product_info.channel;
   }
 
   (*process_annotations)["plat"] = std::string("OHOS");
@@ -568,6 +566,7 @@ bool PlatformCrashpadInitialization(
     const std::string& user_data_dir,
     const base::FilePath& exe_path,
     const std::vector<std::string>& initial_arguments,
+    const std::vector<base::FilePath>& attachments,
     base::FilePath* database_path) {
   DCHECK_EQ(initial_client, browser_process);
   DCHECK(initial_arguments.empty());

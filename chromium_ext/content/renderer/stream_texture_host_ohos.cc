@@ -14,8 +14,7 @@
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "gpu/ipc/common/command_buffer_id.h"
 #include "gpu/ipc/common/gpu_channel.mojom.h"
-#include "gpu/ipc/common/vulkan_ycbcr_info.h"
-#include "ipc/ipc_message_macros.h"
+#include "gpu/vulkan/vulkan_ycbcr_info.h"
 #include "ipc/ipc_mojo_bootstrap.h"
 
 namespace content {
@@ -32,7 +31,6 @@ StreamTextureHost::StreamTextureHost(
   DCHECK(route_id_);
 }
 
-// LCOV_EXCL_START
 StreamTextureHost::~StreamTextureHost() {
   if (channel_) {
     OnDestroySurface();
@@ -46,7 +44,6 @@ StreamTextureHost::~StreamTextureHost() {
     channel_->EnsureFlush(flush_id);
   }
 }
-// LCOV_EXCL_STOP
 
 bool StreamTextureHost::BindToCurrentThread(Listener* listener) {
   listener_ = listener;
@@ -64,7 +61,6 @@ bool StreamTextureHost::BindToCurrentThread(Listener* listener) {
   return true;
 }
 
-// LCOV_EXCL_START
 void StreamTextureHost::OnDisconnectedFromGpuProcess() {
   channel_ = nullptr;
   texture_remote_.reset();
@@ -114,6 +110,5 @@ gpu::SyncToken StreamTextureHost::GenUnverifiedSyncToken() {
                             channel_->channel_id(), route_id_),
                         release_id_);
 }
-// LCOV_EXCL_STOP
 
 }  // namespace content

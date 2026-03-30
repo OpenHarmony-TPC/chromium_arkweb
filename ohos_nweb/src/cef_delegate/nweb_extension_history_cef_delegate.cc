@@ -24,8 +24,10 @@
 #include "content/public/browser/browser_context.h"
 #include "nweb_extension_utils.h"
 
-#if BUILDFLAG(ARKWEB_NWEB_EX)
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+#if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/core/extension/nweb_extension_history_dispatcher.h"
 #endif
 

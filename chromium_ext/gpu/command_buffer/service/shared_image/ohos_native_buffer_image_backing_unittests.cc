@@ -58,6 +58,7 @@
 #include "ui/gl/test/gl_surface_test_support.h"
 #include "ui/gl/test/gl_test_support.h"
 #include "gpu/config/gpu_finch_features.h"
+#include "gpu/command_buffer/service/shared_image/shared_image_manager.h"
 
 using namespace gpu;
 using testing::_;
@@ -94,7 +95,7 @@ public:
         viz::VulkanContextProvider* vulkan_context_provider = nullptr,
         viz::MetalContextProvider* metal_context_provider = nullptr,
         gpu::DawnContextProvider* dawn_context_provider = nullptr,
-        base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
+        scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
         bool created_on_compositor_gpu_thread = false)
         : SharedContextState(share_group,
                             surface,
@@ -106,7 +107,9 @@ public:
                             metal_context_provider,
                             dawn_context_provider,
                             peak_memory_monitor,
-                            created_on_compositor_gpu_thread) {}
+                            created_on_compositor_gpu_thread,
+                            false,
+                            nullptr) {}
     ~MockSharedContextState();
     MOCK_METHOD(bool, GrContextIsVulkan, (), (const));
     MOCK_METHOD(bool, GrContextIsGL, (), (const));

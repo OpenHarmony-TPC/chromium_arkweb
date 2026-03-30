@@ -16,13 +16,12 @@
 #ifndef NET_DNS_HOST_RESOLVER_MANAGER_FOR_INCLUDE_H
 #define NET_DNS_HOST_RESOLVER_MANAGER_FOR_INCLUDE_H
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 public:
 // Return true if Doh fallback server(s) exist and it/they can resolve
 // successfully
 bool CanUseSecureDnsFallback(ResolveContext* context) const;
 void SetHttpsDnsFallbackData(bool enabled, const std::string& server_template);
-void GetLocalAddress(IPEndPoint* address);
 void SetSuspectIpListAndSourceHostList(
     const std::vector<std::string>& ip_list,
     const std::vector<std::string>& host_list);
@@ -47,7 +46,7 @@ enum class DnsTransactionAddressFailedType {
 
 void ReportSecureFallbackDnsResult(
     const std::optional<HostCache::Entry> insecure_results,
-    const HostCache::Entry& secure_fallback_results,
+    const HostResolverDnsTask::Results& secure_fallback_results,
     const std::string& host,
     const int index,
     const base::TimeDelta& duration);
@@ -66,13 +65,6 @@ bool IsProtectedDomain(const GURL& url) const;
 std::unordered_set<std::string> dns_hijacking_protect_list_;
 std::unordered_set<std::string> dns_hijacking_errorcode_list_;
 #endif
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-public:
-std::string GetDnsServersString();
-
-private:
 #endif
 
 #endif  // NET_DNS_HOST_RESOLVER_MANAGER_FOR_INCLUDE_H

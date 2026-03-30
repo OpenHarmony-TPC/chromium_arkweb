@@ -13,57 +13,24 @@
  * limitations under the License.
  */
 #include "arkweb/chromium_ext/services/network/url_loader_utils.h"
-
-#include "arkweb/chromium_ext/net/base/fallback_proxy_constants.h"
-#include "arkweb/chromium_ext/services/network/url_loader_ext.h"
 #include "base/logging.h"
-#include "base/strings/string_number_conversions.h"
 #include "base/trace_event/trace_event.h"
-#include "net/base/ip_endpoint.h"
 #include "net/base/load_timing_info.h"
-#include "net/base/proxy_delegate.h"
-#include "net/dns/host_resolver.h"
-#include "net/url_request/url_request_context.h"
-#include "services/network/public/cpp/header_util.h"
-#include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/mojom/url_response_head.mojom.h"
-#include "services/network/sec_header_helpers.h"
-#include "services/network/shared_dictionary/shared_dictionary_manager.h"
+#include "arkweb/chromium_ext/services/network/url_loader_ext.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "net/url_request/url_request_context.h"
+#include "services/network/attribution/attribution_request_helper.h"
 #include "services/network/throttling/scoped_throttling_token.h"
+#include "services/network/shared_dictionary/shared_dictionary_manager.h"
+#include "services/network/public/cpp/header_util.h"
+#include "services/network/sec_header_helpers.h"
+#include "services/network/url_loader_util.h"
 
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
 #include "arkweb/chromium_ext/services/network/prp_preload/include/page_res_parallel_preload_mgr.h"
 #include "base/functional/callback.h"
 #endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-#include "arkweb/chromium_ext/net/base/navigation_info.h"
-#endif
-
-namespace {
-
-#if BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
-// Helper function to check if fallback proxy is enabled from any proxy context.
-// This is decoupled from URLRequest and only depends on the context.
-bool IsFallbackProxyEnabled(const net::URLRequestContext* context,
-                            const net::URLRequest* request) {
-  if (!context || !request) {
-    return false;
-  }
-
-  auto* proxy_delegate = context->proxy_delegate();
-  if (!proxy_delegate) {
-    LOG_FEEDBACK(ERROR, kNetwork)
-        << "FailGetFallbackProxyEnabled message:proxyDelegateIsNull";
-    return false;
-  }
-
-  return proxy_delegate->GetFallbackProxyStatus() ==
-         net::FallbackProxyStatus::NORMAL;
-}
-#endif
-
-}  // namespace
 
 namespace network {
 
@@ -197,7 +164,7 @@ void URLLoaderUtils::ConfigureRequestForRollback(
     bool force_main_frame_for_same_site_cookies,
     net::SecureDnsPolicy secure_dns_policy,
     net::HttpRequestHeaders extra_request_headers,
-    const std::optional<std::vector<net::SourceStream::SourceType>>&
+    const std::optional<std::vector<net::SourceStreamType>>&
         accepted_stream_types,
     const std::optional<url::Origin>& initiator,
     net::RedirectInfo::FirstPartyURLPolicy first_party_url_policy,
@@ -243,13 +210,20 @@ void URLLoaderUtils::ConfigureRequestForRollback(
   // is fixed.
   url_request_rollback_->cookie_setting_overrides() = cookie_setting_overrides;
   url_request_rollback_->SetLoadFlags(request_load_flags);
-  url_loader_->SetRequestCredentials(url);
+  url_loader_util::SetRequestCredentials(
+      url,
+      url_loader_->factory_params_->client_security_state,
+      url_loader_->request_mode_,
+      url_loader_->request_credentials_mode_,
+      initiator,
+      *url_request_rollback_);
   url_request_rollback_->set_storage_access_status(
       url_request_rollback_->CalculateStorageAccessStatus());
 
-  SetFetchMetadataHeaders(url_request_rollback_.get(), url_loader_->request_mode_,
-                          url_loader_->has_user_activation_, url_loader_->request_destination_, nullptr,
-                          *url_loader_->factory_params_, *url_loader_->origin_access_list_);
+  SetFetchMetadataHeaders(*url_request_rollback_.get(), url_loader_->request_mode_,
+                          url_loader_->has_user_activation_, url_loader_->request_destination_, std::nullopt,
+                          *url_loader_->factory_params_, *url_loader_->origin_access_list_,
+                          url_loader_->request_credentials_mode_);
 
   url_request_rollback_->set_first_party_url_policy(first_party_url_policy);
 
@@ -336,9 +310,7 @@ void URLLoaderUtils::InitUrlRequestForRollback(
       request.upgrade_if_insecure, /*upgrade_if_insecure=*/
       request.is_ad_tagged, /*is_ad_tagged=*/
       /*isolation_info=*/
-      url_loader_->GetIsolationInfo(url_loader_->factory_params_->isolation_info,
-          url_loader_->factory_params_->automatically_assign_isolation_info,
-          request),
+      url_loader_->factory_params_->isolation_info,
       /*force_main_frame_for_same_site_cookies=*/
       force_main_frame_for_same_site_cookies, secure_dns_policy,
       std::move(merged_headers), request.devtools_accepted_stream_types,
@@ -346,8 +318,7 @@ void URLLoaderUtils::InitUrlRequestForRollback(
       request.load_flags, /*request_load_flags=*/
       request.priority_incremental, /*priority_incremental=*/
       /*cookie_setting_overrides=*/
-      url_loader_->CalculateCookieSettingOverrides(url_loader_->factory_params_->cookie_setting_overrides,
-          request),
+      url_loader_->factory_params_->cookie_setting_overrides,
       /*shared_dictionary_getter=*/
       shared_dictionary_manager
           ? std::make_optional(
@@ -422,7 +393,6 @@ void URLLoaderUtils::RollbackFromPPRP()
 {
   url_loader_->url_request_ = url_request_rollback_;
   url_request_rollback_ = nullptr;
-  url_loader_->ProcessOutboundAttributionInterceptor();
 }
 
 void URLLoaderUtils::ResetUrlRequest(const std::shared_ptr<net::URLRequest>& url_request)
@@ -629,68 +599,6 @@ int URLLoaderUtils::ReadDataFromLoaderOrRequest(scoped_refptr<NetToMojoIOBuffer>
                                     url_loader_->pending_write_buffer_offset_));
   }
   return bytes_read;
-}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-std::optional<network::URLLoaderCompletionStatus>
-URLLoaderUtils::CreateURLLoaderCompletionStatus() {
-  // FIXME: add cloud control
-  if (!url_loader_ || !url_loader_->url_request_ ||
-      !url_loader_->url_request_->context()) {
-    return std::nullopt;
-  }
-
-  auto* url_request = url_loader_->url_request_.get();
-
-  URLLoaderCompletionStatus status;
-  status.resolve_error_info = url_request->response_info().resolve_error_info;
-  PopulateURLLoaderCompletionStatus(status);
-
-  return status;
-}
-
-void URLLoaderUtils::PopulateURLLoaderCompletionStatus(
-    URLLoaderCompletionStatus& status) {
-  // FIXME: add cloud control
-  if (!url_loader_ || !url_loader_->url_request_) {
-    return;
-  }
-
-  auto* url_request = url_loader_->url_request_.get();
-
-  net::NavigationInfo nav_info;
-  nav_info.request_url = url_request->url().spec();
-  nav_info.request_uuid = url_request->request_uuid();
-  nav_info.time_stamp = base::NumberToString(
-      (url_request->creation_time() - base::TimeTicks::UnixEpoch())
-          .InMilliseconds());
-  nav_info.error_code = url_request->GetStatus();
-  nav_info.original_error_code = url_request->GetOriginalNetErrorCode();
-
-  nav_info.is_fallback_proxy_enabled =
-      IsFallbackProxyEnabled(url_loader_->url_request_context_, url_request);
-  status.used_fallback_proxy = url_request->used_fallback_proxy();
-  status.needs_reload_with_fallback_proxy =
-      url_request->needs_reload_with_fallback_proxy();
-
-  if (url_loader_->url_request_context_) {
-    if (auto* host_resolver =
-            url_loader_->url_request_context_->host_resolver()) {
-      nav_info.dns_name_servers = host_resolver->GetDnsServersString();
-#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
-      nav_info.can_use_secure_dns = host_resolver->CanUseSecureDnsFallback();
-      net::IPEndPoint local_address;
-      host_resolver->GetLocalAddress(&local_address);
-      nav_info.local_address = local_address.ToStringWithoutPort();
-#endif
-    }
-  }
-
-  nav_info.request_attempts = url_request->GetRequestAttempts();
-  nav_info.resolve_info = url_request->response_info().resolve_info;
-
-  status.navigation_info = std::move(nav_info);
 }
 #endif
 }

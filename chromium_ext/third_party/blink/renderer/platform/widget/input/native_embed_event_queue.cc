@@ -20,7 +20,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 NativeEmbedEventQueue::NativeEmbedEventQueue() {}
 
 NativeEmbedEventQueue::~NativeEmbedEventQueue() {}

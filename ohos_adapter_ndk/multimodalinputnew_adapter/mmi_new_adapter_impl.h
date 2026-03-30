@@ -24,9 +24,9 @@ class MMINewAdapterImpl : public MMIAdapter {
 public:
     static MMINewAdapterImpl& GetInstance();
 
-    MMINewAdapterImpl() = default;
+    MMINewAdapterImpl();
 
-    ~MMINewAdapterImpl() override = default;
+    ~MMINewAdapterImpl() override;
 
     char* KeyCodeToString(int32_t keyCode) override;
 

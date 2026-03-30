@@ -15,7 +15,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/memory_dump_manager.h"
 #include "cc/paint/image_transfer_cache_entry.h"
-#include "gpu/command_buffer/service/service_discardable_manager.h"
+#include "gpu/command_buffer/common/discardable_handle.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/gpu/ganesh/GrBackendSurface.h"

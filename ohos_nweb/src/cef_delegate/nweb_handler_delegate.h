@@ -26,7 +26,9 @@
 #include <unordered_set>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "capi/nweb_app_client_extension_callback.h"
 #include "capi/nweb_extension_api_callback.h"
 #include "capi/nweb_extension_callback.h"
@@ -53,16 +55,11 @@
 #include "nweb_preference_delegate.h"
 #include "nweb_render_handler.h"
 #include "nweb_value.h"
-
 #include "ohos_nweb/src/video_assistant/nweb_media_player_controller_impl.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
 #include "capi/nweb_logger_callback.h"
-#include "cef/include/cef_logger_callback_api_handler.h"
+#include "cef/ohos_cef_ext/include/cef_logger_callback_api_handler.h"
 #endif
 
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
@@ -77,15 +74,15 @@
 #include "capi/nweb_icon_size.h"
 #endif
 
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
+#if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb/src/capi/nweb_resource_request.h"
 #include "ohos_nweb/src/capi/nweb_resource_response.h"
 #include "ohos_nweb/src/capi/nweb_resource_request_response.h"
-#endif
 
-#if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/core/extension/nweb_app_client_extension_dispatcher.h"
 #endif
+
+#include "nweb_image_info_impl.h"
 
 struct NativeWindow;
 
@@ -407,6 +404,8 @@ class NWebHandlerDelegate : public ArkWebClientExt,
 
   void OnSafeBrowsingCheckResult(int threat_type) override;
 
+  void OnSafeBrowsingCheckFinish(int threat_type) override;
+
   void OnNavigationEntryCommitted(
       CefRefPtr<CefLoadCommittedDetails> details) override;
 
@@ -430,8 +429,6 @@ class NWebHandlerDelegate : public ArkWebClientExt,
                              const CefString& request_url,
                              CefRefPtr<CefSSLInfo> ssl_info,
                              CefRefPtr<ArkWebCefSslCallback> callback) override;
-  void OnReportNewNavigationInfo(
-      CefRefPtr<CefWebNavigationInfo> navigation_info) override;
 
   bool OnSelectClientCertificate(
       CefRefPtr<CefBrowser> browser,
@@ -577,6 +574,11 @@ class NWebHandlerDelegate : public ArkWebClientExt,
                               bool precomposed) override;
   bool OnConsoleMessage(CefRefPtr<CefBrowser> browser,
                         cef_log_severity_t level,
+                        const CefString& message,
+                        const CefString& source,
+                        int line) override;
+  bool OnConsoleMessageV2(CefRefPtr<CefBrowser> browser,
+                        cef_log_severity_t level,
                         int sourceType,
                         const CefString& message,
                         const CefString& source,
@@ -662,7 +664,6 @@ class NWebHandlerDelegate : public ArkWebClientExt,
 #if BUILDFLAG(ARKWEB_HTML_SELECT)
   void OnSelectPopupMenu(CefRefPtr<CefBrowser> browser,
                          const CefRect& bounds,
-                         int item_height,
                          double item_font_size,
                          int selected_item,
                          const std::vector<CefSelectPopupItem>& menu_items,
@@ -694,6 +695,13 @@ class NWebHandlerDelegate : public ArkWebClientExt,
                                 CefRefPtr<CefImage> image,
                                 int command_id) override;
   void OnGetImageFromCache(CefRefPtr<CefImage> image, int command_id) override;
+  void OnGetAllImage(int32_t taskid, uint8_t* data, int buffer_size) override;
+  void OnGetImageByXPath(int32_t taskid, CefRefPtr<CefImage> image, int32_t image_id) override;
+  int32_t GetImageId(int32_t taskid) override;
+  void MediaImageCopy(int32_t taskid, uint8_t* data, int buffer_size);
+  void ImageCopy(int32_t taskid, CefRefPtr<CefImage> image, int32_t image_id);
+  bool RegisterGetAllImageCallback(int32_t taskid, int32_t num, std::shared_ptr<NWebImageInfoCallback> callback);
+  bool RegisterGetAllImageByXPathCallback(int32_t taskid, int32_t num, std::shared_ptr<NWebImageInfoCallback> callback);
   bool OnContextMenuCommand(
       CefRefPtr<CefBrowser> browser,
       CefRefPtr<CefFrame> frame,
@@ -780,9 +788,11 @@ class NWebHandlerDelegate : public ArkWebClientExt,
   void OnMainFrameChanged(CefRefPtr<CefBrowser> browser,
                           CefRefPtr<CefFrame> old_frame,
                           CefRefPtr<CefFrame> new_frame) override;
+
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   void OnFrameCreated(CefRefPtr<CefBrowser> browser,
                       CefRefPtr<CefFrame> frame) override;
+
   void OnFrameDetached(CefRefPtr<CefBrowser> browser,
                        CefRefPtr<CefFrame> frame) override;
 #endif
@@ -909,7 +919,20 @@ class NWebHandlerDelegate : public ArkWebClientExt,
   void OnShowToast(double duration, const CefString& toast) override;
   void OnShowVideoAssistant(const CefString& videoAssistantItems) override;
   void OnReportStatisticLog(const CefString& content) override;
-
+#if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
+  void OnShowConfirmInfoBar(const CefString& title,
+                            const CefString& infoId,
+                            const CefString& message,
+                            int buttons,
+                            const CefString& buttonLabelOK,
+                            const CefString& buttonLabelCancel) override;
+  void OnHideConfirmInfoBar(const CefString& title,
+                            const CefString& infoId,
+                            const CefString& message,
+                            int buttons,
+                            const CefString& buttonLabelOK,
+                            const CefString& buttonLabelCancel) override;
+#endif // ARKWEB_ARKWEB_EXTENSIONS
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   CefOwnPtr<CefMediaPlayerListenerForVAST> OnFullScreenOverlayEnter(
       CefOwnPtr<CefMediaPlayerController> media_player_controller,
@@ -962,7 +985,7 @@ class NWebHandlerDelegate : public ArkWebClientExt,
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   static void RegisterLoggerCallback(
       std::shared_ptr<NWebLoggerCallback> logger_callback);
-  static void UnRegisterLoggerCallback();
+  static void UnregisterLoggerCallback();
 
   // CefLoggerCallbackApiHandler implements
   void logFeedback(const CefString& tag,
@@ -983,6 +1006,7 @@ class NWebHandlerDelegate : public ArkWebClientExt,
 #endif
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   void EnableVideoAssistant(bool enable);
+
   void CustomWebMediaPlayer(bool enable);
   void WebMediaPlayerControllerPlay();
   void WebMediaPlayerControllerPause();
@@ -1064,16 +1088,55 @@ class NWebHandlerDelegate : public ArkWebClientExt,
 #endif
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
-  std::string OnRewriteUrlForNavigation(const std::string& original_url,
-                                        const std::string& referrer,
-                                        int transition_type,
-                                        bool is_key_request) override;
+  std::string OnRewriteUrlForNavigation(
+      const std::string& original_url,
+      const std::string& referrer,
+      int transition_type,
+      bool is_key_request) override;
   void OnRewriteUrlForNavigationAsync(
       const CefString& original_url,
       const CefString& referrer,
       int transition_type,
       bool is_key_request,
       CefRefPtr<CefRewriteUrlCallback> callback) override;
+#endif
+
+#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
+  void OnReceiveResponse(CefRefPtr<CefRequest> request,
+                         bool is_request_gesture,
+                         int transition_type,
+                         bool is_main_frame,
+                         bool is_redirect,
+                         int resource_type,
+                         CefRefPtr<CefResponse> response_info,
+                         bool is_from_network) override;
+
+  std::map<std::string, std::string> ResourceRequestGetRequestHeader(int nweb_request_key);
+  std::string ResourceRequestGetRequestUrl(int nweb_request_key);
+  bool ResourceRequestIsRequestGesture(int nweb_request_key);
+  bool ResourceRequestIsMainFrame(int nweb_request_key);
+  bool ResourceRequestIsRedirect(int nweb_request_key);
+  std::string ResourceRequestGetRequestMethod(int nweb_request_key);
+  int32_t ResourceRequestGetPageTransition(int nweb_request_key);
+  int32_t ResourceRequestGetRequestType(int nweb_request_key);
+
+  std::string ResourceResponseGetMimeType(int nweb_response_key);
+  std::string ResourceResponseGetEncoding(int nweb_response_key);
+  int32_t ResourceResponseGetStatusCode(int nweb_response_key);
+  std::string ResourceResponseGetReasonPhrase(int nweb_response_key);
+  std::map<std::string, std::string> ResourceResponseGetResponseHeader(int nweb_response_key);
+  bool ResourceResponseGetIsFromNetwork(int nweb_response_key);
+
+  int32_t GetLastCommittedEntryPageTransition();
+
+  void ResourceRequestDelete(int nweb_request_key);
+  void ResourceResponseDelete(int nweb_response_key);
+
+  static int InsertResourceRequest(std::shared_ptr<NWebResourceRequest> nweb_request);
+  static std::shared_ptr<NWebResourceRequest> GetResourceRequestByKey(int key);
+
+  static int InsertResourceResponse(std::shared_ptr<NWebResourceResponse> nweb_response);
+  static std::shared_ptr<NWebResourceResponse> GetResourceResponseByKey(int key);
 #endif
 
 #if BUILDFLAG(ARKWEB_WEBRTC)
@@ -1095,45 +1158,6 @@ void OnMediaCastEnter() override;
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
   void OnSafeBrowsingCheckDetail(int code, int policy, int threat) override;
 #endif
-
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
-  void OnReceiveResponse(CefRefPtr<CefRequest> request,
-                         bool is_request_gesture,
-                         int transition_type,
-                         bool is_main_frame,
-                         bool is_redirect,
-                         int resource_type,
-                         CefRefPtr<CefResponse> response_info,
-                         bool is_from_network) override;
- 
-  std::map<std::string, std::string> ResourceRequestGetRequestHeader(int nweb_request_key);
-  std::string ResourceRequestGetRequestUrl(int nweb_request_key);
-  bool ResourceRequestIsRequestGesture(int nweb_request_key);
-  bool ResourceRequestIsMainFrame(int nweb_request_key);
-  bool ResourceRequestIsRedirect(int nweb_request_key);
-  std::string ResourceRequestGetRequestMethod(int nweb_request_key);
-  int32_t ResourceRequestGetPageTransition(int nweb_request_key);
-  int32_t ResourceRequestGetRequestType(int nweb_request_key);
- 
-  std::string ResourceResponseGetMimeType(int nweb_response_key);
-  std::string ResourceResponseGetEncoding(int nweb_response_key);
-  int32_t ResourceResponseGetStatusCode(int nweb_response_key);
-  std::string ResourceResponseGetReasonPhrase(int nweb_response_key);
-  std::map<std::string, std::string> ResourceResponseGetResponseHeader(int nweb_response_key);
-  bool ResourceResponseGetIsFromNetwork(int nweb_response_key);
- 
-  int32_t GetLastCommittedEntryPageTransition();
- 
-  void ResourceRequestDelete(int nweb_request_key);
-  void ResourceResponseDelete(int nweb_response_key);
-  
-  static int InsertResourceRequest(std::shared_ptr<NWebResourceRequest> nweb_request);
-  static std::shared_ptr<NWebResourceRequest> GetResourceRequestByKey(int key);
-  
-  static int InsertResourceResponse(std::shared_ptr<NWebResourceResponse> nweb_response);
-  static std::shared_ptr<NWebResourceResponse> GetResourceResponseByKey(int key);
-#endif
-
  private:
 #if BUILDFLAG(ARKWEB_JSPROXY)
   enum class JsRunTime{Start = 0, End = 1, HEAD_READY};
@@ -1144,7 +1168,6 @@ void OnMediaCastEnter() override;
                           ScriptItemsByOrder& scriptItemsByOrder);
 #endif
   void CopyImageToClipboard(CefRefPtr<CefImage> image);
-
   // List of existing browser windows. Only accessed on the CEF UI thread.
   typedef std::list<CefRefPtr<CefBrowser>> BrowserList;
   BrowserList browser_list_;
@@ -1315,7 +1338,7 @@ void OnMediaCastEnter() override;
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   NWebAppClientExtensionDispatcher dispatcher_;
-#endif
+#endif  // ARKWEB_NWEB_EX
 
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
   CefRefPtr<CefSafeBrowsingDetectionCallback>
@@ -1325,13 +1348,39 @@ void OnMediaCastEnter() override;
 #if BUILDFLAG(ARKWEB_EX_SCREEN_CAPTURE)
   CefRefPtr<CefScreenCaptureCallback> screen_capture_cb_ = nullptr;
 #endif // ARKWEB_EX_SCREEN_CAPTURE
+  void IncrementAndCheck(int32_t taskid, std::shared_ptr<NWebImageInfo> imageInfo);
+  void IncrementAndCheckByUrl(int32_t taskid, int32_t imageid,
+      std::shared_ptr<NWebImageInfo> imageInfo,
+      std::unique_ptr<OhosImageDecoderAdapter> decoder);
+  std::unique_ptr<OHOS::NWeb::OhosImageDecoderAdapter>
+  DecodeImageData(int32_t taskid, uint8_t* data, int buffer_size);
+  void FinalizeImageData(int32_t taskid, int32_t image_id,
+      std::shared_ptr<NWebImageInfo>& image_info,
+      std::unique_ptr<OHOS::NWeb::OhosImageDecoderAdapter> decoderAdapter);
+  void DestroyTask(int32_t taskid);
+  void IncrementAndCheckByXPath(int32_t taskid, std::shared_ptr<NWebImageInfo> imageInfo, int32_t image_id);
+  void DestroyTaskByXPath(int32_t taskid);
 
-  base::WeakPtr<NWebHandlerDelegate> weak_this_;
-  base::WeakPtrFactory<NWebHandlerDelegate> weak_factory_{this};
+  std::unordered_map<int32_t, int32_t> total_count_;
+  std::unordered_map<int32_t, int32_t> current_count_;
+  std::unordered_map<int32_t, int32_t> image_index_;
+  std::unordered_map<int32_t, std::vector<std::shared_ptr<NWebImageInfo>>> imagedata_vector_;
+  std::unordered_map<int32_t, std::shared_ptr<NWebImageInfoCallback>> nweb_image_info_callback_;
+  std::unordered_map<int32_t, std::vector<std::unique_ptr<OhosImageDecoderAdapter>>> decoder_;
+  std::mutex image_decode_mutex_;
 
+  std::unordered_map<int32_t, int32_t> total_count_by_xpath_;
+  std::unordered_map<int32_t, int32_t> current_count_by_xpath_;
+  std::unordered_map<int32_t, int32_t> image_index_by_xpath_;
+  std::unordered_map<int32_t, std::vector<std::shared_ptr<NWebImageInfo>>> imagedata_vector_by_xpath_;
+  std::unordered_map<int32_t, std::shared_ptr<NWebImageInfoCallback>> nweb_image_info_callback_by_xpath_;
+  std::mutex image_decode_mutex_by_xpath_;
 #if BUILDFLAG(ARKWEB_MENU)
   base::RepeatingCallback<void(bool)> on_handle_visible_;
 #endif
+
+  base::WeakPtr<NWebHandlerDelegate> weak_this_;
+  base::WeakPtrFactory<NWebHandlerDelegate> weak_factory_{this};
 };
 }  // namespace OHOS::NWeb
 

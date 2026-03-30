@@ -55,6 +55,7 @@ using NamesMap = skia_private::THashMap<SkString, int>;
 using NamePathMap = skia_private::THashMap<SkString, SkString>;
 using Coordinate = SkFontArguments::VariationPosition::Coordinate;
 using AxisDefinitions = SkFontScanner::AxisDefinitions;
+using VariationPosition = SkFontScanner::VariationPosition;
 #if BUILDFLAG(ARKWEB_THEME_FONT)
 using ThemeTypefaceSet = std::vector<sk_sp<SkTypeface_OHOS>>;
 #endif
@@ -247,10 +248,10 @@ class FontConfig_OHOS {
   int parseTtcIndex(const Json::Value& root, const SkString& familyName);
   void getAxisValues(const AxisDefinitions& axisDefinitions,
                      const VariationInfo& variation,
-                     FontInfo& font) const;
+                     FontInfo& font, VariationPosition& current) const;
   bool insertTtcFont(int count, FontInfo& font);
   bool insertVariableFont(const AxisDefinitions& axisDefinitions,
-                          FontInfo& font);
+                          FontInfo& font, VariationPosition& current);
   void addAxisToVariableFont(const AxisDefinitions& axisDefinitions, FontInfo& font);
 
   TypefaceSet* getTypefaceSet(const SkString& familyName,
@@ -278,7 +279,7 @@ class FontConfig_OHOS {
                  Json::ValueType actual = Json::nullValue);
   static void sortTypefaceSet(std::shared_ptr<TypefaceSet>& typefaceSet);
   static uint32_t getVariableFontStyleDifference(const SkFontStyle& dstStyle,
-      const SkFontStyle& srcStyle, const std::vector<SkFontScanner::AxisDefinition>& srcAxisRange);
+      const SkFontStyle& srcStyle, const std::vector<SkFontParameters::Variation::Axis>& srcAxisRange);
   static uint32_t getFontStyleDifference(const SkFontStyle& style1,
                                          const SkFontStyle& style2);
   static char* getFileData(const char* fname, int& size);

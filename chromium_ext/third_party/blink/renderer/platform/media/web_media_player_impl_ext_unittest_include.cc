@@ -338,7 +338,7 @@ TEST_F(WebMediaPlayerImplTest, ExtTestGetMimeType) {
   ASSERT_NO_FATAL_FAILURE(
       wmpi_->AsWebMediaPlayerImplExt()->GetMimeType());
 }
-
+ 
 TEST_F(WebMediaPlayerImplTest, ExtTestUsingMediaPlayer) {
   InitializeWebMediaPlayerImpl();
   ASSERT_NO_FATAL_FAILURE(wmpi_->AsWebMediaPlayerImplExt()->UsingMediaPlayer());

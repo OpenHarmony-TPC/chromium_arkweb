@@ -36,11 +36,10 @@
 
 namespace blink {
 
-#if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
 TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_1stIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
       <style>
@@ -91,7 +90,7 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_2ndIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
       <style>
@@ -147,7 +146,7 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_3rdIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
       <style>
@@ -201,7 +200,7 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_3rdIf) {
 TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_4thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #unselectable {
@@ -259,7 +258,7 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_5thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -327,7 +326,7 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_6thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -390,7 +389,6 @@ TEST_F(ContextMenuControllerTest, ShouldShowFreeCopyMenuTest_6thIf) {
   EXPECT_FALSE(result);
   EXPECT_TRUE(ShowContextMenu(location_with_image, kMenuSourceLongPress));
 }
-#endif
 
 TEST_F(ContextMenuControllerTest, GetChildImageUrlFromElementTest_1stIf) {
   const WebElement null_element;
@@ -405,7 +403,7 @@ TEST_F(ContextMenuControllerTest, GetChildImageUrlFromElementTest_1stIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetChildImageUrlFromElementTest_2ndIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id ="container">No image here </div>
   )HTML");
 
@@ -425,7 +423,7 @@ TEST_F(ContextMenuControllerTest, GetChildImageUrlFromElementTest_3rdIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -471,7 +469,7 @@ TEST_F(ContextMenuControllerTest, GetAbsoluteSrcUrlTest_1stIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetAbsoluteSrcUrlTest_2ndIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id ="container">No image here </div>
   )HTML");
 
@@ -489,7 +487,7 @@ TEST_F(ContextMenuControllerTest, GetAbsoluteSrcUrlTest_2ndIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_1stIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">No image here </div>
   )HTML");
 
@@ -506,7 +504,7 @@ TEST_F(ContextMenuControllerTest, GetImgChildTest_1stIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_2ndIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">No image here </div>
   )HTML");
 
@@ -523,7 +521,7 @@ TEST_F(ContextMenuControllerTest, GetImgChildTest_2ndIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_3rdIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">No image here </div>
   )HTML");
 
@@ -542,7 +540,7 @@ TEST_F(ContextMenuControllerTest, GetImgChildTest_3rdIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_4thIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">
        <img id="img1" style="position:absolute; left:10px; top:10px; width:50px;height:50px;">
        <img id="img2" style="position:absolute; left:70px; top:10px; width:50px;height:50px;">
@@ -564,7 +562,7 @@ TEST_F(ContextMenuControllerTest, GetImgChildTest_4thIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_5thIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">
        <img id="img1" style="position:absolute; left:10px; top:10px; width:50px;height:50px;">
        <img id="img2" style="position:absolute; left:70px; top:10px; width:50px;height:50px;">
@@ -587,7 +585,7 @@ TEST_F(ContextMenuControllerTest, GetImgChildTest_5thIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetImgChildTest_6thIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <div id = "container">
        <img id="img1" style="position:absolute; left:10px; top:10px; width:50px;height:50px;">
        <img id="img2" style="position:absolute; left:70px; top:10px; width:50px;height:50px;">
@@ -621,7 +619,7 @@ TEST_F(ContextMenuControllerTest, GetAbsoluteUrlTest_1stIf) {
 }
 
 TEST_F(ContextMenuControllerTest, GetAbsoluteUrlTest_2ndIf) {
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -657,7 +655,7 @@ TEST_F(ContextMenuControllerTest, GetAbsoluteUrlTest_3rdIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -693,7 +691,7 @@ TEST_F(ContextMenuControllerTest, GetAbsoluteUrlTest_4thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -729,7 +727,7 @@ TEST_F(ContextMenuControllerTest, FindImgUrlTest_1stIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -789,7 +787,7 @@ TEST_F(ContextMenuControllerTest, FindImgUrlTest_2ndIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -849,7 +847,7 @@ TEST_F(ContextMenuControllerTest, FindImgUrlTest_3rdIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -897,7 +895,7 @@ TEST_F(ContextMenuControllerTest, FindImgUrlTest_4thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -958,7 +956,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_1stIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1062,7 +1060,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_2ndIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1165,7 +1163,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_3rdIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1268,7 +1266,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_4thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1371,7 +1369,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_5thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1474,7 +1472,7 @@ TEST_F(ContextMenuControllerTest, IsHitTestStopNodeTest_6thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1588,7 +1586,7 @@ TEST_F(ContextMenuControllerTest, SetArkWebMenuDataTest_1stIf) {
 
 TEST_F(ContextMenuControllerTest, SetArkWebMenuDataTest_2ndIf) {
   RegisterMockedImageURLLoad("http://test.png");
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <img id=target src='http://test.png'>
     </body>
@@ -1613,7 +1611,7 @@ TEST_F(ContextMenuControllerTest, SetArkWebMenuDataTest_2ndIf) {
 TEST_F(ContextMenuControllerTest, IsAILinkTest_1stIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -1651,7 +1649,7 @@ TEST_F(ContextMenuControllerTest, IsAILinkTest_1stIf) {
 
 TEST_F(ContextMenuControllerTest, IsAILinkTest_2ndIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -1686,7 +1684,7 @@ TEST_F(ContextMenuControllerTest, IsAILinkTest_2ndIf) {
 TEST_F(ContextMenuControllerTest, IsAILinkTest_3rdIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -1725,7 +1723,7 @@ TEST_F(ContextMenuControllerTest, IsAILinkTest_3rdIf) {
 TEST_F(ContextMenuControllerTest, IsAILinkTest_4thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #linktarget {
@@ -1777,7 +1775,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_1stIf) {
 TEST_F(ContextMenuControllerTest, GetImgUrlTest_2ndIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <div id=container>No image container</div>
     </body>
@@ -1842,7 +1840,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_4thIf) {
 TEST_F(ContextMenuControllerTest, GetImgUrlTest_5thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
      <style>
         #target {
@@ -1890,7 +1888,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_6thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1961,7 +1959,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_6thIf) {
 TEST_F(ContextMenuControllerTest, GetImgUrlTest_7thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -1988,7 +1986,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_8thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first' style="background-image:url('http://test.png');">This is a sample text.</p>
     </body>
@@ -2028,7 +2026,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_9thIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first' style="background-image:linear-gradient(to right, red, blue);">This is a sample text.</p>
     </body>
@@ -2060,7 +2058,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_9thIf) {
 TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_1stIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -2083,7 +2081,7 @@ TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_1stIf) 
 TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_2ndIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -2108,7 +2106,7 @@ TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_2ndIf) 
 TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_3rdIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
      <div id='dd'>
       <img id='first'src='htttp://test.png' alt='Sample Image'>
@@ -2137,12 +2135,11 @@ TEST_F(ContextMenuControllerTest, SetImageRectFromPotentialImageNodeTest_3rdIf) 
   EXPECT_TRUE(data_.image_rect.IsEmpty());
 }
 
-#if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
 TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_2ndIf) {
   RegisterMockedImageURLLoad("http://test.png");
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -2224,7 +2221,7 @@ TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_2ndIf) {
 TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_3rdIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -2268,7 +2265,7 @@ TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_3rdIf) {
 TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_4thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -2300,7 +2297,7 @@ TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_4thIf) {
 TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_5thIf) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id='first'>This is a sample text."</p>
     </body>
@@ -2325,12 +2322,11 @@ TEST_F(ContextMenuControllerTest, HandleArkWebContextMenuTest_5thIf) {
 
   EXPECT_TRUE(!data_.is_selectable);
 }
-#endif
 
 TEST_F(ContextMenuControllerTest, GetImgUrlTest_001) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
      <style>
         #target {
@@ -2380,7 +2376,7 @@ TEST_F(ContextMenuControllerTest, GetImgUrlTest_001) {
 TEST_F(ContextMenuControllerTest, GetImgUrlTest_StyleImageNull) {
   ContextMenuAllowedScope context_menu_allowed_scope;
 
-  GetDocument()->documentElement()->setInnerHTML(R"HTML(
+  GetDocument()->documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
      <style>
         #target {

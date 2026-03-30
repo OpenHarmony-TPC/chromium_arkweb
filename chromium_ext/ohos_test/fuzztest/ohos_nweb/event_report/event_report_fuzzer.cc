@@ -30,6 +30,27 @@ namespace {
 }
 
 namespace OHOS {
+void ReportChildProcessInitFailFuzzTest(const uint8_t* data, size_t size) {
+  if ((data == nullptr) || (size == 0)) {
+    return;
+  }
+  FuzzedDataProvider dataProvider(data, size);
+  bool is_gpu = dataProvider.ConsumeBool();
+  ReportChildProcessInitFail(is_gpu, 0);
+}
+
+void ReportRenderJsFreezeFuzzTest(const uint8_t* data, size_t size) {
+  if ((data == nullptr) || (size == 0)) {
+    return;
+  }
+  FuzzedDataProvider dataProvider(data, size);
+  int32_t pid = dataProvider.ConsumeIntegralInRange<int32_t>(0, MAX_INT_SIZE);
+  std::string packageName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
+  std::string processName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
+  std::string freezzeMsg = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
+  int32_t uid = dataProvider.ConsumeIntegralInRange<int32_t>(0, MAX_INT_SIZE);
+  ReportRenderJsFreeze(pid, packageName, processName, freezzeMsg, uid);
+}
 
 void ReportPageLoadStatsFuzzTest(const uint8_t* data, size_t size) {
   if ((data == nullptr) || (size == 0)) {
@@ -41,19 +62,6 @@ void ReportPageLoadStatsFuzzTest(const uint8_t* data, size_t size) {
   int accessSumCount = dataProvider.ConsumeIntegralInRange<int>(accessSuccCount, MAX_INT_SIZE);
   int accessFailCount = accessSumCount - accessSuccCount;
   ReportPageLoadStats(instanceId, accessSumCount, accessSuccCount, accessFailCount);
-}
-
-void ReportRenderJsFreezeFuzzTest(const uint8_t* data, size_t size) {
-  if ((data == nullptr) || (size == 0)) {
-    return;
-  }
-  FuzzedDataProvider dataProvider(data, size);
-  int32_t pid = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
-  std::string packageName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  std::string processName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  std::string freezeMsg = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  int32_t uid = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
-  ReportRenderJsFreeze(pid, packageName, processName, freezeMsg, uid);
 }
 
 void ReportMultiInstanceStatsFuzzTest(const uint8_t* data, size_t size) {
@@ -74,21 +82,20 @@ void ReportPageLoadErrorInfoFuzzTest(const uint8_t* data, size_t size) {
   FuzzedDataProvider dataProvider(data, size);
   int instanceId = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
   int errorCode = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
-  uint32_t errorCount = dataProvider.ConsumeIntegralInRange<uint32_t>(0, MAX_UINT32_SIZE);
   std::string errorType = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
   std::string errorDesc = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
 
   /* branch1: type and desc are all empty */
-  ReportPageLoadErrorInfo(instanceId, "", errorCode, errorCount, "");
+  ReportPageLoadErrorInfo(instanceId, "", errorCode, "");
 
   /* branch2: desc is not empty */
-  ReportPageLoadErrorInfo(instanceId, errorType, errorCode, errorCount, "errorDesc");
+  ReportPageLoadErrorInfo(instanceId, errorType, errorCode, "errorDesc");
 
   /* branch3: type is not empty */
-  ReportPageLoadErrorInfo(instanceId, "errorType", errorCode, errorCount, errorDesc);
+  ReportPageLoadErrorInfo(instanceId, "errorType", errorCode, errorDesc);
 
   /* branch4: type and desc are auto length */
-  ReportPageLoadErrorInfo(instanceId, errorType, errorCode, errorCount, errorDesc);
+  ReportPageLoadErrorInfo(instanceId, errorType, errorCode, errorDesc);
 }
 
 void ReportJankStatsFuzzTest(const uint8_t* data, size_t size) {
@@ -145,10 +152,6 @@ void ReportPageLoadTimeStatsFuzzTest(const uint8_t* data, size_t size) {
   loadPageTime.first_paint = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
   loadPageTime.first_contentful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
   loadPageTime.largest_contentful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
-  loadPageTime.render_init_block = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
-  loadPageTime.input_time = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
-  loadPageTime.is_paint_done = dataProvider.ConsumeBool();
-  loadPageTime.first_meaningful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(-1, MAX_INT64_SIZE);
   ReportPageLoadTimeStats(loadPageTime);
 }
 
@@ -335,112 +338,48 @@ void ReportAvSessionStatusFuzzTest(const uint8_t* data, size_t size) {
   ReportAvSessionStatus(avSession);
 }
 
-void ReportDragBlankFuzzTest(const uint8_t* data, size_t size) {
-  if ((data == nullptr) || (size == 0)) {
-    return;
-  }
-  FuzzedDataProvider dataProvider(data, size);
-  int64_t duration = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  ReportDragBlank(duration);
-}
-
-void ReportFirstMeaningfulPaintDoneFuzzTest(const uint8_t* data, size_t size) {
-  if ((data == nullptr) || (size == 0)) {
-    return;
-  }
-  FuzzedDataProvider dataProvider(data, size);
-  OhWebPerformanceTiming loadPageTime;
-  loadPageTime.navigation_id = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.navigation_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.redirect_count = dataProvider.ConsumeIntegralInRange<uint32_t>(0, MAX_UINT32_SIZE);
-  loadPageTime.redirect_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.redirect_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.fetch_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.worker_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.domain_lookup_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.domain_lookup_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.connect_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.secure_connect_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.connect_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.request_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.response_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.response_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.dom_interactive = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.dom_content_loaded_event_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.dom_content_loaded_event_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.load_event_start = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.load_event_end = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.first_paint = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.first_contentful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.largest_contentful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.render_init_block = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.input_time = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  loadPageTime.is_paint_done = dataProvider.ConsumeBool();
-  loadPageTime.first_meaningful_paint = dataProvider.ConsumeIntegralInRange<int64_t>(0, MAX_INT64_SIZE);
-  ReportFirstMeaningfulPaintDone(loadPageTime)
-}
-
-void ReportGpuProcessEventFuzzTest(const uint8_t* data, size_t size) {
-  if ((data == nullptr) || (size == 0)) {
-    return;
-  }
-  FuzzedDataProvider dataProvider(data, size);
-  std::string eventContent = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  /* time out type */
-  ReportGpuProcessEvent(CrashType::TIMEOUT, eventContent);
-
-  /* none existent */
-  ReportGpuProcessEvent(CrashType::MAILBOX_NONEXISTENT, eventContent);
-}
-
 void ReportAppfreezeFuzzTest(const uint8_t* data, size_t size) {
   if ((data == nullptr) || (size == 0)) {
     return;
   }
   FuzzedDataProvider dataProvider(data, size);
-  int32_t pid = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
+  int32_t pid = dataProvider.ConsumeIntegralInRange<int32_t>(0, MAX_INT_SIZE);
   std::string packageName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
   std::string processName = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  std::string freezeMsg = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
-  int32_t uid = dataProvider.ConsumeIntegralInRange<int>(0, MAX_INT_SIZE);
-  ReportAppfreeze(pid, packageName, processName, freezeMsg, uid);
+  std::string freezzeMsg = dataProvider.ConsumeRandomLengthString(MAX_STRING_LENGTH);
+  int32_t uid = dataProvider.ConsumeIntegralInRange<int32_t>(0, MAX_INT_SIZE);
+  ReportAppfreeze(pid, packageName, processName, freezzeMsg, uid);
 }
 
 }  // namespace OHOS
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  OHOS::ReportChildProcessInitFailFuzzTest(data, size);
+  OHOS::ReportRenderJsFreezeFuzzTest(data, size);
   OHOS::ReportPageLoadStatsFuzzTest(data, size);
+
   OHOS::ReportMultiInstanceStatsFuzzTest(data, size);
   OHOS::ReportPageLoadErrorInfoFuzzTest(data, size);
-
   OHOS::ReportJankStatsFuzzTest(data, size);
+
   OHOS::ReportLockdownModeStatusFuzzTest(data, size);
   OHOS::ReportPageLoadTimeStatsFuzzTest(data, size);
-
   OHOS::ReportAudioPlayErrorInfoFuzzTest(data, size);
+
   OHOS::ReportVideoPlayErrorInfoFuzzTest(data, size);
   OHOS::ReportAudioFrameDropStatsFuzzTest(data, size);
-
   OHOS::ReportVideoFrameDropStatsFuzzTest(data, size);
+
   OHOS::ReportDragDropStatusFuzzTest(data, size);
   OHOS::ReportDragDropInfoFuzzTest(data, size);
-
   OHOS::ReportForceZoomEnableFuzzTest(data, size);
+
   OHOS::ReportOpenPrivateModeFuzzTest(data, size);
   OHOS::ReportPageDownLoadErrorInfoFuzzTest(data, size);
-
   OHOS::ReportSlideJankStatsFuzzTest(data, size);
+
   OHOS::ReportSiteIsolationModeFuzzTest(data, size);
   OHOS::ReportRendererMemFuzzTest(data, size);
-
-  OHOS::ReportWebMediaPlayErrorInfoFuzzTest(data, size);
-  OHOS::ReportAvSessionStatusFuzzTest(data, size);
-  OHOS::ReportDragBlankFuzzTest(data, size);
-
-  OHOS::ReportFirstMeaningfulPaintDoneFuzzTest(data, size);
-  OHOS::ReportGpuProcessEventFuzzTest(data, size);
-
-  OHOS::ReportRenderJsFreezeFuzzTest(data, size);
   OHOS::ReportAppfreezeFuzzTest(data, size);
   return 0;
 }

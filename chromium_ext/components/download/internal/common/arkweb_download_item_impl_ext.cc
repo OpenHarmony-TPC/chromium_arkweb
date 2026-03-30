@@ -226,13 +226,11 @@ void ArkWebDownloadItemImplExt::ReadDownloadData(
                 weak_ptr_factory_.GetWeakPtr())));
   }
 }
-
 void ArkWebDownloadItemImplExt::ReadDataFromDownloadFileDone(
     const std::vector<uint8_t>& data) {
   if (!read_download_callback_from_ui_) {
     return;
   }
-
   std::move(read_download_callback_from_ui_).Run(std::move(data));
 }
 
@@ -243,9 +241,8 @@ void ArkWebDownloadItemImplExt::RunCallbackIfStateMatch() {
   }
  
   LOG(INFO) << "DownloadItemImpl::RunCallbackIfStateMatch";
- 
-  if (GetDownloadTaskRunner()) {
     // Safe because we control download file lifetime.
+  if (GetDownloadTaskRunner()) {
     GetDownloadTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(&ReadDownloadDataAndRunCallbackImpl,
                                   base::Unretained(download_file_.get())));
@@ -260,8 +257,8 @@ void ArkWebDownloadItemImplExt::RunCallbackIfExistsCallback() {
     ReadDataFromDownloadFileDone(std::vector<uint8_t>());
     return;
   }
-  if (GetDownloadTaskRunner()) {
     // Safe because we control download file lifetime.
+  if (GetDownloadTaskRunner()) {
     GetDownloadTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(&ReadDownloadDataAndRunCallbackImpl,
                                   base::Unretained(download_file_.get())));

@@ -13,8 +13,8 @@
 
 config("net_dns_config") {
   ldflags = [
+    "-Wl,--wrap=GetOHGetAddrInfoForNetwork",
     "-Wl,--wrap=GetOHFreeDnsResult",
-    "-Wl,--wrap=GetOHGetAddrInfoForNetwork"
   ]
 }
 

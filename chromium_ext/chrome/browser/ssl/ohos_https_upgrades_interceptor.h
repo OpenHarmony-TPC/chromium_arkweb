@@ -10,8 +10,6 @@
 #include "base/memory/weak_ptr.h"
 #include "base/sequence_checker.h"
 #include "chrome/browser/ssl/https_only_mode_tab_helper.h"
-#include "content/browser/renderer_host/frame_tree_node.h"
-#include "content/browser/renderer_host/navigation_request.h"
 #include "content/public/browser/url_loader_request_interceptor.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -86,8 +84,6 @@ class OhosHttpsUpgradesInterceptor : public content::URLLoaderRequestInterceptor
       const std::optional<GURL>& new_url) override {}
   void SetPriority(net::RequestPriority priority,
                    int intra_priority_value) override {}
-  void PauseReadingBodyFromNet() override {}
-  void ResumeReadingBodyFromNet() override {}
 
   // Returns a RequestHandler callback that can be passed to the underlying
   // LoaderCallback to serve an artificial redirect to `new_url`.

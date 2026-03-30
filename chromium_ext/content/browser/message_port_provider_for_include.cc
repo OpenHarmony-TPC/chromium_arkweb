@@ -26,7 +26,22 @@ void MessagePortProvider::OhosPostMessageToFrame(
   for (size_t i = 0; i < ports.size(); ++i) {
     descriptors.push_back(ports[i].PassPort());
   }
-  PostMessageToFrameInternal(page, source_origin, target_origin, data,
+
+  // Convert std::u16string origins to url::Origin pointers for Chromium 144
+  std::optional<url::Origin> source;
+  if (!source_origin.empty()) {
+    source = url::Origin::Create(GURL(source_origin));
+  }
+
+  std::optional<url::Origin> target;
+  if (!target_origin.empty()) {
+    target = url::Origin::Create(GURL(target_origin));
+  }
+
+  PostMessageToFrameInternal(page,
+                             source.has_value() ? &(*source) : nullptr,
+                             target.has_value() ? &(*target) : nullptr,
+                             data,
                              std::move(descriptors));
 }
 #endif

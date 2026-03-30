@@ -48,9 +48,9 @@ public:
 #endif
 
 #if BUILDFLAG(ARKWEB_AI)
-  virtual WTF::Vector<int8_t> GetWordSelection(LocalFrame* frame,
-                                               const WTF::String& text,
-                                               int8_t offset) { return {-1, -1}; }
+  virtual Vector<int8_t> GetWordSelection(LocalFrame* frame,
+                                          const String& text,
+                                          int8_t offset) { return {-1, -1}; }
 #endif
 
 #if BUILDFLAG(ARKWEB_SCROLLBAR_AVOID_AREA)

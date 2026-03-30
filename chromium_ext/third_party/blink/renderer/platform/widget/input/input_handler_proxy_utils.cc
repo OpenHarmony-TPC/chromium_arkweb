@@ -30,11 +30,14 @@
 #include "arkweb/chromium_ext/third_party/blink/renderer/platform/widget/input/elastic_overscroll_controller_utils.h"
 #endif
 
+#if BUILDFLAG(IS_ARKWEB)
+#include "base/trace_event/trace_event.h"
+#endif
+
 namespace blink {
 
 #define NO_NATIVE_TYPE 100
 
-// LCOV_EXCL_START
 InputHandlerProxyUtils::InputHandlerProxyUtils(InputHandlerProxy* proxy)
     : proxy_(proxy) {
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
@@ -89,7 +92,6 @@ bool IsSameEventType(WebInputEvent::Type type, WebTouchPoint::State state) {
       return false;
   }
 }
-// LCOV_EXCL_STOP
 
 void InputHandlerProxyUtils::NativeHitTestResult(bool native,
                                             size_t fingerId,
@@ -125,22 +127,16 @@ void InputHandlerProxyUtils::NativeHitTestResult(bool native,
   }
 }
 
-void InputHandlerProxyUtils::NativeMouseHitTestResult(bool native,
-                                                      int layerId,
-                                                      int32_t button) {
-  LOG(DEBUG) << "[NativeEmbed] NativeMouseHitTestResult native is : " << native
-             << ",button is :" << button;
-  TRACE_EVENT1("input", "InputHandlerProxy::NativeMouseHitTestResult", "native",
-               native);
+void InputHandlerProxyUtils::NativeMouseHitTestResult(bool native, int layerId, int32_t button) {
+  LOG(DEBUG)<<"[NativeEmbed] NativeMouseHitTestResult native is : " << native << ",button is :" << button;
+  TRACE_EVENT1("input", "InputHandlerProxy::NativeMouseHitTestResult", "native", native);
   mouse_native_map_[button] = native;
   mouse_hit_testing_number_--;
   if (native) {
     mouse_native_id_map_[button] = layerId;
-    SendMouseNativeEvent(start_mouse_event_, WebInputEvent::Type::kMouseDown,
-                         button);
+    SendMouseNativeEvent(start_mouse_event_, WebInputEvent::Type::kMouseDown, button);
   } else if (!native_mouse_event_queue_->empty()) {
-    SendMouseNativeEvent(start_mouse_event_, WebInputEvent::Type::kMouseDown,
-                         button, false);
+    SendMouseNativeEvent(start_mouse_event_, WebInputEvent::Type::kMouseDown, button, false);
     auto event_with_callback = native_mouse_event_queue_->Pop();
     proxy_->DispatchSingleInputEvent(std::move(event_with_callback));
   }
@@ -156,6 +152,18 @@ void InputHandlerProxyUtils::NativeMouseHitTestResult(bool native,
   }
 }
 
+void InputHandlerProxyUtils::ChangeModifiers(
+    int32_t& modifiers, WebInputEvent::Type type, bool needCache) {
+  if (needCache && type != WebInputEvent::Type::kMouseUp &&
+      modifiers != WebInputEvent::Modifiers::kNoModifiers) {
+    cache_modifiers_ = modifiers;
+  }
+  if (type == WebInputEvent::Type::kMouseUp &&
+      modifiers == WebInputEvent::Modifiers::kNoModifiers) {
+    modifiers = cache_modifiers_;
+  }
+}
+
 void InputHandlerProxyUtils::SendMouseNativeEvent(
     const WebMouseEvent& mouse_event,
     WebInputEvent::Type type,
@@ -163,7 +171,10 @@ void InputHandlerProxyUtils::SendMouseNativeEvent(
     bool result) {
   TRACE_EVENT2("input", "InputHandlerProxy::SendNativeEvent", "type",
                WebInputEvent::GetName(type), "result", result);
-  auto modifiers = static_cast<WebInputEvent::Modifiers>(mouse_event.GetModifiers());
+#if !defined(COMPONENT_BUILD) // FIXME
+  auto mouse_modifiers = mouse_event.GetModifiers();
+  ChangeModifiers(mouse_modifiers, type);
+  auto modifiers = static_cast<WebInputEvent::Modifiers>(mouse_modifiers);
   if (result) {
     float x = mouse_event.PositionInWidget().x();
     float y = mouse_event.PositionInWidget().y();
@@ -192,6 +203,7 @@ void InputHandlerProxyUtils::SendMouseNativeEvent(
   } else {
     proxy_->client_->DidNativeEmbedMouseEvent(type, modifiers, embed_id_, result, 0, 0);
   }
+#endif
 }
 
 void InputHandlerProxyUtils::SendNativeEvent(const WebTouchEvent& touch_event,
@@ -200,6 +212,7 @@ void InputHandlerProxyUtils::SendNativeEvent(const WebTouchEvent& touch_event,
                                         bool result) {
   TRACE_EVENT2("input", "InputHandlerProxyUtils::SendNativeEvent", "type",
                WebInputEvent::GetName(type), "result", result);
+#if !defined(COMPONENT_BUILD) // FIXME
   if (result) {
     float x = touch_event.touches[i].PositionInWidget().x();
     float y = touch_event.touches[i].PositionInWidget().y();
@@ -225,6 +238,7 @@ void InputHandlerProxyUtils::SendNativeEvent(const WebTouchEvent& touch_event,
   } else {
     proxy_->client_->DidNativeEmbedEvent(type, embed_id_, NO_NATIVE_TYPE, 0, 0);
   }
+#endif
 }
 
 InputHandlerProxyUtils::NativeEventDisposition
@@ -243,6 +257,7 @@ InputHandlerProxyUtils::DidNativeEmbedEvent(const WebInputEvent& event) {
     if (!IsSameEventType(event.GetType(), state)) {
       continue;
     }
+#if !defined(COMPONENT_BUILD) // FIXME
     if (event.GetType() == WebInputEvent::Type::kTouchStart) {
       cc::LayerImpl* video_layer_impl =
           proxy_->input_handler_->handler_utils()->GetLayerImplIsHitByPoint(gfx::Point(x, y));
@@ -274,6 +289,7 @@ InputHandlerProxyUtils::DidNativeEmbedEvent(const WebInputEvent& event) {
       }
       continue;
     }
+#endif
 
     bool isNativeArea = false;
     if (native_map_.find(id) != native_map_.end()) {
@@ -308,31 +324,26 @@ InputHandlerProxyUtils::DidMouseEmbedEvent(const WebInputEvent& event) {
   if (!IsMouseEventType(type)) {
     return NORMAL;
   }
+
   // for 5.0.x
   auto modifiers = event.GetModifiers();
-  auto is_left_click = modifiers == WebInputEvent::Modifiers::kLeftButtonDown ||
-                       modifiers == (WebInputEvent::Modifiers::kLeftButtonDown |
-                                    WebInputEvent::Modifiers::kIsAutoRepeat);
-  auto is_right_click =
-      modifiers == WebInputEvent::Modifiers::kRightButtonDown ||
-      modifiers == (WebInputEvent::Modifiers::kRightButtonDown |
-                   WebInputEvent::Modifiers::kIsAutoRepeat);
-  auto is_mid_click =
-      modifiers == WebInputEvent::Modifiers::kMiddleButtonDown ||
-      modifiers == (WebInputEvent::Modifiers::kMiddleButtonDown |
-                   WebInputEvent::Modifiers::kIsAutoRepeat);
+  ChangeModifiers(modifiers, type, true);
+  auto is_left_click = modifiers == WebInputEvent::Modifiers::kLeftButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kLeftButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
+  auto is_right_click = modifiers == WebInputEvent::Modifiers::kRightButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kRightButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
+  auto is_mid_click = modifiers == WebInputEvent::Modifiers::kMiddleButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kMiddleButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
 
   if (!is_left_click && !is_right_click && !is_mid_click) {
     return NORMAL;
   }
 
-  int32_t button = static_cast<int32_t>(
-      is_left_click
-          ? WebInputEvent::Modifiers::kLeftButtonDown
-          : (is_right_click
-                 ? WebInputEvent::Modifiers::kRightButtonDown
-                 : (is_mid_click ? WebInputEvent::Modifiers::kMiddleButtonDown
-                                 : 0)));
+#if !defined(COMPONENT_BUILD) // FIXME
+  int32_t button = static_cast<int32_t>(is_left_click? WebInputEvent::Modifiers::kLeftButtonDown
+  :(is_right_click? WebInputEvent::Modifiers::kRightButtonDown
+  :(is_mid_click? WebInputEvent::Modifiers::kMiddleButtonDown:0)));
+
   const WebMouseEvent& mouse_event = static_cast<const WebMouseEvent&>(event);
   InputHandlerProxyUtils::NativeEventDisposition result = NORMAL;
   float x = mouse_event.PositionInWidget().x();
@@ -386,6 +397,7 @@ InputHandlerProxyUtils::DidMouseEmbedEvent(const WebInputEvent& event) {
   }
   mouse_native_map_[button] = false;
   return result;
+#endif
 }
 
 void InputHandlerProxyUtils::DidNativeSendEvent(
@@ -459,13 +471,11 @@ void InputHandlerProxyUtils::SetMouseEventResult(bool result, bool stopPropagati
   }
 }
 
-// LCOV_EXCL_START
 void InputHandlerProxyUtils::SetNativeEmbedMode(bool flag) {
   native_enabled_ = flag;
   LOG(DEBUG) << "[NativeEmbed] SetNativeEmbedMode native_enabled_ is : "
              << native_enabled_;
 }
-// LCOV_EXCL_STOP
 
 void InputHandlerProxyUtils::SetEnableCustomVideoPlayer(bool flag) {
   enable_custom_video_player_ = flag;
@@ -600,7 +610,8 @@ void InputHandlerProxyUtils::SendNativeInQueueFrontSeq(size_t finger_id) {
 
 bool InputHandlerProxyUtils::HandleTouchStartIfHitVideo(
     const WebTouchEvent& touch_event) {
-  int32_t changeIndex = GetTouchChangeIndex(touch_event);
+#if !defined(COMPONENT_BUILD) // FIXME
+  int changeIndex = GetTouchChangeIndex(touch_event);
   if (CheckFingerIdOutOfIndex(changeIndex)) {
     return false;
   }
@@ -624,10 +635,12 @@ bool InputHandlerProxyUtils::HandleTouchStartIfHitVideo(
     return true;
   }
   return false;
+#endif
 }
 
 bool InputHandlerProxyUtils::HandleTouchStartIfHitNative(
     const WebTouchEvent& touch_event) {
+#if !defined(COMPONENT_BUILD) // FIXME
   int32_t changeIndex = GetTouchChangeIndex(touch_event);
   if (CheckFingerIdOutOfIndex(changeIndex)) {
     return false;
@@ -636,11 +649,6 @@ bool InputHandlerProxyUtils::HandleTouchStartIfHitNative(
   float y = touch_event.touches[changeIndex].PositionInWidget().y();
   int32_t finger_id = touch_event.touches[changeIndex].id;
   if (CheckFingerIdOutOfIndex(finger_id)) {
-    return false;
-  }
-  if (finger_id < MIN_FINGER_NUMBER || finger_id >= MAX_FINGER_NUMBER) {
-    LOG(ERROR) << "[NativeEmbedGesture] finger_id is out of index. fingerId =" << finger_id;
-    ResetTouchSequence();
     return false;
   }
   std::shared_ptr<NativeEmbedEventQueue> touchEventQueue =
@@ -670,6 +678,7 @@ bool InputHandlerProxyUtils::HandleTouchStartIfHitNative(
     touchEventQueue->SetStatus(SEND_BLINK);
     return false;
   }
+#endif
 }
 
 void InputHandlerProxyUtils::NativeTouchStartProcess(
@@ -908,8 +917,6 @@ void InputHandlerProxyUtils::NativeTouchEndProcess(std::unique_ptr<EventWithCall
       touchEventQueue->Queue(std::move(event_with_callback));
       SendEventToNative(touch_event);
       break;
-    default:
-      break;
   }
 }
 
@@ -950,6 +957,7 @@ void InputHandlerProxyUtils::NativeTouchCancelProcess(
 }
 
 void InputHandlerProxyUtils::SendEventToNativeByIndex(const WebTouchEvent& touch_event, int32_t index) {
+#if !defined(COMPONENT_BUILD) // FIXME
   auto type = touch_event.GetType();
   if (CheckFingerIdOutOfIndex(index)) {
     return;
@@ -957,7 +965,7 @@ void InputHandlerProxyUtils::SendEventToNativeByIndex(const WebTouchEvent& touch
   float x = touch_event.touches[index].PositionInWidget().x();
   float y = touch_event.touches[index].PositionInWidget().y();
   int32_t finger_id = touch_event.touches[index].id;
-  if (CheckFingerIdOutOfIndex(index)) {
+  if (CheckFingerIdOutOfIndex(finger_id)) {
     return;
   }
   std::shared_ptr<NativeEmbedEventQueue> touchEventQueue =
@@ -989,6 +997,7 @@ void InputHandlerProxyUtils::SendEventToNativeByIndex(const WebTouchEvent& touch
         << "[NativeEmbedGesture] SendNativeEvent error layer_impl is null."
         << "fingerId " << finger_id << ", type: " << type;
   }
+#endif
 }
 
 void InputHandlerProxyUtils::SetGestureEventResult(bool result,
@@ -1170,6 +1179,7 @@ void InputHandlerProxyUtils::CheckTouchEventSequence(WebInputEvent::Type type,
 }
 
 void InputHandlerProxyUtils::SendEventToNative(const WebTouchEvent& touch_event) {
+#if !defined(COMPONENT_BUILD) // FIXME
   auto type = touch_event.GetType();
   int32_t changeIndex = GetTouchChangeIndex(touch_event);
   if (CheckFingerIdOutOfIndex(changeIndex)) {
@@ -1211,6 +1221,7 @@ void InputHandlerProxyUtils::SendEventToNative(const WebTouchEvent& touch_event)
         << "[NativeEmbedGesture] SendNativeEvent error layer_impl is null."
         << "fingerId " << finger_id << ", type: " << type;
   }
+#endif
 }
 
 void InputHandlerProxyUtils::NotifyEventNativeFocusResult(size_t fingerId) {
@@ -1235,7 +1246,8 @@ void InputHandlerProxyUtils::ResetTouchSequence() {
   }
 }
 
-bool InputHandlerProxyUtils::CheckFingerIdOutOfIndex(int32_t finger_id) {
+bool InputHandlerProxyUtils::CheckFingerIdOutOfIndex(
+    int32_t finger_id) {
   if (finger_id < MIN_FINGER_NUMBER || finger_id >= MAX_FINGER_NUMBER) {
     LOG(ERROR) << "[NativeEmbedGesture] finger_id is out of index. fingerId = " << finger_id;
     ResetTouchSequence();
@@ -1246,7 +1258,6 @@ bool InputHandlerProxyUtils::CheckFingerIdOutOfIndex(int32_t finger_id) {
 #endif
 
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
-// LCOV_EXCL_START
 void InputHandlerProxyUtils::ScrollBy(float delta_x, float delta_y) {
   TRACE_EVENT_INSTANT2(
       "input", "ScrollBy", TRACE_EVENT_SCOPE_THREAD, "delta_x",
@@ -1264,26 +1275,27 @@ void InputHandlerProxyUtils::SetOverscrollMode(int mode) {
   }
   proxy_->elastic_overscroll_controller_->GetUtils()->SetOverscrollMode(mode);
 }
-// LCOV_EXCL_STOP
 
 void InputHandlerProxyUtils::NeedFlushScrollUpdateGesture(
   const WebGestureEvent& gesture_event) {
+#if !defined(COMPONENT_BUILD) // FIXME
   if (need_flush_scroll_update_gesture_ &&
     gesture_event.GetType() ==
         WebGestureEvent::Type::kGestureScrollUpdate) {
     proxy_->DeliverInputForBeginFrame(current_internal_begin_frame_args_);
   }
+#endif
 }
 
-// LCOV_EXCL_START
 void InputHandlerProxyUtils::ResetNeedFlushScrollUpdateGesture() {
+#if !defined(COMPONENT_BUILD) // FIXME
   if (need_flush_scroll_update_gesture_) {
     LOG(INFO) << "InputHandlerProxy::HandleGestureScrollUpdate "
                  "internalbeginframe scrollupdate";
     need_flush_scroll_update_gesture_ = false;
   }
+#endif
 }
-// LCOV_EXCL_STOP
 
 std::unique_ptr<EventWithCallback> InputHandlerProxyUtils::OverScrollRunCallback(
   std::unique_ptr<EventWithCallback> event_with_callback,
@@ -1293,7 +1305,7 @@ std::unique_ptr<EventWithCallback> InputHandlerProxyUtils::OverScrollRunCallback
     auto helper = proxy_->elastic_overscroll_controller_->GetUtils()->GetScrollElasticityHelper();
     if (event_with_callback->event().IsGestureScroll() &&
         !proxy_->input_handler_->IsCurrentlyScrolling() && helper &&
-        !helper->StretchAmount().IsZero()) {
+        !helper->StretchAmount(cc::ElementId()).IsZero()) {
       event_with_callback->RunCallbacks(InputHandlerProxy::DID_HANDLE, monitored_latency_info,
                                         std::move(proxy_->current_overscroll_params_),
                                         attribution);
@@ -1303,7 +1315,6 @@ std::unique_ptr<EventWithCallback> InputHandlerProxyUtils::OverScrollRunCallback
   return event_with_callback;
 }
 
-// LCOV_EXCL_START
 std::unique_ptr<ScrollPredictor>
 InputHandlerProxyUtils::CreateScrollPredictor() {
   return (base::FeatureList::IsEnabled(blink::features::kResamplingScrollEvents) &&
@@ -1333,10 +1344,8 @@ void InputHandlerProxyUtils::SetClientForElasticOverScrollController() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_VSYNC_SCHEDULE)
 void InputHandlerProxyUtils::SetBypassVsyncCondition(int32_t condition) {
   LOG(INFO) << "InputHandlerProxyUtils::SetBypassVsyncCondition condition:"
@@ -1344,6 +1353,5 @@ void InputHandlerProxyUtils::SetBypassVsyncCondition(int32_t condition) {
   proxy_->SetBypassVsyncCondition(condition);
 }
 #endif
-// LCOV_EXCL_STOP
 
 }

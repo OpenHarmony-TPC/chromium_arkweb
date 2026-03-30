@@ -80,11 +80,11 @@ TEST_F(NativeThemeAuraUtilsTest, PaintScrollbarThumbWithColor_001) {
   NativeTheme::Part part = NativeTheme::kScrollbarVerticalThumb;
   NativeTheme::State state = NativeTheme::kNormal;
   NativeTheme::ScrollbarThumbExtraParams extra_params;
-  NativeTheme::ColorScheme color_scheme = NativeTheme::ColorScheme::kDefault;
+  NativeTheme::PreferredColorScheme color_scheme = NativeTheme::PreferredColorScheme::kNoPreference;
   native_theme_aura_utils_->PaintScrollbarThumbWithColor(
       &canvas, rect, scrollbar_color, color_scheme, part, state, extra_params);
 
-  color_scheme = NativeTheme::ColorScheme::kDark;
+  color_scheme = NativeTheme::PreferredColorScheme::kDark;
   extra_params.thumb_color = SK_ColorLTGRAY;
   part = NativeTheme::kScrollbarHorizontalThumb;
   native_theme_aura_utils_->PaintScrollbarThumbWithColor(

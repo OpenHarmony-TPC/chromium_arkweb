@@ -16,10 +16,12 @@
 #ifndef CONTENT_BROWSER_MEDIA_OHOS_VIDEO_EXPERIENCE_REPORTER_H_
 #define CONTENT_BROWSER_MEDIA_OHOS_VIDEO_EXPERIENCE_REPORTER_H_
 
+#include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "arkweb/chromium_ext/third_party/blink/public/mojom/media/video_experience_reporter.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
+#include "mojo/public/cpp/bindings/receiver.h"
 
 namespace content {
 class RenderFrameHost;
@@ -37,23 +39,23 @@ public:
 
   void ReportVideoExperienceToBI(
       blink::mojom::VideoExpParamsPtr params) override;
-
+ 
   void BindChannel(mojo::PendingReceiver<blink::mojom::VideoExperienceReporter>
                        pendingReceive);
 private:
   friend class OHOSVideoExperienceReporterTest;
 
   explicit OHOSVideoExperienceReporter(content::RenderFrameHost* rfh);
- 
+
   // content::WebContentsObserver implements
   void WebContentsDestroyed() override;
-  
+
   mojo::Receiver<blink::mojom::VideoExperienceReporter> receiver_{this};
 
   raw_ptr<content::WebContents> web_contents_;
-
+ 
 };
-
+ 
 } // namespace content
-
+ 
 #endif // CONTENT_BROWSER_MEDIA_OHOS_VIDEO_EXPERIENCE_REPORTER_H_

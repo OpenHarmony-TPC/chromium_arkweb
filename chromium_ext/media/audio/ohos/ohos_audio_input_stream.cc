@@ -32,8 +32,7 @@ class OHOSAudioInputStream::CaptureCallbackAdapter
   void Capture(const AudioBus* audio_source,
                base::TimeTicks audio_capture_time,
                const AudioGlitchInfo& glitch_info,
-               double volume,
-               bool key_pressed) override {
+               double volume) override {
     if (!paused_) {
       callback_->OnData(audio_source, audio_capture_time, volume, glitch_info);
     }
@@ -45,9 +44,7 @@ class OHOSAudioInputStream::CaptureCallbackAdapter
   }
 
   void OnCaptureMuted(bool is_muted) override {}
-
   void SetCapturePaused(bool paused) { paused_ = paused; }
-
  private:
   bool paused_ = false;
   raw_ptr<AudioInputCallback> callback_ = nullptr;

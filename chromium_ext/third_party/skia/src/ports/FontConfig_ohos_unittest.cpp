@@ -47,7 +47,8 @@ public:
   MOCK_METHOD(bool, scanFile, (SkStreamAsset*, int*), (const));
   MOCK_METHOD(bool, scanFace, (SkStreamAsset*, int, int*), (const));
   MOCK_METHOD(bool, scanInstance, (SkStreamAsset*, int, int, SkString*,
-                                   SkFontStyle*, bool*, AxisDefinitions*), (const));
+                                   SkFontStyle*, bool*, AxisDefinitions*,
+                                   VariationPosition*), (const));
   MOCK_METHOD(sk_sp<SkTypeface>, MakeFromStream,
              (std::unique_ptr<SkStreamAsset>, const SkFontArguments&), (const));
   MOCK_METHOD(SkFourByteTag, getFactoryId, (), (const));
@@ -388,12 +389,12 @@ TEST_F(FontConfig_OHOSTest, matchFontStyle004) {
 TEST_F(FontConfig_OHOSTest, getVariableFontStyleDifference001) {
     static constexpr SkFourByteTag wghtTag = SkSetFourByteTag('w', 'g', 'h', 't');
     static constexpr SkFourByteTag wdthTag = SkSetFourByteTag('w', 'd', 't', 'h');
-    const std::vector<SkFontScanner::AxisDefinition>& axisRange1 = {
-        {wghtTag, 100.0f, 400.0f, 900.0f}
+    const std::vector<SkFontParameters::Variation::Axis>& axisRange1 = {
+        {wghtTag, 100.0f, 400.0f, 900.0f, false}
     };
 
-    const std::vector<SkFontScanner::AxisDefinition>& axisRange2 = {
-        {wghtTag, 100.0f, 400.0f, 900.0f}
+    const std::vector<SkFontParameters::Variation::Axis>& axisRange2 = {
+        {wghtTag, 100.0f, 400.0f, 900.0f, false}
     };
 
     const SkFontStyle srcStyle(SkFontStyle::kNormal_Weight,
@@ -412,11 +413,11 @@ TEST_F(FontConfig_OHOSTest, getVariableFontStyleDifference001) {
 TEST_F(FontConfig_OHOSTest, getVariableFontStyleDifference002) {
     SkFontStyle dstStyle(/*weight*/700, /*width*/5, /*slant*/SkFontStyle::kUpright_Slant);
     SkFontStyle srcStyle(400, 4, SkFontStyle::kItalic_Slant);
-    std::vector<SkFontScanner::AxisDefinition> axisRanges;
-    SkFontScanner::AxisDefinition widthAxis;
-    widthAxis.fTag = SkSetFourByteTag('w', 'd', 't', 'h'); // wdthTag
-    widthAxis.fMinimum = 0.5f;
-    widthAxis.fMaximum = 2.0f;
+    std::vector<SkFontParameters::Variation::Axis> axisRanges;
+    SkFontParameters::Variation::Axis widthAxis;
+    widthAxis.tag = SkSetFourByteTag('w', 'd', 't', 'h'); // wdthTag
+    widthAxis.min = 0.5f;
+    widthAxis.max = 2.0f;
     axisRanges.push_back(widthAxis);
 
     uint32_t diff = fontConfig->getVariableFontStyleDifference(dstStyle, srcStyle, axisRanges);
@@ -1395,6 +1396,7 @@ TEST_F(FontConfig_OHOSTest, getAxisValues001) {
     AxisDefinitions axisDefs;
     FontConfig_OHOS::VariationInfo variation;
     FontInfo font;
+    VariationPosition current;
     axisDefs.clear();
     variation.axis.clear();
     font.axisSet.axis.clear();
@@ -1402,7 +1404,7 @@ TEST_F(FontConfig_OHOSTest, getAxisValues001) {
 
     variation.axis.push_back({0x12345678, 1.0f}); // Some variation axis
     
-    fontConfig->getAxisValues(axisDefs, variation, font);
+    fontConfig->getAxisValues(axisDefs, variation, font, current);
     
     // Should result in empty axis sets
     EXPECT_TRUE(font.axisSet.axis.empty());
@@ -1414,15 +1416,16 @@ TEST_F(FontConfig_OHOSTest, getAxisValues002) {
     AxisDefinitions axisDefs;
     FontConfig_OHOS::VariationInfo variation;
     FontInfo font;
+    VariationPosition current;
     axisDefs.clear();
     variation.axis.clear();
     font.axisSet.axis.clear();
     font.axisSet.range.clear();
 
-    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f}); // tag, min, max, default
+    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f, false}); // tag, min, max, default, flags
     variation.axis.push_back({0x12345678, 0.8f}); // matching tag
     
-    fontConfig->getAxisValues(axisDefs, variation, font);
+    fontConfig->getAxisValues(axisDefs, variation, font, current);
     
     // Should have one axis value and range
     ASSERT_EQ(font.axisSet.axis.size(), 1);
@@ -1433,20 +1436,21 @@ TEST_F(FontConfig_OHOSTest, getAxisValues003) {
     AxisDefinitions axisDefs;
     FontConfig_OHOS::VariationInfo variation;
     FontInfo font;
+    VariationPosition current;
     axisDefs.clear();
     variation.axis.clear();
     font.axisSet.axis.clear();
     font.axisSet.range.clear();
 
-    axisDefs.push_back({0x11111111, 0.0f, 1.0f, 0.5f});
-    axisDefs.push_back({0x22222222, -1.0f, 1.0f, 0.0f});
-    axisDefs.push_back({0x33333333, 0.0f, 2.0f, 1.0f});
+    axisDefs.push_back({0x11111111, 0.0f, 1.0f, 0.5f, false});
+    axisDefs.push_back({0x22222222, -1.0f, 1.0f, 0.0f, false});
+    axisDefs.push_back({0x33333333, 0.0f, 2.0f, 1.0f, false});
     
     // Setup variations (one missing, one matching, one extra)
     variation.axis.push_back({0x22222222, 0.5f}); // matches second axis
     variation.axis.push_back({0x44444444, 1.0f}); // extra axis not in definitions
     
-    fontConfig->getAxisValues(axisDefs, variation, font);
+    fontConfig->getAxisValues(axisDefs, variation, font, current);
     
     // Should have values for all defined axes (3)
     ASSERT_EQ(font.axisSet.axis.size(), 3);
@@ -1457,19 +1461,20 @@ TEST_F(FontConfig_OHOSTest, getAxisValues004) {
     AxisDefinitions axisDefs;
     FontConfig_OHOS::VariationInfo variation;
     FontInfo font;
+    VariationPosition current;
     axisDefs.clear();
     variation.axis.clear();
     font.axisSet.axis.clear();
     font.axisSet.range.clear();
 
     font.axisSet.axis.push_back(0x12345678);
-    font.axisSet.range.push_back({0x12345678, 0.0f, 1.0f, 0.5f});
+    font.axisSet.range.push_back({0x12345678, 0.0f, 1.0f, 0.5f, false});
     
     // Setup simple axis definition
-    axisDefs.push_back({0x87654321, 0.0f, 1.0f, 0.5f});
+    axisDefs.push_back({0x87654321, 0.0f, 1.0f, 0.5f, false});
     variation.axis.push_back({0x87654321, 0.5f});
     
-    fontConfig->getAxisValues(axisDefs, variation, font);
+    fontConfig->getAxisValues(axisDefs, variation, font, current);
     
     // Should have cleared old values and only have new ones
     ASSERT_EQ(font.axisSet.axis.size(), 1);
@@ -1480,18 +1485,19 @@ TEST_F(FontConfig_OHOSTest, getAxisValues005) {
     AxisDefinitions axisDefs;
     FontConfig_OHOS::VariationInfo variation;
     FontInfo font;
+    VariationPosition current;
     axisDefs.clear();
     variation.axis.clear();
     font.axisSet.axis.clear();
     font.axisSet.range.clear();
 
-    axisDefs.push_back({0x77676874, 100.0f, 900.0f, 400.0f}); // 'wght' axis
+    axisDefs.push_back({0x77676874, 100.0f, 900.0f, 400.0f, false}); // 'wght' axis
     variation.axis.push_back({0x77676874, 700.0f}); // bold weight
     
     // Initial font style
     font.style = SkFontStyle::Normal();
     
-    fontConfig->getAxisValues(axisDefs, variation, font);
+    fontConfig->getAxisValues(axisDefs, variation, font, current);
     
     // Should have updated font style weight
     EXPECT_EQ(font.style.weight(), 400);
@@ -1541,16 +1547,18 @@ TEST_F(FontConfig_OHOSTest, insertTtcFont003) {
 TEST_F(FontConfig_OHOSTest, insertVariableFont001) {
     AxisDefinitions axisDefs;
     FontInfo testFont;
+    VariationPosition current;
     testFont.familyName = "TestFont";
     testFont.style = SkFontStyle::Normal();
     fontConfig->variationMap.reset();
 
-    fontConfig->insertVariableFont(axisDefs, testFont);
+    fontConfig->insertVariableFont(axisDefs, testFont, current);
 }
 
 TEST_F(FontConfig_OHOSTest, insertVariableFont002) {
     AxisDefinitions axisDefs;
     FontInfo testFont;
+    VariationPosition current;
     testFont.familyName = "TestFont";
     testFont.style = SkFontStyle::Normal();
     fontConfig->variationMap.reset();
@@ -1563,12 +1571,13 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont002) {
     std::vector<FontConfig_OHOS::VariationInfo> variations = {varInfo};
     fontConfig->variationMap.set(testFont.familyName, variations);
     
-    EXPECT_FALSE(fontConfig->insertVariableFont(axisDefs, testFont));
+    EXPECT_FALSE(fontConfig->insertVariableFont(axisDefs, testFont, current));
 }
 
 TEST_F(FontConfig_OHOSTest, insertVariableFont003) {
     AxisDefinitions axisDefs;
     FontInfo testFont;
+    VariationPosition current;
     testFont.familyName = "TestFont";
     testFont.style = SkFontStyle::Normal();
     fontConfig->variationMap.reset();
@@ -1580,9 +1589,9 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont003) {
     varInfo.axis = {};
     std::vector<FontConfig_OHOS::VariationInfo> variations = {varInfo};
     fontConfig->variationMap.set(testFont.familyName, variations);
-    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f});
+    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f, false});
     
-    EXPECT_FALSE(fontConfig->insertVariableFont(axisDefs, testFont));
+    EXPECT_FALSE(fontConfig->insertVariableFont(axisDefs, testFont, current));
 }
 
 TEST_F(FontConfig_OHOSTest, addAxisToVariableFont001) {
@@ -1608,7 +1617,7 @@ TEST_F(FontConfig_OHOSTest, addAxisToVariableFont002) {
     testFont.axisSet.range.clear();
     axisDefs.clear();
     
-    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f});
+    axisDefs.push_back({0x12345678, 0.0f, 1.0f, 0.5f, false});
     
     fontConfig->addAxisToVariableFont(axisDefs, testFont);
     
@@ -2673,14 +2682,15 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont_TpSetNotNull) {
   fontConfig->fallbackSet.emplace_back(std::move(fallback));
 
   AxisDefinitions axisDefs;
-  SkFontScanner::AxisDefinition axisDef;
-  axisDef.fTag = SkSetFourByteTag('w', 'g', 'h', 't');
-  axisDef.fMinimum = 100.0f;
-  axisDef.fMaximum = 900.0f;
-  axisDef.fDefault = 400.0f;
+  SkFontParameters::Variation::Axis axisDef;
+  axisDef.tag = SkSetFourByteTag('w', 'g', 'h', 't');
+  axisDef.min = 100.0f;
+  axisDef.max = 900.0f;
+  axisDef.def = 400.0f;
   axisDefs.push_back(axisDef);
 
-  bool result = fontConfig->insertVariableFont(axisDefs, font);
+  VariationPosition current;
+  bool result = fontConfig->insertVariableFont(axisDefs, font, current);
   EXPECT_TRUE(result);
 }
 
@@ -2699,14 +2709,15 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont_EmptyVariationSet) {
   fontConfig->fallbackSet.emplace_back(std::move(fallback));
 
   AxisDefinitions axisDefs;
-  SkFontScanner::AxisDefinition axisDef;
-  axisDef.fTag = SkSetFourByteTag('w', 'g', 'h', 't');
-  axisDef.fMinimum = 100.0f;
-  axisDef.fMaximum = 900.0f;
-  axisDef.fDefault = 400.0f;
+  SkFontParameters::Variation::Axis axisDef;
+  axisDef.tag = SkSetFourByteTag('w', 'g', 'h', 't');
+  axisDef.min = 100.0f;
+  axisDef.max = 900.0f;
+  axisDef.def = 400.0f;
   axisDefs.push_back(axisDef);
 
-  bool result = fontConfig->insertVariableFont(axisDefs, font);
+  VariationPosition current;
+  bool result = fontConfig->insertVariableFont(axisDefs, font, current);
   EXPECT_TRUE(result);
 }
 
@@ -2730,14 +2741,15 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont_WidthIsMinusOne) {
   fontConfig->fallbackSet.emplace_back(std::move(fallback));
 
   AxisDefinitions axisDefs;
-  SkFontScanner::AxisDefinition axisDef;
-  axisDef.fTag = SkSetFourByteTag('w', 'g', 'h', 't');
-  axisDef.fMinimum = 100.0f;
-  axisDef.fMaximum = 900.0f;
-  axisDef.fDefault = 400.0f;
+  SkFontParameters::Variation::Axis axisDef;
+  axisDef.tag = SkSetFourByteTag('w', 'g', 'h', 't');
+  axisDef.min = 100.0f;
+  axisDef.max = 900.0f;
+  axisDef.def = 400.0f;
   axisDefs.push_back(axisDef);
 
-  bool result = fontConfig->insertVariableFont(axisDefs, font);
+  VariationPosition current;
+  bool result = fontConfig->insertVariableFont(axisDefs, font, current);
   EXPECT_TRUE(result);
 }
 
@@ -2761,14 +2773,15 @@ TEST_F(FontConfig_OHOSTest, insertVariableFont_SlantIsMinusOne) {
   fontConfig->fallbackSet.emplace_back(std::move(fallback));
 
   AxisDefinitions axisDefs;
-  SkFontScanner::AxisDefinition axisDef;
-  axisDef.fTag = SkSetFourByteTag('w', 'g', 'h', 't');
-  axisDef.fMinimum = 100.0f;
-  axisDef.fMaximum = 900.0f;
-  axisDef.fDefault = 400.0f;
+  SkFontParameters::Variation::Axis axisDef;
+  axisDef.tag = SkSetFourByteTag('w', 'g', 'h', 't');
+  axisDef.min = 100.0f;
+  axisDef.max = 900.0f;
+  axisDef.def = 400.0f;
   axisDefs.push_back(axisDef);
 
-  bool result = fontConfig->insertVariableFont(axisDefs, font);
+  VariationPosition current;
+  bool result = fontConfig->insertVariableFont(axisDefs, font, current);
   EXPECT_TRUE(result);
 }
 

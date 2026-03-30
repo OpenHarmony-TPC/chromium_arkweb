@@ -143,6 +143,11 @@ bool TouchSelectionController::IsShowHandle() {
 #if BUILDFLAG(ARKWEB_AI)
 int32_t TouchSelectionControllerExt::GetTouchNums(const MotionEvent& event) {
   PreTouchInfo curTouchInfo;
+  if (event.GetPointerCount() == 0) {
+    LOG(ERROR) << "Invalid pointer count: 0. No touch/pointer input detected. "
+                << "This may indicate a malformed or incomplete gesture event.";
+    return INVALID_CLICK_NUM;
+  }
   curTouchInfo.x = event.GetX(0);
   curTouchInfo.y = event.GetY(0);
   curTouchInfo.start = event.GetEventTime();
@@ -154,10 +159,9 @@ int32_t TouchSelectionControllerExt::GetTouchNums(const MotionEvent& event) {
   bool continuous = IsContinuousEvent(preTouchInfo, curTouchInfo, true);
   if (continuous) {
     gestureTouchQueue_.push(curTouchInfo);
-    if (gestureTouchQueue_.size() == TRIPLE_CLICK_NUM) {
+        if((gestureTouchQueue_.size() == TRIPLE_CLICK_NUM)) {
       gestureTouchQueue_.pop();
       return TRIPLE_CLICK_NUM;
-
     }
     return DOUBLE_CLICK_NUM;
   }
@@ -191,6 +195,7 @@ void TouchSelectionControllerExt::SetTouchNumsForHandle(const MotionEvent& event
     }
     insertion_handle_->SetTouchNums(continuous_touch_nums);
   }
+
   if(start_selection_handle_) {
     if (start_selection_handle_->AsTouchHandleExt()) {
       start_selection_handle_->AsTouchHandleExt()->SetEdge(start_.edge_start(),

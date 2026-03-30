@@ -88,3 +88,4 @@ void ShmemAdapterUnmap(void *addr, int size);
 
 } // namespace OHOS
 #endif
+

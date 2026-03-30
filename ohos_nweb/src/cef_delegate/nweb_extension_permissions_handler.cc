@@ -16,7 +16,8 @@
 #include "nweb_extension_permissions_handler.h"
 
 #include "chrome/browser/extensions/extension_action_runner.h"
-#include "chrome/browser/extensions/permissions/site_permissions_helper.h"
+#include "extensions/browser/permissions/site_permissions_helper.h"
+#include "content/public/browser/web_contents.h"
 #include "extensions/browser/permissions_manager.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "libcef/browser/chrome/extensions/arkweb_chrome_extension_util_ext.h"
@@ -74,5 +75,21 @@ int NWebExtensionPermissionsHandler::GetExtensionSiteInteraction(
 
   return static_cast<int>(SitePermissionsHelper::SiteInteraction::kNone);
 }
+
+// static
+bool NWebExtensionPermissionsHandler::HasApiPermission(
+    const std::string& extension_id,
+    const std::string& permission) {
+  content::BrowserContext* global_context = GetBrowserContext();
+
+  const Extension* extension = FindExtensionById(global_context, extension_id);
+  if (!extension) {
+    LOG(ERROR) << "failed to get extension";
+    return false;
+  }
+
+  return extension->permissions_data()->HasAPIPermission(permission);
+}
+
 
 }  // namespace OHOS::NWeb

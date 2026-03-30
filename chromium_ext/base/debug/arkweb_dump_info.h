@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef ARKWEB_DUMP_INFO_H_
 #define ARKWEB_DUMP_INFO_H_
-
+ 
 #include <string>
 #include <mutex>
 #include <shared_mutex>
@@ -29,21 +29,21 @@
 #if BUILDFLAG(ARKWEB_UNITTESTS)
 #define private public
 #endif
-
+ 
 namespace base::debug {
-
+ 
 enum class DumpInfoType {
   DUMP_NWEB_INFO = 0,
   DUMP_OTHER_INFO = 1 << 31 // preserved
 };
-
+ 
 class ArkWebDumpInfo {
 public:
   static ArkWebDumpInfo& GetInstance() {
     static base::NoDestructor<ArkWebDumpInfo> instance_;
     return *instance_;
   }
-
+ 
   bool IsDumpEnabled() const;
   size_t GetBufferSize();
   void ParseCmdParamAndDump(const std::string& param, std::string& result);
@@ -53,14 +53,14 @@ public:
   std::string GetProcessAndThreadIdInfo() const;
   void WriteArkWebDumpInfo(const std::string& info, DumpInfoType type);
   void FormatAndWriteNWebDumpInfo(const std::string& nwebInfo);
-
+ 
 private:
   ArkWebDumpInfo();
   ~ArkWebDumpInfo() = default;
-
+ 
   ArkWebDumpInfo(const ArkWebDumpInfo&) = delete;
   ArkWebDumpInfo& operator=(const ArkWebDumpInfo&) = delete;
-
+ 
   static constexpr size_t max_capacity_ = 5000;
   friend class base::NoDestructor<ArkWebDumpInfo>;
   bool dump_enable_;

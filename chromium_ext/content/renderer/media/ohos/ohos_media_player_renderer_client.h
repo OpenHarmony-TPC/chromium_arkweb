@@ -29,14 +29,9 @@
 namespace content {
 
 class OHOSMediaPlayerRendererClient
-    : public media::mojom::MediaPlayerRendererClientExtension,
-      public media::MojoRendererWrapper {
+      : public media::MojoRendererWrapper {
  public:
-  using RendererExtention = media::mojom::MediaPlayerRendererExtension;
-  using ClientExtention = media::mojom::MediaPlayerRendererClientExtension;
   OHOSMediaPlayerRendererClient(
-      mojo::PendingRemote<RendererExtention> renderer_extension_remote,
-      mojo::PendingReceiver<ClientExtention> client_extension_receiver,
       scoped_refptr<base::SequencedTaskRunner> media_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> compositor_task_runner,
       std::unique_ptr<media::MojoRenderer> mojo_renderer,
@@ -59,10 +54,10 @@ class OHOSMediaPlayerRendererClient
   media::RendererType GetRendererType() override;
 
   // media::mojom::MediaPlayerRendererClientExtension implementation
-  void OnDurationChange(base::TimeDelta duration) override;
-  void OnVideoSizeChange(const gfx::Size& size) override;
-  void OnFrameUpdate(media::mojom::OhosSurfaceBufferHandlePtr
-                         ohos_surface_buffer_handle) override;
+//   void OnDurationChange(base::TimeDelta duration) override;
+//   void OnVideoSizeChange(const gfx::Size& size) override;
+//   void OnFrameUpdate(media::mojom::OhosSurfaceBufferHandlePtr
+//                          ohos_surface_buffer_handle) override;
   void OnFrameAvailable();
 
  private:
@@ -98,23 +93,6 @@ class OHOSMediaPlayerRendererClient
   media::PipelineStatusCallback init_cb_;
 
   std::vector<uint8_t> resize_buf_;
-
-  // This class is constructed on the main task runner, and used on
-  // |media_task_runner_|. These member are used to delay calls to Bind() for
-  // |renderer_extension_ptr_| and |client_extension_binding_|, until we are on
-  // |media_task_runner_|.
-  // Both are set in the constructor, and consumed in Initialize().
-  mojo::PendingReceiver<ClientExtention>
-      delayed_bind_client_extension_receiver_;
-  mojo::PendingRemote<RendererExtention>
-      delayed_bind_renderer_extention_remote_;
-
-  // Used to call methods on the MediaPlayerRenderer in the browser process.
-  mojo::Remote<RendererExtention> renderer_extension_remote_;
-
-  // Used to receive events from MediaPlayerRenderer in the browser process.
-  mojo::Receiver<MediaPlayerRendererClientExtension> client_extension_receiver_{
-      this};
 
   int native_window_id_ = -1;
 

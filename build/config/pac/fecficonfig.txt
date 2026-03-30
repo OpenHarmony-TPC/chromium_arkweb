@@ -1,0 +1,10 @@
+#全局变量初始化函数指针所在的段
+[global_var_init_section]
+.preinit_array
+#哪些函数返回的数据，如转换为函数指针需要签名
+[read_func_symbol]
+dlsym
+__vdsosym
+#不需要初始化签名的全局变量
+[global_var_exclude_prefix]
+__ksymtab

@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
+#include <securec.h>
 #include "ohos_nweb/src/ndk/scheme_handler/response.h"
 
 #include "base/logging.h"
 #include "ohos_nweb/src/capi/arkweb_scheme_handler.h"
-#include "securec.h"
+#include "ohos_nweb/src/ndk/common/mem_hook.h"
 
 ArkWeb_Response_::ArkWeb_Response_() {
   cef_response = CefResponse::Create();
@@ -40,15 +41,15 @@ void ArkWeb_Response_::GetUrl(char** url) const {
 
   std::string cef_url = cef_response->GetURL().ToString();
   const uint32_t length = cef_url.length();
-  *url = new char[length + 1];
-  if (!(*url)) {
-    LOG(ERROR) << "GetUrl url is nullptr.";
+  *url = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*url == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for URL.";
     return;
   }
   int ret = strcpy_s(*url, length + 1, cef_url.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetUrl error, call strcpy_s ret = " << ret;
-    delete[] *url;
+    free(*url);
     *url = nullptr;
   }
 }
@@ -106,15 +107,15 @@ void ArkWeb_Response_::GetStatusText(char** status_text) const {
 
   std::string cef_status_text = cef_response->GetStatusText().ToString();
   const uint32_t length = cef_status_text.length();
-  *status_text = new char[length + 1];
-  if (!(*status_text)) {
-    LOG(ERROR) << "GetStatusText status_text is nullptr.";
+  *status_text = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*status_text == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for status_text.";
     return;
   }
   int ret = strcpy_s(*status_text, length + 1, cef_status_text.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetStatusText error, call strcpy_s ret = " << ret;
-    delete[] *status_text;
+    free(*status_text);
     *status_text = nullptr;
   }
 }
@@ -136,15 +137,15 @@ void ArkWeb_Response_::GetMimeType(char** mime_type) const {
 
   std::string cef_mime_type = cef_response->GetMimeType().ToString();
   const uint32_t length = cef_mime_type.length();
-  *mime_type = new char[length + 1];
-  if (!(*mime_type)) {
-    LOG(ERROR) << "GetMimeType mime_type is nullptr.";
+  *mime_type = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*mime_type == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for mime_type.";
     return;
   }
   int ret = strcpy_s(*mime_type, length + 1, cef_mime_type.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetMimeType error, call strcpy_s ret = " << ret;
-    delete[] *mime_type;
+    free(*mime_type);
     *mime_type = nullptr;
   }
 }
@@ -166,15 +167,15 @@ void ArkWeb_Response_::GetCharset(char** charset) const {
 
   std::string cef_charset = cef_response->GetCharset().ToString();
   const uint32_t length = cef_charset.length();
-  *charset = new char[length + 1];
-  if (!(*charset)) {
-    LOG(ERROR) << "GetCharset charset is nullptr.";
+  *charset = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*charset == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for charset.";
     return;
   }
   int ret = strcpy_s(*charset, length + 1, cef_charset.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetCharset error, call strcpy_s ret = " << ret;
-    delete[] *charset;
+    free(*charset);
     *charset = nullptr;
   }
 }
@@ -198,15 +199,15 @@ void ArkWeb_Response_::GetHeaderByName(const char* name, char** value) const {
 
   std::string cef_value = cef_response->GetHeaderByName(name).ToString();
   const uint32_t length = cef_value.length();
-  *value = new char[length + 1];
-  if (!(*value)) {
-    LOG(ERROR) << "GetHeaderByName value is nullptr.";
+  *value = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*value == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for value.";
     return;
   }
   int ret = strcpy_s(*value, length + 1, cef_value.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetHeaderByName error, call strcpy_s ret = " << ret;
-    delete[] *value;
+    free(*value);
     *value = nullptr;
   }
 }

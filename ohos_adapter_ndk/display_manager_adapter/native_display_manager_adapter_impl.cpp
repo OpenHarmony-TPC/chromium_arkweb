@@ -16,6 +16,7 @@
 #include "native_display_manager_adapter_impl.h"
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
+#include <math.h>
 #include <string>
 
 using namespace OHOS::NWeb;

@@ -21,6 +21,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "base/containers/lru_cache.h"
 #include "build/buildflag.h"
@@ -147,7 +148,7 @@ private:
   BlanklessController() = default;
 
   void ResetForTest();
-  bool CheckStatusForTest(int32_t nweb_id, const StatusInfo& expected_status, bool expected_found = true);
+  bool CheckStatusForTest(uint32_t nweb_id, const StatusInfo& expected_status, bool expected_found = true);
 
   /* This Class is designed for testing and will be delete someday. */
   class BlankOptWhiteList {
@@ -173,10 +174,12 @@ private:
 #if BUILDFLAG(ARKWEB_BLANK_PROP_CONFIG)
     void LoadAppWhiteList();
     void ParseAppWhiteList(std::vector<char>& buffer);
+    bool FullMatch(const std::string& url);
     bool QueryMatch(const std::string& url);
     std::string GetBaseUrl(const std::string& url);
     std::string GetQueryUrl(const std::string& url);
 
+    std::unordered_set<std::string> m_full_match_set_;
     std::unordered_map<std::string, std::unordered_set<std::string>> m_query_match_map_;
     bool m_is_app_loaded_ = false;
 #endif // BUILDFLAG(ARKWEB_BLANK_PROP_CONFIG)
@@ -184,7 +187,7 @@ private:
   BlankOptWhiteList m_white_list_;
 
   std::mutex m_nweb_status_map_mtx_;
-  std::unordered_map<int32_t, StatusInfo> m_nweb_status_map_;
+  std::unordered_map<uint32_t, StatusInfo> m_nweb_status_map_;
 
   template<class InfoType>
   class NWebRelatedInfoMap {

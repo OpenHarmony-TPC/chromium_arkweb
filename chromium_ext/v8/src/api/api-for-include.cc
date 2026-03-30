@@ -14,30 +14,32 @@
  */
 
 #ifdef V8_ENABLE_OHOS_PERF_JIT
+#ifdef USING_OHOS
 int v8::V8::CreateJSVMExtractor(uintptr_t& ptr, uint32_t pid) {
-  jitparse::JSVMSymbolExtractor* exactor_ =
-      new jitparse::JSVMSymbolExtractor(pid);
-  if (exactor_->GetParser()) {
-    ptr = reinterpret_cast<uintptr_t>(exactor_);
+  jitparse::JsSymbolExtractor* extractor_ =
+      new jitparse::JsSymbolExtractor(pid);
+  if (extractor_->GetParser()) {
+    ptr = reinterpret_cast<uintptr_t>(extractor_);
     return 0;
   } else {
-    delete exactor_;
+    delete extractor_;
     return -1;
   }
 }
 
-void v8::V8::DeleteJSVMExtractor(uintptr_t ptr) {
-  delete reinterpret_cast<jitparse::JSVMSymbolExtractor*>(ptr);
+void v8::V8::DeleteJSVMExtractor(uintptr_t extractor) {
+  delete reinterpret_cast<jitparse::JsSymbolExtractor*>(extractor);
 }
 
-int v8::V8::GetJSVMCodeName(uintptr_t ptr,
+int v8::V8::GetJSVMCodeName(uintptr_t extractor,
                             uintptr_t pc,
                             std::string& codeName) {
-  jitparse::JSVMSymbolExtractor* exactor_ =
-      reinterpret_cast<jitparse::JSVMSymbolExtractor*>(ptr);
-  if (exactor_->GetInstruction(pc, codeName)) {
+  jitparse::JsSymbolExtractor* extractor_ =
+      reinterpret_cast<jitparse::JsSymbolExtractor*>(extractor);
+  if (extractor_->GetInstruction(pc, codeName)) {
     return 0;
   }
   return -1;
 }
+#endif  // USING_OHOS
 #endif  // V8_ENABLE_OHOS_PERF_JIT

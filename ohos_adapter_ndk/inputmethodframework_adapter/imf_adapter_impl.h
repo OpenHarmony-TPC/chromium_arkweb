@@ -16,8 +16,10 @@
 #ifndef IMF_ADAPTER_IMPL_H
 #define IMF_ADAPTER_IMPL_H
 
+#include <mutex>
 #include <vector>
 #include <inputmethod/inputmethod_controller_capi.h>
+#include <inputmethod/inputmethod_attach_options_capi.h>
 #include "imf_adapter.h"
 #include "panel_info.h"
 
@@ -144,8 +146,8 @@ public:
 
     ~IMFAdapterImpl() override
     {
-        OH_TextEditorProxy_Destroy(textEditorProxy_);
         Close();
+        OH_TextEditorProxy_Destroy(textEditorProxy_);
     }
 
     bool Attach(std::shared_ptr<IMFTextListenerAdapter> listener, bool isShowKeyboard) override;

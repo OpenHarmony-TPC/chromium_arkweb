@@ -64,7 +64,6 @@ void VideoCaptureDeviceOHOS::AllocateAndStart(
                      capture_impl_->GetWeakPtr(), std::move(client)));
 }
 
-// LCOV_EXCL_START
 void VideoCaptureDeviceOHOS::StopAndDeAllocate() {
   LOG(INFO) << "StopAndDeAllocate";
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -80,7 +79,6 @@ void VideoCaptureDeviceOHOS::StopAndDeAllocate() {
 
   capture_impl_ = nullptr;
 }
-// LCOV_EXCL_STOP
 
 void VideoCaptureDeviceOHOS::TakePhoto(TakePhotoCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -123,7 +121,6 @@ void VideoCaptureDeviceOHOS::SetPhotoOptions(mojom::PhotoSettingsPtr settings,
   capture_thread_.task_runner()->PostTask(FROM_HERE, std::move(functor));
 }
 
-// LCOV_EXCL_START
 void VideoCaptureDeviceOHOS::MaybeSuspend() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto functor = base::BindOnce(&OHOSCaptureDelegate::MaybeSuspend,
@@ -147,5 +144,5 @@ void VideoCaptureDeviceOHOS::Resume() {
   }
   capture_thread_.task_runner()->PostTask(FROM_HERE, std::move(functor));
 }
-// LCOV_EXCL_STOP
+
 }  // namespace media

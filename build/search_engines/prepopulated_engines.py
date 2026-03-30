@@ -19,12 +19,10 @@
 import sys
 import os
 import json
-
+import argparse
 
 script_path = os.path.abspath(__file__)
 script_dir = os.path.dirname(script_path)
-prepopulated_engines_path = os.path.join(script_dir, "..", "..", "..", "components",\
-    "search_engines", "prepopulated_engines.json")
 
 
 def remove_line_comments(input_path, output_path):
@@ -52,8 +50,13 @@ def traverse_and_modify(obj):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input', required=True)
+    args = parser.parse_args()
+    input_path = os.path.relpath(args.input)
+
     dst_path = os.path.join(script_dir, "prepopulated_engines.json")
-    remove_line_comments(prepopulated_engines_path, dst_path)
+    remove_line_comments(input_path, dst_path)
     with open(dst_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     traverse_and_modify(data)

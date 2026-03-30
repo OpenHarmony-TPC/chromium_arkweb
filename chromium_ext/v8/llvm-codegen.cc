@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,7 +43,7 @@
 namespace v8 {
 namespace internal {
 
-Handle<Code> LLVMIRGenerator::GenerateCode() 
+Handle<Code> LLVMIRGenerator::GenerateCode()
 {
   LLVMValueRef function = llvm_module_->GetFunction();
   size_t length;
@@ -185,7 +185,7 @@ Handle<Code> LLVMIRGenerator::GenerateCode()
         llvm::object::ELFSectionRef elf_section(section);
         uint64_t offset = elf_section.getOffset();
         int32_t size = static_cast<int>(section.getSize());
-        
+
         // transform to v8 code
         CodeDesc desc;
         // fix to 8 byte align
@@ -212,7 +212,7 @@ Handle<Code> LLVMIRGenerator::GenerateCode()
 
           desc.code_comments_offset = buffer_size;
           desc.code_comments_size = 0;
-          
+
           desc.constant_pool_offset = buffer_size;
           desc.constant_pool_size = 0;
 
@@ -265,7 +265,7 @@ Handle<Code> LLVMIRGenerator::GenerateCode()
     if (v8_flags.trace_turbo) {
       error = nullptr;
       if (LLVMTargetMachineEmitToFile(target_machine, module_, asm_name.c_str(), LLVMAssemblyFile, &error)) {
-         std::cout << error << std::endl;
+        std::cout << error << std::endl;
         LLVMDisposeMessage(error);
         UNREACHABLE();
       }
@@ -275,7 +275,7 @@ Handle<Code> LLVMIRGenerator::GenerateCode()
     LLVMDisposeMemoryBuffer(mem_buf);
 
     info()->SetCode(code);
-    if(v8_flags.trace_turbo) {
+    if (v8_flags.trace_turbo) {
       std::ofstream output_file(v8_name);
       if (!output_file.is_open()) {
         UNREACHABLE();
@@ -292,47 +292,47 @@ Handle<Code> LLVMIRGenerator::GenerateCode()
 std::tuple<uint8_t*, int32_t, int32_t> LLVMIRGenerator::EmitStackMap(uint8_t* src, int32_t size)
 {
   //
-  //   LLVM stack map format:
+  //  LLVM stack map format:
   //
-  //   Header {
-  //     uint8  : Stack Map Version (current version is 3)
-  //     uint8  : Reserved (expected to be 0)
-  //     uint16 : Reserved (expected to be 0)
-  //   }
-  //   uint32 : NumFunctions
-  //   uint32 : NumConstants
-  //   uint32 : NumRecords
-  //   StkSizeRecord[NumFunctions] {
-  //     uint64 : Function Address
-  //     uint64 : Stack Size (or UINT64_MAX if not statically known)
-  //     uint64 : Record Count
-  //   }
-  //   Constants[NumConstants] {
-  //     uint64 : LargeConstant
-  //   }
-  //   StkMapRecord[NumRecords] {
-  //     uint64 : PatchPoint ID
-  //     uint32 : Instruction Offset
-  //     uint16 : Reserved (record flags)
-  //     uint16 : NumLocations
-  //     Location[NumLocations] {
-  //       uint8  : Register | Direct | Indirect | Constant | ConstantIndex
-  //       uint8  : Reserved (expeccted to be 0)
-  //       uint16 : Location Size
-  //       uint16 : Dwarf RegNum
-  //       uint16 : Reserved (expected to be 0)
-  //       int32  : Offset or SmallConstant 
-  //     }
-  //     uint32 : Padding (only if required to align to be 8 byte)
-  //     uint16 : Padding
-  //     uint16 : NumLiveOuts
-  //     LiveOuts[NumLiveOutk]
-  //       uint16 : Dwarf RegNum
-  //       uint8  : Reserved
-  //       uint8  : Size in Bytes
-  //   }
-  //   uint32 : Padding (only if required to align to 8 byte)
-  // }
+  //  Header {
+  //    uint8  : Stack Map Version (current version is 3)
+  //    uint8  : Reserved (expected to be 0)
+  //    uint16 : Reserved (expected to be 0)
+  //  }
+  //  uint32 : NumFunctions
+  //  uint32 : NumConstants
+  //  uint32 : NumRecords
+  //  StkSizeRecord[NumFunctions] {
+  //    uint64 : Function Address
+  //    uint64 : Stack Size (or UINT64_MAX if not statically known)
+  //    uint64 : Record Count
+  //  }
+  //  Constants[NumConstants] {
+  //    uint64 : LargeConstant
+  //  }
+  //  StkMapRecord[NumRecords] {
+  //    uint64 : PatchPoint ID
+  //    uint32 : Instruction Offset
+  //    uint16 : Reserved (record flags)
+  //    uint16 : NumLocations
+  //    Location[NumLocations] {
+  //      uint8  : Register | Direct | Indirect | Constant | ConstantIndex
+  //      uint8  : Reserved (expected to be 0)
+  //      uint16 : Location Size
+  //      uint16 : Dwarf RegNum
+  //      uint16 : Reserved (expected to be 0)
+  //      int32  : Offset or SmallConstant
+  //    }
+  //    uint32 : Padding (only if required to align to 8 byte)
+  //    uint16 : Padding
+  //    uint16 : NumLiveOuts
+  //    LiveOuts[NumLiveOuts]
+  //      uint16 : Dwarf RegNum
+  //      uint8  : Reserved
+  //      uint8  : Size in Bytes
+  //    }
+  //    uint32 : Padding (only if required to align to 8 byte)
+  //  }
   //
 
   struct Header {
@@ -387,7 +387,7 @@ std::tuple<uint8_t*, int32_t, int32_t> LLVMIRGenerator::EmitStackMap(uint8_t* sr
   CHECK_WITH_MSG(header->reserved_ == 0, "Reserved expected to be 0");
   CHECK_WITH_MSG(header->next_reserved_ == 0, "Reserved expected to be 0");
 
-  // Read Record info
+  // Read Records info
   RecordsInfo *records_info = reinterpret_cast<RecordsInfo*>(ptr);
   ptr += sizeof(RecordsInfo);
   CHECK_WITH_MSG(records_info->num_functions_ == 1, "Only support 1 function");
@@ -486,7 +486,7 @@ std::tuple<uint8_t*, int32_t, int32_t> LLVMIRGenerator::EmitStackMap(uint8_t* sr
     if (value <= 0xff) { return 1; }
     if (value <= 0xffff) { return 2; }
     if (value <= 0xffffff) { return 3; }
-    return 4;  
+    return 4;
   };
   int32_t pc_size = value_to_bytes(max_pc + 1);
   uint32_t entry_configuration = pc_size << 4;
@@ -534,5 +534,5 @@ std::tuple<uint8_t*, int32_t, int32_t> LLVMIRGenerator::EmitStackMap(uint8_t* sr
   return {buffer, buffer_size, stack_size};
 }
 
-} // namespace internal
-} // namaspace v8
+}  // namespace internal
+}  // namaspace v8

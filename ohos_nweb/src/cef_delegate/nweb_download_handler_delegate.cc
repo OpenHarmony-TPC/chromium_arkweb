@@ -34,6 +34,10 @@
 #include "event_reporter.h"
 #endif
 
+#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
+#include "components/safe_browsing/content/common/file_type_policies.h"
+#endif
+
 namespace OHOS::NWeb {
 
 namespace {
@@ -197,10 +201,9 @@ std::string NWebDownloadHandlerDelegate::GenerateSuggestedFilename(
                                                           default_charset);
   GURL gurl = GURL();
   CefString url = download_item->GetURL();
-  if (!(IsDataScheme(url) && url.length() > content::kMaxLengthOfDataURLStringPub)) {
+  if (!(IsDataScheme(url) && url.length() > content::kMaxLengthOfDataURLStringPub.InBytesUnsigned())) {
     gurl = GURL(url.ToString());
   }
-
   base::FilePath generated_filename = net::GenerateFileName(
       gurl, content_disposition, default_charset,
       suggested_filename, sniffed_mime_type, default_filename);
@@ -208,6 +211,15 @@ std::string NWebDownloadHandlerDelegate::GenerateSuggestedFilename(
             << ", default_charset: " << default_charset
             << ", content-disposition: " << content_disposition
             << ", generated_filename: " << DesensitizeStr(generated_filename.AsUTF8Unsafe());
+
+#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
+  // We don't replace the file extension if sfafe browsing consider the file
+  // extension to be unsafe. Just let safe browsing scan the generated file.
+  if (safe_browsing::FileTypePolicies::GetInstance()->IsCheckedBinaryFile(
+          generated_filename)) {
+    return generated_filename.AsUTF8Unsafe();
+  }
+#endif
 
   // If no mime type or explicitly specified a name, don't replace file
   // extension.

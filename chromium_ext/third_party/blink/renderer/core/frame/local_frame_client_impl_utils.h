@@ -16,7 +16,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_CLIENT_IMPL_UTILS_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_FRAME_LOCAL_FRAME_CLIENT_IMPL_UTILS_H_
 
-
+#include <string>
 #include "third_party/blink/renderer/core/frame/local_frame_client_impl.h"
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 #include "third_party/blink/renderer/core/loader/native_loader.h"

@@ -16,6 +16,7 @@
 #include "components/subresource_filter/core/common/indexed_ruleset.h"
 
 #include "base/check.h"
+#include "base/functional/callback.h"
 #include "base/hash/hash.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/not_fatal_until.h"

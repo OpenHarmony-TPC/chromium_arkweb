@@ -21,6 +21,11 @@
 #include <string>
 #include <vector>
 
+#include "ohos_nweb/include/nweb_web_message.h"
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/public/capi/nweb_basic_types.h"
 #endif
@@ -94,6 +99,7 @@ struct JavaScriptValue {
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 typedef void (*OnReceiveValueCallback)(int32_t nwebId, int32_t callbackId,
                                        const ArkWebPbBuffer* pb_result_buffer);
+
 typedef void (*OnReceiveFrameInfosCallback)(int32_t nwebId,
                                             const ArkWebPbBuffer* pb_result_buffer);
 

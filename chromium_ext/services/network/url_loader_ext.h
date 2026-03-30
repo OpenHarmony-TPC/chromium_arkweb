@@ -16,11 +16,11 @@
 #ifndef SERVICES_NETWORK_URL_LOADER_EXT_H_
 #define SERVICES_NETWORK_URL_LOADER_EXT_H_
 
-#include "net/url_request/url_request.h"
-
+#include "arkweb/build/features/features.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
+#include "net/url_request/url_request.h"
 
 namespace network {
 
@@ -34,7 +34,7 @@ std::string BoolToString(bool value);
 
 std::string GetProtocol(const GURL& url, const net::HttpResponseInfo& info);
 
-void ReportMainResourceMetrics(net::URLRequest* url_request, int error_code);
+void ReportUrlQuicInfo(net::URLRequest* url_request, int error_code);
 #endif
 }  // namespace network
 #endif

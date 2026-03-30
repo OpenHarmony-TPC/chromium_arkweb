@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "base/logging.h"
+#include "base/memory/ptr_util.h"
 #include "base/task/task_runner.h"
 #include "base/trace_event/trace_event.h"
 #include "base/memory/safe_ref.h"
@@ -71,7 +72,7 @@ MediaCodecDecoderBridgeImpl::CreateVideoDecoder(
     LOG(ERROR) << "OhosVideoDecoder::CreateCodec not supported type.";
     return nullptr;
   }
-  return absl::WrapUnique(new MediaCodecDecoderBridgeImpl(
+  return base::WrapUnique(new MediaCodecDecoderBridgeImpl(
       codec_type, config.on_buffers_available_cb));
 }
 
@@ -479,18 +480,15 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::QueueInputBuffer(
   uint32_t index = signal_->inputQueue_.front().inputBufferIndex;
   OhosBuffer buffer = signal_->inputQueue_.front().inputBuffer;
   uint32_t bufferSize = buffer.bufferSize;
-
   size_t inputSize = bufferSize >= data_size ? data_size : bufferSize;
   LOG(DEBUG) << "MediaCodecDecoderBridgeImpl::QueueInputBuffer bufferSize: "
              << bufferSize << " " << data_size;
   if (buffer.addr == nullptr) {
-    LOG(ERROR) << "MediaCodecDecoderBridgeImpl::QueueInputBuffer buffer.addr"
-               << "is nullptr.";
+    LOG(ERROR) << "MediaCodecDecoderBridgeImpl::QueueInputBuffer buffer.addr is nullptr.";
     return DecoderAdapterCode::DECODER_ERROR;
   }
   if (memcpy_s(buffer.addr, bufferSize, data, inputSize) != EOK) {
-    LOG(ERROR)
-      << "MediaCodecDecoderBridgeImpl::QueueInputBuffer memcpy failed.";
+    LOG(ERROR) << "MediaCodecDecoderBridgeImpl::QueueInputBuffer memcpy failed.";
     return DecoderAdapterCode::DECODER_ERROR;
   }
   if (decrypt_config && SetAVCencInfo(index, decrypt_config) ==
@@ -498,7 +496,6 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::QueueInputBuffer(
     return DecoderAdapterCode::DECODER_ERROR;
   }
   DecoderAdapterCode ret = PushInbufferDec(index, inputSize, presentation_time, is_key_frame);
-
   TRACE_EVENT0("media", "PushInbufferDec End");
   PopInqueueDec();
   return ret;
@@ -693,7 +690,6 @@ void CodecBridgeCallback::OnNeedOutputData(
 DecoderAdapterCode MediaCodecDecoderBridgeImpl::SetVideoSurface(
         int32_t widget_id) {
     LOG(INFO) << "MediaCodecDecoderBridgeImpl::SetVideoSurface(" << widget_id << ")";
-    
     if (video_surface_id_ == widget_id) {
         return DecoderAdapterCode::DECODER_OK;
     }
@@ -714,7 +710,6 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::SetVideoSurface(
         LOG(ERROR) << "MediaCodecDecoderBridgeImpl::SetVideoSurface native_window is NULL";
         return DecoderAdapterCode::DECODER_ERROR;
     }
-    LOG(INFO) << "MediaCodecDecoderBridgeImpl::SetVideoSurface(" << widget_id << "), SetOutputSurface";
     DecoderAdapterCode status = videoDecoder_->SetOutputSurface(native_window);
     OHOS::NWeb::OhosAdapterHelper::GetInstance().GetWindowAdapterInstance().NativeWindowUnRef(native_window);
     return status;
@@ -748,9 +743,13 @@ DecoderAdapterCode MediaCodecDecoderBridgeImpl::RecycleDmaBuffer() {
 
 DecoderAdapterCode MediaCodecDecoderBridgeImpl::ResumeDmaBuffer() {
   LOG(INFO) << "DMABUF::MediaCodecDecoderBridgeImpl, ResumeDmaBuffer";
+  if (signal_) {
+    clearInputQueue(signal_->inputQueue_);
+    clearOutputQueue(signal_->outputQueue_);
+  }
   DecoderAdapterCode ret = StartBridgeDecoder();
   if (ret != DecoderAdapterCode::DECODER_OK) {
-    LOG(ERROR) << "DMABUF::MediaCodecDecoderBridgeImpl::ResumeDmaBuffer Start "
+    LOG(ERROR) << "DMABUF::MediaCodecDecoderBridgeImpl::RecycleDmaBuffer Start "
                   "decoder failed.";
     return DecoderAdapterCode::DECODER_ERROR;
   }

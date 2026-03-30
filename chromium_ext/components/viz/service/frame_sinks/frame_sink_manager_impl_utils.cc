@@ -16,6 +16,9 @@
 #include "arkweb/chromium_ext/components/viz/service/frame_sinks/frame_sink_manager_impl_utils.h"
 #include "arkweb/chromium_ext/components/viz/service/frame_sinks/root_compositor_frame_sink_impl_ext.h"
 #include "components/viz/service/frame_sinks/frame_sink_manager_impl.h"
+
+#include "base/trace_event/trace_event.h"
+
 namespace viz {
 //LCOV_EXCL_START
 FrameSinkManagerImplUtils::FrameSinkManagerImplUtils(FrameSinkManagerImpl* managerimpl)
@@ -61,6 +64,44 @@ void FrameSinkManagerImplUtils::SetEnableHalfFrameRate(
     return;
   }
   it->second->AsExt()->SetEnableHalfFrameRate(enabled);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+void FrameSinkManagerImplUtils::SetIfNeedCleanBuffers(const FrameSinkId& frame_sink_id, bool need_clean_buffers)
+{
+  TRACE_EVENT2("viz", "FrameSinkManagerImplUtils::SetIfNeedCleanBuffers",
+               ", frame_sink_id: ", frame_sink_id.ToString(), ", need_clean_buffers: ", need_clean_buffers);
+  need_clean_buffers_map_[frame_sink_id] = need_clean_buffers;
+  if (!frameSinkManagerImpl) {
+    LOG(ERROR) << "FrameSinkManagerImpl is null, SetIfNeedCleanBuffers failed";
+    return;
+  }
+  auto root_it = frameSinkManagerImpl->root_sink_map_.find(frame_sink_id);
+  if (root_it != frameSinkManagerImpl->root_sink_map_.end()) {
+    if (!root_it->second) {
+      LOG(ERROR) << "FrameSinkImpl is null, SetIfNeedCleanBuffers failed";
+      return;
+    }
+    root_it->second->AsExt()->SetIfNeedCleanBuffers(need_clean_buffers);
+  } else {
+    LOG(INFO) << "FrameSinkImpl not found, no need to SetIfNeedCleanBuffers: " << need_clean_buffers;
+  }
+}
+
+void FrameSinkManagerImplUtils::UpdateIfNeedCleanBuffers(const FrameSinkId& frame_sink_id)
+{
+  bool need_clean_buffers = false;
+  auto iter = need_clean_buffers_map_.find(frame_sink_id);
+  if (iter != need_clean_buffers_map_.end()) {
+    need_clean_buffers = iter->second;
+  }
+  SetIfNeedCleanBuffers(frame_sink_id, need_clean_buffers);
+}
+
+void FrameSinkManagerImplUtils::EraseIfNeedCleanBuffers(const FrameSinkId& frame_sink_id)
+{
+  need_clean_buffers_map_.erase(frame_sink_id);
 }
 #endif
 
@@ -133,6 +174,17 @@ void FrameSinkManagerImplUtils::RestoreRenderFit(const FrameSinkId& frame_sink_i
 }
 //LCOV_EXCL_STOP
 #endif  // ARKWEB_MAXIMIZE_RESIZE
+
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+void FrameSinkManagerImplUtils::ModifyRenderFit(int32_t fitType, const FrameSinkId& frame_sink_id)
+{
+  if (frameSinkManagerImpl->client_) {
+    frameSinkManagerImpl->client_->ModifyRenderFit(fitType,
+                                                   frame_sink_id.client_id(),
+                                                   frame_sink_id.sink_id());
+  }
+}
+#endif  // ARKWEB_ROTATE_RESIZE
 
 #if BUILDFLAG(ARKWEB_PIP)
 void FrameSinkManagerImplUtils::SetPipActive(

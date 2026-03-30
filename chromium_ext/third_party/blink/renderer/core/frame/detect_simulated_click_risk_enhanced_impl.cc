@@ -30,7 +30,7 @@ DetectSimulatedClickRiskEnhancedImpl::DetectSimulatedClickRiskEnhancedImpl(
       detect_service_.BindNewPipeAndPassReceiver(
           window->GetTaskRunner(TaskType::kMiscPlatformAPI)));
 
-  detect_service_.set_disconnect_handler(WTF::BindOnce(
+  detect_service_.set_disconnect_handler(BindOnce(
       &DetectSimulatedClickRiskEnhancedImpl::Dispose, WrapWeakPersistent(this)));
 }
 
@@ -68,7 +68,7 @@ ScriptPromise<IDLString> DetectSimulatedClickRiskEnhancedImpl::
         algorithm,
         nonce_,
         version,
-        WTF::BindOnce(&DetectSimulatedClickRiskEnhancedImpl::OnRequestComplete,
+        BindOnce(&DetectSimulatedClickRiskEnhancedImpl::OnRequestComplete,
                       WrapWeakPersistent(this)));
   } else {
     HandleBusinessError(-1, resolver);
@@ -85,7 +85,7 @@ int32_t DetectSimulatedClickRiskEnhancedImpl::GenerateRequestId() {
 void DetectSimulatedClickRiskEnhancedImpl::OnRequestComplete(
     int32_t request_id,
     int32_t ans_code,
-    const WTF::String& json_result) {
+    const String& json_result) {
   LOG(INFO) << "DetectSim: OnRequestComplete enter.";
 
   auto it = request_map_.find(request_id);
@@ -174,9 +174,8 @@ void DetectSimulatedClickRiskEnhancedImpl::Dispose() {
     LOG(INFO) << "DetectSim: Dispose, remote reset.";
     detect_service_.reset();
   }
-  for(auto& request : request_map_) {
-    HandleBusinessError(-1, request.value);
-  }
+
+  // The promises will be resolved/rejected when the context is destroyed.
   request_map_.clear();
 }
 

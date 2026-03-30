@@ -40,9 +40,9 @@ void CaptivePortalTabHelperOhos::NetCommonEventListenerImpl::
       connState != OHOS::NWeb::NetConnState::NET_CONN_STATE_DISCONNECTED) {
     return;
   }
-  LOG_FEEDBACK(INFO, kHttpsUpgrades)
-      << __func__ << " bearType:" << static_cast<int>(bearType)
-      << " connState:" << static_cast<int>(connState);
+  LOG(INFO) << __func__
+            << " for captive_portal bearType:" << static_cast<int>(bearType)
+            << " connState:" << static_cast<int>(connState);
   CaptivePortalTabHelperOhos::captive_portal_result_ =
       CaptivePortalResult::RESULT_COUNT;
   callback_list_.Notify(true);
@@ -105,10 +105,9 @@ void CaptivePortalTabHelperOhos::OnCaptivePortalResults(
     CaptivePortalResult previous_result,
     CaptivePortalResult result) {
   if (captive_portal_result_ != result) {
-    LOG_FEEDBACK(INFO, kHttpsUpgrades)
-        << __func__
-        << " result:" << CaptivePortalResultToString(captive_portal_result_)
-        << "->" << CaptivePortalResultToString(result);
+    LOG(INFO) << __func__ << " for captive_portal result:"
+              << CaptivePortalResultToString(captive_portal_result_) << " -> "
+              << CaptivePortalResultToString(result);
     captive_portal_result_ = result;
   }
   tab_reloader_->OnCaptivePortalResults(previous_result, result);
@@ -143,8 +142,8 @@ void CaptivePortalTabHelperOhos::StartCheckForCaptivePortal(
       CaptivePortalTabReloader::State::STATE_MAYBE_BROKEN_BY_PORTAL) {
     return;
   }
-  LOG_FEEDBACK(INFO, kHttpsUpgrades)
-      << __func__ << " triggeredByNetworkChanged:" << network_changed;
+  LOG(INFO) << __func__
+            << " for captive_portal network_changed:" << network_changed;
   tab_reloader_->StartCheckForCaptivePortal();
 }
 

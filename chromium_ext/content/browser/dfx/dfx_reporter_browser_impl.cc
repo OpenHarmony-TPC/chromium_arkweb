@@ -85,9 +85,15 @@ void GetGpuUsage(pid_t pid, const std::map<std::string, std::string>& memMap, bo
 
 void ReportRendererInfo(const std::string& sysEventInfoJson, bool isSysEvent)
 {
-  const auto sysEventInfo = base::JSONReader::ReadAndReturnValueWithError(sysEventInfoJson);
-  if (!sysEventInfo.has_value() || !sysEventInfo->is_dict()) {
+  const auto sysEventInfo = base::JSONReader::ReadAndReturnValueWithError(
+      sysEventInfoJson, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  if (!sysEventInfo.has_value()) {
     LOG(ERROR) << "get sysEventInfo error:" << sysEventInfo.error().message;
+    return;
+  }
+
+  if (!sysEventInfo->is_dict()) {
+    LOG(ERROR) << "sysEventInfo is not a dictionary type";
     return;
   }
 
@@ -127,11 +133,12 @@ void DfxReporterImpl::ReportHiSysEvent(const std::string& eventName, const std::
 }
 
 // the param `eventInfo` may be used in the future
-void FreezeReporterImpl::ReportRenderFreeze(dfx::mojom::FreezeInfoPtr freezeInfo)
+void FreezeReporterImpl::ReportRenderFreeze(int32_t pid, const std::string& processName,const std::string& freezeMsg,
+                                            int32_t uid)
 {
 #if !defined(COMPONENT_BUILD)
   auto packageName = OHOS::NWeb::OhosAdapterHelper::GetInstance().GetSystemPropertiesInstance().GetBundleName();
-  ReportAppfreeze(freezeInfo->pid, packageName, freezeInfo->processName, freezeInfo->freezeMsg, freezeInfo->uid);
+  ReportAppfreeze(pid, packageName, processName, freezeMsg, uid);
 #endif
 }
 

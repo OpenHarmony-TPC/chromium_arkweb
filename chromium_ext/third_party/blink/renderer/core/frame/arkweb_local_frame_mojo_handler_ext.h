@@ -11,7 +11,6 @@
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
 #include "build/build_config.h"
-#include "cc/input/browser_controls_offset_tags_info.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/confidence_level.mojom-blink.h"
 #include "third_party/blink/public/mojom/device_posture/device_posture_provider.mojom-blink.h"
@@ -54,20 +53,32 @@ class ArkWebLocalFrameMojoHandlerExt : public LocalFrameMojoHandler {
 #endif
 
 #if BUILDFLAG(ARKWEB_MENU) || BUILDFLAG(IS_ARKWEB_EXT)
-  void GetImageFromCache(const WTF::String& url,
+  void GetImageFromCache(const String& url,
                          GetImageFromCacheCallback callback) final;
 #endif
 
+  void GetAllImage(int32_t taskid, const String& url,
+                   GetAllImageCallback callback) final;
+
+  void GetImageByXPath(int32_t taskid, const String& xpath,
+                   GetImageByXPathCallback callback) final;
+
+  bool GetImageByXPathInner(const String& xpath,
+                   base::ReadOnlySharedMemoryRegion& ro_region,
+                   size_t& buffer_size,
+                   int32_t& width,
+                   int32_t& height);
+
 #if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
-  void DetectBlankScreen(const WTF::String& url,
-                         const WTF::Vector<double>& detectionTiming,
-                         const WTF::Vector<int32_t>& detectionMethods,
+  void DetectBlankScreen(const String& url,
+                         const Vector<double>& detectionTiming,
+                         const Vector<int32_t>& detectionMethods,
                          int32_t contentfulNodesCountThreshold) final;
 #endif
 
 #if BUILDFLAG(ARKWEB_PRECOMPILE)
-  void GenerateCodeCache(const WTF::String& url,
-                         const WTF::String& script,
+  void GenerateCodeCache(const String& url,
+                         const String& script,
                          mojom::blink::CacheOptionsPtr cache_options,
                          GenerateCodeCacheCallback callback) final;
 #endif

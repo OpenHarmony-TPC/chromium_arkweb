@@ -227,7 +227,7 @@ TEST_F(ProxyConfigServiceOHOSTest, LookupSocksProxy_002) {
 TEST_F(ProxyConfigServiceOHOSTest, AddBypassRules_001) {
   GetPropertyCallback get_property = base::BindRepeating(
       [](const std::string& property) -> std::string { return std::string(); });
-  net::ProxyBypassRules bypass_rules;
+  net::ProxyHostMatchingRules bypass_rules;
   AddBypassRules("http", get_property, &bypass_rules);
   EXPECT_TRUE(bypass_rules.rules().empty());
 }
@@ -237,7 +237,7 @@ TEST_F(ProxyConfigServiceOHOSTest, AddBypassRules_002) {
       base::BindRepeating([](const std::string& property) -> std::string {
         return "*.example.com";
       });
-  net::ProxyBypassRules bypass_rules;
+  net::ProxyHostMatchingRules bypass_rules;
   AddBypassRules("https", get_property, &bypass_rules);
   ASSERT_EQ(1u, bypass_rules.rules().size());
   GURL test_url("https://test.example.com");
@@ -249,7 +249,7 @@ TEST_F(ProxyConfigServiceOHOSTest, AddBypassRules_003) {
       base::BindRepeating([](const std::string& property) -> std::string {
         return " ,, *.valid.com,  , ";
       });
-  net::ProxyBypassRules bypass_rules;
+  net::ProxyHostMatchingRules bypass_rules;
   AddBypassRules("ftp", get_property, &bypass_rules);
   ASSERT_EQ(1u, bypass_rules.rules().size());
   EXPECT_TRUE(bypass_rules.Matches(GURL("ftp://test.valid.com")));

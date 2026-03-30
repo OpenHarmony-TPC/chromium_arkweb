@@ -16,6 +16,8 @@
 #ifndef V8_UTILS_HILOG_H_
 #define V8_UTILS_HILOG_H_
 
+#ifdef USING_OHOS
+
 typedef enum {
   /** Debug level to be used by {@link OH_LOG_DEBUG} */
   DEBUG = 3,
@@ -29,7 +31,6 @@ typedef enum {
   FATAL = 7,
 } HiLogLevel;
 
-#ifdef USING_OHOS
 #define LOG_TAG "jsvm_hilog"
 #include "log.h"
 #define HilogPrint(logLevel, ...)                                       \

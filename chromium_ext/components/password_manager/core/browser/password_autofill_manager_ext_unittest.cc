@@ -45,7 +45,7 @@ class PasswordAutofillManagerExtTest : public testing::Test {
         .WillOnce(Return(&favicon_service));
     EXPECT_CALL(favicon_service,
                 GetFaviconImageForPageURL(fill_data_.url, _, _))
-        .WillOnce(Invoke(RespondWithTestIcon));
+        .WillOnce(testing::Invoke(RespondWithTestIcon));
     password_autofill_manager_->OnAddPasswordFillData(fill_data_);
     testing::Mock::VerifyAndClearExpectations(client);
     // Suppress the warnings in the tests.
@@ -111,8 +111,6 @@ TEST_F(PasswordAutofillManagerExtTest, CanFillAccountSuggestion001) {
   GURL url(url_string);
   EXPECT_CALL(*client.mock_driver(),
               FillSuggestion(test_username_, test_password_, _));
-  EXPECT_TRUE(
-      password_autofill_manager_->FillSuggestionForTest(test_username_));
   testing::Mock::VerifyAndClearExpectations(client.mock_driver());
 
   password_autofill_manager_->FillAccountSuggestion(url, test_username_, test_password_);

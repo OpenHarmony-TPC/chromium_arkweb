@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Copyright (c) 2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,16 +17,16 @@ config("lib_llvm_for_v8_config") {
     "//third_party/llvm-for-jsvm/llvm/include",
   ]
   if (is_debug) {
-      include_dirs += [ "//third_party/llvm-for-jsvm/llvm/build_debug/include", ]
+    include_dirs += [ "//third_party/llvm-for-jsvm/llvm/build_debug/include", ]
   } else {
-      include_dirs += [ "//third_party/llvm-for-jsvm/llvm/build_release/include", ]
+    include_dirs += [ "//third_party/llvm-for-jsvm/llvm/build_release/include", ]
   }
   if (is_debug) {
-      lib_dirs = [ "//third_party/llvm-for-jsvm/llvm/build_debug/lib" ]
+    lib_dirs = [ "//third_party/llvm-for-jsvm/llvm/build_debug/lib" ]
   } else {
-      lib_dirs = [ "//third_party/llvm-for-jsvm/llvm/build_release/lib" ]
+    lib_dirs = [ "//third_party/llvm-for-jsvm/llvm/build_release/lib" ]
   }
-
+ 
   libs = [
     "LLVMAArch64AsmParser",
     "LLVMAArch64CodeGen",
@@ -51,7 +51,7 @@ config("lib_llvm_for_v8_config") {
     "LLVMCoverage",
     "LLVMDebugInfoBTF",
     "LLVMDebugInfoCodeView",
-    "LLVMDebugInfod",
+    "LLVMDebuginfod",
     "LLVMDebugInfoDWARF",
     "LLVMDebugInfoGSYM",
     "LLVMDebugInfoLogicalView",
@@ -112,7 +112,7 @@ config("lib_llvm_for_v8_config") {
     "LLVMTransformUtils",
     "LLVMVectorize",
   ]
-
+ 
   ldflags = [
     "-lstdc++",
     "-lz",

@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef OHOS_NWEB_SRC_NWEB_CONTEXT_MENUS_ON_CLICKED_DATA_H_
 #define OHOS_NWEB_SRC_NWEB_CONTEXT_MENUS_ON_CLICKED_DATA_H_
-
+ 
 #include <vector>
  
 struct ContextMenusOnClickedData {

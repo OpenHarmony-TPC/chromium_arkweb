@@ -33,7 +33,7 @@
 #include "cc/raster/categorized_worker_pool.h"
 #include "cc/trees/layer_tree_host.h"
 #include "cc/trees/layer_tree_settings.h"
-#if BUILDFLAG(IS_ARKWEB)
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING) && !BUILDFLAG(ARKWEB_TEST)
 #include "arkweb/chromium_ext/base/process/process_handle_posix_ex.h"
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
 #include "base/command_line.h"
@@ -50,42 +50,38 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 WidgetBaseUtils::WidgetBaseUtils(WidgetBase* widget_base) : widget_base_(widget_base) {
-#if BUILDFLAG(IS_ARKWEB)
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING) && !BUILDFLAG(ARKWEB_TEST)
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line) {
-    cmd_value_ = command_line->HasSwitch(switches::kEnableReportThreadPoolForeg);
+    cmd_enable_report_thread_pool_ = command_line->HasSwitch(switches::kEnableReportThreadPoolForeg);
   }
 #endif
 }
-// LCOV_EXCL_STOP
 
-#if BUILDFLAG(IS_ARKWEB)
-static void ReportThreadIds(std::vector<int32_t> thread_ids, bool is_created, bool cmd_value) {
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING) && !BUILDFLAG(ARKWEB_TEST)
+static void ReportThreadIds(std::vector<int32_t> thread_ids, bool is_created, bool cmd_enable_report_thread_pool) {
   auto* thread = content::ChildThreadImpl::current();
   if (thread) {
     auto host = thread->child_process_host();
     auto status = is_created ? OHOS::NWeb::ResSchedStatusAdapter::THREAD_CREATED :
                                OHOS::NWeb::ResSchedStatusAdapter::THREAD_DESTROYED;
-    if (cmd_value) {
-      host->ReportKeyThreadIds(static_cast<int32_t>(status),
-          base::GetCurrentRealPid(), thread_ids,
-          static_cast<int32_t>(OHOS::NWeb::ResSchedRoleAdapter::USER_INTERACT));
+    int32_t role = 0;
+    if (cmd_enable_report_thread_pool) {
+      role = static_cast<int32_t>(OHOS::NWeb::ResSchedRoleAdapter::USER_INTERACT);
     }
     else {
-      host->ReportKeyThreadIds(static_cast<int32_t>(status),
-          base::GetCurrentRealPid(), thread_ids,
-          static_cast<int32_t>(OHOS::NWeb::ResSchedRoleAdapter::IMAGE_DECODE));    
+      role = static_cast<int32_t>(OHOS::NWeb::ResSchedRoleAdapter::IMAGE_DECODE);   
     }
+    host->ReportKeyThreadIds(static_cast<int32_t>(status),
+                             base::GetCurrentRealPid(), thread_ids, role);
   }
-}
+  }
 
 bool WidgetBaseUtils::GetCmdValue() {
-  return cmd_value_;
+  return cmd_enable_report_thread_pool_;
 }
 
-// LCOV_EXCL_START
 void WidgetBaseUtils::ReportForegroundThreadPool() {
   if (!widget_base_->is_worker_pool_initial_) {
     return;
@@ -114,16 +110,14 @@ void WidgetBaseUtils::ReportForegroundThreadPool() {
   if (foreground_thread_group) {
     std::vector<int32_t> create_workers_thread_ids_ =
       foreground_thread_group->ReportCreateWorkers();
-    ReportThreadIds(create_workers_thread_ids_, true, cmd_value_);
+    ReportThreadIds(create_workers_thread_ids_, true, cmd_enable_report_thread_pool_);
     std::vector<int32_t> destroy_workers_thread_ids_ =
       foreground_thread_group->ReportDestroyWorkers();
-    ReportThreadIds(destroy_workers_thread_ids_, false, cmd_value_);
+    ReportThreadIds(destroy_workers_thread_ids_, false, cmd_enable_report_thread_pool_);
   }
 }
-// LCOV_EXCL_STOP
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
 void WidgetBaseUtils::SetZoomLevel(float magnify_delta, const gfx::Point& anchor) {
   if (!widget_base_->widget_input_handler_manager_) {
@@ -136,6 +130,10 @@ void WidgetBaseUtils::SetOverscrollMode(int mode) {
     return;
   }
   widget_base_->widget_input_handler_manager_->manager_utils()->SetOverscrollMode(mode);
+}
+
+bool WidgetBaseUtils::IsElementExist(std::string xPath) {
+  return false;
 }
 
 void WidgetBaseUtils::SetRequestKeyboardReason(int32_t requestKeyboardReason) {
@@ -164,6 +162,7 @@ void WidgetBaseUtils::OnOverScrollOffsetChanged(float offset_x,
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 void WidgetBaseUtils::TouchHitTest(const WebPointerEvent& event, size_t i) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   FrameWidget* frame_widget = widget_base_->client_->FrameWidget();
   if (!frame_widget) {
     return;
@@ -171,7 +170,7 @@ void WidgetBaseUtils::TouchHitTest(const WebPointerEvent& event, size_t i) {
   frame_widget->TouchHitTest(event, i);
 }
 void WidgetBaseUtils::NativeHitTestResult(bool isNative, size_t fingerId, int layerId) {
-  if (widget_base_->widget_input_handler_manager_) {
+  if (widget_base_ && widget_base_->widget_input_handler_manager_) {
     widget_base_->widget_input_handler_manager_->manager_utils()
       ->NativeHitTestResult(isNative, fingerId, layerId);
   }
@@ -181,6 +180,10 @@ void WidgetBaseUtils::DidNativeEmbedEvent(blink::WebInputEvent::Type type,
                                           int32_t id,
                                           float x,
                                           float y) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!widget_base_ || !widget_base_->widget_host_) {
+    return;
+  }
   mojom::blink::NativeTouchType nativeType;
   switch (type) {
     case WebInputEvent::Type::kTouchStart:
@@ -195,13 +198,13 @@ void WidgetBaseUtils::DidNativeEmbedEvent(blink::WebInputEvent::Type type,
     default:
       nativeType = mojom::blink::NativeTouchType::CANCEL;
   }
-  LOG(DEBUG) << "[NativeEmbed] DidNativeEmbedEvent type is : " << nativeType
-             << " x: " << x << " y: " << y;
+  LOG(DEBUG) << "[NativeEmbed] DidNativeEmbedEvent type is : " << nativeType;
   widget_base_->widget_host_->DidNativeEmbedEvent(mojom::blink::NativeEmbedTouchEvent::New(
       String(embedId.c_str()), id, x, y, x, y, nativeType, x, y));
 }
 
 void WidgetBaseUtils::MouseHitTest(const WebMouseEvent& event, int32_t button) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   FrameWidget* frame_widget = widget_base_->client_->FrameWidget();
   if (!frame_widget) {
     return;
@@ -209,10 +212,8 @@ void WidgetBaseUtils::MouseHitTest(const WebMouseEvent& event, int32_t button) {
   frame_widget->MouseHitTest(event, button);
 }
 
-void WidgetBaseUtils::NativeMouseHitTestResult(bool isNative,
-                                               int layerId,
-                                               int32_t button) {
-  if (widget_base_->widget_input_handler_manager_) {
+void WidgetBaseUtils::NativeMouseHitTestResult(bool isNative, int layerId, int32_t button) {
+  if (widget_base_ && widget_base_->widget_input_handler_manager_) {
     widget_base_->widget_input_handler_manager_->manager_utils()
       ->NativeMouseHitTestResult(isNative, layerId, button);
   }
@@ -225,6 +226,10 @@ void WidgetBaseUtils::DidNativeEmbedMouseEvent(
     bool isHitNativeArea,
     float x,
     float y) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!widget_base_ || !widget_base_->widget_host_) {
+    return;
+  }
   mojom::blink::NativeMouseType nativeMouseType;
   switch (type) {
     case WebInputEvent::Type::kMouseDown:
@@ -240,18 +245,12 @@ void WidgetBaseUtils::DidNativeEmbedMouseEvent(
       nativeMouseType = mojom::blink::NativeMouseType::CANCEL;
   }
   mojom::blink::NativeMouseButton nativeMouseButton;
-
-  auto is_left_click = modifiers == WebInputEvent::Modifiers::kLeftButtonDown ||
-                       modifiers == (WebInputEvent::Modifiers::kLeftButtonDown |
-                                    WebInputEvent::Modifiers::kIsAutoRepeat);
-  auto is_right_click =
-      modifiers == WebInputEvent::Modifiers::kRightButtonDown ||
-      modifiers == (WebInputEvent::Modifiers::kRightButtonDown |
-                   WebInputEvent::Modifiers::kIsAutoRepeat);
-  auto is_mid_click =
-      modifiers == WebInputEvent::Modifiers::kMiddleButtonDown ||
-      modifiers == (WebInputEvent::Modifiers::kMiddleButtonDown |
-                   WebInputEvent::Modifiers::kIsAutoRepeat);
+  auto is_left_click = modifiers == WebInputEvent::Modifiers::kLeftButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kLeftButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
+  auto is_right_click = modifiers == WebInputEvent::Modifiers::kRightButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kRightButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
+  auto is_mid_click = modifiers == WebInputEvent::Modifiers::kMiddleButtonDown
+    || modifiers == (WebInputEvent::Modifiers::kMiddleButtonDown | WebInputEvent::Modifiers::kIsAutoRepeat);
   if (is_left_click) {
     nativeMouseButton = mojom::blink::NativeMouseButton::LEFT_BUTTON;
   } else if (is_right_click) {
@@ -261,12 +260,12 @@ void WidgetBaseUtils::DidNativeEmbedMouseEvent(
   }
   LOG(DEBUG) << "[NativeEmbed] DidNativeEmbedEvent mouse event type is : "
              << nativeMouseType << " button: " << nativeMouseButton
-             << " x: " << x << " y: " << y << " embedId: " << embedId;
+             << " embedId: " << embedId;
   widget_base_->widget_host_->DidNativeEmbedMouseEvent(
       mojom::blink::NativeEmbedMouseEvent::New(
           static_cast<String>(embedId), x, y, x, y, nativeMouseType,
           nativeMouseButton, isHitNativeArea, x, y));
 }
 #endif
-// LCOV_EXCL_STOP
 } // namespace blink
+

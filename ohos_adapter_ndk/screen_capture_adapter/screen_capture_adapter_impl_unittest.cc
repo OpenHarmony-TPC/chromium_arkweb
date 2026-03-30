@@ -401,6 +401,8 @@ class OHOSScreenCaptureCallbackMock : public ScreenCaptureCallbackAdapter {
   void OnVideoBufferAvailableV2(bool isReady, int32_t nweb_id) override {}
 
   void OnStateChangeV2(ScreenCaptureStateCodeAdapter stateCode, int32_t nweb_id) override {}
+
+  void OnUserSelected(int32_t nweb_id) override {}
 };
 
 class ScreenCaptureAdapterImplTest : public testing::Test {
@@ -1144,6 +1146,38 @@ TEST_F(
   cb.callback = std::make_shared<OHOSScreenCaptureCallbackMock>();
   void* userData = static_cast<void*>(&cb);
   ScreenCaptureAdapterImpl::ScreenCaptureCallbackOnStateChange(capture, stateCode, userData);
+  EXPECT_TRUE(cb.callback);
+}
+
+TEST_F(ScreenCaptureAdapterImplTest,
+       TestScreenCaptureCallbackOnOnUserSelected_ShouldReturn_WhenUserDataIsNull) {
+  OH_AVScreenCapture* capture = nullptr;
+  OH_AVScreenCapture_UserSelectionInfo* selections = nullptr;
+  void* userData = nullptr;
+  ScreenCaptureAdapterImpl::ScreenCaptureCallbackOnOnUserSelected(capture, selections, userData);
+  EXPECT_FALSE(userData);
+}
+ 
+TEST_F(ScreenCaptureAdapterImplTest,
+       TestScreenCaptureCallbackOnOnUserSelected_ShouldReturn_WhenCallbackIsNull) {
+  OH_AVScreenCapture* capture = nullptr;
+  OH_AVScreenCapture_UserSelectionInfo* selections = nullptr;
+  CallbackInfo cb;
+  cb.callback = nullptr;
+  void* userData = static_cast<void*>(&cb);
+  ScreenCaptureAdapterImpl::ScreenCaptureCallbackOnOnUserSelected(capture, selections, userData);
+  EXPECT_FALSE(cb.callback);
+}
+ 
+TEST_F(
+    ScreenCaptureAdapterImplTest,
+    TestScreenCaptureCallbackOnOnUserSelected_ShouldReturn_WhenCallbackIsNotNull) {
+  OH_AVScreenCapture* capture = nullptr;
+  OH_AVScreenCapture_UserSelectionInfo* selections = nullptr;
+  CallbackInfo cb;
+  cb.callback = std::make_shared<OHOSScreenCaptureCallbackMock>();
+  void* userData = static_cast<void*>(&cb);
+  ScreenCaptureAdapterImpl::ScreenCaptureCallbackOnOnUserSelected(capture, selections, userData);
   EXPECT_TRUE(cb.callback);
 }
 

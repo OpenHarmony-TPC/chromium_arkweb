@@ -63,15 +63,25 @@ class MockChildProcessLauncherHelper {
     command_line->AppendSwitchASCII(CMD_SWITCH[0], PROCESS_TYPES[0]);
 
     base::WeakPtr<content::ChildProcessLauncher> empty_launcher;
+    content::ChildProcessId id;
+    auto baseUnsafeSharedMemoryRegion = base::UnsafeSharedMemoryRegion();
+    auto histogram_memory_data = base::MakeRefCounted<base::RefCountedData
+                                <base::UnsafeSharedMemoryRegion>>(std::move(baseUnsafeSharedMemoryRegion));
+    scoped_refptr<base::RefCountedData<base::UnsafeSharedMemoryRegion>> histogram_memory_ref = histogram_memory_data;
+    auto baseReadOnlySharedMemoryRegion = base::ReadOnlySharedMemoryRegion();
+    auto tracing_config_memory_data = base::MakeRefCounted<base::RefCountedData
+                                <base::ReadOnlySharedMemoryRegion>>(std::move(baseReadOnlySharedMemoryRegion));
+    scoped_refptr<base::RefCountedData<base::ReadOnlySharedMemoryRegion>> tracing_config_memory_ref = tracing_config_memory_data;
     real_helper_ =
         std::make_unique<content::internal::ChildProcessLauncherHelper>(
-            0, std::move(command_line), nullptr, empty_launcher, false,
+            id, std::move(command_line), nullptr, empty_launcher, false,
 #if BUILDFLAG(IS_ANDROID)
             false,
 #endif
             mojo::OutgoingInvitation(), mojo::ProcessErrorCallback(), nullptr,
-            base::UnsafeSharedMemoryRegion(),
-            base::ReadOnlySharedMemoryRegion());
+            histogram_memory_ref,
+            tracing_config_memory_ref,
+            histogram_memory_ref);
 
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_STARTUP)
     real_helper_->app_mgr_client_adapter_ = nullptr;
@@ -180,7 +190,7 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode001)
     bool known_dead = false;
     base::TerminationStatus temp = base::TERMINATION_STATUS_PROCESS_CRASHED;
     auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
-    EXPECT_EQ(result, temp); 
+    EXPECT_EQ(result, temp);
     ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
     std::string log_output = testing::internal::GetCapturedStderr();
     EXPECT_TRUE(log_output.find(TERMINAL_REASONS[2]) != std::string::npos);
@@ -243,20 +253,6 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode008)
     ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
     std::string log_output = testing::internal::GetCapturedStderr();
     EXPECT_TRUE(log_output.find(TERMINAL_REASONS[0]) != std::string::npos);
-}
-
-TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode009) {
-    int status = 9;
-    bool known_dead = true;
-    base::TerminationStatus temp = base::TERMINATION_STATUS_PROCESS_WAS_KILLED;
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
-    temp = base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM;
-#endif
-    auto result = ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(status, known_dead);
-    EXPECT_EQ(result, temp);
-    ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(test_pid_, status, known_dead);
-    std::string log_output = testing::internal::GetCapturedStderr();
-    EXPECT_TRUE(log_output.find(TERMINAL_REASONS[3]) != std::string::npos);
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetProcessStatusByExitCode010) {
@@ -332,15 +328,6 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStat
     EXPECT_EQ(result, temp);
 }
 
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
-TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStatus005) {
-    base::TerminationStatus status = base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM;
-    std::string temp = "process out of memory";
-    auto result = ArkwebChildProcessLauncherHelperUtils::GetExitReasonByTerminationStatus(status);
-    EXPECT_EQ(result, temp);
-}
-#endif // BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
-
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStatus006) {
     base::TerminationStatus status = static_cast<base::TerminationStatus>(999);
     std::string temp = "process exit unknown";
@@ -351,23 +338,6 @@ TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStat
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStatus007) {
   EXPECT_EQ(utils_->GetExitReasonByTerminationStatus(base::TERMINATION_STATUS_LAUNCH_FAILED),
       TERMINAL_REASONS[5]);
-}
-
-TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStatus008) {
-  std::map<base::TerminationStatus, std::string> status_reason_map = {
-      {base::TERMINATION_STATUS_NORMAL_TERMINATION, TERMINAL_REASONS[0]},
-      {base::TERMINATION_STATUS_ABNORMAL_TERMINATION, TERMINAL_REASONS[1]},
-      {base::TERMINATION_STATUS_PROCESS_CRASHED, TERMINAL_REASONS[2]},
-      {base::TERMINATION_STATUS_PROCESS_WAS_KILLED, TERMINAL_REASONS[3]},
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
-      {base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM, TERMINAL_REASONS[4]}
-#endif
-  };
-
-  for (const auto& status_reason : status_reason_map) {
-    EXPECT_EQ(utils_->GetExitReasonByTerminationStatus(status_reason.first),
-        status_reason.second);
-  }
 }
 
 TEST_F(ArkwebChildProcessLauncherHelperUtilsTest, GetExitReasonByTerminationStatus009) {

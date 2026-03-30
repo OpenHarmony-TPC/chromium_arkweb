@@ -19,6 +19,11 @@
 #include "arkweb/ohos_adapter_ndk/ndk_callback_wrapper/callback_shared_wrapper.h"
 
 #include <mutex>
+#include <string>
+#include <vector>
+#include <memory>
+#include <map>
+#include <cstdint>
 #include <database/udmf/udmf.h>
 #include <database/pasteboard/oh_pasteboard.h>
 

@@ -26,7 +26,7 @@
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/numerics/safe_conversions.h"
-#include "base/ranges/algorithm.h"
+#include "base/sys_byteorder.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
 #include "media/video/half_float_maker.h"
@@ -37,12 +37,103 @@
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #include "third_party/skia/include/codec/SkEncodedImageFormat.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
-#include "third_party/skia/src/codec/SkHeifCodec.h"
+#include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 #if defined(ARCH_CPU_BIG_ENDIAN)
 #error Blink assumes a little-endian target.
 #endif
 
+namespace {
+
+#define FOURCC(c1, c2, c3, c4) \
+    ((c1) << 24 | (c2) << 16 | (c3) << 8 | (c4))
+
+bool IsHeifFormatSupported(const void* buffer, size_t bytesRead,
+                              SkEncodedImageFormat* format) {
+    // Parse the ftyp box up to bytesRead to determine if this is HEIF or AVIF.
+    // Any valid ftyp box should have at least 8 bytes.
+    if (bytesRead < 8) {
+        return false;
+    }
+
+    const uint32_t* ptr = static_cast<const uint32_t*>(buffer);
+    uint64_t chunkSize = base::NetToHost32(ptr[0]);
+    uint32_t chunkType = base::NetToHost32(ptr[1]);
+
+    if (chunkType != FOURCC('f', 't', 'y', 'p')) {
+        return false;
+    }
+
+    int64_t offset = 8;
+    if (chunkSize == 1) {
+        // This indicates that the next 8 bytes represent the chunk size,
+        // and chunk data comes after that.
+        if (bytesRead < 16) {
+            return false;
+        }
+        const uint8_t* bytePtr = static_cast<const uint8_t*>(buffer) + offset;
+        uint64_t chunkSizeValue;
+        memcpy_s(&chunkSizeValue, sizeof(chunkSizeValue), bytePtr, sizeof(chunkSizeValue));
+        chunkSize = base::NetToHost64(chunkSizeValue);
+        if (chunkSize < 16) {
+            // The smallest valid chunk is 16 bytes long in this case.
+            return false;
+        }
+        offset += 8;
+    } else if (chunkSize < 8) {
+        // The smallest valid chunk is 8 bytes long.
+        return false;
+    }
+
+    if (chunkSize > bytesRead) {
+        chunkSize = bytesRead;
+    }
+    int64_t chunkDataSize = chunkSize - offset;
+    // It should at least have major brand (4-byte) and minor version (4-bytes).
+    // The rest of the chunk (if any) is a list of (4-byte) compatible brands.
+    if (chunkDataSize < 8) {
+        return false;
+    }
+
+    uint32_t numCompatibleBrands = (chunkDataSize - 8) / 4;
+    bool isHeif = false;
+    for (size_t i = 0; i < numCompatibleBrands + 2; ++i) {
+        if (i == 1) {
+            // Skip this index, it refers to the minorVersion,
+            // not a brand.
+            continue;
+        }
+        const uint8_t* bytePtr = static_cast<const uint8_t*>(buffer) + offset + 4 * i;
+        uint32_t brandValue;
+        memcpy_s(&brandValue, sizeof(brandValue), bytePtr, sizeof(brandValue));
+        uint32_t brand = base::NetToHost32(brandValue);
+        if (brand == FOURCC('m', 'i', 'f', '1') || brand == FOURCC('h', 'e', 'i', 'c')
+          || brand == FOURCC('m', 's', 'f', '1') || brand == FOURCC('h', 'e', 'v', 'c')
+          || brand == FOURCC('a', 'v', 'i', 'f') || brand == FOURCC('a', 'v', 'i', 's')) {
+            // AVIF files could have "mif1" as the major brand. So we cannot
+            // distinguish whether the image is AVIF or HEIC just based on the
+            // "mif1" brand. So wait until we see a specific avif brand to
+            // determine whether it is AVIF or HEIC.
+            isHeif = true;
+            if (brand == FOURCC('a', 'v', 'i', 'f')
+              || brand == FOURCC('a', 'v', 'i', 's')) {
+                if (format != nullptr) {
+                    *format = SkEncodedImageFormat::kAVIF;
+                }
+                return true;
+            }
+        }
+    }
+    if (isHeif) {
+        if (format != nullptr) {
+            *format = SkEncodedImageFormat::kHEIF;
+        }
+        return true;
+    }
+    return false;
+}
+
+}  // namespace
 namespace blink {
 
 HEIFImageDecoder::HEIFImageDecoder(AlphaOption alpha_option,
@@ -79,8 +170,8 @@ void HEIFImageDecoder::OnSetData(SegmentReader* data) {
   LOG(INFO) << "[HeifSupport] HEIFImageDecoder::OnSetData parse image size "
             << data->size();
   auto sk_data = data->GetAsSkData();
-  base::span<const uint8_t> encoded_data =
-      base::make_span(sk_data->bytes(), sk_data->size());
+  std::span<const uint8_t> encoded_data =
+      std::span(sk_data->bytes(), sk_data->size());
 
   OHOS::NWeb::OhosImageDecoderAdapter* decoder_adapter = GetDecoderAdapter();
   if (decoder_adapter == nullptr) {
@@ -259,9 +350,10 @@ bool HEIFImageDecoder::CanReusePreviousFrameBuffer(wtf_size_t index) const {
   return true;
 }
 
+// Follow-up Processing
 bool HEIFImageDecoder::MatchesHeifSignature(const sk_sp<SkData>& data) {
-  base::span<const uint8_t> encoded_data =
-      base::make_span(data->bytes(), data->size());
+  std::span<const uint8_t> encoded_data =
+      std::span(data->bytes(), data->size());
   if (!encoded_data.data()) {
     LOG(INFO) << "[HeifSupport] HEIFImageDecoder::MatchesHeifSignature, "
                  "encoded_data is null.";
@@ -269,7 +361,7 @@ bool HEIFImageDecoder::MatchesHeifSignature(const sk_sp<SkData>& data) {
   }
 
   SkEncodedImageFormat format;
-  if ((SkHeifCodec::IsSupported(encoded_data.data(),
+  if ((IsHeifFormatSupported(encoded_data.data(),
                                 (size_t)encoded_data.size(), &format)) &&
       format == SkEncodedImageFormat::kHEIF) {
     LOG(INFO) << "[HeifSupport] HEIFImageDecoder::MatchesHeifSignature is heif "

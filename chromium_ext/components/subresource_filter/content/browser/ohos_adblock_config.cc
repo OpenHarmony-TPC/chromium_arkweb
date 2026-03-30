@@ -15,6 +15,7 @@
 
 #include "components/subresource_filter/content/browser/ohos_adblock_config.h"
 
+#include "base/strings/strcat.h"
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -163,7 +164,7 @@ bool AdBlockConfig::CheckIsInDisallowData(GURL url) {
     LOG(DEBUG) << "[Adblock] result item:" << item;
   }
 
-  return CheckIsInResult(result, url.scheme() + "://" + url.host());
+  return CheckIsInResult(result, base::StrCat({url.scheme(), "://", url.host()}));
 }
 
 std::unique_ptr<autofill::Trie<std::string>>
@@ -319,7 +320,7 @@ bool AdBlockConfig::CheckIsInAllowData(GURL url) {
     LOG(DEBUG) << "[Adblock] result item:" << item;
   }
 
-  return CheckIsInResult(result, url.scheme() + "://" + url.host());
+  return CheckIsInResult(result, base::StrCat({url.scheme(), "://", url.host()}));
 }
 
 std::unique_ptr<autofill::Trie<std::string>>

@@ -22,6 +22,7 @@
 #include "content/public/common/content_switches.h"
 #include <dlfcn.h>
 #include <cstring>
+#include <cerrno>
 
 #include "nweb_hilog.h"
 

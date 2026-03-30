@@ -51,9 +51,6 @@ public:
     thread_->OnChannelConnected(peer_pid);
   }
 
-  void TestOnChannelListenError() {
-    thread_->OnChannelListenError();
-  }
 };
 
 TEST_F(RenderThreadImplExtUnittest, InitializeWebKitExt) {
@@ -197,7 +194,7 @@ TEST_F(RenderThreadImplExtUnittest, NotifyLocaleChanged_HasSharedInstance_NoPakE
     ui::ResourceBundle::SwapSharedInstanceForTesting(&resource_bundle);
   
   std::string locale = "not_a_real_locale";
-  EXPECT_FALSE(ui::ResourceBundle::LocaleDataPakExists(locale));
+  EXPECT_FALSE(ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault));
 
   testing::internal::CaptureStderr();
   TestNotifyLocaleChanged(locale);
@@ -214,7 +211,7 @@ TEST_F(RenderThreadImplExtUnittest, NotifyLocaleChanged_LocaleEqual) {
     ui::ResourceBundle::SwapSharedInstanceForTesting(&resource_bundle);
 
   std::string locale = "en-US";
-  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale));
+  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault));
 
   ui::ResourceBundle::GetSharedInstance().SetLoadedLocaleForTesting("en-US");
 
@@ -232,7 +229,7 @@ TEST_F(RenderThreadImplExtUnittest, NotifyLocaleChanged_LocaleNotEqual) {
   ui::ResourceBundle* orig_instance =
     ui::ResourceBundle::SwapSharedInstanceForTesting(&resource_bundle);
   std::string locale = "en-US";
-  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale));
+  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault));
   ui::ResourceBundle::GetSharedInstance().SetLoadedLocaleForTesting("zh-CN");
 
   testing::internal::CaptureStderr();
@@ -250,12 +247,7 @@ TEST_F(RenderThreadImplExtUnittest, NotifyLocaleChanged_LocaleNotEqual_NoResult)
     ui::ResourceBundle::SwapSharedInstanceForTesting(&resource_bundle);
 
   std::string locale = "en-US";
-  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale));
-
-  EXPECT_CALL(delegate, GetPathForLocalePack(_, _))
-      .WillRepeatedly(Return(base::FilePath()))
-      .RetiresOnSaturation();
-
+  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault));
   EXPECT_EQ("", ui::ResourceBundle::GetSharedInstance().ReloadLocaleResources(locale));
 
   ui::ResourceBundle::GetSharedInstance().SetLoadedLocaleForTesting("zh-CN");
@@ -275,11 +267,7 @@ TEST_F(RenderThreadImplExtUnittest, NotifyLocaleChanged_LocaleNotEqual_WithResul
     ui::ResourceBundle::SwapSharedInstanceForTesting(&resource_bundle);
 
   std::string locale = "en-US";
-  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale));
-
-  EXPECT_CALL(delegate, GetPathForLocalePack(_, _))
-      .WillRepeatedly(ReturnArg<0>());
-
+  EXPECT_TRUE(ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault));
   EXPECT_EQ(locale, ui::ResourceBundle::GetSharedInstance().ReloadLocaleResources(locale));
   ui::ResourceBundle::GetSharedInstance().SetLoadedLocaleForTesting("zh-CN");
   TestNotifyLocaleChanged(locale);
@@ -295,34 +283,6 @@ TEST_F(RenderThreadImplExtUnittest, SetBlanklessDumpInfo_Valid) {
   int64_t pref_hash = 5;
     
   thread_->SetBlanklessDumpInfo(nweb_id, blankless_key, frame_sink_id, lcp_time, pref_hash);
-}
-
-TEST_F(RenderThreadImplExtUnittest, OnChannelListenError_NoSwitch) {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  command_line->RemoveSwitch(switches::kEnableLoggerReport);
-  EXPECT_FALSE(command_line->HasSwitch(switches::kEnableLoggerReport));
-  TestOnChannelListenError();
-}
-
-TEST_F(RenderThreadImplExtUnittest, OnChannelListenError_WithSwitch_NoLogHandler) {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  command_line->AppendSwitch(switches::kEnableLoggerReport);
-  EXPECT_TRUE(command_line->HasSwitch(switches::kEnableLoggerReport));
-  logging::SetLogMessageHandler(nullptr);
-  TestOnChannelListenError();
-  EXPECT_FALSE(logging::GetLogMessageHandler());
-}
-
-TEST_F(RenderThreadImplExtUnittest, OnChannelListenError_WithSwitch_WithLogHandler) {
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-  command_line->AppendSwitch(switches::kEnableLoggerReport);
-  EXPECT_TRUE(command_line->HasSwitch(switches::kEnableLoggerReport));
-  logging::SetLogMessageHandler(CallRenderProcessLogMessageHandler);
-  testing::internal::CaptureStderr();
-  TestOnChannelListenError();
-  std::string log_output = testing::internal::GetCapturedStderr();
-  EXPECT_NE(log_output.find("remove log message handler for "), std::string::npos);
-  EXPECT_FALSE(logging::GetLogMessageHandler());
 }
 
 TEST_F(RenderThreadImplExtUnittest, OnChannelConnected_NoSwitch) {
@@ -356,7 +316,7 @@ TEST_F(RenderThreadImplExtUnittest, OnChannelConnected_WithSwitch_WithLogHandler
             "maybe you runs in single process mode, log message handler had been setted by other"),
             std::string::npos);
 }
- 
+
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
 TEST_F(RenderThreadImplExtUnittest, VideoLoadOpt_UpdateOptimizationConfigTest) {
   bool enable_ = true;

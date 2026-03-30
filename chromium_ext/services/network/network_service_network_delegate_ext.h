@@ -17,6 +17,10 @@
 
 #include <optional>
 
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/component_export.h"
 #include "base/memory/raw_ptr.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -30,10 +34,6 @@
 #include "services/network/cookie_settings.h"
 #include "services/network/network_context.h"
 #include "services/network/network_service_network_delegate.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 namespace network {
 
@@ -65,7 +65,6 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkServiceNetworkDelegateExt
   net::AddressList ResolveFromCacheInternal(net::HostCache::Key& key);
   void RecordErrorInfo(net::URLRequest* request, int net_error);
   int32_t GetDownStreamThroughputKbps();
-  std::string GetNetworkQualityInfo();
 #endif
 };
 

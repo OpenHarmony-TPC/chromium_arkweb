@@ -17,9 +17,10 @@ group("arkweb_test_targets") {
     testonly = true
 
     deps = [
-      "//arkweb/build/unittests:oh_base_unittests",
-      "//arkweb/build/unittests:oh_core_unittests",
-      "//arkweb/build/unittests:oh_smoke_unittests",
+    "unittests:oh_base_unittests",
+    "unittests:oh_core_unittests",
+    "unittests:oh_smoke_unittests",
+    "tools:arkweb_test_tools"
     ]
 }
 

@@ -37,7 +37,6 @@ class SurfaceLayerBridgeForIncludeTest : public testing::Test {
     update_submission_state_callback_ = base::BindRepeating([](bool is_visible, base::WaitableEvent* event) {});
     surface_layer_bridge_ = std::make_unique<SurfaceLayerBridge>(
         parent_frame_sink_id,
-        WebSurfaceLayerBridge::ContainsVideo::kNo,
         nullptr,
         update_submission_state_callback_
     );
@@ -101,7 +100,6 @@ TEST_F(SurfaceLayerBridgeForIncludeTest, CreateSurfaceLayerWithObserver) {
   viz::FrameSinkId parent_frame_sink_id(1, 1);
   surface_layer_bridge_ = std::make_unique<SurfaceLayerBridge>(
       parent_frame_sink_id,
-      WebSurfaceLayerBridge::ContainsVideo::kNo,
       &mock_observer,
       update_submission_state_callback_
   );

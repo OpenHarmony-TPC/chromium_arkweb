@@ -21,6 +21,12 @@ OHOSMediaPlayerRendererClientFactory::OHOSMediaPlayerRendererClientFactory(
 
 OHOSMediaPlayerRendererClientFactory::~OHOSMediaPlayerRendererClientFactory() {}
 
+
+// Note: GetRequiredMediaResourceType() method removed in Chromium 141
+// MediaResource::Type enumeration no longer exists in the new architecture
+
+
+// TODO(arkweb): Temporary fix to resolve compilation errors.
 std::unique_ptr<media::Renderer>
 OHOSMediaPlayerRendererClientFactory::CreateRenderer(
     const scoped_refptr<base::SequencedTaskRunner>& media_task_runner,
@@ -29,37 +35,21 @@ OHOSMediaPlayerRendererClientFactory::CreateRenderer(
     media::VideoRendererSink* video_renderer_sink,
     media::RequestOverlayInfoCB request_surface_cb,
     const gfx::ColorSpace& target_color_space) {
-  mojo::PendingRemote<media::mojom::MediaPlayerRendererExtension>
-      renderer_extension_remote;
-  auto renderer_extension_receiver =
-      renderer_extension_remote.InitWithNewPipeAndPassReceiver();
+  // TODO: OHOSMediaPlayerRendererClient implementation needs to be restored
+  // For now, fallback to mojo_renderer_factory to maintain functionality
+  if (!mojo_renderer_factory_) {
+    return nullptr;
+  }
 
-  mojo::PendingRemote<media::mojom::MediaPlayerRendererClientExtension>
-      client_extension_remote;
-  auto client_extension_receiver =
-      client_extension_remote.InitWithNewPipeAndPassReceiver();
-
-  std::unique_ptr<media::MojoRenderer> mojo_renderer =
-      mojo_renderer_factory_->CreateMediaPlayerRenderer(
-          std::move(renderer_extension_receiver),
-          std::move(client_extension_remote), media_task_runner,
-          video_renderer_sink);
-
-  media::ScopedNativeTextureWrapper native_texture_wrapper =
-      get_native_texture_wrapper_cb_.Run();
-
-  return std::make_unique<OHOSMediaPlayerRendererClient>(
-      std::move(renderer_extension_remote),
-      std::move(client_extension_receiver),
-      media_task_runner, compositor_task_runner_,
-      std::move(mojo_renderer),
-      std::move(native_texture_wrapper),
-      video_renderer_sink);
-}
-
-media::MediaResource::Type
-OHOSMediaPlayerRendererClientFactory::GetRequiredMediaResourceType() {
-  return media::MediaResource::Type::KUrl;
+  // Create a basic renderer using mojo factory as fallback
+  // This maintains compatibility while OHOS-specific implementation is restored
+  return mojo_renderer_factory_->CreateRenderer(
+      media_task_runner,
+      worker_task_runner,
+      audio_renderer_sink,
+      video_renderer_sink,
+      std::move(request_surface_cb),
+      target_color_space);
 }
 
 }  // namespace content

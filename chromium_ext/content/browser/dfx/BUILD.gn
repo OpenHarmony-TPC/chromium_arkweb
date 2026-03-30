@@ -27,6 +27,7 @@ source_set("appfreeze_monitor") {
   ]
   deps = [
     "mojom",
-    "//third_party/blink/public:blink_headers"
+    "//third_party/blink/public:blink_headers",
+    "//arkweb/chromium_ext/content/common/hicollie_freeze_reporter:hicollie_freeze_reporter",
   ]
 }

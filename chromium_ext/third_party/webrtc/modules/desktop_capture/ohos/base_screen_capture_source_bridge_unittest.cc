@@ -58,6 +58,8 @@ class MockCallback : public BaseScreenCaptureReadCallback {
  public:
     MOCK_METHOD(void, OnReadData, (), (override));
     MOCK_METHOD(void, OnReadData, (OHOS::NWeb::AudioCaptureSourceTypeAdapter type), (override));
+    MOCK_METHOD(void, OnStateChanged, (OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode), (override));
+    MOCK_METHOD(void, OnUserSelected, (), (override));
 };
 
 class BaseScreenCaptureSourceTest : public ::testing::Test {
@@ -158,6 +160,34 @@ TEST_F(BaseScreenCaptureSourceTest, SetScreenCaptureState01) {
   base_screen_capture->SetScreenCaptureState(stateCode, nweb_id);
 
   EXPECT_EQ(base_screen_capture->capture_state_code_map_[nweb_id], stateCode);
+}
+
+TEST_F(BaseScreenCaptureSourceTest, SetScreenCaptureState02) {
+  int nweb_id = 1;
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode =
+      OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_STARTED;
+  base_screen_capture->capture_state_code_map_[nweb_id] =
+      OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_INVLID;
+  std::shared_ptr<MockCallback> window_callback =
+    std::make_shared<MockCallback>();
+  base_screen_capture->window_callback_map_[nweb_id] = window_callback;
+
+  base_screen_capture->SetScreenCaptureState(stateCode, nweb_id);
+  EXPECT_EQ(base_screen_capture->capture_state_code_map_[nweb_id], stateCode);
+
+  auto res_window_callback = base_screen_capture->window_callback_map_.find(nweb_id);
+  EXPECT_NE(res_window_callback, base_screen_capture->window_callback_map_.end());
+}
+
+TEST_F(BaseScreenCaptureSourceTest, OnUserSelected01) {
+  int nweb_id = 1;
+  std::shared_ptr<MockCallback> window_callback =
+    std::make_shared<MockCallback>();
+  base_screen_capture->window_callback_map_[nweb_id] = window_callback;
+
+  base_screen_capture->OnUserSelected(nweb_id);
+  auto res_window_callback = base_screen_capture->window_callback_map_.find(nweb_id);
+  EXPECT_NE(res_window_callback, base_screen_capture->window_callback_map_.end());
 }
 
 TEST_F(BaseScreenCaptureSourceTest, ReleaseCapture01) {

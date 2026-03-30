@@ -61,7 +61,7 @@ enum WebStorageMigrationErrorCode {
 }  // namespace
 
 #if BUILDFLAG(ARKWEB_TEST)
-#include "crypto/symmetric_key.h"
+#include "components/os_crypt/sync/os_crypt.h"
 bool DecryptWithIvForInclude(const std::string& raw_ciphertext,
                             crypto::SymmetricKey* encryption_key,
                             crypto::SymmetricKey* encryption_key_ota,

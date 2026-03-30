@@ -177,7 +177,8 @@ class MockCefRequest : public CefRequest {
       headers_.insert(std::make_pair(name.ToString(), value.ToString()));
     }
   }
-  void Set(const CefString& url, const CefString& method, CefRefPtr<CefPostData> postData, const HeaderMap& headerMap) override {
+  void Set(const CefString& url, const CefString& method, CefRefPtr<CefPostData> postData,
+           const HeaderMap& headerMap) override {
     headers_ = headerMap;
   }
   int GetFlags() override { return 0; }

@@ -13,10 +13,8 @@ bool OhosHttpsUpgradesUtil::IsHttpsUpgradeEnabled() {
 }
 
 void OhosHttpsUpgradesUtil::EnableHttpsUpgrades(bool enable) {
-  if (is_arkweb_https_upgrade_enabled_ == enable) {
-    return;
-  }
-
-  LOG_FEEDBACK(INFO, kHttpsUpgrades) << "EnableHttpsUpgrades enable:" << enable;
+  LOG(INFO) << "before EnableHttpsUpgrades is_arkweb_https_upgrade_enabled_ is: "
+            << is_arkweb_https_upgrade_enabled_
+            << ", after EnableHttpsUpgrades is: " << enable;
   is_arkweb_https_upgrade_enabled_ = enable;
 }

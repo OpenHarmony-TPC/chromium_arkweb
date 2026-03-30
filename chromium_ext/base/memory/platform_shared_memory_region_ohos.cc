@@ -13,7 +13,7 @@
 #include "base/memory/shared_memory_tracker.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/posix/eintr_wrapper.h"
-#include "third_party/ashmem/ashmem.h"
+#include "base/android/linker/ashmem.h"
 #include "arkweb/build/features/features.h"
 
 namespace base {
@@ -24,9 +24,9 @@ namespace subtle {
 namespace {
 
 int GetAshmemRegionProtectionMask(int fd) {
-  int prot = ashmem_get_prot_region(fd);
+  int prot = SharedMemoryRegionGetProtectionFlags(fd);
   if (prot < 0) {
-    PLOG(ERROR) << "ashmem_get_prot_region failed";
+    PLOG(ERROR) << "SharedMemoryRegionGetProtectionFlags failed";
     return -1;
   }
   return prot;
@@ -34,32 +34,6 @@ int GetAshmemRegionProtectionMask(int fd) {
 
 }  // namespace
 
-// static
-PlatformSharedMemoryRegion PlatformSharedMemoryRegion::Take(
-    ScopedFD fd,
-    Mode mode,
-    size_t size,
-    const UnguessableToken& guid) {
-  if (!fd.is_valid())
-    return {};
-
-  if (size == 0)
-    return {};
-
-  if (size > static_cast<size_t>(std::numeric_limits<int>::max()))
-    return {};
-
-#if BUILDFLAG(ARKWEB_BUGFIX_CRASH)
-  if (!CheckPlatformHandlePermissionsCorrespondToMode(fd.get(), mode, size)) {
-    LOG(ERROR) << "check platform handle permission failed, fd = " << fd.get() << ", mode" \
-      << static_cast<int>(mode) << ", size = " << size;
-  }
-#else
-  CHECK(CheckPlatformHandlePermissionsCorrespondToMode(fd.get(), mode, size));
-#endif
-
-  return PlatformSharedMemoryRegion(std::move(fd), mode, size, guid);
-}
 
 int PlatformSharedMemoryRegion::GetPlatformHandle() const {
   return handle_.get();
@@ -99,9 +73,9 @@ bool PlatformSharedMemoryRegion::ConvertToReadOnly() {
     return false;
 
   prot &= ~PROT_WRITE;
-  int ret = ashmem_set_prot_region(handle_copy.get(), prot);
+  int ret = SharedMemoryRegionSetProtectionFlags(handle_copy.get(), prot);
   if (ret != 0) {
-    DPLOG(ERROR) << "ashmem_set_prot_region failed";
+    DPLOG(ERROR) << "SharedMemoryRegionSetProtectionFlags failed";
     return false;
   }
 
@@ -141,30 +115,31 @@ PlatformSharedMemoryRegion PlatformSharedMemoryRegion::Create(Mode mode,
 
   UnguessableToken guid = UnguessableToken::Create();
 
-  int fd = ashmem_create_region(
+  int fd = SharedMemoryRegionCreate(
       SharedMemoryTracker::GetDumpNameForTracing(guid).c_str(), rounded_size);
   if (fd < 0) {
-    DPLOG(ERROR) << "ashmem_create_region failed";
+    DPLOG(ERROR) << "SharedMemoryRegionCreate failed";
     return {};
   }
 
   ScopedFD scoped_fd(fd);
-  int err = ashmem_set_prot_region(scoped_fd.get(), PROT_READ | PROT_WRITE);
+  int err = SharedMemoryRegionSetProtectionFlags(scoped_fd.get(), PROT_READ | PROT_WRITE);
   if (err < 0) {
-    DPLOG(ERROR) << "ashmem_set_prot_region failed";
+    DPLOG(ERROR) << "SharedMemoryRegionSetProtectionFlags failed";
     return {};
   }
 
   return PlatformSharedMemoryRegion(std::move(scoped_fd), mode, size, guid);
 }
 
-bool PlatformSharedMemoryRegion::CheckPlatformHandlePermissionsCorrespondToMode(
+expected<void, PlatformSharedMemoryRegion::TakeError>
+PlatformSharedMemoryRegion::CheckPlatformHandlePermissionsCorrespondToMode(
     PlatformSharedMemoryHandle handle,
     Mode mode,
     size_t size) {
   int prot = GetAshmemRegionProtectionMask(handle);
   if (prot < 0)
-    return false;
+    return unexpected(TakeError::kFailedToGetAshmemRegionProtectionMask);
 
   bool is_read_only = (prot & PROT_WRITE) == 0;
   bool expected_read_only = mode == Mode::kReadOnly;
@@ -173,10 +148,10 @@ bool PlatformSharedMemoryRegion::CheckPlatformHandlePermissionsCorrespondToMode(
     LOG(ERROR) << "Ashmem region has a wrong protection mask: it is"
                << (is_read_only ? " " : " not ") << "read-only but it should"
                << (expected_read_only ? " " : " not ") << "be";
-    return false;
+    return unexpected(TakeError::kExpectedReadOnlyButNot);
   }
 
-  return true;
+  return expected<void, PlatformSharedMemoryRegion::TakeError>();
 }
 
 PlatformSharedMemoryRegion::PlatformSharedMemoryRegion(
@@ -185,6 +160,41 @@ PlatformSharedMemoryRegion::PlatformSharedMemoryRegion(
     size_t size,
     const UnguessableToken& guid)
     : handle_(std::move(fd)), mode_(mode), size_(size), guid_(guid) {}
+
+// static
+expected<PlatformSharedMemoryRegion, PlatformSharedMemoryRegion::TakeError>
+PlatformSharedMemoryRegion::TakeOrFail(ScopedFD fd,
+                                       Mode mode,
+                                       size_t size,
+                                       const UnguessableToken& guid) {
+  // TODO(arkweb): Chromium 141 compatibility - implement proper TakeOrFail for OHOS
+  // For now, provide basic validation and create region
+  if (!fd.is_valid()) {
+    return {};
+  }
+
+  if (size == 0) {
+    return {};
+  }
+
+  if (size > static_cast<size_t>(std::numeric_limits<int>::max())) {
+    return {};
+  }
+
+  // Check ashmem permissions match expected mode
+  expected<void, TakeError> result =
+      CheckPlatformHandlePermissionsCorrespondToMode(fd.get(), mode, size);
+  if (!result.has_value()) {
+#if BUILDFLAG(ARKWEB_BUGFIX_CRASH)
+    LOG(ERROR) << "check platform handle permission failed, fd = " << fd.get() << ", mode" \
+      << static_cast<int>(mode) << ", size = " << size;
+#endif
+    return unexpected(result.error());
+  }
+
+  // Create and return the shared memory region
+  return PlatformSharedMemoryRegion(std::move(fd), mode, size, guid);
+}
 
 }  // namespace subtle
 }  // namespace base

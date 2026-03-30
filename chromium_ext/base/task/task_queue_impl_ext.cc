@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
+#include "task_queue_impl_ext.h"
+
 #include <sstream>
 #include <cstdlib>
 #include <string>
 
 #include "base/logging.h"
-#include "task_queue_impl_ext.h"
-
-extern "C" __attribute__((weak) )void set_fatal_message(const char *msg);
+#include "info/fatal_message.h"
 
 #if BUILDFLAG(ARKWEB_CRASHPAD)
 namespace base {

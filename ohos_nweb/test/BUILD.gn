@@ -42,7 +42,10 @@ test("ohos_nweb_unittests") {
   ]
 
   if (enable_arkweb_ext) {
-    deps += [ "//ohos_nweb_ex/test:ohos_nweb_ex_unittests", ]
+    deps += [
+      "//ohos_nweb_ex:nweb_ex",
+      "//ohos_nweb_ex/test:ohos_nweb_ex_unittests", 
+    ]
   }
 
   if (arkweb_unittests) {

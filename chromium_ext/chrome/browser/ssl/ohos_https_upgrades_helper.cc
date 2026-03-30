@@ -38,7 +38,8 @@ void OhosHttpsUpgradesHelper::set_is_arkweb_https_upgrades_enable(bool enable) {
   if (helper) {
     helper->EnableArkWebHttpsUpgrade(enable);
   }
-  LOG_FEEDBACK(INFO, kHttpsUpgrades) << "EnableHttpsUpgrades enable:" << enable;
+  LOG(INFO) << " https upgrade enabled changed:"
+            << is_arkweb_https_upgrades_enable_ << "->" << enable;
   is_arkweb_https_upgrades_enable_ = enable;
 }
 

@@ -1,3 +1,7 @@
 arkweb_configs = [
-    "//arkweb/build/config/extra_semi:disable_extra_semi"
+  "//arkweb/build/config/sanitizers:ptrauth_base",
+  "//arkweb/build/config/sanitizers:armv83a",
+  "//arkweb/build/config/sanitizers:blink_gc_check",
+  "//arkweb/build/config/raw_ptr:raw_ptr_check",
+  "//arkweb/build/config/extra_semi:disable_extra_semi",
 ]

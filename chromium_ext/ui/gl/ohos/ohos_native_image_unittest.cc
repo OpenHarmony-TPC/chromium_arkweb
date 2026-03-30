@@ -66,7 +66,7 @@ class OhosNativeImageTest : public testing::Test {
 TEST_F(OhosNativeImageTest, SetFrameAvailableCallback) {
   auto ohos_native_image = OhosNativeImage::Create(12345);
   EXPECT_NE(ohos_native_image, nullptr);
-  ohos_native_image->SetFrameAvailableCallback(base::DoNothing());
+  ohos_native_image->SetFrameAvailableCallback(base::internal::DoNothingCallbackTag());
 }
 
 TEST_F(OhosNativeImageTest, UpdateNativeImage) {
@@ -130,7 +130,7 @@ TEST_F(OhosNativeImageTest, AquireOhosNativeWindow) {
 TEST_F(OhosNativeImageTest, OnFrameAvailableListener) {
   auto ohos_native_image = OhosNativeImage::Create(12345);
   EXPECT_NE(ohos_native_image, nullptr);
-  ohos_native_image->SetFrameAvailableCallback(base::DoNothing());
+  ohos_native_image->SetFrameAvailableCallback(base::internal::DoNothingCallbackTag());
   ohos_native_image->OnFrameAvailableListener();
 }
 

@@ -27,60 +27,57 @@
 namespace v8 {
 namespace jitparse {
 
-struct JITCodeBlock {
+struct JitSymbol {
   uint64_t vaddr;
-  std::vector<uint8_t> code;
+  uint32_t codeSize;
   std::string name;
 
-  JITCodeBlock(uint64_t vaddr, std::vector<uint8_t> code, std::string name)
-      : vaddr(vaddr), code(code), name(name) {}
+  JitSymbol(uint64_t vaddr, uint32_t codeSize, const std::string& name)
+      : vaddr(vaddr), codeSize(codeSize), name(name) {}
 };
 
 class ELFParser {
  public:
-  bool Load(const std::vector<JITCodeBlock>& codeBlocks,
-            const std::string& inputData);
-
   bool getInstruction(uint64_t pc, std::string& codeName) const;
-
- private:
-  struct CodeSegment {
-    uint64_t start;
-    uint64_t end;
-    uint64_t file_offset;
-    std::string name;
-  };
-  std::unordered_map<uint64_t, CodeSegment> codeSegments;
+  bool getInstruction(uint64_t pc, std::string& codeName, uint32_t& offset) const;
+  std::vector<JitSymbol> jitSymbols;
 };
 
-class ELFGenerator {
+class JitSymbolVMA {
  public:
-  explicit ELFGenerator(const std::vector<JITCodeBlock>& blocks)
-      : codeBlocks(blocks) {}
-
-  bool generateELF(std::string& output);
-
+  explicit JitSymbolVMA(uint32_t pid);
+  uintptr_t GetStartAddress() const;
+  bool Contains(uintptr_t address) const;
+  bool HasPrepared() const;
+  ~JitSymbolVMA();
  private:
-  const std::vector<JITCodeBlock>& codeBlocks;
+  uintptr_t startAddress = 0;
+  uintptr_t endAddress = 0;
+  uint64_t memorySize = 0;
+  bool hasPrepared = false;
+  const bool isCurrentProcess;
 };
 
-class JSVMSymbolExtractor {
+class JsSymbolExtractor {
  public:
-  explicit JSVMSymbolExtractor(uint32_t pid);
+  explicit JsSymbolExtractor(uint32_t pid);
 
-  ~JSVMSymbolExtractor();
+  ~JsSymbolExtractor();
 
-  bool ReadMem(const uint64_t addr, void* data, size_t size) const;
-
-  void* FindJITSymbolAddress();
+  bool GetHeader(uintptr_t& memoryPointer) const;
+  bool GetJitSymbols(uint32_t& codeID,
+                uintptr_t& memoryPointer,
+                std::vector<JitSymbol>& jitSymbols) const;
 
   ELFParser* GetParser() const;
 
-  bool GetInstruction(uintptr_t pc, std::string& codeName);
+  bool GetInstruction(uintptr_t pc, std::string& codeName) const;
+  bool GetInstruction(uintptr_t pc, std::string& codeName, uint32_t& offset) const;
 
  private:
-  static uint32_t process_id_;
   ELFParser* parser = nullptr;
+  JitSymbolVMA* jitSymbolVMA = nullptr;
+  const uint32_t targetPid;
 };
 
 }  // namespace jitparse

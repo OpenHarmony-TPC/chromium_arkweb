@@ -46,10 +46,11 @@ struct StackCrawlState {
 
 _Unwind_Reason_Code TraceStackFrame(_Unwind_Context* context, void* arg) {
   StackCrawlState* state = static_cast<StackCrawlState*>(arg);
+#if BUILDFLAG(ARKWEB_DFX_TRACING)
   if (state == nullptr) {
     return _URC_NO_REASON;
   }
-
+#endif // ARKWEB_DFX_TRACING
   uintptr_t ip = _Unwind_GetIP(context);
   // The first stack frame is this function itself.  Skip it.
   if (ip != 0 && !state->have_skipped_self) {
@@ -209,10 +210,14 @@ bool EnableInProcessStackDumping() {
 }
 
 size_t CollectStackTrace(span<const void*> trace) {
-  StackCrawlState state(reinterpret_cast<uintptr_t*>(trace.data()),
-                        trace.size());
-  _Unwind_Backtrace(&TraceStackFrame, &state);
-  return state.frame_count;
+  // Follow-up Processing. This section of code caused a crash in the 
+  // renderer process when clicking on a web page, 
+  // and has been temporarily commented out.
+  // StackCrawlState state(reinterpret_cast<uintptr_t*>(trace.data()),
+  //                       trace.size());
+  // _Unwind_Backtrace(&TraceStackFrame, &state);
+  // return state.frame_count;
+  return 0;
 }
 
 // static

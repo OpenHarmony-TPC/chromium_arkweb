@@ -117,6 +117,7 @@ class NWebConnectNativeManager {
   std::unordered_map<int, std::weak_ptr<NWebHandler>> nweb_handler_map_;
  
   std::unordered_map<int, base::Process> connectid_process_map_;
+
 };
 
 class NWebNativeMessageCallbackImpl : public NWebNativeMessageCallback {

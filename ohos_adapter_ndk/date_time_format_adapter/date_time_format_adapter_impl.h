@@ -16,7 +16,7 @@
 #ifndef DATE_TIME_FORMAT_ADAPTER_IMPL_H
 #define DATE_TIME_FORMAT_ADAPTER_IMPL_H
 
-#include "date_time_format_adapter.h"
+#include "third_party/ohos_ndk/includes/ohos_adapter/date_time_format_adapter.h"
 
 #include <string>
 #include <vector>

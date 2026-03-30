@@ -37,6 +37,10 @@ public:
     virtual void OnReadData() = 0;
 
     virtual void OnReadData(OHOS::NWeb::AudioCaptureSourceTypeAdapter type) = 0;
+
+    virtual void OnStateChanged(OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode) = 0;
+
+    virtual void OnUserSelected() = 0;
 };
 
 }

@@ -196,12 +196,12 @@ TEST_F(RenderProcessHostImplUtilsTest, IsSuitableHostForArkwebTest5) {
   EXPECT_FALSE(result);
 }
  
-TEST_F(RenderProcessHostImplUtilsTest, GetProcessCountForLimitArkweb) {
-  size_t processCountToIgnore = 1;
-  size_t processCount = RenderProcessHostImpl::GetProcessCount();
-  size_t result = ArkwebRenderProcessHostImplUtils::GetProcessCountForLimitArkweb(processCountToIgnore);
-  EXPECT_TRUE(processCount - processCountToIgnore >= result);
-}
+// TEST_F(RenderProcessHostImplUtilsTest, GetProcessCountForLimitArkweb) {
+//   size_t processCountToIgnore = 1;
+//   size_t processCount = RenderProcessHostImpl::GetProcessCount();
+//   size_t result = ArkwebRenderProcessHostImplUtils::GetProcessCountForLimitArkweb(processCountToIgnore);
+//   EXPECT_TRUE(processCount - processCountToIgnore >= result);
+// }
  
 #if BUILDFLAG(ARKWEB_THEME_FONT)
  

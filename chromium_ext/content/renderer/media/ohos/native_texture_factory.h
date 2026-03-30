@@ -148,7 +148,7 @@ class CONTENT_EXPORT NativeTextureFactory
   ~NativeTextureFactory();
 
   scoped_refptr<gpu::GpuChannelHost> channel_;
-  scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface_;
+  scoped_refptr<gpu::SharedImageInterface> shared_image_interface_;
 };
 
 }  // namespace content

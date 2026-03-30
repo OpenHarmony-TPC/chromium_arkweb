@@ -36,7 +36,6 @@ void VideoCaptureHostUtils::SetRenderFrameHostId(GlobalRenderFrameHostId render_
     render_frame_host_id_ = render_frame_host_id;
 }
 
-// LCOV_EXCL_START
 void VideoCaptureHostUtils::ReportStartScreenCaptureBind(int child_id) {
     if (!BrowserThread::CurrentlyOn(BrowserThread::UI)) {
         GetUIThreadTaskRunner({})->PostTask(FROM_HERE,
@@ -78,7 +77,6 @@ void VideoCaptureHostUtils::ReportStartScreenCapture() {
 void VideoCaptureHostUtils::ReportStopScreenCapture() {
     ReportStopScreenCaptureBind(render_frame_host_id_.child_id);
 }
-// LCOV_EXCL_STOP
 #endif
 
 #if BUILDFLAG(ARKWEB_WEBRTC)
@@ -131,7 +129,7 @@ void VideoCaptureHostUtils::OnCameraCaptureStateChanged(CameraCaptureState new_s
 
 void VideoCaptureHostUtils::OnCameraCaptureStarted(
     const VideoCaptureControllerID& controller_id) {
-    if(!videoCaptureHost){
+    if (!videoCaptureHost) {
         LOG(ERROR) << "videoCaptureHost is null.";
         return;
     }

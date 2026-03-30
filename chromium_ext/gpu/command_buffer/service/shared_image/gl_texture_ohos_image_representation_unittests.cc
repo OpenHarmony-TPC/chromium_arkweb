@@ -46,6 +46,7 @@
 #include "ui/gl/init/gl_factory.h"
 #include "ui/gl/test/gl_surface_test_support.h"
 #include "ui/gl/test/gl_test_support.h"
+#include "gpu/command_buffer/service/shared_image/shared_image_manager.h"
 
 using namespace gpu;
 using testing::_;

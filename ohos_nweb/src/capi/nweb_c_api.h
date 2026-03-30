@@ -71,6 +71,8 @@ typedef void (*LogUrlFun)(const char* url);
 
 typedef void (*OnUpdateProxyTokenFun)(const char* old_token);
 
+typedef void (*SavePageResultCallback)(int32_t nweb_id, int32_t callback_id, bool result);
+
 // / WebDownloader functions.
 NWEB_EXPORT void WebDownloadManager_PutDownloadCallback(
     WebDownloadDelegateCallback* callback);
@@ -118,6 +120,9 @@ WebDownload_GetItemState(int32_t nweb_id, long download_item_id);
 
 NWEB_EXPORT NWebDownloadItemState
 WebDownload_GetItemStateByGuid(const std::string& guid);
+
+NWEB_EXPORT NWebDownloadItemState
+WebDownload_GetItemStateByGuidV2(const char* guid);
 
 NWEB_EXPORT void WebDownloadItem_CreateWebDownloadItem(
     NWebDownloadItem** download_item);

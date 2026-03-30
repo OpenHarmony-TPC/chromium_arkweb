@@ -19,9 +19,10 @@
 
 #include "components/viz/host/host_frame_sink_manager.h"
 #include "arkweb/build/features/features.h"
+#include "components/viz/host/viz_host_export.h"
 
 namespace viz {
-class HostFrameSinkManagerUtils {
+class VIZ_HOST_EXPORT HostFrameSinkManagerUtils {
 public:
     raw_ptr<HostFrameSinkManager> hostFrameSinkManager;
     HostFrameSinkManagerUtils(HostFrameSinkManager* manager);
@@ -30,6 +31,10 @@ public:
     void SetEnableLowerFrameRate(bool enabled, const FrameSinkId& frame_sink_id);
     void SetEnableHalfFrameRate(bool enabled, const FrameSinkId& frame_sink_id);
     void EvictFrameBackBuffers(const FrameSinkId& frame_sink_id);
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+    void SetIfNeedCleanBuffers(const FrameSinkId& frame_sink_id, bool need_clean_buffers);
 #endif
 
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
@@ -54,6 +59,8 @@ public:
 #endif
 
 void UtilsRestoreRenderFit(uint32_t client_id, uint32_t sink_id);
+
+void UtilsModifyRenderFit(int32_t fitType, uint32_t client_id, uint32_t sink_id);
 };
 
 }  // namespace viz

@@ -125,7 +125,6 @@ scoped_refptr<GLContext> CreateGLContext(GLShareGroup* share_group,
                                    compatible_surface, attribs);
       }
   }
-
 }
 
 scoped_refptr<GLSurface> CreateViewGLSurface(GLDisplay* display,

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/stringprintf.h"
 #include "third_party/blink/public/strings/grit/blink_strings.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_scroll_into_view_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_boolean_scrollintoviewoptions.h"
@@ -33,7 +34,9 @@
 
 #include "arkweb/chromium_ext/third_party/blink/renderer/modules/media_controls/elements/media_control_playback_speed_list_element_ext.h"
 
+#if !BUILDFLAG(IS_ARKWEB_EXT)
 #define IDS_HW_MEDIA_VIDEO_PLAYBACK_SPEED_VALUE 62071
+#endif
 
 namespace blink {
 
@@ -92,7 +95,8 @@ String MediaControlPlaybackSpeedListElementExt::CreatePlaybackSpeedLabelContentH
   } else {
     playback_rate_precised = base::StringPrintf("%.2f", playback_rate);
   }
-  base::StringAppendVHelper(&rate_item_content, format.c_str(), playback_rate_precised.c_str());
+  std::string localstr = GetLocale().ConvertToLocalizedNumber(String::FromUTF8(playback_rate_precised)).Utf8();
+  base::StringAppendVHelper(&rate_item_content, format.c_str(), localstr.c_str());
   return String(rate_item_content);
 }
 #endif

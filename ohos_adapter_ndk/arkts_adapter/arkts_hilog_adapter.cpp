@@ -15,6 +15,7 @@
 
  #include "arkts_hilog_adapter.h"
 
+ #include "arkweb/chromium_ext/base/ohos/render_uid_define.h"
  #include <unistd.h>
  #include <sys/types.h>
  #include "securec.h"
@@ -44,6 +45,8 @@ static const std::unordered_map<LogLevel,  std::string> LEVEL_MAP = {
     {LogLevel::ERROR, "error"},
     {LogLevel::FATAL, "fatal"},
 };
+
+using namespace OHOS::NWeb;
 
 extern "C" {
 inline void Format(std::string& fmtStr)
@@ -84,16 +87,6 @@ napi_env ArktsHilogAdapter::GetEnv()
     return env;
 }
 
-napi_value ArktsHilogAdapter::GetHilogModule()
-{
-    static napi_value hilogModule = nullptr;
-    napi_env env = GetEnv();
-    if (!hilogModule) {
-        napi_load_module_with_info(env, "@ohos.hilog", nullptr, &hilogModule);
-    }
-    return hilogModule;
-}
-
 int ArktsHilogAdapter::LogInternal(LogLevel level, const char* fmt, ...)
 {
     napi_env env = GetEnv();
@@ -107,7 +100,8 @@ int ArktsHilogAdapter::LogInternal(LogLevel level, const char* fmt, ...)
         return -1;
     }
 
-    napi_value hilogModule = GetHilogModule();
+    napi_value hilogModule;
+    napi_load_module_with_info(env, "@ohos.hilog", nullptr, &hilogModule);
     if (!hilogModule) {
         napi_close_handle_scope(env, scope);
         return -1;
@@ -142,9 +136,12 @@ int ArktsHilogAdapter::LogInternal(LogLevel level, const char* fmt, ...)
     }
 
     napi_value flag;
-    uint32_t domain = LOG_RENDER_DOMAIN;
-    if ((getuid() / BROWSER_UID_BASE) != 0) {
-        domain = LOG_APP_DOMAIN;
+    uint32_t domain = LOG_APP_DOMAIN;
+    uid_t uid = getuid();
+    int renderId = uid % BASE_USER_RANGE_FOR_NWEB;
+    if (renderId >= START_ID_FOR_RENDER_PROCESS_ISOLATION &&
+        renderId <= END_ID_FOR_RENDER_PROCESS_ISOLATION) {
+        domain = LOG_RENDER_DOMAIN;
     }
     status = napi_create_int32(env, domain, &flag);
     if (status != napi_ok) {

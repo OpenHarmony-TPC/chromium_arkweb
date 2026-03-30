@@ -200,8 +200,11 @@ void ArkWebDeviceDataManagerUtils::SetupDeviceListeners() {
     return;
   }
 
+#if !defined(COMPONENT_BUILD) // FIXME
   sequenced_task_runner_ =
       content::GetUIThreadTaskRunner({});
+#endif
+
   if (!sequenced_task_runner_) {
     LOG(ERROR) << "DeviceDataManager GetUIThreadTaskRunner is null";
     return;
@@ -248,6 +251,8 @@ void ArkWebDeviceDataManagerUtils::SetupDeviceListeners() {
             utils->AddKeyboardDevice(keyboardDevice);
           }
         };
+
+#if !defined(COMPONENT_BUILD) // FIXME
     if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
       sequenced_task_runner_->PostTask(
           FROM_HERE, base::BindOnce(addMMIDeviceInfoFunction, info,
@@ -255,6 +260,9 @@ void ArkWebDeviceDataManagerUtils::SetupDeviceListeners() {
     } else {
       addMMIDeviceInfoFunction(info, this);
     }
+#else
+    addMMIDeviceInfoFunction(info, this);
+#endif
   }
 }
 // LCOV_EXCL_STOP

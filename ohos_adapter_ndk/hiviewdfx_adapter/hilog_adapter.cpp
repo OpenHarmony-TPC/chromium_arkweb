@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "arkweb/chromium_ext/base/ohos/render_uid_define.h"
 #include "hilog_adapter.h"
 #include "securec.h"
-#include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <hilog/log.h>
@@ -23,6 +23,8 @@
 
 namespace OHOS::NWeb {
 namespace {
+constexpr uint32_t USER_RANGE_FOR_NWEB = 200000;
+constexpr uint32_t START_ID_FOR_RENDER_PROCESS = 100000;
 #if defined(X86_64_ENABLE)
 constexpr uint32_t LOG_APP_DOMAIN = 0x004500;
 constexpr uint32_t LOG_RENDER_DOMAIN = 0x004501;
@@ -67,13 +69,10 @@ int HiLogAdapterPrintLog(uint32_t level, const char* tag, const char* fmt, va_li
 {
     uint32_t domain = LOG_APP_DOMAIN;
     uid_t uid = getuid();
-    auto app_mgr_client_adapter =
-      OHOS::NWeb::OhosAdapterHelper::GetInstance().CreateAafwkAdapter();
-    if (app_mgr_client_adapter == nullptr) {
-        return;
-    }
-    if (app_mgr_client_adapter->IsRenderProcessByUid(static_cast<int>(uid))) {
-        domain = LOG_RENDER_DOMAIN;
+    int renderId = uid % BASE_USER_RANGE_FOR_NWEB;
+    if (renderId >= START_ID_FOR_RENDER_PROCESS_ISOLATION &&
+        renderId <= END_ID_FOR_RENDER_PROCESS_ISOLATION) {
+      domain = LOG_RENDER_DOMAIN;
     }
     std::string fmtStr(fmt);
     Format(fmtStr);

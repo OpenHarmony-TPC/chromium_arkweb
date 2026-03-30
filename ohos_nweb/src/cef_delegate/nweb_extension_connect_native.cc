@@ -133,5 +133,6 @@ void NWebConnectNativeManager::DisconnectNative(int connectionId) {
     LOG(ERROR) << "DisconnectNative Fail, Cannot found PID:" << connectionId;
   }
 }
+
 }  // namespace OHOS::NWeb
 

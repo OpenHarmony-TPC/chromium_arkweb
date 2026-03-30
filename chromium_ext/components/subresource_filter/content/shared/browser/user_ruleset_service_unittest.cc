@@ -29,6 +29,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_simple_task_runner.h"
+#include "base/strings/string_number_conversions.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/subresource_filter/content/shared/browser/user_unindexed_ruleset_stream_generator.h"
 #include "components/subresource_filter/core/browser/subresource_filter_features.h"

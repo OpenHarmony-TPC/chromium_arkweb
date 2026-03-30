@@ -888,10 +888,6 @@ bool IMFAdapterImpl::Attach(std::shared_ptr<IMFTextListenerAdapter> listener, bo
 
     std::lock_guard<std::mutex> lock(textEditorProxyMutex_);
 
-    if (textEditorProxy_ != nullptr && isResetListener) {
-        IMFTextEditorProxyImpl::TextEditorProxyDestroy(textEditorProxy_);
-        textEditorProxy_ = nullptr;
-    }
     if (textEditorProxy_ == nullptr) {
         InputMethod_TextEditorProxy* textEditorNewProxy = IMFTextEditorProxyImpl::TextEditorProxyCreate(listener);
         if (textEditorNewProxy == nullptr) {
@@ -936,10 +932,6 @@ bool IMFAdapterImpl::AttachWithRequestKeyboardReason(std::shared_ptr<IMFTextList
 
     std::lock_guard<std::mutex> lock(textEditorProxyMutex_);
 
-    if (textEditorProxy_ != nullptr && isResetListener) {
-        IMFTextEditorProxyImpl::TextEditorProxyDestroy(textEditorProxy_);
-        textEditorProxy_ = nullptr;
-    }
     if (textEditorProxy_ == nullptr) {
         InputMethod_TextEditorProxy* textEditorNewProxy = IMFTextEditorProxyImpl::TextEditorProxyCreate(listener);
         if (textEditorNewProxy == nullptr) {
@@ -953,10 +945,10 @@ bool IMFAdapterImpl::AttachWithRequestKeyboardReason(std::shared_ptr<IMFTextList
     if (ret != IME_ERR_OK) {
         return false;
     }
-    InputMethod_AttachOptions *options = OH_AttachOptions_Create(isShowKeyboard);
-    /*TODO: wait arkweb upgrade ndk15
-    InputMethod_AttachOptions* options = OH_AttachOptions_CreateWithRequestKeyboardReason(isShowKeyboard, requestKeyboardReason);
-    */
+    InputMethod_AttachOptions* options =
+        OH_AttachOptions_CreateWithRequestKeyboardReason(
+            isShowKeyboard, static_cast<InputMethod_RequestKeyboardReason>(
+                                requestKeyboardReason));
     ret = OH_InputMethodController_Attach(textEditorProxy_, options, &inputMethodProxy_);
     OH_AttachOptions_Destroy(options);
     if (ret != IME_ERR_OK) {

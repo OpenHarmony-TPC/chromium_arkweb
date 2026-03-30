@@ -15,6 +15,7 @@
 
 #include "ndk_version.h"
 #include <string>
+#include <cstdlib>
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 
 #ifdef __cplusplus

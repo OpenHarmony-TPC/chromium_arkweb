@@ -21,7 +21,6 @@
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
 
-
 namespace OHOS::NWeb {
 constexpr int32_t INVALID = -1;
 namespace {

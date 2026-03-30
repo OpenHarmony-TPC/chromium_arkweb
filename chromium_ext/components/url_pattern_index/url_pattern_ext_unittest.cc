@@ -23,7 +23,6 @@
 #include "base/check_op.h"
 #include "base/notreached.h"
 #include "base/numerics/checked_math.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "components/url_pattern_index/flat/url_pattern_index_generated.h"
 #include "components/url_pattern_index/fuzzy_pattern_matching.h"
@@ -170,7 +169,7 @@ TEST_F(UrlPatternExtTest, CssPattern_DifferentMatchCaseSettings) {
   EXPECT_TRUE(pattern1.match_case());
 
   CssPattern pattern2(*CreateFlatCssRule("rule", {"example.com"}, {},
-                                         flat::OptionFlag_IS_CASE_INSENSITIVE));
+                                         flat::CssOptionFlag_IS_CASE_INSENSITIVE));
   EXPECT_FALSE(pattern2.match_case());
 }
 #endif  // BUILDFLAG(ARKWEB_ADBLOCK)

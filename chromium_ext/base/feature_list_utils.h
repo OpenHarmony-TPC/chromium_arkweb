@@ -19,12 +19,13 @@
 #include "base/feature_list.h"
 #include "base/memory/raw_ptr.h"
 #include "arkweb/build/features/features.h"
+#include "base/base_export.h"
 
 namespace base {
 class FeatureList;
 class PersistentMemoryAllocator;
 
-class FeatureListUtils {
+class BASE_EXPORT FeatureListUtils {
  public:
   FeatureListUtils(FeatureList* feature_list);
 

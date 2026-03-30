@@ -29,10 +29,10 @@ namespace v8 {
 namespace internal {
 
 // Linux perf tool logging support.
-class LinuxPerfJitLogger : public CodeEventLogger {
+class PerfJitLogger : public CodeEventLogger {
  public:
-  explicit LinuxPerfJitLogger(Isolate* isolate);
-  ~LinuxPerfJitLogger() override;
+  explicit PerfJitLogger(Isolate* isolate);
+  ~PerfJitLogger() override;
 
   void CodeMoveEvent(Tagged<InstructionStream> from,
                      Tagged<InstructionStream> to) override {
@@ -40,8 +40,8 @@ class LinuxPerfJitLogger : public CodeEventLogger {
   }
   void BytecodeMoveEvent(Tagged<BytecodeArray> from,
                          Tagged<BytecodeArray> to) override {}
-  void CodeDisableOptEvent(Handle<AbstractCode> code,
-                           Handle<SharedFunctionInfo> shared) override {}
+  void CodeDisableOptEvent(DirectHandle<AbstractCode> code,
+                           DirectHandle<SharedFunctionInfo> shared) override {}
 
  private:
   bool HasEnoughMemory(uint64_t size);
@@ -50,13 +50,13 @@ class LinuxPerfJitLogger : public CodeEventLogger {
 
   uint64_t GetTimestamp();
   void LogRecordedBuffer(Tagged<AbstractCode> code,
-                         MaybeHandle<SharedFunctionInfo> maybe_shared,
+                         MaybeDirectHandle<SharedFunctionInfo> maybe_shared,
                          const char* name,
-                         int length) override;
+                         size_t length) override;
 #if V8_ENABLE_WEBASSEMBLY
   void LogRecordedBuffer(const wasm::WasmCode* code,
                          const char* name,
-                         int length) override;
+                         size_t length) override;
 #endif  // V8_ENABLE_WEBASSEMBLY
 
   // File buffer size of the low-level log. We don't use the default to
@@ -66,12 +66,12 @@ class LinuxPerfJitLogger : public CodeEventLogger {
   void WriteJitCodeLoadEntry(const uint8_t* code_pointer,
                              uint32_t code_size,
                              const char* name,
-                             int name_length);
+                             size_t name_length);
 
   void WriteByteCodeLoadEntry(uintptr_t code_pointer,
                               uint32_t code_size,
                               const char* name,
-                              int name_length);
+                              size_t name_length);
 
   void LogWriteBytes(const char* bytes, uint64_t size);
   void LogWriteHeader();
@@ -124,7 +124,7 @@ class LinuxPerfJitLogger : public CodeEventLogger {
   static uint64_t reference_count_;
   static uint8_t* marker_address_;
   static uint8_t* marker_address_base_;
-  static uint64_t code_index_;
+  static uint32_t code_index_;
   static int process_id_;
 };
 

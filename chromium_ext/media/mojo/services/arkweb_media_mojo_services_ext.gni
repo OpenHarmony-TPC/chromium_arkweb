@@ -12,3 +12,7 @@ if (arkweb_enable_cdm) {
     "//arkweb/chromium_ext/media/mojo/services/ohos_mojo_util.h",
   ]
 }
+
+if (is_component_build) { # FIXME
+  arkweb_media_mojo_services_sources = []
+}

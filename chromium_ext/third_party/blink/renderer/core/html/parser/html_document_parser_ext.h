@@ -22,12 +22,13 @@
 #include "arkweb/build/features/features.h"
 #include "third_party/blink/renderer/core/html/parser/html_document_parser.h"
 #include "base/containers/buffer_iterator.h"
+#include "third_party/blink/renderer/core/core_export.h"
 
 namespace blink {
 #if BUILDFLAG(IS_OHOS)
 constexpr int kOptimizedMaxTokenizationBudget = 150;
-void SetOptimizeParserBudgetEnabled(bool enable);
-bool GetOptimizeParserBudgetEnabled();
+void CORE_EXPORT SetOptimizeParserBudgetEnabled(bool enable);
+bool CORE_EXPORT GetOptimizeParserBudgetEnabled();
 #endif
 }
 #endif

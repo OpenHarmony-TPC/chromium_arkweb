@@ -43,8 +43,11 @@
 #include "extensions/common/manifest_url_handlers.h"
 #include "extensions/test/test_extensions_client.h"
 
-#if BUILDFLAG(ARKWEB_NWEB_EX)
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+
+#if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "extensions/browser/extension_util.h"
 #include "extensions/common/manifest_handlers/incognito_info.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_manager_dispatcher.h"
@@ -484,52 +487,52 @@ TEST_F(ExtensionRegistryInfoManagerTest, GetExtensionManifestInfo_SettingsOverri
   std::string search_url = "http://google.com/search.html";
   std::string alternate_url = "http://wikipedia.org/wiki/Favicon";
   std::vector<ManifestTestHelper> helpers = {{[=](base::Value::Dict& settings_override) {
-    settings_override.Set("homepage", homepage);
-    }, [=](const WebExtensionManifestInfo& manifest) {
-      ASSERT_TRUE(manifest.settings_overrides.has_value());
-      ASSERT_TRUE(manifest.settings_overrides->homepage.has_value());
-      EXPECT_EQ(manifest.settings_overrides->homepage, homepage);
+         settings_override.Set("homepage", homepage);
+       }, [=](const WebExtensionManifestInfo& manifest) {
+         ASSERT_TRUE(manifest.settings_overrides.has_value());
+         ASSERT_TRUE(manifest.settings_overrides->homepage.has_value());
+         EXPECT_EQ(manifest.settings_overrides->homepage, homepage);
     }},
     {[=](base::Value::Dict& settings_override) {
-      base::Value::List startup_pages;
-      startup_pages.Append(startup);
-      settings_override.Set("startup_pages", std::move(startup_pages));
-    }, [=](const WebExtensionManifestInfo& manifest) {
-      ASSERT_TRUE(manifest.settings_overrides.has_value());
-      ASSERT_EQ(manifest.settings_overrides->startup_pages.size(), 1u);
-      ASSERT_EQ(manifest.settings_overrides->startup_pages[0], startup);
+         base::Value::List startup_pages;
+         startup_pages.Append(startup);
+         settings_override.Set("startup_pages", std::move(startup_pages));
+       }, [=](const WebExtensionManifestInfo& manifest) {
+         ASSERT_TRUE(manifest.settings_overrides.has_value());
+         ASSERT_EQ(manifest.settings_overrides->startup_pages.size(), 1u);
+         ASSERT_EQ(manifest.settings_overrides->startup_pages[0], startup);
     }},
     {[=](base::Value::Dict& settings_override) {
-      base::Value::Dict search_provider;
-      search_provider.Set("search_url", search_url);
-      search_provider.Set("name", "test");
-      search_provider.Set("keyword", "lock");
-      search_provider.Set("encoding", "UTF-8");
-      search_provider.Set("is_default", true);
-      search_provider.Set("favicon_url", alternate_url);
-      settings_override.Set("search_provider", std::move(search_provider));
-    }, [=](const WebExtensionManifestInfo& manifest) {
-      ASSERT_TRUE(manifest.settings_overrides.has_value());
-      ASSERT_TRUE(manifest.settings_overrides->search_provider.has_value());
-      ASSERT_EQ(manifest.settings_overrides->search_provider->search_url, search_url);
+         base::Value::Dict search_provider;
+         search_provider.Set("search_url", search_url);
+         search_provider.Set("name", "test");
+         search_provider.Set("keyword", "lock");
+         search_provider.Set("encoding", "UTF-8");
+         search_provider.Set("is_default", true);
+         search_provider.Set("favicon_url", alternate_url);
+         settings_override.Set("search_provider", std::move(search_provider));
+       }, [=](const WebExtensionManifestInfo& manifest) {
+         ASSERT_TRUE(manifest.settings_overrides.has_value());
+         ASSERT_TRUE(manifest.settings_overrides->search_provider.has_value());
+         ASSERT_EQ(manifest.settings_overrides->search_provider->search_url, search_url);
     }},
     {[=](base::Value::Dict& settings_override) {
-      auto alternate_urls = base::Value::List();
-      alternate_urls.Append(alternate_url);
-      base::Value::Dict search_provider;
-      search_provider.Set("search_url", search_url);
-      search_provider.Set("name", "test");
-      search_provider.Set("keyword", "lock");
-      search_provider.Set("encoding", "UTF-8");
-      search_provider.Set("is_default", true);
-      search_provider.Set("alternate_urls", std::move(alternate_urls));
-      settings_override.Set("search_provider", std::move(search_provider));
-    }, [=](const WebExtensionManifestInfo& manifest) {
-      ASSERT_TRUE(manifest.settings_overrides.has_value());
-      ASSERT_TRUE(manifest.settings_overrides->search_provider.has_value());
-      ASSERT_TRUE(manifest.settings_overrides->search_provider->alternate_urls.size() == 1u);
-      ASSERT_EQ(manifest.settings_overrides->search_provider->alternate_urls[0], alternate_url);
-    }}};
+         auto alternate_urls = base::Value::List();
+         alternate_urls.Append(alternate_url);
+         base::Value::Dict search_provider;
+         search_provider.Set("search_url", search_url);
+         search_provider.Set("name", "test");
+         search_provider.Set("keyword", "lock");
+         search_provider.Set("encoding", "UTF-8");
+         search_provider.Set("is_default", true);
+         search_provider.Set("alternate_urls", std::move(alternate_urls));
+         settings_override.Set("search_provider", std::move(search_provider));
+       }, [=](const WebExtensionManifestInfo& manifest) {
+         ASSERT_TRUE(manifest.settings_overrides.has_value());
+         ASSERT_TRUE(manifest.settings_overrides->search_provider.has_value());
+         ASSERT_TRUE(manifest.settings_overrides->search_provider->alternate_urls.size() == 1u);
+         ASSERT_EQ(manifest.settings_overrides->search_provider->alternate_urls[0], alternate_url);
+       }}};
   const std::string extension_id = "test-extension-id";
   for (auto helper : helpers) {
     base::Value::Dict settings_override;

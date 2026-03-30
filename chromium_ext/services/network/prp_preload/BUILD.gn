@@ -20,6 +20,8 @@ source_set("prp_preload") {
     "//base",
     "//net/third_party/quiche",
     "//services/network/public/mojom",
+    "//ohos_glue:ohos_adapter_glue_source",
+    "//third_party:huawei_securec",
   ]
 
   if (target_cpu == "arm64") {

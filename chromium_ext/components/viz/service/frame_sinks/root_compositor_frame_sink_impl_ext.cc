@@ -20,6 +20,8 @@
 #include "arkweb/chromium_ext/components/viz/service/frame_sinks/external_begin_frame_source_ohos.h"
 #endif  // BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
 
+#include "base/trace_event/trace_event.h"
+
 namespace viz {
 
 RootCompositorFrameSinkImplExt::RootCompositorFrameSinkImplExt(
@@ -54,24 +56,30 @@ RootCompositorFrameSinkImplExt::RootCompositorFrameSinkImplExt(
 #if BUILDFLAG(ARKWEB_SYNC_RENDER)
 void RootCompositorFrameSinkImplExt::SetDrawRect(const gfx::Rect& new_rect) {
   external_begin_frame_source_->SetDrawRect(new_rect);
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->SetDrawRect(new_rect);
+#endif
 }
 
 void RootCompositorFrameSinkImplExt::SetDrawMode(int32_t mode) {
   LOG(INFO) << "rootCompositorFrameSinkImpl::SetDrawMode";
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->SetDrawMode(mode);
+#endif
 }
 #endif  // BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 void RootCompositorFrameSinkImplExt::SetNativeInnerWeb(bool isInnerWeb) {
+#if !defined(COMPONENT_BUILD) // FIXME
    display_->display_utils()->SetNativeInnerWeb(isInnerWeb);
+#endif
 }
 #endif
 
 #if BUILDFLAG(ARKWEB_VSYNC_SCHEDULE)
 void RootCompositorFrameSinkImplExt::SetBypassVsyncCondition(int32_t condition) {
-#if !defined(COMPONENT_BULID) // FIXME
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->SetBypassVsyncCondition(condition);
 #endif
 }
@@ -84,7 +92,9 @@ void RootCompositorFrameSinkImplExt::SetShouldFrameSubmissionBeforeDraw(
   TRACE_EVENT1(
       "viz", "RootCompositorFrameSinkImpl::SetShouldFrameSubmissionBeforeDraw",
       "should", should);
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->SetShouldFrameSubmissionBeforeDraw(should);
+#endif
   if (callback) {
     std::move(callback).Run();
   }
@@ -102,13 +112,30 @@ void RootCompositorFrameSinkImplExt::SetEnableHalfFrameRate(bool enabled) {
 
 void RootCompositorFrameSinkImplExt::EvictFrameBackBuffers() {
   TRACE_EVENT0("viz", "RootCompositorFrameSinkImpl::EvictFrameBackBuffers");
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->DiscardBackbuffer();
+#endif
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+void RootCompositorFrameSinkImplExt::SetIfNeedCleanBuffers(bool need_clean_buffers)
+{
+  TRACE_EVENT1("viz", "RootCompositorFrameSinkImplExt::SetIfNeedCleanBuffers ",
+               "need_clean_buffers: ", need_clean_buffers);
+#if !defined(COMPONENT_BUILD) // FIXME
+  if (display_ && display_->display_utils()) {
+    display_->display_utils()->SetIfNeedCleanBuffers(need_clean_buffers);
+  }
+#endif
 }
 #endif
 
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
 void RootCompositorFrameSinkImplExt::SetIsOfflineWebComponentInactive(bool is_inactive) {
+#if !defined(COMPONENT_BUILD) // FIXME
   display_->display_utils()->CleanBufferAfterSwapBuffer(is_inactive);
+#endif
 }
 #endif
 
@@ -137,7 +164,9 @@ void RootCompositorFrameSinkImplExt::SetCurrentFrameSinkId(
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
 void RootCompositorFrameSinkImplExt::DisableSwapUntilMaximized() {
   if (display_) {
+#if !defined(COMPONENT_BUILD) // FIXME
     display_->display_utils()->DisableSwapUntilMaximized();
+#endif
   }
 }
 
@@ -148,6 +177,15 @@ void RootCompositorFrameSinkImplExt::RestoreRenderFit(
   }
 }
 #endif  // ARKWEB_MAXIMIZE_RESIZE
+
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+void RootCompositorFrameSinkImplExt::ModifyRenderFit(int32_t fitType,
+                                                     const FrameSinkId& frame_sink_id) {
+  if (managerImplUtils) {
+    managerImplUtils->ModifyRenderFit(fitType, frame_sink_id);
+  }
+}
+#endif  // ARKWEB_ROTATE_RESIZE
 
 #if BUILDFLAG(ARKWEB_PIP)
 void RootCompositorFrameSinkImplExt::SetPipActive(bool active) {

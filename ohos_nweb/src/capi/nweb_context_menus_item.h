@@ -15,7 +15,8 @@
  
 #ifndef OHOS_NWEB_SRC_NWEB_CONTEXT_MENUS_ITEM_H_
 #define OHOS_NWEB_SRC_NWEB_CONTEXT_MENUS_ITEM_H_
- 
+
+#include <string> 
 #include <vector>
 
 // This is an exported struct. Do not modify it or its nested structs.
@@ -38,5 +39,28 @@ struct NWebContextMenusItemV2 {
   std::optional<bool> isOffTheRecord;
   std::optional<int32_t> intId;
 };
+
+typedef enum {
+  WEB_EXTENSION_MENUITEMTYPE_NONE,
+  WEB_EXTENSION_MENUITEMTYPE_COMMAND,
+  WEB_EXTENSION_MENUITEMTYPE_CHECK,
+  WEB_EXTENSION_MENUITEMTYPE_RADIO,
+  WEB_EXTENSION_MENUITEMTYPE_SEPARATOR,
+  WEB_EXTENSION_MENUITEMTYPE_SUBMENU,
+} WebExtensionMenusType;
+ 
+struct WebExtensionContextMenusItem {
+  int commandId;
+  int groupId;
+  bool isSubMenu;
+  int parentId;
+  bool checked;
+  bool enabled;
+  bool visible;
+  std::string label;
+  WebExtensionMenusType type;
+};
+ 
+using WebExtensionContextMenusItemVector = std::vector<WebExtensionContextMenusItem>;
  
 #endif  //  OHOS_NWEB_SRC_NWEB_CONTEXT_MENUS_ITEM_H_

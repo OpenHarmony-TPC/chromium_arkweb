@@ -99,6 +99,7 @@ class NWebDragDataImpl : public NWebDragData {
     allowed_op_ = allowed_op;
   }
 
+  void ClearDragData() override;
  private:
   raw_ptr<void> image_buffer_ = nullptr;
   void GenerateOhosDragBitmapFromOrigin(const SkBitmap& in_bitmap,

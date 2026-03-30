@@ -59,7 +59,7 @@ protected:
 
         base::ScopedPlatformFile scoped_handle(read_file.TakePlatformFile());
 
-        mojo::ScopedHandle script_handle =
+        mojo::ScopedHandle script_handle = 
                             mojo::WrapPlatformFile(std::move(scoped_handle));
 
         return script_handle;
@@ -77,10 +77,10 @@ protected:
     }
 
     void GenerateCodeCacheTest(
-                const WTF::String& url,
-                const WTF::String& script,
+                const String& url,
+                const String& script,
                 mojom::blink::CacheOptionsPtr cache_options,
-                LocalFrameMojoHandler::GenerateCodeCacheCallback callback)
+               LocalFrameMojoHandler:: GenerateCodeCacheCallback callback)
     {
         handler_->GenerateCodeCache(url, script,
                             std::move(cache_options), std::move(callback));
@@ -88,7 +88,7 @@ protected:
     }
 
     void GetImageFromCacheTest(
-                const WTF::String& url,
+                const String& url,
                 LocalFrameMojoHandler::GetImageFromCacheCallback callback)
     {
         handler_->GetImageFromCache(url, std::move(callback));
@@ -139,10 +139,10 @@ TEST_F(ArkWebLocalFrameMojoHandlerExtTest, GenerateCodeCache_Success) {
     auto cache_options = mojom::blink::CacheOptions::New();
     EXPECT_CALL(*mock_callback_, GenerateCodeCacheCallback(testing::Eq(0)))
         .Times(1);
-
+    
     auto callback = base::BindOnce(&MockCallbackHelper::GenerateCodeCacheCallback,
                                     base::Unretained(mock_callback_.get()));
-
+    
     GenerateCodeCacheTest(
         "https://example.com/script.js",
         "console.log('Hello World');",
@@ -154,10 +154,10 @@ TEST_F(ArkWebLocalFrameMojoHandlerExtTest, GenerateCodeCache_EmptyScript) {
     auto cache_options = mojom::blink::CacheOptions::New();
     EXPECT_CALL(*mock_callback_, GenerateCodeCacheCallback(testing::Eq(0)))
         .Times(1);
-
+    
     auto callback = base::BindOnce(&MockCallbackHelper::GenerateCodeCacheCallback,
                                     base::Unretained(mock_callback_.get()));
-
+    
     GenerateCodeCacheTest(
         "https://example.com/script.js",
         "",
@@ -169,10 +169,10 @@ TEST_F(ArkWebLocalFrameMojoHandlerExtTest, GenerateCodeCache_EmptyUrl) {
     auto cache_options = mojom::blink::CacheOptions::New();
     EXPECT_CALL(*mock_callback_, GenerateCodeCacheCallback(testing::Eq(0)))
         .Times(1);
-
+    
     auto callback = base::BindOnce(&MockCallbackHelper::GenerateCodeCacheCallback,
                                     base::Unretained(mock_callback_.get()));
-
+    
     GenerateCodeCacheTest(
         "",
         "console.log('Hello World');",
@@ -183,28 +183,28 @@ TEST_F(ArkWebLocalFrameMojoHandlerExtTest, GenerateCodeCache_EmptyUrl) {
 TEST_F(ArkWebLocalFrameMojoHandlerExtTest, JavaScriptExecuteRequestExt_Success) {
     const std::string kTestScript = "1 + 2;";
     const uint64_t kScriptLength = kTestScript.size();
-
+    
     mojo::ScopedHandle script_handle = CreateMockHandle(kTestScript);
     auto callback = base::BindOnce(&MockCallbackHelper::JavaScriptCallback,
-                                base::Unretained(mock_callback_.get()));
+                                    base::Unretained(mock_callback_.get()));
 
     JavaScriptExecuteRequestExtTest(
         std::move(script_handle), 
         kScriptLength, 
         true,  // wants_result
         std::move(callback));
-
+    
     base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(ArkWebLocalFrameMojoHandlerExtTest, JavaScriptExecuteRequestExt_NoResult) {
     const std::string kTestScript = "console.log('Hello');";
     const uint64_t kScriptLength = kTestScript.size();
-
+    
     mojo::ScopedHandle script_handle = CreateMockHandle(kTestScript);
 
     auto callback = base::BindOnce(&MockCallbackHelper::JavaScriptCallback,
-                                base::Unretained(mock_callback_.get()));
+                                    base::Unretained(mock_callback_.get()));
 
     JavaScriptExecuteRequestExtTest(
         std::move(script_handle), 

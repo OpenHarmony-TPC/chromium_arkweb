@@ -41,13 +41,12 @@ class MockEntry : public Entry {
   MOCK_METHOD(void, Close, (), (override));
   MOCK_METHOD(std::string, GetKey, (), (const, override));
   MOCK_METHOD(base::Time, GetLastUsed, (), (const, override));
-  MOCK_METHOD(base::Time, GetLastModified, (), (const, override));
-  MOCK_METHOD(int32_t, GetDataSize, (int index), (const, override));
+  MOCK_METHOD(int64_t, GetDataSize, (int index), (const, override));
 
   MOCK_METHOD(int,
               ReadData,
               (int index,
-               int offset,
+               int64_t offset,
                IOBuffer* buf,
                int buf_len,
                CompletionOnceCallback callback),
@@ -56,7 +55,7 @@ class MockEntry : public Entry {
   MOCK_METHOD(int,
               WriteData,
               (int index,
-               int offset,
+               int64_t offset,
                IOBuffer* buf,
                int buf_len,
                CompletionOnceCallback callback,
@@ -108,7 +107,7 @@ class MockBackend : public disk_cache::Backend {
  public:
   MockBackend() : disk_cache::Backend(net::DISK_CACHE) {}
   ~MockBackend() override = default;
-  MOCK_METHOD(int32_t, GetEntryCount, (), (const, override));
+  MOCK_METHOD(int32_t, GetEntryCount, (net::Int32CompletionOnceCallback callback), (const, override));
 
   MOCK_METHOD(disk_cache::EntryResult,
               OpenOrCreateEntry,
@@ -176,11 +175,6 @@ class MockBackend : public disk_cache::Backend {
   MOCK_METHOD(uint8_t,
               GetEntryInMemoryData,
               (const std::string& key),
-              (override));
-
-  MOCK_METHOD(void,
-              SetEntryInMemoryData,
-              (const std::string& key, uint8_t data),
               (override));
 
   MOCK_METHOD(int64_t, MaxFileSize, (), (const, override));

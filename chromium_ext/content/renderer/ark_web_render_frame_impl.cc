@@ -28,8 +28,6 @@
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 #include "third_party/blink/public/web/web_performance_metrics_for_reporting.h"
-#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
-#include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
 #endif
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
@@ -54,7 +52,6 @@ std::optional<blink::WebString> ArkWebUserAgentOverride(
   return std::nullopt;
 }
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_JSPROXY)
 void RenderFrameImpl::RunScriptsAtHeadReady() {
   if (!initialized_) {
@@ -66,10 +63,8 @@ void RenderFrameImpl::RunScriptsAtHeadReady() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_ADBLOCK)
-// LCOV_EXCL_START
 void RenderFrameImpl::DidSubresourceFiltered() {
   TRACE_EVENT1("navigation,benchmark,rail",
                "RenderFrameImpl::DidSubresourceFiltered", "frame_token",
@@ -82,7 +77,6 @@ void RenderFrameImpl::DidSubresourceFiltered() {
 bool RenderFrameImpl::GetGlobalAdblockEnabled() {
   return GetRendererPreferences().is_global_adblock_enabled;
 }
-// LCOV_EXCL_STOP
 
 void RenderFrameImpl::OnUpdateAdBlockEnabledToRender(
     bool site_adblock_enabled) {
@@ -117,54 +111,6 @@ void RenderFrameImpl::OnUpdateAdBlockEnabledToRender(
 }
 #endif
 
-// LCOV_EXCL_START
-#if BUILDFLAG(ARKWEB_JAVASCRIPT_BRIDGE)
-void RenderFrameImpl::AddNamedObject(const std::string& name,
-                                     int32_t object_id,
-                                     base::Value::List async_method_list,
-                                     bool need_update) {
-  for (auto& observer : observers_) {
-    observer.AddNamedObject(name, object_id, async_method_list, need_update);
-  }
-}
-#endif  // BUILDFLAG(ARKWEB_JAVASCRIPT_BRIDGE)
-
-RenderFrameImplUtils::RenderFrameImplUtils(RenderFrameImpl* impl) {
-  this->renderFrameImpl = impl;
-}
-#if BUILDFLAG(ARKWEB_DFX_TRACING)
-int64_t RenderFrameImplUtils::GetCurrentTimestampMS() {
-  auto currentTime = std::chrono::system_clock::now().time_since_epoch();
-  return std::chrono::duration_cast<std::chrono::microseconds>(currentTime)
-              .count() /
-          kMicrosecondsPerMillisecond;
-}
-
-void RenderFrameImplUtils::ReportRenderInitBlock() {
-  int64_t initialize_time = GetCurrentTimestampMS();
-  std::string mode = "ReportRenderInitBlock";
-  if (is_complete_initialize) {
-    is_complete_initialize = false;
-    int64_t block_time = initialize_time - commit_navigation_time_;
-    if(ChildProcess::current()) {
-      ChildProcess::current()->ReportHisyevent(block_time, mode);
-    }
-  }
-}
-
-void RenderFrameImplUtils::ChangeCommitNavigationTime(int64_t time) {
-  commit_navigation_time_ = time;
-}
-
-void RenderFrameImplUtils::ChangeCompleteInitialize(bool complete) {
-  is_complete_initialize = complete;
-}
-void RenderFrameImpl::SendCommitNavigationTime(int64_t start_time) {
-  implUtils->ChangeCommitNavigationTime(start_time);
-  implUtils->ChangeCompleteInitialize(true);
-}
-#endif
-
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 void RenderFrameImpl::NotifyLcpForBlankless() {
   if (blankless_key_ == base::ohos::BlanklessController::INVALID_BLANKLESS_KEY) {
@@ -192,52 +138,121 @@ void RenderFrameImpl::SendBlanklessKeyToRenderFrame(uint32_t nweb_id,
   if (blankless_key == base::ohos::BlanklessController::INVALID_BLANKLESS_KEY) {
     return;
   }
-  // need restart painttimingdetector for blankless
-  blink::WebLocalFrameImpl* web_frame = static_cast<blink::WebLocalFrameImpl*>(GetWebFrame());
-  if (!web_frame) {
-    return;
-  }
-
-  blink::LocalFrame* local_frame = web_frame->GetFrame();
-  if (!local_frame) {
-    return;
-  }
-
-  blink::LocalFrameView* lfv = local_frame->View();
-  if (!lfv) {
-    return;
-  }
-  LOG(DEBUG) << "blankless lcp:RenderFrameImpl::SendBlanklessKeyToRenderFrame restart PTD for blankless, nweb_id:"
-    << nweb_id << ", key:" << blankless_key << "lfv:" << (uint64_t)lfv;
-    lfv->GetPaintTimingDetector().RestartRecordingForBlankless();
+  // 暂时简化实现，因为 Chromium 141 中无法访问 blink 内部 API
+// TODO: 需要使用公共 API 重新实现此功能
+LOG(DEBUG) << "blankless optimization: functionality temporarily disabled pending API migration"
+           << ", nweb_id:" << nweb_id << ", key:" << blankless_key
+           << ", frame_sink_id:" << frame_sink_id << ", pref_hash:" << pref_hash;
 }
+#endif
+
+RenderFrameImplUtils::RenderFrameImplUtils(RenderFrameImpl* impl) {
+  this->renderFrameImpl = impl;
+}
+#if BUILDFLAG(ARKWEB_DFX_TRACING)
+int64_t RenderFrameImplUtils::GetCurrentTimestampMS() {
+  auto currentTime = std::chrono::system_clock::now().time_since_epoch();
+  return std::chrono::duration_cast<std::chrono::microseconds>(currentTime)
+              .count() /
+          kMicrosecondsPerMillisecond;
+}
+
+void RenderFrameImplUtils::ReportRenderInitBlock() {
+  int64_t initialize_time = GetCurrentTimestampMS();
+  std::string mode = "ReportRenderInitBlock";
+  if (is_complete_initialize) {
+    is_complete_initialize = false;
+#if !defined(COMPONENT_BUILD) 
+    int64_t block_time = initialize_time - commit_navigation_time_;
+    if(ChildProcess::current()) {
+      ChildProcess::current()->ReportHisyevent(block_time, mode);
+    }
+#endif
+  }
+}
+
+void RenderFrameImplUtils::ChangeCommitNavigationTime(int64_t time) {
+  commit_navigation_time_ = time;
+}
+
+void RenderFrameImplUtils::ChangeCompleteInitialize(bool complete) {
+  is_complete_initialize = complete;
+}
+#if !defined(COMPONENT_BUILD) 
+void RenderFrameImpl::SendCommitNavigationTime(int64_t start_time) {
+  implUtils->ChangeCommitNavigationTime(start_time);
+  implUtils->ChangeCompleteInitialize(true);
+}
+#endif
 #endif
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-bool RenderFrameImpl::IsStrictLogMode() {
-  if (GetWebView()) {
-    return GetWebView()->IsStrictLogMode();
+void RenderFrameImpl::PageLoadStartLoggerReport(
+    WebDocumentLoader* document_loader) {
+  LOG_FEEDBACK(WARNING) << "event_message: page load start, frame_id: "
+                        << reinterpret_cast<uintptr_t>(this) << ", url: "
+                        << url::LogUtils::ConvertUrlWithMask(
+                               document_loader->GetUrl().GetString().Utf8());
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableLoggerReport)) {
+    bool is_strict_log_mode = true;
+    if (GetWebView()) {
+      is_strict_log_mode = GetWebView()->IsStrictLogMode();
+    }
+    if (!is_strict_log_mode) {
+      int32_t usage_scenario = GetWebView()->GetSettings()->GetUsageScenario();
+      LOG(URL) << "event_message: page load start, frame_id: " << reinterpret_cast<uintptr_t>(this)
+               << ", url: "
+               << url::LogUtils::ConvertUrl(
+                      document_loader->GetUrl().GetString().Utf8(),
+                      usage_scenario);
+    }
   }
-  return false;
+}
+
+void RenderFrameImpl::ContentLoadFailedLoggerReport() {
+  if (IsMainFrame()) {
+    LOG_FEEDBACK(WARNING)
+        << "event_message: content load finished, frame_id: " << reinterpret_cast<uintptr_t>(this)
+        << ", url: "
+        << url::LogUtils::ConvertUrlWithMask(GetLoadingUrl().spec());
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kEnableLoggerReport)) {
+      bool is_strict_log_mode = true;
+      if (GetWebView()) {
+        is_strict_log_mode = GetWebView()->IsStrictLogMode();
+      }
+      if (!is_strict_log_mode) {
+        int32_t usage_scenario =
+            GetWebView()->GetSettings()->GetUsageScenario();
+        LOG(URL) << "event_message: content load finished, frame_id: "
+                 << reinterpret_cast<uintptr_t>(this) << ", url: "
+                 << url::LogUtils::ConvertUrl(GetLoadingUrl().spec(),
+                                              usage_scenario);
+      }
+    }
+  }
+}
+
+void RenderFrameImpl::PageLoadFinishedLoggerReport() {
+  LOG_FEEDBACK(WARNING)
+      << "event_message: page load finished, frame_id: " << reinterpret_cast<uintptr_t>(this)
+      << ", url: " << url::LogUtils::ConvertUrlWithMask(GetLoadingUrl().spec());
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kEnableLoggerReport)) {
+    bool is_strict_log_mode = true;
+    if (GetWebView()) {
+      is_strict_log_mode = GetWebView()->IsStrictLogMode();
+    }
+    if (!is_strict_log_mode) {
+      int32_t usage_scenario = GetWebView()->GetSettings()->GetUsageScenario();
+      LOG(URL) << "event_message: page load finished, frame_id: "
+               << reinterpret_cast<uintptr_t>(this) << ", url: "
+               << url::LogUtils::ConvertUrl(GetLoadingUrl().spec(),
+                                            usage_scenario);
+    }
+  }
 }
 #endif
-
-#if BUILDFLAG(ARKWEB_LOGGER_REPORT) && !BUILDFLAG(ARKWEB_NWEB_EX)
-void RenderFrameImpl::OnCommitNavigation(
-    const GURL& url,
-    bool is_client_redirect,
-    blink::mojom::NavigationType navigation_type,
-    const base::UnguessableToken& devtools_navigation_token,
-    network::mojom::NavigationDeliveryType navigation_delivery_type) {}
-
-void RenderFrameImpl::OnDidCommitNavigation(
-    WebDocumentLoader* document_loader,
-    blink::WebHistoryCommitType commit_type) {}
-
-void RenderFrameImpl::OnDidDispatchDOMContentLoadedEvent() {}
-
-void RenderFrameImpl::OnDidHandleOnloadEvents() {}
-#endif  // BUILDFLAG(ARKWEB_LOGGER_REPORT) && !BUILDFLAG(ARKWEB_NWEB_EX)
-// LCOV_EXCL_STOP
 
 }  // namespace content

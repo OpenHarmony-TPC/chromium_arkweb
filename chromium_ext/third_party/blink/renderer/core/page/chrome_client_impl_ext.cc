@@ -73,9 +73,9 @@ uint32_t ChromeClientImplExt::GetFoldStatus(LocalFrame* frame) {
   return 0;
 }
 
-WTF::Vector<int8_t> ChromeClientImplExt::GetWordSelection(
+Vector<int8_t> ChromeClientImplExt::GetWordSelection(
     LocalFrame* frame,
-    const WTF::String& text,
+    const String& text,
     int8_t offset) {
   WebLocalFrameImpl* web_frame = WebLocalFrameImpl::FromFrame(frame);
   return web_frame->LocalRootFrameWidget()

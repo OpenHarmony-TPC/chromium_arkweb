@@ -13,7 +13,6 @@
 #include "base/functional/bind.h"
 #include "base/native_library.h"
 #include "base/notreached.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/task_traits.h"
@@ -34,7 +33,6 @@ namespace device {
 
 namespace {
 
-// LCOV_EXCL_START
 AuthenticatorSupportedOptions OhosWebAuthnApiOptions()
 {
   AuthenticatorSupportedOptions options;
@@ -52,13 +50,12 @@ AuthenticatorSupportedOptions OhosWebAuthnApiOptions()
   options.supports_hmac_secret = true;
   return options;
 }
-// LCOV_EXCL_STOP
 
 bool MayHaveWindowsHelloCredentials(
     std::vector<PublicKeyCredentialDescriptor> allow_list)
 {
   return allow_list.empty() ||
-         base::ranges::any_of(allow_list, [](const auto& credential) {
+         std::ranges::any_of(allow_list, [](const auto& credential) {
            return credential.transports.empty() ||
                   base::Contains(credential.transports,
                                  FidoTransportProtocol::kInternal);
@@ -71,19 +68,18 @@ void FilterFoundCredentials(
     std::vector<DiscoverableCredentialMetadata>* found_creds,
     const std::vector<PublicKeyCredentialDescriptor>& allow_list_creds)
 {
-  auto remove_it = base::ranges::remove_if(
+  auto remove_it = std::ranges::remove_if(
       *found_creds, [&allow_list_creds](const auto& found_cred) {
-        return base::ranges::none_of(
+        return std::ranges::none_of(
             allow_list_creds, [&found_cred](const auto& allow_list_cred) {
               return allow_list_cred.id == found_cred.cred_id;
             });
       });
-  found_creds->erase(remove_it, found_creds->end());
+  found_creds->erase(std::begin(remove_it), std::end(remove_it));
 }
 
 }  // namespace
 
-// LCOV_EXCL_START
 // static
 void OhosAuthenticator::IsUserVerifyingPlatformAuthenticatorAvailable(
     base::OnceCallback<void(bool)> callback)
@@ -152,7 +148,6 @@ void OhosAuthenticator::InitializeAuthenticator(
 {
   std::move(callback).Run();
 }
-// LCOV_EXCL_STOP
 
 void OhosAuthenticator::MakeCredential(
     CtapMakeCredentialRequest request,
@@ -250,7 +245,6 @@ void OhosAuthenticator::GetPlatformCredentialInfoForRequest(
       FidoRequestHandlerBase::RecognizedCredential::kNoRecognizedCredential);
 }
 
-// LCOV_EXCL_START
 void OhosAuthenticator::GetTouch(base::OnceClosure callback)
 {
   NOTREACHED();
@@ -289,5 +283,6 @@ base::WeakPtr<FidoAuthenticator> OhosAuthenticator::GetWeakPtr()
 {
   return weak_factory_.GetWeakPtr();
 }
-// LCOV_EXCL_STOP
+
 }  // namespace device
+

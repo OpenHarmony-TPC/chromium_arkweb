@@ -19,17 +19,16 @@
 #include <thread>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "cef/include/wrapper/cef_helpers.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/common/content_switches.h"
 #include "nweb_handler_delegate.h"
 #include "nweb_impl.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
+#include "ohos_nweb/src/nweb_common.h"
 
 #if BUILDFLAG(ARKWEB_INIT_CALLBACK)
 #include "cef/include/wrapper/cef_closure_task.h"
@@ -102,8 +101,11 @@ void NWebApplication::InitializeCef(const CefMainArgs& mainargs,
   std::unique_lock<std::mutex> lk(init_mtx);
   bool initial_result = CefInitialize(mainargs, settings, NWebApplication::GetDefault(), NULL);
 #if BUILDFLAG(ARKWEB_DOWNLOAD)
-  // get download Temp directory.
-  NwebFileWriterCleaner::GetDeletePendingFiles();
+  {
+    // get download Temp directory.
+    ScopedAllowBlockingForNwebInit allow_blocking_for_using_path;
+    NwebFileWriterCleaner::GetDeletePendingFiles();
+  }
 #endif  // BUILDFLAG(ARKWEB_DOWNLOAD)
   if (!initial_result) {
     LOG(ERROR) << "CefInitialize failed";

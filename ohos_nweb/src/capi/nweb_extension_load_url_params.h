@@ -24,7 +24,6 @@ typedef enum {
 	LOAD_TYPE_HTTP_POST = 1,
 } LoadUrlType;
  
- 
 struct LoadUrlParams {
   std::string url;
   LoadUrlType load_type;
@@ -34,6 +33,5 @@ struct LoadUrlParams {
   bool allow_https_upgrade;
   int32_t transition_type = -1;
 };
- 
  
 #endif //OHOS_NWEB_SRC_WEB_EXTENSION_LOAD_URL_PARAMS_H_

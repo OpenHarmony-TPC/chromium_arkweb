@@ -15,6 +15,7 @@
 
 #ifndef OHOS_NWEB_SRC_NWEB_CONFIRM_INFO_BAR_CALLBACK_H_
 #define OHOS_NWEB_SRC_NWEB_CONFIRM_INFO_BAR_CALLBACK_H_
+
 #include <string>
 
 struct ConfirmInfoBarMessage {
@@ -25,6 +26,7 @@ struct ConfirmInfoBarMessage {
   std::string buttonLabelOK;
   std::string buttonLabelCancel;
 };
+
 typedef void (*OnShowConfirmInfoBarFunc)(const std::string& title,
                                          const std::string& infoId,
                                          const std::string& message,
@@ -41,7 +43,6 @@ typedef void (*OnArkWebStaticShowConfirmInfoBarFunc)(const char* title,
                                                      int buttons,
                                                      const char* buttonLabelOK,
                                                      const char* buttonLabelCancel);
-
 #ifdef __cplusplus
 }
 #endif  // __cplusplus

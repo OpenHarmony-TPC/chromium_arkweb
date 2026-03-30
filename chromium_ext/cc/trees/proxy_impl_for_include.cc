@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_WEBGL)
 void ProxyImpl::SetDeferInvalidationForFastMainFrameFromImpl(
     bool defer_invalidation_for_fast_main_frame) {
@@ -34,7 +33,9 @@ void ProxyImpl::SetPinchSmoothModeOnImpl(bool isEnable) {
 void ProxyImpl::HandleScrollUpdateForInternalBeginFrame(
     const viz::BeginFrameArgs& args) {
   DCHECK(IsImplThread());
+#if BUILDFLAG(ARKWEB_FLING) && BUILDFLAG(ARKWEB_SLIDE)
   host_impl_->HandleScrollUpdateForInternalBeginFrame(args);
+#endif
 }
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
@@ -62,4 +63,3 @@ void ProxyImpl::OnLayerBoundsUpdate(int id, const gfx::Rect& bounds) {
                                 proxy_main_weak_ptr_, id, bounds));
 }
 #endif  // ARKWEB_VIDEO_ASSISTANT
-// LCOV_EXCL_STOP

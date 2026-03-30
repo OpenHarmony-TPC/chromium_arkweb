@@ -55,7 +55,7 @@ void BrowserProcessImplExt::CreateSubresourceFilterUserRulesetService() {
   base::FilePath user_data_dir;
 
   if (!base::PathService::Get(chrome::DIR_USER_DATA, &user_data_dir)) {
-    base::PathService::Get(base::DIR_CACHE, &user_data_dir);
+  base::PathService::Get(base::DIR_CACHE, &user_data_dir);
   }
   LOG(INFO) << "adblock path: " << user_data_dir.value();
   subresource_filter_user_ruleset_service_ =

@@ -342,7 +342,7 @@ TEST_F(OHOSAudioManagerTest, TestGetName) {
       /*mock_audio_thread=*/nullptr,
       /*audio_log_factory=*/nullptr);
 
-  EXPECT_STREQ("OHOS", renderer_client_->GetName());
+  EXPECT_STREQ("OHOS", renderer_client_->GetName().data());
 }
 
 TEST_F(OHOSAudioManagerTest, HasAudioOutputDevices) {

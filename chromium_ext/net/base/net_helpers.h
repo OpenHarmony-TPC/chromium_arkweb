@@ -5,7 +5,6 @@
 #ifndef CEF_LIBCEF_BROWSER_NET_SERVICE_NET_HELPERS_H_
 #define CEF_LIBCEF_BROWSER_NET_SERVICE_NET_HELPERS_H_
 
-#include "base/no_destructor.h"
 #include "arkweb/build/features/features.h"
 
 #if BUILDFLAG(ARKWEB_CUSTOM_DNS)
@@ -13,19 +12,15 @@
 #include <vector>
 #endif
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
 #include "net/dns/public/secure_dns_mode.h"
 
-#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
-#include "cef/include/cef_download_handler.h"
-#endif
-
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
 #include <mutex>
 #include <optional>
+#include "base/no_destructor.h"
 #endif
 
 class GURL;
@@ -94,12 +89,6 @@ class NETHELPERS_EXPORT NetHelpers {
   static base::NoDestructor<std::map<std::string, struct CustomDnsEntry>> custom_dns;
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
-  static void SetDownloadHandler(
-      CefRefPtr<CefDownloadHandler> download_handler);
-  static CefRefPtr<CefDownloadHandler> GetDownloadHandler();
-#endif
-
   static bool allow_content_access;
   static bool allow_file_access;
   static bool is_network_blocked;
@@ -118,9 +107,6 @@ class NETHELPERS_EXPORT NetHelpers {
 #if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
   static int network;
 #endif
-#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
-  static CefRefPtr<CefDownloadHandler> global_download_handler;
-#endif
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
   static std::optional<bool> enable_private_network_check;
@@ -132,7 +118,7 @@ class NETHELPERS_EXPORT NetHelpers {
 
 #if BUILDFLAG(ARKWEB_NETWORK_SERVICE)
   static int32_t socket_idle_timeout;
-  static int32_t GetDefaultSocketIdleTimeout();
+  static int32_t GetDefaultSocketIdleTimeout(); 
   static void SetSocketIdleTimeout(int32_t timeout);
   static int32_t GetSocketIdleTimeout();
 #endif

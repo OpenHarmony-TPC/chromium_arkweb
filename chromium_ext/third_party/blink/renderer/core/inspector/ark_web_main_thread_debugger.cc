@@ -24,7 +24,7 @@ constexpr int kMaxMessageSize = 5000;
 
 namespace blink {
 
-void ArkWebDealWithMassiveConsoleMessage(WTF::String& message) {
+void ArkWebDealWithMassiveConsoleMessage(String& message) {
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kEnableNwebEx) &&
       message.length() > kMaxMessageSize) {

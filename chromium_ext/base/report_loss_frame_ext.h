@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include "base/base_export.h"
 
 enum ScrollMode { START, STOP };
 
@@ -40,7 +41,7 @@ const int MAX_OF_SEVENTH_INTERVAL = 120;
 // 8. [120, 180）JANK_FREQ_180_FRAME
 const int MAX_OF_EIGHTTH_INTERVAL = 180;
 
-class ReportLossFrame {
+class BASE_EXPORT ReportLossFrame {
  public:
   static ReportLossFrame* GetInstance();
 

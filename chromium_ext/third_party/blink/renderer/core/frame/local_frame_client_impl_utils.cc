@@ -21,7 +21,6 @@ namespace blink {
 LocalFrameClientImplUtils::LocalFrameClientImplUtils(LocalFrameClientImpl* impl)
     : frame_client_impl_(impl){}
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_JSPROXY)
 void LocalFrameClientImplUtils::RunScriptsAtHeadElementAvailable() {
   if (frame_client_impl_->web_frame_ && frame_client_impl_->web_frame_->Client()) {
@@ -30,7 +29,6 @@ void LocalFrameClientImplUtils::RunScriptsAtHeadElementAvailable() {
   // The callback might have deleted the frame, do not use |this|!
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 std::unique_ptr<WebNativeBridge> LocalFrameClientImplUtils::CreateWebNativeBridge(
@@ -58,7 +56,6 @@ float LocalFrameClientImplUtils::GetDeviceScaleFactor(
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_ADBLOCK)
 void LocalFrameClientImplUtils::DispatchDidSubresourceFiltered() {
   frame_client_impl_->web_frame_->DidSubresourceFiltered();
@@ -77,7 +74,6 @@ void LocalFrameClientImplUtils::NotifyLcpForBlankless() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 void LocalFrameClientImplUtils::Trace(Visitor* visitor) const {
   visitor->Trace(frame_client_impl_);

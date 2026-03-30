@@ -20,7 +20,7 @@
 
 namespace blink {
 
-void ArkWebDealWithMassiveConsoleMessage(WTF::String& message);
+void ArkWebDealWithMassiveConsoleMessage(String& message);
 
 }  // namespace blink
 

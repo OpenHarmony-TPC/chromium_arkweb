@@ -17,11 +17,8 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 FontPlatformDataUtils::FontPlatformDataUtils(FontPlatformData* data) : font_data_(data) {}
-
 FontPlatformDataUtils::~FontPlatformDataUtils() {}
-// LCOV_EXCL_STOP
 
 void FontPlatformDataUtils::Trace(Visitor* visitor) const {
   visitor->Trace(font_data_);

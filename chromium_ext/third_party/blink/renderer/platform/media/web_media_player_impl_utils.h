@@ -21,6 +21,7 @@ public:
   void OnPageHiddenExt(bool storing_in_bfcache);
   void CreateRendererExtSetRendererType();
   std::unique_ptr<media::Renderer> CreateRendererExtConfigRenderer(media::RequestOverlayInfoCB request_overlay_info_cb);
+  void GenerateCustomMediaPlayerUrlParams(base::flat_map<std::string, std::string> headers);
   void SetSuspendStateExt();
   void OnIdleTimeoutExt();
   void PauseExt();

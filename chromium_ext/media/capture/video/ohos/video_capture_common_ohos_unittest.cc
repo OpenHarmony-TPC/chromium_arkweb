@@ -173,7 +173,7 @@ TEST(VideoCaptureCommonOHOSTest, GetAdapterCameraPixelFormat0) {
 TEST(VideoCaptureCommonOHOSTest, GetAdapterCameraPixelFormat1) {
   testing::internal::CaptureStderr();
   std::string log_output1 = testing::internal::GetCapturedStderr();
-  VideoPixelFormat pixel_format = {PIXEL_FORMAT_YUV420P9};
+  VideoPixelFormat pixel_format = {PIXEL_FORMAT_YUV420P10};
   VideoCaptureCommonOHOS::GetAdapterCameraPixelFormatType(pixel_format);
   EXPECT_EQ(log_output1.find("adapter camera pixel format:"),
             std::string::npos);

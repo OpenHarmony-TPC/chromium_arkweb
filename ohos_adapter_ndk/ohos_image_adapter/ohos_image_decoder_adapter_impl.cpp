@@ -64,6 +64,10 @@ void ReleaseDecodeOptions(OH_DecodingOptions* decodeOptions)
 void OhosImageDecoderAdapterImpl::NativeBufferFromPixelMap()
 {
     if (pixelMap_) {
+        if (nativeBuffer_) {
+            WVLOG_I("[HeifSupport] NativeBufferFromPixelMap nativeBuffer_ already exists, return");
+            return;
+        }
         Image_ErrorCode errorCode = OH_PixelmapNative_GetNativeBuffer(pixelMap_, &nativeBuffer_);
         if (errorCode == Image_ErrorCode::IMAGE_SUCCESS) {
             return;
@@ -198,7 +202,7 @@ bool OhosImageDecoderAdapterImpl::Decode(const uint8_t* data,
 
 void OhosImageDecoderAdapterImpl::SetMemoryName(AllocatorType type) {
     if (!pixelMap_) {
-        WVLOG_E("[HeifSupport] SetMemoryName pixelMap_ is null.");
+        WVLOG_E("[HeifSupport] SetMemoryName pixelMap_ is null");
         return;
     }
     std::string width = std::to_string(GetImageWidth());
@@ -370,7 +374,6 @@ void OhosImageDecoderAdapterImpl::ReleasePixelMap()
         }
     }
     if (bufferHandle_) {
-        delete bufferHandle_;
         bufferHandle_ = nullptr;
     }
 }

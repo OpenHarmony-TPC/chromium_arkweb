@@ -16,13 +16,11 @@
 #include "arkweb/chromium_ext/content/browser/renderer_host/agent_scheduling_group_host_utils.h"
 
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_MODE)
-#include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/res_sched_client_adapter.h"
 #endif
 
 namespace content {
 
-// LCOV_EXCL_START
 AgentSchedulingGroupHostUtils::AgentSchedulingGroupHostUtils(AgentSchedulingGroupHost* impl) {
   this->agentSchedulingGroupHost = impl;
 }
@@ -30,12 +28,9 @@ AgentSchedulingGroupHostUtils::AgentSchedulingGroupHostUtils(AgentSchedulingGrou
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_MODE)
 void AgentSchedulingGroupHostUtils::ReportCreateView(int32_t process_id) {
   OHOS::NWeb::ResSchedClientAdapter::ReportProcessInUse(process_id);
-  if (base::ohos::IsPcDevice() || base::ohos::IsTabletDevice()) {
     OHOS::NWeb::ResSchedClientAdapter::ReportKeyThread(
         OHOS::NWeb::ResSchedStatusAdapter::THREAD_CREATED, process_id,
         process_id, OHOS::NWeb::ResSchedRoleAdapter::IMPORTANT_DISPLAY);
   }
 }
-}
 #endif
-// LCOV_EXCL_STOP

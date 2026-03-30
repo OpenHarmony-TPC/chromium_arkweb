@@ -18,7 +18,7 @@
 
 using namespace testing;
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
-#include "third_party/blink/renderer/platform/graphics/graphics_types.h"
+#include "chromecast/public/graphics_types.h"
 #define private public
 #define protected public
 #include "cc/paint/paint_image.h"

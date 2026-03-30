@@ -24,7 +24,7 @@ component("ohos") {
 
   deps = [
     "//gpu/ipc/common",
-    "//gpu/ipc/common:vulkan_ycbcr_info",
+    "//arkweb/chromium_ext/gpu/ipc/common:ohos_nweb_native_window_tracker",
     "//ui/gfx",
   ]
 

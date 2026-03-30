@@ -18,19 +18,20 @@ class HapProject:
   def __init__(self, root, output, sdk_root, node_root, abi):
     self.root = os.path.abspath(root)
     self.output = output
-    self.sdk = os.path.abspath(sdk_root)
+    self.sdk = os.path.abspath(os.path.join(sdk_root, 'sdk'))
+    self.hvigorw = os.path.abspath(os.path.join('../../../', 'prebuilts', 'hvigorw', 'hvigorw', 'bin'))
     self.ohpm_exe = os.path.abspath(
-        os.path.join(self.sdk, '..', 'ohos_build', 'ohpm', 'bin', 'ohpm'))
+        os.path.join(self.sdk, '../..', 'ohos_build', 'ohpm', 'bin', 'ohpm'))
     self.node = os.path.abspath(node_root)
     self.abi = abi
     self.hars = []
-    self.hvigor_wrapper = os.path.join(self.root, 'hvigorw')
+    self.hvigor_wrapper = os.path.join('hvigorw')
     self.env = {
         "HOME": os.environ['HOME'],
         "OHOS_BASE_SDK_HOME": self.sdk,
         "NODE_HOME": self.node,
         "PATH":
-        ":".join([os.path.join(self.node, "bin"),
+        ":".join([os.path.join(self.node, "bin"),os.path.join(self.hvigorw),
                   os.environ.get("PATH")])
     }
 
@@ -113,34 +114,40 @@ disturl=https://repo.huaweicloud.com/nodejs/
     return stdout
 
   def Hvigor(self, cmd_array):
+    self.hvigorw = os.path.abspath(os.path.join('../../../', 'prebuilts', 'hvigorw', 'hvigorw', 'bin'))
+    path_value = os.environ.get('PATH','')
+    os.environ['PATH'] = self.hvigorw + os.pathsep + path_value
     cmd = [self.hvigor_wrapper] + cmd_array
-    try:
-      process = subprocess.Popen(cmd,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               env=self.env)
-      stdout, stderr = process.communicate()
-    except Exception as e:
-      print(f"An error occurred: {e}")
-    print("***********************************")
+    process = subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              env=self.env)
+    stdout, stderr = process.communicate()
     print(self.root)
     os.chdir(self.root)
-    command = ['./hvigorw', '--mode=module', 'clean', '-p', 'debuggable=false', 'assembleHap', '--no-daemon']
+    command = ['hvigorw', '--mode=module', 'clean', '-p', 'debuggable=false', 'assembleHap', '--no-daemon']
     try:
       result = subprocess.run(command, capture_output=True, text=True)
       print("Standard output:", result.stdout)
       print("Standard error:", result.stderr)
     except Exception as e:
       print(f"An error occurred: {e}")
-    print("***********************************")
-    #if process.returncode != 0:
-      #err = stderr if len(stderr) > 0 else stdout
-      #raise RuntimeError('Command \'%s\' failed\n%s' % (' '.join(cmd), err))
+    if process.returncode != 0:
+      err = stderr if len(stderr) > 0 else stdout
+      raise RuntimeError('Command \'%s\' failed\n%s' % (' '.join(cmd), err))
     return stdout
 
   def _build(self, node_cmd):
     os.chdir(self.root)
-
+    source_dir = os.path.join(self.root, '../../ohos_sdk/23/')
+    dest_dir = os.path.join(self.root, '../../ohos_sdk/sdk/')
+    if os.path.exists(dest_dir):
+      shutil.rmtree(dest_dir)
+    shutil.copytree(source_dir,f'{dest_dir}23')
+    subprocess.run(['mkdir','-p',f'{dest_dir}23/native'],check=True)
+    subprocess.run(['mkdir','-p',f'{source_dir}native'],check=True)
+    shutil.copy(f'{source_dir}../ohos-sdk/linux/native/oh-uni-package.json',f'{dest_dir}23/native/')
+    shutil.copy(f'{source_dir}../ohos-sdk/linux/native/oh-uni-package.json',f'{source_dir}native/')
     local_properties = os.path.join(os.path.abspath(self.root),
                                     'local.properties')
     local_properties_backup = ''
@@ -196,6 +203,10 @@ disturl=https://repo.huaweicloud.com/nodejs/
 
     shutil.copyfile(_har, self.output)
     return 0
+
+  def CollectSoFiles(self, dir):
+    return [f for f in os.listdir(dir)
+        if f.endswith('.so') and os.path.isfile(os.path.join(dir, f))]
 
 
 def main():
@@ -257,6 +268,11 @@ def main():
                       action='store_true',
                       help='The hap package is auto-signed',
                       required=False)
+  parser.add_argument('--component',
+                      default=False,
+                      action='store_true',
+                      help='The hap package component so.',
+                      required=False)
 
   options = parser.parse_args(sys.argv[1:])
   if options.override is not None and len(options.override) > 0:
@@ -275,7 +291,6 @@ def main():
       raise RuntimeError('Incorrect --update-har argument: %s' % _har_kv)
     if not os.path.exists(_kv[0]):
       raise FileNotFoundError('Could not find har file to update: %s' % _har)
-
   hap_project = HapProject(options.root, options.output, options.sdk_root,
                            options.node_root, options.abi)
   if len(options.depfile) > 0:
@@ -284,7 +299,11 @@ def main():
     return hap_project.BuildHar(options.har)
 
   if len(options.override) > 0:
-    hap_project.OverrideProjectFiles(options.override, options.entry_libs,
+    if options.component:
+      libs = hap_project.CollectSoFiles(options.override)
+    else:
+      libs = options.entry_libs
+    hap_project.OverrideProjectFiles(options.override, libs,
                                      options.entry_rawfiles)
   if len(options.update_har) > 0:
     hap_project.UpdateHars(options.update_har)

@@ -18,7 +18,6 @@
 
 #include <vector>
 #include <mutex>
-#include "background_task_adapter.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/background_task_adapter.h"
 
 namespace performance_manager::mechanism {
@@ -40,7 +39,6 @@ public:
     void NotifyApplicationBackground() override;
     void RegisterBackgroundTaskPolicyCallback(
         const std::weak_ptr<ApplicationStateChangeCallback> &applicationStateChangeCallback);
-
 private:
     std::vector<std::weak_ptr<ApplicationStateChangeCallback>> applicationStateCallback_;
     std::mutex applicationStateCallbackLock_;
@@ -55,6 +53,7 @@ class BackgroundTaskHolder {
 
   bool MaybeRequestBackgroundRunning(bool running,
                                      OHOS::NWeb::BackgroundModeAdapter bgMode);
+
   std::shared_ptr<OHOS::NWeb::BackgroundStateChangeCallbackAdapter> backgroundStateChangeCallbackAdapter_;
 
 private:

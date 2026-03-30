@@ -14,8 +14,10 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/task_runner.h"
 #include "buffer_desc_adapter_impl.h"
+#include "media/base/audio_bus.h"
 #include "media/base/audio_glitch_info.h"
 #include "media/base/audio_parameters.h"
+#include "media/base/audio_sample_types.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 
 namespace media {
@@ -162,7 +164,7 @@ void OHOSAudioCapturerSource::ReadData() {
   {
     base::AutoLock lock(callback_lock_);
     if (callback_) {
-      callback_->Capture(audio_bus.get(), timeStamp, {}, 1.0, false);
+      callback_->Capture(audio_bus.get(), timeStamp, {}, 1.0);
       DumpFileUtil::WriteDumpFile(dumpFile_, bufferDesc->GetBuffer(),
                                   bufferDesc->GetBufLength());
     }
@@ -172,7 +174,7 @@ void OHOSAudioCapturerSource::ReadData() {
 // LCOV_EXCL_STOP
 
 void OHOSAudioCapturerSource::SetVolume(double volume) {
-#if BUILDFLAG(ARKWEB_TEST)
+#if BUILDFLAG(ARKWEB_TEST) || BUILDFLAG(ARKWEB_WEBRTC)
   return;
 #endif  
   NOTREACHED();

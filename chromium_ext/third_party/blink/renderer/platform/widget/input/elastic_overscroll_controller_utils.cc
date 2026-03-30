@@ -21,3 +21,4 @@ ElasticOverscrollControllerUtils::ElasticOverscrollControllerUtils(
     : elastic_overscroll_controller_(elastic_overscroll_controller) {}
 
 }  // namespace blink
+

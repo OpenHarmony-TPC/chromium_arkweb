@@ -20,8 +20,8 @@
 #include "components/js_injection/browser/navigation_web_message_sender.h"
 #include "components/js_injection/browser/web_message_host.h"
 #include "components/js_injection/browser/web_message_host_factory.h"
-#include "components/js_injection/common/origin_matcher.h"
-#include "components/js_injection/common/origin_matcher_mojom_traits.h"
+#include "components/origin_matcher/origin_matcher.h"
+#include "components/origin_matcher/origin_matcher_mojom_traits.h"
 #include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/page.h"
 #include "content/public/browser/web_contents.h"
@@ -255,12 +255,12 @@ JsCommunicationHost::AddScriptResult JsCommunicationHostUtils::AddHeadReadyPendi
   OriginMatcher origin_matcher;
   JsCommunicationHost::AddScriptResult result;
   if (!allowed_origin_rules.empty() && (allowed_origin_rules.size() > 1 || !allowed_origin_rules[0].empty())) {
-    std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
-        allowed_origin_rules, origin_matcher);
-    if (!error_message.empty()) {
-      result.error_message = std::move(error_message);
-      return result;
-    }
+  std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
+      allowed_origin_rules, origin_matcher);
+  if (!error_message.empty()) {
+    result.error_message = std::move(error_message);
+    return result;
+  }
   }
 
   swap_head_ready_regex_rules_.emplace_back(script, script_regex_rules, js_communication_host_->next_script_id_);
@@ -330,12 +330,12 @@ JsCommunicationHost::AddScriptResult JsCommunicationHostUtils::AddDocumentEndPen
   OriginMatcher origin_matcher;
   JsCommunicationHost::AddScriptResult result;
   if (!allowed_origin_rules.empty() && (allowed_origin_rules.size() > 1 || !allowed_origin_rules[0].empty())) {
-    std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
-        allowed_origin_rules, origin_matcher);
-    if (!error_message.empty()) {
-      result.error_message = std::move(error_message);
-      return result;
-    }
+  std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
+      allowed_origin_rules, origin_matcher);
+  if (!error_message.empty()) {
+    result.error_message = std::move(error_message);
+    return result;
+  }
   }
   swap_end_scripts_regex_rules_.emplace_back(script, script_regex_rules, js_communication_host_->next_script_id_);
   swap_document_end_scripts_.emplace_back(script, origin_matcher, js_communication_host_->next_script_id_++);
@@ -417,12 +417,12 @@ JsCommunicationHost::AddScriptResult JsCommunicationHostUtils::AddDocumentStartP
   OriginMatcher origin_matcher;
   JsCommunicationHost::AddScriptResult result;
   if (!allowed_origin_rules.empty() && (allowed_origin_rules.size() > 1 || !allowed_origin_rules[0].empty())) {
-    std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
-        allowed_origin_rules, origin_matcher);
-    if (!error_message.empty()) {
-      result.error_message = std::move(error_message);
-      return result;
-    }
+  std::string error_message = ConvertToNativeAllowedOriginRulesWithSanityCheck(
+      allowed_origin_rules, origin_matcher);
+  if (!error_message.empty()) {
+    result.error_message = std::move(error_message);
+    return result;
+  }
   }
   swap_start_scripts_regex_rules_.emplace_back(script, script_regex_rules, js_communication_host_->next_script_id_);
   swap_document_start_scripts_.emplace_back(script, origin_matcher, js_communication_host_->next_script_id_++);

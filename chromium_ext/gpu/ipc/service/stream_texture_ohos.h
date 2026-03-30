@@ -84,11 +84,13 @@ class StreamTexture : public RefCountedLockHelperDrDc,
   bool IsUsingGpuMemory() const override;
   void UpdateAndBindTexImage(GLuint service_id) override;
   bool HasTextureOwner() const override;
-  TextureBase* GetTextureBase() const override;
   void NotifyOverlayPromotion(bool promotion, const gfx::Rect& bounds) override;
   bool RenderToOverlay() override;
-  bool TextureOwnerBindsTextureOnUpdate() override;
   std::unique_ptr<ScopedNativeBufferFenceSync> GetNativeBuffer() override;
+
+  // OHOS-specific methods (not in base class).
+  TextureBase* GetTextureBase() const;
+  bool TextureOwnerBindsTextureOnUpdate();
 
   gpu::Mailbox CreateSharedImage(const gfx::Size& coded_size);
 

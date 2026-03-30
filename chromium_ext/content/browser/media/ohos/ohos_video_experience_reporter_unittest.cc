@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "base/test/task_environment.h"
@@ -29,40 +29,40 @@
 #include "chrome/test/base/platform_browser_test.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
-
+ 
 #define private public
 #include "ohos_video_experience_reporter.h"
 #undef private
-
+ 
 namespace content {
-
+ 
 class MockVideoExperienceReporter : public blink::mojom::VideoExperienceReporter {
 public:
     MockVideoExperienceReporter() = default;
     ~MockVideoExperienceReporter() override = default;
     MOCK_METHOD(void, ReportVideoExperienceToBI, (blink::mojom::VideoExpParamsPtr params), (override));
 };
-
+ 
 class OHOSVideoExperienceReporterTest : public PlatformBrowserTest {
 public:
     OHOSVideoExperienceReporterTest() {
         mojo::core::Init();
     }
-
+ 
     ~OHOSVideoExperienceReporterTest() override = default;
-
+ 
     void SetUpOnMainThread() override {
         PlatformBrowserTest::SetUpOnMainThread();
     }
-
+ 
     void SetUp() override {
         PlatformBrowserTest::SetUp();
     }
-
+ 
     void TearDown() override {
         PlatformBrowserTest::TearDown();
     }
-
+ 
 protected:
     void Initialize() {
         content::WebContents* web_contents = chrome_test_utils::GetActiveWebContents(this);
@@ -72,16 +72,16 @@ protected:
         ASSERT_NE(rfh_, nullptr);
         reporter_ = std::make_unique<OHOSVideoExperienceReporter>(rfh_);
     }
-
+ 
     void Destroy() {
         reporter_.reset();
     }
-
+ 
     WebContentsImpl* web_contents_ = nullptr;
     content::RenderFrameHost* rfh_;
     std::unique_ptr<OHOSVideoExperienceReporter> reporter_;
 };
-
+ 
 IN_PROC_BROWSER_TEST_F(OHOSVideoExperienceReporterTest, DFX_TestCreateForFrameHost) {
   content::WebContents* web_contents = chrome_test_utils::GetActiveWebContents(this);
   ASSERT_NE(web_contents, nullptr);
@@ -92,12 +92,12 @@ IN_PROC_BROWSER_TEST_F(OHOSVideoExperienceReporterTest, DFX_TestCreateForFrameHo
   OHOSVideoExperienceReporter::CreateForFrameHost(rfh_, std::move(receiver));
   EXPECT_TRUE(receiver.is_valid());
 }
-
+ 
 IN_PROC_BROWSER_TEST_F(OHOSVideoExperienceReporterTest, DFX_TestReportVideoExperienceToBI) {
     Initialize();
     mojo::PendingReceiver<blink::mojom::VideoExperienceReporter> pending_receiver;
     reporter_->BindChannel(std::move(pending_receiver));
-
+ 
     auto params = blink::mojom::VideoExpParams::New();
     params->start_used_time = 100;
     params->total_freeze_time = 50;
@@ -114,17 +114,17 @@ IN_PROC_BROWSER_TEST_F(OHOSVideoExperienceReporterTest, DFX_TestReportVideoExper
     params->video_width = 1280;
     params->video_height = 720;
     params->video_player = "MediaCodec";
-
+ 
     EXPECT_EQ(params->video_duration, 300);
     reporter_->ReportVideoExperienceToBI(std::move(params));
     Destroy();
 }
-
+ 
 IN_PROC_BROWSER_TEST_F(OHOSVideoExperienceReporterTest, DFX_TestWebContentsDestroyed) {
     Initialize();
     reporter_->WebContentsDestroyed();
     EXPECT_EQ(reporter_->web_contents_, nullptr);
     Destroy();
 }
-
+ 
 } // namespace content

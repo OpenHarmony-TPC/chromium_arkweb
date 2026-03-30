@@ -55,7 +55,6 @@ class MockPreloadingAttemptImpl : public PreloadingAttemptImpl {
                               preloading_type,
                               triggered_primary_page_source_id,
                               std::move(url_match_predicate),
-                              planned_max_preloading_type,
                               sampling_seed) {}
   void SetEligibility(PreloadingEligibility eligibility) {
     eligibility_ = eligibility;

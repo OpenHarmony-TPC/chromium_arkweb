@@ -32,13 +32,13 @@ using namespace performance_manager;
 using namespace performance_manager::mechanism;
 
 class MockApplicationStateChangeCallback : public ApplicationStateChangeCallback {
-public:
+public: 
     MockApplicationStateChangeCallback() = default;
     ~MockApplicationStateChangeCallback() = default;
 
     bool foregroundCalled = false;
     bool backgroundCalled = false;
-
+    
     void NotifyApplicationForeground() override {
         foregroundCalled = true;
     }

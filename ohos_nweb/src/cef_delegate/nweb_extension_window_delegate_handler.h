@@ -53,6 +53,8 @@ class NweExtensionWindowDelegateHandler {
     std::optional<WebExtensionWindow> OnGetWindow(
       int windowId,
       const WebExtensionWindowQueryOptions& queryOptions);
+    std::vector<WebExtensionWindow> OnGetAllWindows(
+      const WebExtensionWindowQueryOptions& queryOptions);
     std::optional<WebExtensionWindow> OnGetCurrentWindow(
       int currentWindowId,
       const WebExtensionWindowQueryOptions& queryOptions);
@@ -67,9 +69,6 @@ class NweExtensionWindowDelegateHandler {
                               const std::optional<std::string>& error);
     void WindowRemoveCallback(int request_id, const std::optional<std::string>& error);
 
-    std::vector<WebExtensionWindow> OnGetAllWindows(
-      const WebExtensionWindowQueryOptions& queryOptions);
- 
   private:
     NweExtensionWindowDelegateHandler();
 };

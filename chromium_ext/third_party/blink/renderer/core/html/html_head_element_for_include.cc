@@ -20,7 +20,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_JSPROXY)
 void HTMLHeadElement::RunScriptsAtHeadElementAvailable() {
   // When parsing a fragment, its dummy document has a null parser.
@@ -33,6 +32,5 @@ void HTMLHeadElement::RunScriptsAtHeadElementAvailable() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 }  // namespace blink

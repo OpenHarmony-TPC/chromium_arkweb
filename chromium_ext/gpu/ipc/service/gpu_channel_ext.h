@@ -16,6 +16,7 @@
 #define GPU_IPC_SERVICE_GPU_CHANNEL_EXT_H_
 
 #include "gpu/ipc/service/gpu_channel.h"
+#include "arkweb/chromium_ext/gpu/ipc/service/stream_texture_ohos.h"
 #include "base/functional/callback.h"
 #include "base/trace_event/trace_event.h"
 #include "gpu/ipc/common/gpu_channel.mojom.h"
@@ -42,9 +43,8 @@ class GpuChannelExt : public GpuChannel {
                  int32_t client_id,
                  uint64_t client_tracing_id,
                  bool is_gpu_host,
-                 ImageDecodeAcceleratorWorker* image_decode_accelerator_worker,
-                 const gfx::GpuExtraInfo& gpu_extra_info,
-                 GpuMemoryBufferFactory* gpu_memory_buffer_factory);
+                 bool enable_extra_handles_validation,
+                 const gfx::GpuExtraInfo& gpu_extra_info);
   ~GpuChannelExt() override;
 
   gpu::GpuChannelExt* AsGpuChannelExt() override {

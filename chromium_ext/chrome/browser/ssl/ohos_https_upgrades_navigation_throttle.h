@@ -24,10 +24,9 @@
 // data, so it can't be used as a channel between these classes.)
 class OhosHttpsUpgradesNavigationThrottle : public content::NavigationThrottle {
  public:
-  static std::unique_ptr<OhosHttpsUpgradesNavigationThrottle>
-  MaybeCreateThrottleFor(content::NavigationHandle* handle);
+  static void MaybeCreateAndAdd(content::NavigationThrottleRegistry& registry);
 
-  OhosHttpsUpgradesNavigationThrottle(content::NavigationHandle* handle);
+  OhosHttpsUpgradesNavigationThrottle(content::NavigationThrottleRegistry& registry);
   ~OhosHttpsUpgradesNavigationThrottle() override;
 
   OhosHttpsUpgradesNavigationThrottle(const OhosHttpsUpgradesNavigationThrottle&) =

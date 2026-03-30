@@ -1,0 +1,4 @@
+declare_args()
+{
+    arkweb_package_name = "com.ohos.arkwebcore"
+}

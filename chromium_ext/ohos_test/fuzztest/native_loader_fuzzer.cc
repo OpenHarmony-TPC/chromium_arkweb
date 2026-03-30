@@ -19,7 +19,9 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/document_init.h"
 #include "third_party/blink/renderer/core/html/html_image_loader.h"
-#include "third_party/blink/renderer/core/html/html_pluign_element.h"
+#include "third_party/blink/renderer/core/html/html_plugin_element.h"
+#include "arkweb/chromium_ext/third_party/blink/renderer/core/html/html_native_loader.h"
+
 using namespace blink;
 
 namespace OHOS {
@@ -31,11 +33,11 @@ class FuzzNativeLoader : public NativeLoader {
   String DebugName() const override;
 };
 
-class CORE_EXPORT FuzzHTMLPluginElement final : public HTMLPlugInElement {
+class CORE_EXPORT FuzzHTMLPlugInElement final : public HTMLPlugInElement {
  public:
-  FuzzHTMLPluginElement(Document& document,
+  FuzzHTMLPlugInElement(Document& document,
                         const CreateElementFlags flags = CreateElementFlags())
-      : HTMLPluginElement(html_names::kEmbedTag, document, flags) {}
+      : HTMLPlugInElement(html_names::kEmbedTag, document, flags) {}
 
   FrameOwnerElementType OwnerType() const override {
     return FrameOwnerElementType::kNone;
@@ -58,15 +60,15 @@ void NativeLoaderFuzzTest(const uint8_t* data, size_t size) {
     return;
   }
   Document document(init);
-  std::shared_ptr<HTMLPluginElement> element =
-      std::make_shared<FuzzHTMLPluginElement>(document);
-  NativeLoader* loader = element->NativeLoader();
+  std::shared_ptr<HTMLPlugInElement> element =
+      std::make_shared<FuzzHTMLPlugInElement>(document);
+  HTMLNativeLoader* loader = element->NativeLoader();
   FuzzedDataProvider data_provider(data, size);
-  int id = data_provider.ConsumeIntegralInRange<int>();
-  int x = data_provider.ConsumeIntegralInRange<int>();
-  int y = data_provider.ConsumeIntegralInRange<int>();
-  int width = data_provider.ConsumeIntegralInRange<int>();
-  int height = data_provider.ConsumeIntegralInRange<int>();
+  int id = data_provider.ConsumeIntegralInRange<int>(0, 5);
+  int x = data_provider.ConsumeIntegralInRange<int>(0, 5);
+  int y = data_provider.ConsumeIntegralInRange<int>(0, 5);
+  int width = data_provider.ConsumeIntegralInRange<int>(0, 5);
+  int height = data_provider.ConsumeIntegralInRange<int>(0, 5);
   blink::WebNativeClient::RectChangeCB rect_change_cb;
   loader->OnCreateNativeSurface(id, rect_change_cb);
   const gfx::Rect rect = gfx::Rect(x, y, width, height);

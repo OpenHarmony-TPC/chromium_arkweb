@@ -1,5 +1,5 @@
 #!/bin/bash
-cd ../../;
+cd src/;
 pwd;
 echo -e "\033[32m 1. building-------- ./third_party/depot_tools/ninja  -C out/musl_64/ base_unittests\033[0m"
 ./third_party/depot_tools/ninja -C out/musl_64/ base_unittests

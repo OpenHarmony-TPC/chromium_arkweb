@@ -40,10 +40,14 @@ bool ResourceFinishAsError(
 void PrintLoadersToCancel(HeapVector<Member<ResourceLoader>>& loaders_to_cancel,
                           int target) {
   if (loaders_to_cancel.size()) {
+    LOG(INFO) << "Resource fetcher StopFetchingInternal, the size of "
+                 "loaders_to_cancel: "
+              << loaders_to_cancel.size() << ", target: " << target;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "StopFetchingResource loadersToCancelSize:"
-        << loaders_to_cancel.size() << " target:" << target;
+    LOG_FEEDBACK(INFO) << "Resource fetcher StopFetchingInternal, the size of "
+                          "loaders_to_cancel: "
+                       << loaders_to_cancel.size()
+                       << ", target: " << target;
 #endif
   }
 }

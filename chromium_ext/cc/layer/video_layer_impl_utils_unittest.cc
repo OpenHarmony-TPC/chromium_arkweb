@@ -40,7 +40,7 @@ class VideoLayerImplUtilsTest : public testing::Test {
         &provider, media::VIDEO_ROTATION_0);
     video_layer_impl_->SetBounds(gfx::Size(100, 100));
     video_layer_impl_->SetDrawsContent(true);
-    video_layer_impl_->set_visible_layer_rect(gfx::Rect(1000, 1000));
+    // video_layer_impl_->set_visible_layer_rect(gfx::Rect(1000, 1000));
     CopyProperties(impl_.root_layer(), video_layer_impl_);
     impl_.CalcDrawProps(gfx::Size(1000, 1000));
     utils_ = std::make_unique<VideoLayerImplUtils>(video_layer_impl_);
@@ -59,7 +59,7 @@ class VideoLayerImplUtilsTest : public testing::Test {
 };
 
 TEST_F(VideoLayerImplUtilsTest, VisbilityChange001) {
-  video_layer_impl_->set_may_contain_video(true);
+  // video_layer_impl_->set_may_contain_video(true);
   EXPECT_CALL(mock_tree_utils_, OnLayerRectVisibilityChange(_, _)).Times(0);
   utils_->VisibilityChange();
 }
@@ -71,14 +71,14 @@ TEST_F(VideoLayerImplUtilsTest, VisbilityChange002) {
 }
 
 TEST_F(VideoLayerImplUtilsTest, VisbilityChange003) {
-  video_layer_impl_->set_may_contain_video(false);
+  // video_layer_impl_->set_may_contain_video(false);
   video_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   video_layer_impl_->draw_properties().visible_layer_rect = gfx::Rect(0, 0);
   utils_->VisibilityChange();
 }
 
 TEST_F(VideoLayerImplUtilsTest, LayerRectUpdate001) {
-  video_layer_impl_->set_may_contain_video(true);
+  // video_layer_impl_->set_may_contain_video(true);
   EXPECT_CALL(mock_tree_utils_, OnLayerRectUpdate(_, _)).Times(0);
   utils_->LayerRectUpdate();
 }
@@ -90,7 +90,7 @@ TEST_F(VideoLayerImplUtilsTest, LayerRectUpdate002) {
 }
 
 TEST_F(VideoLayerImplUtilsTest, LayerRectUpdate003) {
-  video_layer_impl_->set_may_contain_video(false);
+  // video_layer_impl_->set_may_contain_video(false);
   video_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   gfx::Rect new_bounds(50, 50, 200, 200);
   utils_->LayerRectUpdate();

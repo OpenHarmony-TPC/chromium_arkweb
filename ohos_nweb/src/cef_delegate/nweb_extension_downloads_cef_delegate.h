@@ -19,6 +19,10 @@
 
 #include "base/functional/callback.h"
 #include "ohos_nweb/src/capi/browser_service/nweb_extension_downloads_types.h"
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/public/capi/nweb_extension_downloads_callbacks.h"
 #endif
@@ -27,31 +31,31 @@ typedef base::OnceCallback<void(const FilenameSuggestion& suggestion)>
       FilenameChangedCallback;
 
 using DownloadEraseCallback = base::RepeatingCallback<
-    void(std::optional<std::string> error, std::vector<int32_t>& eraseIds)>;
+    void(const std::optional<std::string>&, const std::vector<int32_t>&)>;
 
-using DownloadsOpenCallback = base::RepeatingCallback<void(std::optional<std::string> error)>;
+using DownloadsOpenCallback = base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadsRemoveFileCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error)>;
-using DownloadsPauseCallback = base::RepeatingCallback<void(std::optional<std::string> error)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&)>;
+using DownloadsPauseCallback = base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadsResumeCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadsCancelCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadsAcceptDangerCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadsSetUiOptionsCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error)>;
-using DownloadsShowCallback = base::RepeatingCallback<void(std::optional<std::string> error)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&)>;
+using DownloadsShowCallback = base::RepeatingCallback<void(const std::optional<std::string>&)>;
 using DownloadSearchCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error,
-                                 const uint32_t size,
-                                 std::vector<ExDownloadsItem>& downloadItems)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&,
+                                 const uint32_t,
+                                 const std::vector<ExDownloadsItem>&)>;
 using DownloadGetFileIconCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error,
-                                 std::string iconUrl)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&,
+                                 const std::string&)>;
 
 using DownloadsIdCallback =
-    base::RepeatingCallback<void(std::optional<std::string> error, int downloadId)>;
+    base::RepeatingCallback<void(const std::optional<std::string>&, int downloadId)>;
 
 namespace OHOS::NWeb {
 class NWebExtensionDownloadCefDelegate {
@@ -61,62 +65,62 @@ class NWebExtensionDownloadCefDelegate {
   // downloads.erase
   bool Erase(ExDownloadsQueryInfo& query, DownloadEraseCallback callback);
   void EraseCallback(int requestId,
-                     std::optional<std::string> error,
-                     std::vector<int32_t>& eraseIds);
+                     const std::optional<std::string>& error,
+                     const std::vector<int32_t>& eraseIds);
 
   // downloads.open
   bool Open(int downloadId,
             const std::optional<std::string>& contextType,
             const std::optional<bool>& includeIncognitoInfo,
             DownloadsOpenCallback callback);
-  void OpenCallback(int requestId, std::optional<std::string> error);
+  void OpenCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.removeFile
   bool RemoveFile(int downloadId,
                   const std::optional<std::string>& contextType,
                   const std::optional<bool>& includeIncognitoInfo,
                   DownloadsRemoveFileCallback callback);
-  void RemoveFileCallback(int requestId, std::optional<std::string> error);
+  void RemoveFileCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.pause
   bool Pause(int downloadId,
              const std::optional<std::string>& contextType,
              const std::optional<bool>& includeIncognitoInfo,
              DownloadsPauseCallback callback);
-  void PauseCallback(int requestId, std::optional<std::string> error);
+  void PauseCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.resume
   bool Resume(int downloadId,
               const std::optional<std::string>& contextType,
               const std::optional<bool>& includeIncognitoInfo,
               DownloadsResumeCallback callback);
-  void ResumeCallback(int requestId, std::optional<std::string> error);
+  void ResumeCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.cancel
   bool Cancel(int downloadId,
               const std::optional<std::string>& contextType,
               const std::optional<bool>& includeIncognitoInfo,
               DownloadsCancelCallback callback);
-  void CancelCallback(int requestId, std::optional<std::string> error);
+  void CancelCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.acceptDanger
   bool AcceptDanger(int downloadId,
                     const std::optional<std::string>& contextType,
                     const std::optional<bool>& includeIncognitoInfo,
                     DownloadsAcceptDangerCallback callback);
-  void AcceptDangerCallback(int requestId, std::optional<std::string> error);
+  void AcceptDangerCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.setUiOptions
   bool SetUiOptions(const ExDownloadsUiOptions& options,
                     DownloadsSetUiOptionsCallback callback);
-  void SetUiOptionsCallback(int requestId, std::optional<std::string> error);
+  void SetUiOptionsCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.show
   bool Show(int downloadId,
             const std::optional<std::string>& contextType,
             const std::optional<bool>& includeIncognitoInfo,
             DownloadsShowCallback callback);
-  void ShowCallback(int requestId, std::optional<std::string> error);
+  void ShowCallback(int requestId, const std::optional<std::string>& error);
 
   // downloads.showDefaultFolder
   void ShowDefaultFolder();
@@ -124,20 +128,20 @@ class NWebExtensionDownloadCefDelegate {
   // downloads.search
   bool Search(ExDownloadsQueryInfo& query, DownloadSearchCallback callback);
   void SearchCallback(int requestId,
-                      std::optional<std::string> error,
+                      const std::optional<std::string>& error,
                       const uint32_t size,
-                      std::vector<ExDownloadsItem>& downloadItems);
+                      const std::vector<ExDownloadsItem>& downloadItems);
 
   // downloads.download
   bool GetDownloadId(const std::string& guid, DownloadsIdCallback callback);
-  void GetDownloadIdCallback(int requestId, std::optional<std::string> error, int downloadId);
+  void GetDownloadIdCallback(int requestId, const std::optional<std::string>& error, int downloadId);
 
   // downloads.getFileIcon
   bool GetFileIcon(ExDownloadsGetFileIconOptions& iconOption,
                    DownloadGetFileIconCallback callback);
   void GetFileIconCallback(int requestId,
-                           std::optional<std::string> error,
-                           std::string iconUrl);
+                           const std::optional<std::string>& error,
+                           const std::string& iconUrl);
 
   // getAllDownloadItem
   ExDownloadsItemVector GetAllDownloadItem();

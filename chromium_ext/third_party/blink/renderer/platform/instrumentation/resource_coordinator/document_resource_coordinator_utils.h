@@ -20,12 +20,14 @@
 
 #include "arkweb/build/features/features.h"
 #include "base/memory/raw_ptr.h"
+#include "base/sequence_checker.h"
 #include "base/trace_event/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/resource_coordinator/document_resource_coordinator.h"
+#include "third_party/blink/renderer/platform/platform_export.h"
 
 namespace blink {
 
-class DocumentResourceCoordinatorUtils {
+class PLATFORM_EXPORT DocumentResourceCoordinatorUtils {
  public:
   friend class DocumentResourceCoordinator;
   explicit DocumentResourceCoordinatorUtils(
@@ -38,6 +40,7 @@ class DocumentResourceCoordinatorUtils {
 
  private:
   raw_ptr<DocumentResourceCoordinator> document_resource_coordinator_;
+  SEQUENCE_CHECKER(sequence_checker_);
 };
 }  // namespace blink
 #endif

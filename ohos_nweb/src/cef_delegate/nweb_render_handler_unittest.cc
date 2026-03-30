@@ -111,7 +111,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void Find(const CefString& searchText,
             bool forward,
             bool matchCase,
-            bool findNext) override {}
+            bool findNext
+#if BUILDFLAG(ARKWEB_FIND_IN_PAGE)
+            , bool newSession
+#endif
+            ) override {}
 
   void StopFinding(bool clearSelection) override {}
 
@@ -584,7 +588,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
                    CefRefPtr<CefPdfValueCallback> callback) override {}
 
   void SetPopupWindow(cef_native_window_t window) override {}
-
+  
   bool IsReadyToBeClosed() override { return false; }
 
   int GetOpenerIdentifier() override { return 0; }
@@ -623,7 +627,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void EnableVideoAssistant(bool enable) override { return false; }
 
   void ExecuteVideoAssistantFunction(const CefString& cmdId) override {}
-
+  
   bool IsIframe() override { return false; }
 
   void ReloadFocusedFrame() override {}
@@ -709,6 +713,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
+  int InsertBackForwardEntry(int index, const CefString& url) override { return 0; }
+  int UpdateNavigationEntryUrl(int index, const CefString& url) override { return 0; }
+  void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
@@ -738,6 +747,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void PutWebMediaAVSessionEnabled(bool enable) override {}
   void SetEnableHalfFrameRate(bool enabled) override {}
   bool SetFocusByPosition(float x, float y) override { return false; }
+  bool IsElementExist(CefString& xPath) override { return false; }
+  void SetImeShow(bool visible) override {}
+
 #if BUILDFLAG(ARKWEB_PIP)
   void SetPipNativeWindow(int delegate_id,
                           int child_id,
@@ -775,7 +787,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void AbortDistill() override {}
 #endif  // BUILDFLAG(ARKWEB_READER_MODE)
 #endif  // BUILDFLAG(IS_OHOS)
-#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   void LoadUrlWithParams(const std::string& url,
                          const LoadUrlType& load_type,
                          const std::string& refer,
@@ -784,10 +795,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
                          const bool& allow_https_upgrade,
                          int32_t transition_type) override {}
   void EnableHttpsUpgrades(bool enable) override {}
-#endif
-#if BUILDFLAG(ARKWEB_UNITTESTS)
-  void SetImeShow(bool visible) override {}
-#endif // ARKWEB_UNITTESTS
+  int32_t GetLastCommittedEntryPageTransition() override { return 0; }
 };
 
 class MockCefBrowser : public ArkWebBrowserExt {
@@ -869,10 +877,16 @@ class MockCefBrowser : public ArkWebBrowserExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
+  int InsertBackForwardEntry(int index, const CefString& url) override { return 0; }
+  int UpdateNavigationEntryUrl(int index, const CefString& url) override { return 0; }
+  void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
   void SetAdBlockEnabledForSite(bool is_adblock_enabled, int main_frame_tree_node_id) override {}
+  void UpdateAdblockEasyListRules(long adBlockEasyListVersion) override {}
   CefRefPtr<CefFrame> GetFrameByIdentifier(
       const CefString& identifier) override {  return nullptr; }
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
@@ -917,6 +931,7 @@ class MockCefDragData : public CefDragData {
   MOCK_METHOD(void, SetReadOnly, (bool), (override));
   MOCK_METHOD(bool, IsImageFileContents, (), (override));
   MOCK_METHOD(size_t, GetImageFileSize, (), (override));
+  MOCK_METHOD(void, ClearDragData, (), (override));
   void AddRef() const override {}
   bool Release() const override { return false; }
   bool HasOneRef() const override { return false; }
@@ -1050,4 +1065,62 @@ TEST_F(NWebRenderHandlerTest, GetScreenOffset) {
   g_nweb_render_handler->GetScreenOffset(mock_browser, x, y);
 }
 #endif
+
+TEST_F(NWebRenderHandlerTest, GetScreenInfo_PortraitWithLandscapeDimensions) {
+  NWebScreenInfo screen_info;
+  screen_info.rotation = RotationType::ROTATION_0;
+  screen_info.orientation = DisplayOrientation::PORTRAIT;
+  screen_info.width = 1920;
+  screen_info.height = 1080;
+  screen_info.display_ratio = 1.0;
+  g_nweb_render_handler->SetScreenInfo(screen_info);
+
+  CefScreenInfo cef_screen_info;
+  bool result = g_nweb_render_handler->GetScreenInfo(mock_browser, cef_screen_info);
+  ASSERT_TRUE(result);
+  ASSERT_EQ(cef_screen_info.orientation, cef_screen_orientation_type_t::LANDSCAPE_PRIMARY);
+  ASSERT_EQ(cef_screen_info.angle, 0);
+}
+
+TEST_F(NWebRenderHandlerTest, GetScreenInfo_LandscapeWithPortraitDimensions) {
+  NWebScreenInfo screen_info;
+  screen_info.rotation = RotationType::ROTATION_0;
+  screen_info.orientation = DisplayOrientation::LANDSCAPE;
+  screen_info.width = 1080;
+  screen_info.height = 1920;
+  screen_info.display_ratio = 1.0;
+  g_nweb_render_handler->SetScreenInfo(screen_info);
+
+  CefScreenInfo cef_screen_info;
+  bool result = g_nweb_render_handler->GetScreenInfo(mock_browser, cef_screen_info);
+  ASSERT_TRUE(result);
+  ASSERT_EQ(cef_screen_info.orientation, cef_screen_orientation_type_t::PORTRAIT_PRIMARY);
+  ASSERT_EQ(cef_screen_info.angle, 0);
+}
+
+TEST_F(NWebRenderHandlerTest, GetScreenInfo_Rotation90Landscape) {
+  NWebScreenInfo screen_info;
+  screen_info.rotation = RotationType::ROTATION_90;
+  screen_info.orientation = DisplayOrientation::LANDSCAPE;
+  g_nweb_render_handler->SetScreenInfo(screen_info);
+
+  CefScreenInfo cef_screen_info;
+  bool result = g_nweb_render_handler->GetScreenInfo(mock_browser, cef_screen_info);
+  ASSERT_TRUE(result);
+  ASSERT_EQ(cef_screen_info.orientation, cef_screen_orientation_type_t::LANDSCAPE_SECONDARY);
+  ASSERT_EQ(cef_screen_info.angle, 270);
+}
+
+TEST_F(NWebRenderHandlerTest, GetScreenInfo_Rotation270LandscapeInverted) {
+  NWebScreenInfo screen_info;
+  screen_info.rotation = RotationType::ROTATION_270;
+  screen_info.orientation = DisplayOrientation::LANDSCAPE_INVERTED;
+  g_nweb_render_handler->SetScreenInfo(screen_info);
+
+  CefScreenInfo cef_screen_info;
+  bool result = g_nweb_render_handler->GetScreenInfo(mock_browser, cef_screen_info);
+  ASSERT_TRUE(result);
+  ASSERT_EQ(cef_screen_info.orientation, cef_screen_orientation_type_t::LANDSCAPE_PRIMARY);
+  ASSERT_EQ(cef_screen_info.angle, 90);
+}
 }  // namespace OHOS::NWeb

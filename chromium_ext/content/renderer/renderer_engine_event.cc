@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "arkweb/chromium_ext/content/renderer/renderer_engine_event.h"
+#include "content/renderer/renderer_engine_event.h"
+
 #include "base/logging.h"
 #include "content/renderer/render_thread_impl.h"
 

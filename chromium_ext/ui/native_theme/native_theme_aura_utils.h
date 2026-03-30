@@ -18,9 +18,10 @@
 
 #include "arkweb/build/features/features.h"
 #include "base/memory/raw_ptr.h"
+#include "cc/paint/paint_flags.h"
 #include "ui/native_theme/native_theme.h"
 #include "ui/native_theme/native_theme_aura.h"
-#include "ui/native_theme/overlay_scrollbar_constants_aura.h"
+#include "ui/native_theme/overlay_scrollbar_constants.h"
 
 namespace ui {
 class NativeTheme;
@@ -43,7 +44,7 @@ class NativeThemeAuraUtils {
       cc::PaintCanvas* canvas,
       const gfx::Rect& rect,
       SkColor scrollbar_color,
-      NativeTheme::ColorScheme& color_scheme,
+      NativeTheme::PreferredColorScheme color_scheme,
       NativeTheme::Part part,
       NativeTheme::State state,
       const NativeTheme::ScrollbarThumbExtraParams& extra_params);

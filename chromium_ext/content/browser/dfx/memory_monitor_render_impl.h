@@ -20,6 +20,7 @@
 #include "base/process/process_metrics.h"
 #include "base/timer/timer.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "v8/include/v8-isolate.h"
 
 namespace content {
 
@@ -84,6 +85,7 @@ private:
   bool DfxMemSysParamObserve();
   void UpdateProcessBasicMemoryInfo(DfxMemInfo &mem_info);
   void UpdateProcessMemoryInfo(DfxMemInfo &mem_info);
+  template<typename T> void ReadProcFile(const std::string& filePath, const std::string& token, T& value);
 
   mojo::Remote<dfx::mojom::DfxReporter> remote_;
   mojo::PendingReceiver<dfx::mojom::DfxReporter> receiver_ =
@@ -92,6 +94,26 @@ private:
   DfxMemInfo mem_info_;
   DfxMemStatus mem_status_;
   bool has_initialized_ = false;
+
+#if BUILDFLAG(ARKWEB_TEST)
+  bool stub_var_ = false;
+ 
+  v8::Isolate* stubIsolate() {
+    if (stub_var_) {
+      return v8::Isolate::GetCurrent();
+    } else {
+      return nullptr;
+    }
+  }
+ 
+  std::string stubLeakInfo() {
+    if (stub_var_) {
+      return "1,2025Y";
+    } else {
+      return "";
+    }
+  }
+#endif // ARKWEB_TEST
 };
 
 } // namespace content

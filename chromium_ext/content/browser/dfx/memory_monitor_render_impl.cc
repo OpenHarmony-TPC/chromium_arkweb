@@ -51,7 +51,7 @@ using DfxMemInfo = MemoryMonitorImpl::DfxMemInfo;
 using DfxMemStatus = MemoryMonitorImpl::DfxMemStatus;
 
 template<typename T>
-void ReadProcFile(const std::string& filePath, const std::string& token, T& value)
+void MemoryMonitorImpl::ReadProcFile(const std::string& filePath, const std::string& token, T& value)
 {
   std::ifstream file(filePath);
   if (!file.is_open()) {
@@ -96,7 +96,11 @@ void MemoryMonitorImpl::UpdateProcessMemoryInfo(DfxMemInfo &mem_info)
   mem_info.fd_num = 0;
   ReadProcFile("/proc/self/fd_num", "", mem_info.fd_num);
 
+#if BUILDFLAG(ARKWEB_TEST)
+  v8::Isolate *isolate = stubIsolate();
+#else 
   v8::Isolate *isolate = v8::Isolate::GetCurrent();
+#endif // ARKWEB_TEST
   if (isolate) {
     v8::HeapStatistics heap_statistics;
     isolate->GetHeapStatistics(&heap_statistics);
@@ -133,8 +137,12 @@ static void InitDfxMemStatus(DfxMemStatus &mem_status_)
 
 bool MemoryMonitorImpl::DfxMemSysParamObserve()
 {
+#if BUILDFLAG(ARKWEB_TEST)
+  std::string leakInfo = stubLeakInfo();
+#else
   std::string leakInfo = OHOS::NWeb::OhosAdapterHelper::GetInstance()
     .GetSystemPropertiesInstance().GetStringParameter("web.debug.memleak.time", "");
+#endif // ARKWEB_TEST
   if (leakInfo.empty()) {
     return false;
   }
@@ -166,15 +174,23 @@ void MemoryMonitorImpl::CollectAndReport()
     MemoryAllocReport();
   };
 
+#if BUILDFLAG(ARKWEB_TEST)
+  LOG(INFO) << "stub memInfo";
+#else
   UpdateProcessBasicMemoryInfo(mem_info_);
+#endif  // ARKWEB_TEST
   if (mem_info_.pss > ERROR_MEMORY_LEAK_THRESHOLD * MEM_CONVERT) {
     ++mem_status_.error_threshold_counter;
     ++mem_status_.warning_threshold_counter;
   } else if (mem_info_.pss > WARNING_MEMORY_LEAK_THRESHOLD * MEM_CONVERT) {
     ++mem_status_.warning_threshold_counter;
   } else {
+#if BUILDFLAG(ARKWEB_TEST)
+  LOG(INFO) << "stub memStatus";
+#else
     InitDfxMemStatus(mem_status_);
     return;
+#endif  // ARKWEB_TEST
   }
   if (mem_status_.error_threshold_counter >= COUNTER_THRESHOLD) {
     mem_status_.read_global_param = false;

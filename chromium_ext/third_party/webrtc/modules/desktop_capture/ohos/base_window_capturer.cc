@@ -113,14 +113,32 @@ class SharedMemoryFactoryImpl : public webrtc::SharedMemoryFactory {
 }  // namespace
 
 WindowCapturerReadCallback::WindowCapturerReadCallback(
-    const OnReadDataCallback& readDataCallback)
-    : readDataCallback_(readDataCallback) {}
+    const OnReadDataCallback& readDataCallback,
+    const OnStateChangedCallback& stateChangedCallback,
+    OnUserSelectedCallback userSelectedCallback)
+    : readDataCallback_(readDataCallback),
+      stateChangedCallback_(stateChangedCallback) {
+    userSelectedCallback_ = std::move(userSelectedCallback);
+}
 
 WindowCapturerReadCallback::~WindowCapturerReadCallback() {}
 
 void WindowCapturerReadCallback::OnReadData() {
   if (!readDataCallback_.is_null()) {
     readDataCallback_.Run();
+  }
+}
+
+void WindowCapturerReadCallback::OnStateChanged(
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode) {
+  if (!stateChangedCallback_.is_null()) {
+    stateChangedCallback_.Run(stateCode);
+  }
+}
+
+void WindowCapturerReadCallback::OnUserSelected() {
+  if (!userSelectedCallback_.is_null()) {
+    std::move(userSelectedCallback_).Run();
   }
 }
 
@@ -143,9 +161,19 @@ BaseWindowCapturer::BaseWindowCapturer(CaptureSourceType source_type, bool is_pi
       return;
   }
 
+  OnReadDataCallback readDataCallback =
+      base::BindRepeating(&BaseWindowCapturer::HandleBuffer,
+                          weak_factory_.GetWeakPtr());
+  OnStateChangedCallback stateChangedCallback =
+      base::BindRepeating(&BaseWindowCapturer::HandleStateChanged,
+                          weak_factory_.GetWeakPtr());
+  OnUserSelectedCallback userSelectedCallback =
+      base::BindOnce(&BaseWindowCapturer::HandleUserSelected,
+                     weak_factory_.GetWeakPtr());
+
   WindowCapturerReadCallback_ =
-      std::make_shared<WindowCapturerReadCallback>(base::BindRepeating(
-          &BaseWindowCapturer::HandleBuffer, weak_factory_.GetWeakPtr()));
+      std::make_shared<WindowCapturerReadCallback>(
+          std::move(readDataCallback), std::move(stateChangedCallback), std::move(userSelectedCallback));
   if (!WindowCapturerReadCallback_) {
     LOG(ERROR) << "window capturer read callback is nullptr";
     return;
@@ -162,7 +190,29 @@ BaseWindowCapturer::~BaseWindowCapturer() {
   BaseScreenCaptureSource::GetInstance().ReleaseCapture(nweb_id_);
 }
 
-// LCOV_EXCL_START
+void BaseWindowCapturer::HandleStateChanged(
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode) {
+  if (portal_init_failed_) {
+    LOG(ERROR) << "BaseWindowCapturer::OnStateChanged, init failed";
+    return;
+  }
+ 
+  if (stateCode == OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_CANCELED) {
+    LOG(INFO) << "BaseWindowCapturer::OnStateChanged, Screen capture canceled by user";
+    callback_->OnCaptureResult(Result::ERROR_PERMANENT, nullptr);
+  }
+}
+
+void BaseWindowCapturer::HandleUserSelected() {
+  if (portal_init_failed_) {
+    LOG(ERROR) << "BaseWindowCapturer::OnUserSelected, init failed";
+    return;
+  }
+ 
+  LOG(INFO) << "BaseWindowCapturer::OnUserSelected, Screen capture started by user";
+  callback_->OnFrameCaptureStart();
+}
+
 void BaseWindowCapturer::HandleBuffer() {
   if (portal_init_failed_) {
     LOG(ERROR) << "init failed";
@@ -200,12 +250,13 @@ void BaseWindowCapturer::HandleBuffer() {
   if (factory_) {
     uint32_t frame_size =
         static_cast<uint32_t>(width * height * DesktopFrame::kBytesPerPixel);
+    auto shared_memory = factory_->CreateSharedMemory(frame_size);
     current_frame = std::make_unique<webrtc::SharedMemoryDesktopFrame>(
-        webrtc::DesktopSize(width, height), frameStride,
-        factory_->CreateSharedMemory(frame_size).release());
+        webrtc::DesktopSize(width, height), frameStride, webrtc::FOURCC_ABGR,
+        std::move(shared_memory));
   } else {
     current_frame =
-        std::make_unique<BasicDesktopFrame>(DesktopSize(width, height));
+        std::make_unique<BasicDesktopFrame>(DesktopSize(width, height), webrtc::FOURCC_ABGR);
   }
 
   char* pData = (char*)(current_frame->data());
@@ -233,7 +284,6 @@ void BaseWindowCapturer::HandleBuffer() {
   }
   BaseScreenCaptureSource::GetInstance().ReleaseVideoBuffer(nweb_id_);
 }
-// LCOV_EXCL_STOP
 
 void BaseWindowCapturer::Start(Callback* callback) {
   RTC_DCHECK(!callback_);
@@ -277,7 +327,6 @@ DesktopCapturer::Result BaseWindowCapturer::HandleCaptureStateCode(
   return DesktopCapturer::Result::SUCCESS;
 }
 
-// LCOV_EXCL_START
 void BaseWindowCapturer::CaptureFrame() {
   if (portal_init_failed_) {
     callback_->OnCaptureResult(Result::ERROR_PERMANENT, nullptr);
@@ -308,7 +357,6 @@ void BaseWindowCapturer::CaptureFrame() {
   }
   callback_->OnCaptureResult(Result::SUCCESS, std::move(current_frame));
 }
-// LCOV_EXCL_STOP
 
 bool BaseWindowCapturer::GetSourceList(SourceList* sources) {
   RTC_DCHECK(sources->size() == 0);
@@ -329,8 +377,7 @@ bool BaseWindowCapturer::SelectSource(SourceId id) {
 std::unique_ptr<DesktopCapturer> BaseWindowCapturer::CreateRawCapturer(
     const DesktopCaptureOptions& options,
     const BaseWindowCapturer::CaptureSourceType& type) {
-  return std::make_unique<BaseWindowCapturer>(type, options.get_picker_show(),
-                                              options.get_nweb_id());
+  return std::make_unique<BaseWindowCapturer>(type, options.get_picker_show(), options.get_nweb_id());
 }
 
 }  // namespace webrtc

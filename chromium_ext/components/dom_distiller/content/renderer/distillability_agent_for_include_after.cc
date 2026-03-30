@@ -15,7 +15,7 @@
 
 // check host is in whitelist
 blink::mojom::UrlHostDistillerInfoPtr distiller_info = nullptr;
-distillability_service->GetHostDistillerInfo(GURL(doc.Url()).host(),
+distillability_service->GetHostDistillerInfo(GURL(doc.Url()).GetHost(),
                                              &distiller_info);
 if (!distiller_info || !distiller_info->is_distillable) {
   LOG(INFO) << "[Distiller] doc url is not in whitelist.";

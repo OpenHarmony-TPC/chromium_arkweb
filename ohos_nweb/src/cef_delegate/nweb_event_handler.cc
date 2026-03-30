@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/trace_event/common/trace_event_common.h"
 #include "base/trace_event/trace_event.h"
 #include "cef/include/base/cef_logging.h"
@@ -30,10 +32,6 @@
 #include "ui/events/keycodes/keyboard_code_conversion_xkb.h"
 #include "ui/events/keycodes/keysym_to_unicode.h"
 #include "ui/events/event_constants.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 namespace OHOS::NWeb {
 
@@ -355,10 +353,12 @@ bool NWebEventHandler::CreateCefKeyEvent(CefKeyEvent& keyEvent,
       NWebInputDelegate::CefConverter("keyscancode", keyCode);
   ui::KeyboardCode key_code =
       static_cast<ui::KeyboardCode>(keyEvent.windows_key_code);
+#if !defined(COMPONENT_BUILD) // FIXME
   int keysym = ui::XKeysymForWindowsKeyCode(
     key_code, keyEvent.modifiers & EVENTFLAG_SHIFT_DOWN, keyEvent.modifiers & EVENTFLAG_CAPS_LOCK_ON);
   char16_t character = ui::GetUnicodeCharacterFromXKeySym(keysym);
   keyEvent.character = keyEvent.unmodified_character = character;
+#endif
   return true;
 }
 
@@ -540,7 +540,12 @@ void NWebEventHandler::WebSendCancelFlingEvent()
 void NWebEventHandler::WebSendMouseEvent(
     const std::shared_ptr<OHOS::NWeb::NWebMouseEvent>& mouseEvent,
     float ratio) {
+  if (!browser_ || !browser_->GetHost()) {
+    LOG(ERROR) << "WebSendMouseEvent's browser host is empty";
+    return;
+  }
   if (!mouseEvent) {
+    LOG(ERROR) << "WebSendMouseEvent receive mouseEvent is empty";
     return;
   }
   CefMouseEvent mouseInfo;
@@ -564,10 +569,10 @@ void NWebEventHandler::WebSendMouseEvent(
   LOG(DEBUG) << "WebSendMouseEvent modifiers: " << mouseInfo.modifiers;
   if (NWebInputDelegate::IsMouseLeave(mouseEvent->GetAction())) {
     is_in_web_ = false;
-  } else if (NWebInputDelegate::IsMouseEnter(mouseEvent->GetAction())) {
+  } else if (NWebInputDelegate::IsMouseEnter(mouseEvent->GetAction()) ||
+             NWebInputDelegate::IsMouseMove(mouseEvent->GetAction())) {
     is_in_web_ = true;
   }
-  if (browser_ && browser_->GetHost()) {
     if (NWebInputDelegate::IsMouseDown(mouseEvent->GetAction())) {
       previous_action_ = mouseEvent->GetAction();
       previous_button_ = buttonType;
@@ -597,8 +602,7 @@ void NWebEventHandler::WebSendMouseEvent(
       browser_->GetHost()->SendMouseMoveEvent(mouseInfo, true);
     } else {
       previous_action_ = mouseEvent->GetAction();
-      LOG(DEBUG) << "mouse event action: " << mouseEvent->GetAction();
-    }
+    LOG(INFO) << "mouse event action: " << mouseEvent->GetAction();
   }
 }
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
@@ -668,7 +672,8 @@ void NWebEventHandler::SendMouseEvent(int x,
   mouseEvent.modifiers = input_delegate_.GetModifiers(buttonType);
   if (NWebInputDelegate::IsMouseLeave(action)) {
     is_in_web_ = false;
-  } else if (NWebInputDelegate::IsMouseEnter(action)) {
+  } else if (NWebInputDelegate::IsMouseEnter(action) ||
+             NWebInputDelegate::IsMouseMove(action)) {
     is_in_web_ = true;
   }
   if (browser_ && browser_->GetHost()) {

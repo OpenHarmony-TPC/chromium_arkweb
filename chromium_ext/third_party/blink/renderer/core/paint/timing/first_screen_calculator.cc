@@ -14,6 +14,7 @@
  */
 
 #include "arkweb/chromium_ext/third_party/blink/renderer/core/paint/timing/first_screen_calculator.h"
+#include "third_party/blink/renderer/core/paint/timing/paint_timing_record.h"
 
 #include "arkweb/chromium_ext/third_party/blink/renderer/core/paint/timing/blank_screen_detector.h"
 #include "base/memory/safe_ref.h"
@@ -37,6 +38,9 @@ const double NEARLY_FINISHED_THRESHOLD = 0.8;
 const double SMALL_RECT_THRESHOLD = 0.01;
 
 void FirstScreenCalculator::OnFirstScreenInvoked() {
+#if BUILDFLAG(ARKWEB_CRASHPAD)
+  DCHECK(thread_check_.CalledOnValidThread());
+#endif
 #if BUILDFLAG(ARKWEB_FIRST_SCREEN_PAINT)
   const base::TimeDelta as_time_delta =
       first_screen_paint_time_ - base::TimeTicks();
@@ -108,7 +112,6 @@ void FirstScreenCalculator::RestartTimerForFirstScreenDetection() {
   if (user_scrolled_) {
     return;
   }
-
   if (!local_frame_) {
     return;
   }
@@ -142,7 +145,7 @@ void FirstScreenCalculator::RestartTimerForFirstScreenDetection() {
 
 #endif
   timer_.Start(FROM_HERE, base::Milliseconds(task_delay_ms),
-               WTF::BindOnce(&FirstScreenCalculator::OnFirstScreenInvoked,
+               base::BindOnce(&FirstScreenCalculator::OnFirstScreenInvoked,
                              WrapWeakPersistent(this)));
 }
 
@@ -224,10 +227,10 @@ void FirstScreenCalculator::NotifyImagePaint(
     const ImageRecord* record,
     std::optional<uint64_t> viewport_size,
     bool is_video) {
-  if (!record || user_scrolled_ || !record->lcp_rect_info_) {
+  if (!record || user_scrolled_ || !record->GetLCPRectInfo()) {
     return;
   }
-  gfx::Rect rect = record->lcp_rect_info_->GetRootRectInfo();
+  gfx::Rect rect = record->GetLCPRectInfo()->GetRootRectInfo();
   if (!GetViewportAreaAndTrimRect(rect)) {
     return;
   }
@@ -246,10 +249,11 @@ void FirstScreenCalculator::NotifyImagePaint(
   }
 
   if (image_rects_map_.empty()) {
-    image_rects_map_.insert({record_id_hash, {rect, record->paint_time}});
+    image_rects_map_.insert({record_id_hash, {rect, record->PaintTime()}});
     RestartTimerForFirstScreenDetection();
     return;
   }
+
   for (auto it = image_rects_map_.begin(); it != image_rects_map_.end(); ++it) {
     if (it->first == record_id_hash) {
       return;
@@ -260,7 +264,7 @@ void FirstScreenCalculator::NotifyImagePaint(
     return;
   }
   RemoveExistingRectsContainedByRect(rect);
-  image_rects_map_.insert({record_id_hash, {rect, record->paint_time}});
+  image_rects_map_.insert({record_id_hash, {rect, record->PaintTime()}});
   if (DoesRectIntersectExistingRects(rect)) {
     intersected_image_ids_.emplace_back(record_id_hash);
     return;
@@ -270,15 +274,16 @@ void FirstScreenCalculator::NotifyImagePaint(
 
 void FirstScreenCalculator::NotifyTextPaint(const TextRecord* record,
                                             const base::TimeTicks& timestamp) {
-  if (!record || user_scrolled_ || !record->lcp_rect_info_) {
+  if (!record || user_scrolled_ || !record->GetLCPRectInfo()) {
     return;
   }
-  gfx::Rect rect = record->lcp_rect_info_->GetRootRectInfo();
+
+  gfx::Rect rect = record->GetLCPRectInfo()->GetRootRectInfo();
   if (!GetViewportAreaAndTrimRect(rect)) {
     return;
   }
   if (text_paint_rects_.empty()) {
-    text_paint_rects_.emplace_back(PaintRectInfo(rect, record->paint_time));
+    text_paint_rects_.emplace_back(PaintRectInfo(rect, record->PaintTime()));
     if (first_screen_paint_time_.is_null() ||
         timestamp > first_screen_paint_time_) {
       first_screen_paint_time_ = timestamp;
@@ -286,14 +291,16 @@ void FirstScreenCalculator::NotifyTextPaint(const TextRecord* record,
     RestartTimerForFirstScreenDetection();
     return;
   }
+
   if (IsRectContainedByExistingRects(rect) ||
       IsRectTooSmallWhenNearlyFinished(rect)) {
     return;
   }
+
   RemoveExistingRectsContainedByRect(rect);
-  text_paint_rects_.emplace_back(PaintRectInfo(rect, record->paint_time));
+  text_paint_rects_.emplace_back(PaintRectInfo(rect, record->PaintTime()));
   if (DoesRectIntersectExistingRects(rect)) {
-    return;
+      return;
   }
 
   if (first_screen_paint_time_.is_null() ||
@@ -323,7 +330,7 @@ void FirstScreenCalculator::AssignImagePaintTime(
 
   if (!user_scrolled_ && !timestamp.is_null()) {
     if (first_screen_paint_time_.is_null() ||
-        timestamp > first_screen_paint_time_) {
+        first_screen_paint_time_ < timestamp) {
       first_screen_paint_time_ = timestamp;
     }
     RestartTimerForFirstScreenDetection();

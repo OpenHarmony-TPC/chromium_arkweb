@@ -66,6 +66,7 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
   void SetOverscrollMode(int mode) override;
   void GetInputElementAttributes(
       HashMap<String, String>& attributes) const override;
+  bool IsElementExist(std::string xPath) override;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
   void ArkWebHandleTouchEvent(const WebInputEvent& input_event);
@@ -96,7 +97,7 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
 #endif
 
 #if BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
-  void DeterminePageLanguage();
+  void ParseLanguage();
 #endif
 
 #if BUILDFLAG(ARKWEB_AI)
@@ -111,9 +112,9 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
       GetAbsImageRectCallback get_rect_callback,
       OnTextSelectedCallback callback,
       OnDestroyImageAnalyzerOverlayCallback destroy_callback);
-  void OnTextRecognized(WTF::Vector<mojom::blink::TextRecognizeResultPtr> res,
+  void OnTextRecognized(Vector<mojom::blink::TextRecognizeResultPtr> res,
                         float scale) override;
-  WTF::Vector<int8_t> GetWordSelection(const WTF::String& text, int8_t offset);
+  Vector<int8_t> GetWordSelection(const String& text, int8_t offset);
   void OnTextSelected(bool flag) override;
   using GetImageRectCallback = base::OnceCallback<void(const gfx::Rect&)>;
   void GetImageRect(GetImageRectCallback callback) override;
@@ -142,7 +143,7 @@ class WebFrameWidgetImplExt : public WebFrameWidgetImpl {
   void SelectRangeV2ForTest(const gfx::Point& position, bool is_base) {
     WebFrameWidgetImplExt::SelectRangeV2(position, is_base);
   }
-  void OnTextRecognizedForTest(WTF::Vector<mojom::blink::TextRecognizeResultPtr> res, float scale);
+  void OnTextRecognizedForTest(Vector<mojom::blink::TextRecognizeResultPtr> res, float scale);
   void OnTextSelectedForTest(bool flag) { WebFrameWidgetImplExt::OnTextSelected(flag); }
   void ShowFreeCopyMenuForTest() {
 #if BUILDFLAG(ARKWEB_EXT_FREE_COPY)

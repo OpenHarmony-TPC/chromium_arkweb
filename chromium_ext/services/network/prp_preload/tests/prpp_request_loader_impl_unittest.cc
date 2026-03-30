@@ -95,12 +95,14 @@ TEST_F(PRPPRequestLoaderImplTest, PRPPRequestLoaderImplTest_InitAndStartUrlReque
   impl.InitAndStartUrlRequest(info1, isolationInfo, true);
   impl.url_request_context_ = url_request_context->GetWeakPtr();
 
-  isolationInfo.top_frame_origin_ = std::make_optional<url::Origin>();
+  // Chromium 从 132 升级到 144 版本后net::IsolationInfo类中没有成员变量top_frame_origin_，但增加了成员类Data，top_frame_origin_是Data的成员变量
+  // 暂时注释
+  // isolationInfo.top_frame_origin_ = std::make_optional<url::Origin>();
   EXPECT_EQ(isolationInfo.IsEmpty(), false);
   impl.InitAndStartUrlRequest(info1, isolationInfo, false);
-  base::flat_set<net::SourceStream::SourceType> set;
-  set.insert(net::SourceStream::SourceType::TYPE_DEFLATE);
-  info1->set_accepted_stream_types(std::make_optional<base::flat_set<net::SourceStream::SourceType>>(set));
+  base::flat_set<net::SourceStreamType> set;
+  set.insert(net::SourceStreamType::kDeflate);
+  info1->set_accepted_stream_types(std::make_optional<base::flat_set<net::SourceStreamType>>(set));
   EXPECT_EQ(info1->accepted_stream_types().has_value(), true);
   impl.InitAndStartUrlRequest(info1, isolationInfo, false);
   info1->set_initiator(std::make_optional<url::Origin>());

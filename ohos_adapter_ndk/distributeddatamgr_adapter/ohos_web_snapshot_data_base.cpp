@@ -458,6 +458,7 @@ __attribute__((no_sanitize("cfi", "cfi-icall"))) void OhosWebSnapshotDataBase::G
             WVLOG_E("blankless GetAllInfo the file size is incorrect");
             return;
         }
+
         int64_t width;
         cursor->getInt64(cursor, widthIndex, &width);
         dataItem.width = static_cast<int32_t>(width);

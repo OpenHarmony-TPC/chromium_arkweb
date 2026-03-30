@@ -20,7 +20,10 @@
 #include <vector>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+#include "arkweb/ohos_nweb/src/capi/nweb_prefetch_options.h"
 #include "cef_browser.h"
 #include "include/cef_base.h"
 #include "include/cef_browser.h"
@@ -28,10 +31,6 @@
 #include "nweb_handler.h"
 #include "nweb_js_dialog_result_impl.h"
 #include "ohos_nweb/include/nweb_errors.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 #define private public
 #include "nweb_handler_delegate.h"
@@ -212,6 +211,8 @@ class MockCefBrowser : public ArkWebBrowserExt {
   void SetSavePassword(bool enable) override {}
   int GetSecurityLevel() override { return 0; }
   void EnableSafeBrowsing(bool enable) override {}
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
   bool IsSafeBrowsingEnabled() override { return false; }
   void EnableIntelligentTrackingPrevention(bool enable) override {}
   bool IsIntelligentTrackingPreventionEnabled() override { return false; }
@@ -225,12 +226,16 @@ class MockCefBrowser : public ArkWebBrowserExt {
     return 0;
   }
   void SetBackForwardCacheOptions(int32_t size, int32_t timeToLive) override {}
+  void UpdateAdblockEasyListRules(long adBlockEasyListVersion) override {}
 #endif  // BUILDFLAG(IS_OHOS)
   bool NeedToFireBeforeUnloadOrUnloadEvents() override {}
   void DispatchBeforeUnload() override {}
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override {}
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+  int InsertBackForwardEntry(int index, const CefString& url) override {}
+  int UpdateNavigationEntryUrl(int index, const CefString& url) override {}
+  void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override {}
   uint32_t GetAcceleratedWidget(bool isPopup) override {}
@@ -469,7 +474,7 @@ TEST_F(NWebHandlerDelegateTest, OnSetFocus_TEST002) {
   delegate->render_handler_ = nullptr;
   EXPECT_CALL(*mock_handler_, OnFocus(::testing::_))
       .WillOnce(::testing::Return(true));
-  ON_CALL(*mock_event_handler_, SetIsFocus(true));
+  EXPECT_CALL(*mock_event_handler_, SetIsFocus(true)).Times(1);
 
   delegate->OnSetFocus(browser_, FOCUS_SOURCE_NAVIGATION);
 }
@@ -560,6 +565,7 @@ TEST_F(NWebHandlerDelegateTest, OnFileDialog) {
   bool capture = false;
   CefRefPtr<CefFileDialogCallback> callback;
 
+
   EXPECT_FALSE(delegate->OnFileDialog(browser_, FILE_DIALOG_OPEN, title,
                                       default_path, accept_filters, accept_extensions,
                                       accept_descriptions, accepts, start_in, is_exclude_accept_all_options,
@@ -606,6 +612,16 @@ TEST_F(NWebHandlerDelegateTest, IsShowHandle) {
   ASSERT_NE(delegate, nullptr);
   auto result = delegate->IsShowHandle();
   EXPECT_FALSE(result);
+}
+
+TEST_F(NWebHandlerDelegateTest, getallimage) {
+  ASSERT_NE(delegate, nullptr);
+  delegate->IsShowHandle();
+  auto res = delegate->RegisterGetAllImageCallback(1, 1, nullptr);
+  size_t bufferSize = 0;
+  uint8_t* buffer = nullptr;
+  delegate->OnGetAllImage(1, buffer, bufferSize);
+  EXPECT_FALSE(res);
 }
 
 #if BUILDFLAG(ARKWEB_AI)
@@ -671,3 +687,17 @@ TEST_F(NWebHandlerDelegateTest, RegisterOnLoadStartedCbForHighlightContent) {
   EXPECT_NE(delegate->onLoadStartedCbForHighlightContent_, nullptr);
 }
 #endif
+
+TEST_F(NWebHandlerDelegateTest, RegisterGetAllImageByXPathCallbackMaxImageNum) {
+  int32_t taskid = 0;
+  int32_t imagenum = 50;
+  bool result = delegate->RegisterGetAllImageByXPathCallback(taskid, imagenum, nullptr);
+  EXPECT_FALSE(result);
+}
+
+TEST_F(NWebHandlerDelegateTest, RegisterGetAllImageByXPathCallback) {
+  int32_t taskid = 0;
+  int32_t imagenum = 10;
+  bool result = delegate->RegisterGetAllImageByXPathCallback(taskid, imagenum, nullptr);
+  EXPECT_TRUE(result);
+}

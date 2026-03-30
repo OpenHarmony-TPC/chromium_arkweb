@@ -10,6 +10,9 @@
 #include <vector>
 
 #include "arkweb/chromium_ext/net/url_request/url_request_context_ext.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/debug/crash_logging.h"
@@ -38,7 +41,6 @@
 #include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
 #include "components/ip_protection/common/masked_domain_list_manager.h"
-#include "components/network_session_configurator/common/network_features.h"
 #include "components/os_crypt/sync/os_crypt.h"
 #include "components/privacy_sandbox/masked_domain_list/masked_domain_list.pb.h"
 #include "mojo/public/cpp/base/proto_wrapper.h"
@@ -78,14 +80,13 @@
 #include "net/url_request/url_request_context.h"
 #include "services/network/dns_config_change_manager.h"
 #include "services/network/first_party_sets/first_party_sets_manager.h"
-#include "services/network/http_auth_cache_copier.h"
+#include "services/network/http_auth_cache_proxy_copier.h"
 #include "services/network/net_log_exporter.h"
 #include "services/network/net_log_proxy_sink.h"
 #include "services/network/network_context.h"
 #include "services/network/public/cpp/crash_keys.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/initiator_lock_compatibility.h"
-#include "services/network/public/cpp/load_info_util.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "services/network/public/cpp/parsed_headers.h"
 #include "services/network/public/mojom/key_pinning.mojom.h"
@@ -95,16 +96,11 @@
 #include "services/network/tpcd/metadata/manager.h"
 #include "services/network/url_loader.h"
 
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
-
 #if BUILDFLAG(IS_ANDROID) && defined(ARCH_CPU_ARMEL)
 #include "third_party/boringssl/src/include/openssl/cpu.h"
 #endif
 
-#if (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CASTOS)) || \
-    BUILDFLAG(IS_CHROMEOS_LACROS)
+#if BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CASTOS)
 
 #include "components/os_crypt/sync/key_storage_config_linux.h"
 #endif
@@ -122,11 +118,11 @@
 #include "services/network/sct_auditing/sct_auditing_cache.h"
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
 #include "net/socket/client_socket_pool.h"
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 #include "base/base_switches.h"
 #include "base/command_line.h"
 #include "content/public/common/content_switches.h"
@@ -137,7 +133,7 @@
 #endif
 
 #if BUILDFLAG(ARKWEB_CUSTOM_DNS)
-#include "cef/ohos_cef_ext/libcef/browser/net_service/net_helpers.h"
+#include "arkweb/chromium_ext/net/base/net_helpers.h"
 #endif
 
 namespace net {
@@ -156,12 +152,14 @@ ArkWebNetworkServiceExt::ArkWebNetworkServiceExt(
 
 ArkWebNetworkServiceExt::~ArkWebNetworkServiceExt() = default;
 
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
 void ArkWebNetworkServiceExt::SetURLRequestContext(
     NetworkContext* network_context) {
   net::URLRequestContext* url_request_context =
       network_context->url_request_context();
   if (url_request_context) {
+    LOG(INFO) << "Register network context and set network timeout "
+              << timeout_override_ << " second(s)";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO) << "Register network context and set network timeout "
                        << timeout_override_ << " second(s)";
@@ -170,7 +168,7 @@ void ArkWebNetworkServiceExt::SetURLRequestContext(
         timeout_override_);
     url_request_context->AsURLRequestContextExt()->BindDnsToNetwork(
         network_for_dns_);
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
     url_request_context->AsURLRequestContextExt()
         ->SetConnectJobWithSecureDnsOnlyTimeout(
             connect_job_with_secure_dns_only_timeout_);
@@ -179,9 +177,11 @@ void ArkWebNetworkServiceExt::SetURLRequestContext(
 }
 
 void ArkWebNetworkServiceExt::SetConnectTimeout(int seconds) {
+  LOG(INFO) << "Network service set network timeout " << seconds
+            << " second(s)";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO, kNetwork)
-      << "SetConnectTimeout timeout:" << seconds << "s";
+  LOG_FEEDBACK(INFO) << "Network service set network timeout " << seconds
+                     << " second(s)";
 #endif
   timeout_override_ = seconds;
   for (NetworkContext* network_context : network_contexts_) {
@@ -195,6 +195,8 @@ void ArkWebNetworkServiceExt::SetConnectTimeout(int seconds) {
 
 void ArkWebNetworkServiceExt::BindDnsToNetwork(int network) {
   if (network_for_dns_ == network) {
+    LOG(INFO) << "bind dns to network return for network is same with "
+              << network_for_dns_;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO) << "bind dns to network return for network is same with "
                        << network_for_dns_;
@@ -203,13 +205,14 @@ void ArkWebNetworkServiceExt::BindDnsToNetwork(int network) {
   }
   network_for_dns_ = network;
   if (host_resolver_manager_) {
+    LOG(INFO) << "bind dns to network " << network << " invalid dns cache.";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO) << "bind dns to network " << network
                        << " invalid dns cache.";
 #endif
     host_resolver_manager_->InvalidateCachesForTesting();
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
     bool http_dns_enabled = false;
     std::string http_dns_servers_template;
     if (network == -1) {
@@ -230,7 +233,7 @@ void ArkWebNetworkServiceExt::BindDnsToNetwork(int network) {
 }
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 void ArkWebNetworkServiceExt::SetHttpsDnsFallbackData(
     mojom::HttpsDnsFallbackConfigPtr config) {
   bool https_dns_fallback_enabled = false;
@@ -239,15 +242,25 @@ void ArkWebNetworkServiceExt::SetHttpsDnsFallbackData(
   std::vector<std::string> ip_list;
   if (config) {
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-    LOG_FEEDBACK(INFO, kNetwork)
-        << "SetHttpsDnsFallbackData enabled:" << config->enabled
-        << " httpsDnsServerTemplate:"
+    LOG_FEEDBACK(INFO)
+        << "DOH-Fallback set https dns fallback config enabled: "
+        << config->enabled << " https_dns_server_template: "
         << url::LogUtils::ConvertUrlWithMask(config->https_dns_server_template)
-        << " connectJobWithDnsOnlyTimeout:"
+        << ", SetHttpsDnsFallbackData, enabled " << config->enabled
+        << ", connect_job_with_dns_only_timeout "
         << config->connect_job_with_dns_only_timeout
-        << " sourceHostListSize:" << config->source_host_list.size()
-        << " suspectIPListSize:" << config->suspect_ip_list.size();
+        << ", https_dns_server_template "
+        << url::LogUtils::ConvertUrlWithMask(config->https_dns_server_template)
+        << ", source_host_list.size " << config->source_host_list.size()
+        << ", suspect_ip_list.size " << config->suspect_ip_list.size();
 #endif
+    LOG(INFO) << "SetHttpsDnsFallbackData, enabled " << config->enabled
+              << ", connect_job_with_dns_only_timeout "
+              << config->connect_job_with_dns_only_timeout
+              << ", https_dns_server_template "
+              << config->https_dns_server_template << ", source_host_list.size "
+              << config->source_host_list.size() << ", suspect_ip_list.size "
+              << config->suspect_ip_list.size();
     https_dns_fallback_enabled = config->enabled;
     http_dns_server_template = config->https_dns_server_template;
     connect_job_with_secure_dns_only_timeout_ =
@@ -276,18 +289,16 @@ void ArkWebNetworkServiceExt::SetHttpsDnsFallbackData(
 void ArkWebNetworkServiceExt::SetHttpsDnsHostResolver(
     bool enabled,
     const std::string& server_template) {
+  LOG(INFO) << "SetHttpsDnsHostResolver, enabled " << enabled
+            << ", real_https_dns_fallback_enabled_ "
+            << real_https_dns_fallback_enabled_ << ", server_template "
+            << server_template << ", real_http_dns_server_template_ "
+            << real_http_dns_server_template_ << ", network_for_dns "
+            << network_for_dns_;
   if (enabled == real_https_dns_fallback_enabled_ &&
       server_template == real_http_dns_server_template_) {
     return;
   }
-  LOG_FEEDBACK(INFO, kNetwork)
-      << "SetHttpsDnsHostResolver enabled:" << enabled
-      << " realHttpsDnsFallbackEnabled:" << real_https_dns_fallback_enabled_
-      << " serverTemplate:"
-      << url::LogUtils::ConvertUrlWithMask(server_template)
-      << " realHttpDnsServerTemplate:"
-      << url::LogUtils::ConvertUrlWithMask(real_http_dns_server_template_)
-      << " networkForDns:" << network_for_dns_;
   real_https_dns_fallback_enabled_ = enabled;
   real_http_dns_server_template_ = server_template;
 
@@ -339,7 +350,7 @@ net::DnsConfigOverrides ArkWebNetworkServiceExt::ConfigureStubHostResolverExt(
     net::SecureDnsMode secure_dns_mode,
     const net::DnsOverHttpsConfig& dns_over_https_config) {
   net::DnsConfigOverrides overrides;
-#if !BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if !BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
   // Since the system dnsconfig is not obtained and null in OHOS, so override
   // the full config with default.
   overrides = net::DnsConfigOverrides::CreateOverridingEverythingWithDefaults();

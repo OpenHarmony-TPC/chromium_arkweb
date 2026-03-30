@@ -90,7 +90,6 @@ void BackgroundTaskPolicy::OnPageNodeAdded(const PageNode* page_node) {
     LOG(ERROR) << BG_TASK_TAG << " page_node is null";
     return;
   }
-
   LOG(INFO) << BG_TASK_TAG << " OnPageNodeAdded";
   visible_page_num_++;
   MaybeChangeBackgroundTask(page_node);
@@ -114,7 +113,6 @@ void BackgroundTaskPolicy::OnIsVisibleChanged(const PageNode* page_node) {
             << " media avsession IsVisibleChanged: "
             << (visible_num > 0 ? "true" : "false")
             << ", visible_page_num: " << visible_page_num_;
-
   MaybeChangeBackgroundTask(page_node);
 }
 
@@ -191,15 +189,13 @@ void BackgroundTaskPolicy::OnIsAudibleChanged(const PageNode* page_node) {
   MaybeChangeBackgroundTask(page_node);
 }
 
-void BackgroundTaskPolicy::MaybeChangeBackgroundTask(
-    const PageNode* page_node) {
+void BackgroundTaskPolicy::MaybeChangeBackgroundTask(const PageNode* page_node) {
   LOG(INFO) << "BackgroundTaskPolicy::MaybeChangeBackgroundTask "
             << " page_node hash=" << std::hex << base::FastHash(base::byte_span_from_ref(page_node))
             << " visible_page_num_: " << visible_page_num_
             << " media_playing_num_: " << media_playing_num_
             << " audio_state_num_: " << audio_state_num_
             << " is_request_background_task_: " << is_request_background_task_;
-
   RequestBackgroundTaskReason reason =
       RequestBackgroundTaskReason::NO_CHANGE_BG_TASK;
   if (is_request_background_task_ &&
@@ -250,7 +246,6 @@ void BackgroundTaskPolicy::SetBrowserForeground(const PageNode* page_node)
   bool ret = background_task_holder_->MaybeRequestBackgroundRunning(false, BackgroundModeAdapter::AUDIO_PLAYBACK);
   if (ret) {
     LOG(INFO) << BG_TASK_TAG << __FUNCTION__ << "request bg task success";
-
   } else {
     LOG(INFO) << BG_TASK_TAG << __FUNCTION__ << "request bg task failed";
   }
@@ -347,6 +342,7 @@ void BackgroundTaskPolicy::ProcessAudioContextPlayersOnUIThread(const PageNode* 
     content::GlobalRenderFrameHostId rfh_id = iter->first;
     content::RenderFrameHost* render_frame_host = content::RenderFrameHost::FromID(rfh_id);
     if (!render_frame_host) {
+      iter = audio_context_players_num_.erase(iter);
       continue;
     }
     if (content::WebContents::FromRenderFrameHost(render_frame_host) ==

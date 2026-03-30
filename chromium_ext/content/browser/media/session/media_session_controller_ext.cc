@@ -9,7 +9,6 @@
 
 namespace content {
   constexpr int kMilliseconds = 1000;
-
   MediaSessionControllerExt::MediaSessionControllerExt(const MediaPlayerId& id,
                                                        WebContentsImpl* web_contents)
     : MediaSessionController(id, std::move(web_contents)) {
@@ -62,8 +61,9 @@ void MediaSessionControllerExt::HasOneShotPlayersWhenSetMetadata(
 
 #if BUILDFLAG(ARKWEB_PIP)
 void MediaSessionControllerExt::OnPictureInPictureStateChanged(
-    const MediaPlayerId& id,
-    uint32_t state, int32_t width, int32_t height) {
+    const MediaPlayerId& id, uint32_t state, int32_t width, int32_t height) {
+  if (!media_session_)
+      return;
   media_session_->OnPictureInPictureStateChanged(id, state, width, height);
 }
 #endif
@@ -251,11 +251,15 @@ void MediaSessionControllerExt::NotifyRemoteExitFullScreen() {
 void MediaSessionControllerExt::NotifyCastControlShow(int player_id, bool is_show) {
   DCHECK_EQ(player_id_, player_id);
   LOG(INFO) << "MediaSessionControllerExt::NotifyCastControlShow";
-  if (!web_contents_)
+  if (!web_contents_) {
+    LOG(ERROR) << "NotifyCastControlShow web_contents_ is nullptr";
     return;
+  }
   auto web_contents_observer = web_contents_->media_web_contents_observer();
-  if (!web_contents_observer)
+  if (!web_contents_observer) {
+    LOG(ERROR) << "NotifyCastControlShow web_contents_observer is nullptr";
     return;
+  }
   if (web_contents_observer->IsPlayerIdInMediaPlayerRemotesMap(id_)) {
     web_contents_observer->GetMediaPlayerRemote(id_)->NotifyCastControlShow(is_show);
   }

@@ -313,10 +313,10 @@ PaintTimingDetectorUtils::GetFirstScreenCalculator() {
   }
   Frame* parent_frame =
       paint_timing_detector_->frame_view_->GetFrame().Parent();
-  if (!parent_frame) {
+  if (!parent_frame || !parent_frame->IsLocalFrame()) {
     return first_screen_calculator_;
   }
-
+ 
   LocalFrame* local_frame = static_cast<LocalFrame*>(parent_frame);
   if (!local_frame || !local_frame->View()) {
     return nullptr;
@@ -325,13 +325,13 @@ PaintTimingDetectorUtils::GetFirstScreenCalculator() {
       ->GetPaintTimingDetector()
       .GetFirstScreenCalculator();
 }
-
+ 
 void PaintTimingDetectorUtils::RestartRecordingFirstScreenPaint() {
   if (auto first_screen_calculator = GetFirstScreenCalculator()) {
     first_screen_calculator->RestartRecordingFirstScreenPaint(); 
   }
 }
-
+ 
 void PaintTimingDetectorUtils::OnUserScroll() {
   if (auto first_screen_calculator = GetFirstScreenCalculator()) {
     first_screen_calculator->OnUserScroll(); 

@@ -22,6 +22,7 @@
 #include "base/json/json_reader.h"
 #include "base/logging.h"
 #include "base/values.h"
+#include "ohos_nweb/src/nweb_common.h"
 #if BUILDFLAG(ARKWEB_BLANK_PROP_CONFIG)
 #include "net/base/url_util.h"
 #include "url/gurl.h"
@@ -40,6 +41,7 @@ void BlanklessController::BlankOptWhiteList::LoadSysWhiteList()
   }
   m_is_sys_loaded_ = true;
 
+  ScopedAllowBlockingForNwebInit allow_blocking_for_using_path;
 #if BUILDFLAG(ARKWEB_TEST)
   base::FilePath data_path = base::FilePath("/data/ut/blank_opt_white_list.json");
 #else
@@ -122,6 +124,7 @@ void BlanklessController::BlankOptWhiteList::LoadAppWhiteList()
     LOG(WARNING) << "blankless BlankOptWhiteList get app bundle name failed.";
     return;
   }
+  ScopedAllowBlockingForNwebInit allow_blocking_for_using_path;
   base::FilePath data_path = base::FilePath("/sys_prod/etc/web/" + bundleName + ".json");
   base::File tfile(data_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!tfile.IsValid()) {
@@ -153,6 +156,14 @@ void BlanklessController::BlankOptWhiteList::ParseAppWhiteList(std::vector<char>
   if (enable.has_value() && !enable.value()) {
     LOG(WARNING) << "blankless BlankOptWhiteList app file not enable.";
     return;
+  }
+
+  base::Value* fullUrls = dict.Find("full-match");
+  if (fullUrls && fullUrls->is_list()) {
+    base::Value::List& fullMatchList = fullUrls->GetList();
+    for (const auto& item : fullMatchList) {
+      m_full_match_set_.insert(item.GetString());
+    }
   }
 
   base::Value* queryUrls = dict.Find("query-match");
@@ -216,6 +227,11 @@ std::string BlanklessController::BlankOptWhiteList::GetQueryUrl(const std::strin
   return result.str();
 }
 
+bool BlanklessController::BlankOptWhiteList::FullMatch(const std::string& url)
+{
+  return m_full_match_set_.find(url) != m_full_match_set_.end();
+}
+
 bool BlanklessController::BlankOptWhiteList::QueryMatch(const std::string& url)
 {
   std::string baseUrl = GetBaseUrl(url);
@@ -225,6 +241,11 @@ bool BlanklessController::BlankOptWhiteList::QueryMatch(const std::string& url)
 bool BlanklessController::BlankOptWhiteList::CheckAppWhiteList(const std::string& url, uint64_t& blankless_key)
 {
   LoadAppWhiteList();
+  if (FullMatch(url)) {
+    blankless_key = std::hash<std::string>{}(url);
+    return true;
+  }
+
   if (QueryMatch(url)) {
     const std::string queryUrl = GetQueryUrl(url);
     blankless_key = std::hash<std::string>{}(queryUrl);
@@ -395,7 +416,7 @@ bool BlanklessController::CheckGlobalProperty()
 }
 
 bool BlanklessController::CheckStatusForTest(
-  int32_t nweb_id, const BlanklessController::StatusInfo& expected_status, bool expected_found)
+  uint32_t nweb_id, const BlanklessController::StatusInfo& expected_status, bool expected_found)
 {
   std::lock_guard<std::mutex> lck(m_nweb_status_map_mtx_);
   auto it = m_nweb_status_map_.find(nweb_id);

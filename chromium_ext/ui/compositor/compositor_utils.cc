@@ -99,9 +99,23 @@ void CompositorUtils::EvictFrameBackBuffers() {
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+void CompositorUtils::SetIfNeedCleanBuffers(bool need_clean_buffers)
+{
+  if (!compositor_ || !compositor_->context_factory_ ||
+      !compositor_->context_factory_->GetHostFrameSinkManager() ||
+      !compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils) {
+    return;
+  }
+  TRACE_EVENT1("viz", "CompositorUtils::SetIfNeedCleanBuffers ", "need_clean_buffers:", need_clean_buffers);
+  compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils->SetIfNeedCleanBuffers(
+      compositor_->frame_sink_id(), need_clean_buffers);
+}
+#endif
+
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
 void CompositorUtils::SetIsOfflineWebComponentInactive(bool is_inactive) {
-  compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils->SetIsOfflineWebComponentInactive( 
+  compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils->SetIsOfflineWebComponentInactive(
       is_inactive, compositor_->frame_sink_id());
 }
 #endif
@@ -117,7 +131,6 @@ void CompositorUtils::ResetVSyncFrequency() {
       compositor_->frame_sink_id());
 }
 #endif
-//LCOV_EXCL_STOP
 
 #if BUILDFLAG(IS_ARKWEB) && BUILDFLAG(ARKWEB_PERFORMANCE_JITTER)
 void CompositorUtils::SetCurrentFrameSinkId(const viz::FrameSinkId& id) {
@@ -129,7 +142,6 @@ void CompositorUtils::SetCurrentFrameSinkId(const viz::FrameSinkId& id) {
 }
 #endif
 
-//LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
 void CompositorUtils::DisableSwapUntilMaximized() {
   if (compositor_->display_private_) {
@@ -141,6 +153,11 @@ void CompositorUtils::DisableSwapUntilMaximized() {
 
 #if BUILDFLAG(ARKWEB_PIP)
 void CompositorUtils::SetPipActive(bool active) {
+  if (!compositor_ || !compositor_->context_factory_ ||
+      !compositor_->context_factory_->GetHostFrameSinkManager() ||
+      !compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils) {
+    return;
+  }
   compositor_->context_factory_->GetHostFrameSinkManager()->managerUtils->SetPipActive(
     active, compositor_->frame_sink_id());
 }

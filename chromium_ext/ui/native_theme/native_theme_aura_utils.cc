@@ -50,10 +50,7 @@ NativeThemeAuraUtils::NativeThemeAuraUtils(NativeThemeAura* native_theme_aura)
 // LCOV_EXCL_START
 void NativeThemeAuraUtils::SetScrollbarThumbWidth() {
   if (base::ohos::IsPcDevice()) {
-    native_theme_aura_->scrollbar_width_ = kOverlayScrollbarThumbWidthPressedPc;
     scrollbar_hot_size_ = kOverlayScrollbarHotSizePc;
-  } else {
-    native_theme_aura_->scrollbar_width_ = kOverlayScrollbarThumbWidthPressed;
   }
 }
 // LCOV_EXCL_STOP
@@ -78,7 +75,7 @@ void NativeThemeAuraUtils::PaintOverlayScrollbarThumb(
   flags.setAntiAlias(true);
   gfx::Rect aroundRRect;  // Draw rect on aroundRRect's position.
   LOG(DEBUG) << "PaintScrollbarThumb GetVirtualPixelRatio ratio:" << ratio;
-  int drawThumbThickness = native_theme_aura_->scrollbar_width_ * ratio -
+  int drawThumbThickness = native_theme_aura_->GetVerticalScrollbarButtonSize().width() * ratio -
                            scrollbar_hot_size_ * ratio;
   SkScalar radius =
       SkIntToScalar(drawThumbThickness / kOverlayScrollbarDoubleOrHalf);
@@ -109,7 +106,7 @@ void NativeThemeAuraUtils::PaintScrollbarThumbWithColor(
     cc::PaintCanvas* canvas,
     const gfx::Rect& rect,
     SkColor scrollbar_color,
-    NativeTheme::ColorScheme& color_scheme,
+    NativeTheme::PreferredColorScheme color_scheme,
     NativeTheme::Part part,
     NativeTheme::State state,
     const NativeTheme::ScrollbarThumbExtraParams& extra_params) {
@@ -117,11 +114,12 @@ void NativeThemeAuraUtils::PaintScrollbarThumbWithColor(
   SkScalar radius;
   gfx::Rect aroundRRect;  // Draw rect on aroundRRect's position.
   gfx::Rect thumb_rect(rect);
-  if (color_scheme == NativeTheme::ColorScheme::kDark) {
+  if (color_scheme == NativeTheme::PreferredColorScheme::kDark) {
     overflags.setColor(SkColorSetA(SK_ColorWHITE, 102));
   } else {
     overflags.setColor(SkColorSetA(SK_ColorBLACK, 102));
   }
+  bool isPcDevice = base::ohos::IsPcDevice();
   float ratio = base::ohos::GetPixelRatio();
   if (extra_params.thumb_color.has_value()) {
     overflags.setColor(SkColor4f::FromColor(extra_params.thumb_color.value()));
@@ -186,9 +184,9 @@ gfx::Size NativeThemeAuraUtils::GetPartSize(
     switch (part) {
       case NativeTheme::kScrollbarHorizontalThumb:
         return gfx::Size(minimum_length * ratio,
-                         native_theme_aura_->scrollbar_width_);
+                         native_theme_aura_->GetVerticalScrollbarButtonSize().width());
       case NativeTheme::kScrollbarVerticalThumb:
-        return gfx::Size(native_theme_aura_->scrollbar_width_,
+        return gfx::Size(native_theme_aura_->GetVerticalScrollbarButtonSize().width(),
                          minimum_length * ratio);
 
       default:
@@ -201,10 +199,10 @@ gfx::Size NativeThemeAuraUtils::GetPartSize(
     switch (part) {
       case NativeTheme::kScrollbarDownArrow:
       case NativeTheme::kScrollbarUpArrow:
-        return gfx::Size(native_theme_aura_->scrollbar_width_, 0);
+        return gfx::Size(native_theme_aura_->GetVerticalScrollbarButtonSize().width(), 0);
       case NativeTheme::kScrollbarLeftArrow:
       case NativeTheme::kScrollbarRightArrow:
-        return gfx::Size(0, native_theme_aura_->scrollbar_width_);
+        return gfx::Size(0, native_theme_aura_->GetVerticalScrollbarButtonSize().width());
       default:
         break;
     }
@@ -219,10 +217,10 @@ gfx::Size NativeThemeAuraUtils::GetNinePatchCanvasSize(
   float ratio = base::ohos::GetPixelRatio();
   return gfx::Size(
       (kOverlayScrollbarBorderPatchWidth * kOverlayScrollbarDoubleOrHalf +
-       native_theme_aura_->scrollbar_width_) *
+       native_theme_aura_->GetVerticalScrollbarButtonSize().width()) *
           ratio,
       (kOverlayScrollbarBorderPatchWidth * kOverlayScrollbarDoubleOrHalf +
-       native_theme_aura_->scrollbar_width_) *
+       native_theme_aura_->GetVerticalScrollbarButtonSize().width()) *
           ratio);
 #endif  // ARKWEB_SCROLLBAR
 }
@@ -232,15 +230,15 @@ gfx::Rect NativeThemeAuraUtils::GetNinePatchAperture(
 #if BUILDFLAG(ARKWEB_SCROLLBAR)
   float ratio = base::ohos::GetPixelRatio();
   if (part == NativeTheme::kScrollbarHorizontalThumb) {
-    return gfx::Rect(native_theme_aura_->scrollbar_width_ * ratio /
+    return gfx::Rect(native_theme_aura_->GetVerticalScrollbarButtonSize().width() * ratio /
                          kOverlayScrollbarDoubleOrHalf,
                      kOverlayScrollbarBorderPatchWidth * ratio, (int)ratio,
-                     native_theme_aura_->scrollbar_width_ * ratio);
+                     native_theme_aura_->GetVerticalScrollbarButtonSize().width() * ratio);
   } else {
     return gfx::Rect(kOverlayScrollbarBorderPatchWidth * ratio,
-                     native_theme_aura_->scrollbar_width_ * ratio /
+                     native_theme_aura_->GetVerticalScrollbarButtonSize().width() * ratio /
                          kOverlayScrollbarDoubleOrHalf,
-                     native_theme_aura_->scrollbar_width_ * ratio, (int)ratio);
+                     native_theme_aura_->GetVerticalScrollbarButtonSize().width() * ratio, (int)ratio);
   }
 #endif  // ARKWEB_SCROLLBAR
 }

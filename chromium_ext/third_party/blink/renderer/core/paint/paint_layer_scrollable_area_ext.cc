@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/paint/paint_layer_fragment.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar.h"
+#include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
 
 #include "third_party/blink/renderer/core/page/chrome_client.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
@@ -131,7 +132,6 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForHorizontalScrollbar() const {
   if (!setting) {
     return PaintLayerScrollableArea::RectForHorizontalScrollbar();
   }
-
   auto borderRadiusBottomLeft =
       setting->GetBorderRadiusBottomLeft() * ScaleFromDIP();
   auto borderRadiusBottomRight =
@@ -244,7 +244,6 @@ gfx::Rect PaintLayerScrollableAreaExt::RectForVerticalScrollbar() const {
   if (!setting) {
     return PaintLayerScrollableArea::RectForVerticalScrollbar();
   }
-
   auto borderRadiusTopRight =
       setting->GetBorderRadiusTopRight() * ScaleFromDIP();
   auto borderRadiusBottomRight =
@@ -393,6 +392,7 @@ bool PaintLayerScrollableAreaExt::HasScrollbarAvoidCorner() const
   if (!HasHorizontalScrollbar() || !HasVerticalScrollbar()) {
     return false;
   }
+
   auto horizontal_thickness = VerticalScrollbar()->ScrollbarThickness();
   auto vertical_thickness = HorizontalScrollbar()->ScrollbarThickness();
   auto scrollbar_thinkness = horizontal_thickness > vertical_thickness

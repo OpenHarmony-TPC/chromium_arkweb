@@ -76,12 +76,10 @@ SkPath NWebDragDataImpl::ClipLeftTopCorner(SkPath& origin_path,
                                            int pos_x,
                                            int pos_y,
                                            int radius) {
-  SkPath rect_path;
   SkRect left_top_rect =
       SkRect::MakeXYWH(pos_x - radius, pos_y - radius, radius, radius);
-  rect_path.addRect(left_top_rect);
-  SkPath circle_path;
-  circle_path.addCircle(pos_x, pos_y, radius);
+  SkPath rect_path = SkPath::Rect(left_top_rect);
+  SkPath circle_path = SkPath::Circle(pos_x, pos_y, radius);
   SkPath clipped_path;
   if (!Op(rect_path, circle_path, SkPathOp::kDifference_SkPathOp,
           &clipped_path)) {
@@ -102,11 +100,9 @@ SkPath NWebDragDataImpl::ClipRightBottomCorner(SkPath& origin_path,
                                                int pos_x,
                                                int pos_y,
                                                int radius) {
-  SkPath rect_path;
   SkRect right_bottom_rect = SkRect::MakeXYWH(pos_x, pos_y, radius, radius);
-  rect_path.addRect(right_bottom_rect);
-  SkPath circle_path;
-  circle_path.addCircle(pos_x, pos_y, radius);
+  SkPath rect_path = SkPath::Rect(right_bottom_rect);
+  SkPath circle_path = SkPath::Circle(pos_x, pos_y, radius);
   SkPath clipped_path;
   if (!Op(rect_path, circle_path, SkPathOp::kDifference_SkPathOp,
           &clipped_path)) {
@@ -127,11 +123,9 @@ void NWebDragDataImpl::AddRightBottomCorner(SkPath& origin_path,
                                             int pos_x,
                                             int pos_y,
                                             int radius) {
-  SkPath rect_path;
   SkRect right_bottom_rect = SkRect::MakeXYWH(pos_x, pos_y, radius, radius);
-  rect_path.addRect(right_bottom_rect);
-  SkPath circle_path;
-  circle_path.addCircle(pos_x, pos_y, radius);
+  SkPath rect_path = SkPath::Rect(right_bottom_rect);
+  SkPath circle_path = SkPath::Circle(pos_x, pos_y, radius);
   SkPath clipped_path;
   if (!Op(rect_path, circle_path, SkPathOp::kDifference_SkPathOp,
           &clipped_path)) {
@@ -140,19 +134,21 @@ void NWebDragDataImpl::AddRightBottomCorner(SkPath& origin_path,
   }
 
   LOG(INFO) << "AddRightBottomCorner success";
-  origin_path.addPath(clipped_path);
+  SkPath result_path;
+  if (!Op(origin_path, clipped_path, SkPathOp::kUnion_SkPathOp, &result_path)) {
+    LOG(ERROR) << "AddRightBottomCorner union failed";
+  }
+  origin_path = result_path;
 }
 
 void NWebDragDataImpl::AddLeftTopCorner(SkPath& origin_path,
                                         int pos_x,
                                         int pos_y,
                                         int radius) {
-  SkPath rect_path;
   SkRect right_bottom_rect =
       SkRect::MakeXYWH(pos_x - radius, pos_y - radius, radius, radius);
-  rect_path.addRect(right_bottom_rect);
-  SkPath circle_path;
-  circle_path.addCircle(pos_x, pos_y, radius);
+  SkPath rect_path = SkPath::Rect(right_bottom_rect);
+  SkPath circle_path = SkPath::Circle(pos_x, pos_y, radius);
   SkPath clipped_path;
   if (!Op(rect_path, circle_path, SkPathOp::kDifference_SkPathOp,
           &clipped_path)) {
@@ -161,7 +157,11 @@ void NWebDragDataImpl::AddLeftTopCorner(SkPath& origin_path,
   }
 
   LOG(INFO) << "AddLeftTopCorner success";
-  origin_path.addPath(clipped_path);
+  SkPath result_path;
+  if (!Op(origin_path, clipped_path, SkPathOp::kUnion_SkPathOp, &result_path)) {
+    LOG(ERROR) << "AddLeftTopCorner union failed";
+  }
+  origin_path = result_path;
 }
 
 SkPath NWebDragDataImpl::GetClippedPath(bool is_start_line_compelete,
@@ -172,7 +172,12 @@ SkPath NWebDragDataImpl::GetClippedPath(bool is_start_line_compelete,
     SkRect left_top_rect =
         SkRect::MakeXYWH(0, 0, start_edge_top_.x - drag_image_origin_point_.x,
                          start_edge_bottom_.y - start_edge_top_.y);
-    clipped_path.addRect(left_top_rect);
+    SkPath left_top_path = SkPath::Rect(left_top_rect);
+    SkPath result;
+    if (!Op(clipped_path, left_top_path, SkPathOp::kUnion_SkPathOp, &result)) {
+      LOG(ERROR) << "GetClippedPath add left top rect failed";
+    }
+    clipped_path = result;
   }
 
   if (!is_end_line_compelete) {
@@ -186,22 +191,27 @@ SkPath NWebDragDataImpl::GetClippedPath(bool is_start_line_compelete,
         end_edge_bottom_.y - end_edge_top_.y);
     right_bottom_rect.offset(-drag_image_origin_point_.x,
                              -drag_image_origin_point_.y);
-    clipped_path.addRect(right_bottom_rect);
+    SkPath right_bottom_path = SkPath::Rect(right_bottom_rect);
+    SkPath result;
+    if (!Op(clipped_path, right_bottom_path, SkPathOp::kUnion_SkPathOp, &result)) {
+      LOG(ERROR) << "GetClippedPath add right bottom rect failed";
+    }
+    clipped_path = result;
   }
   LOG(INFO) << "GetClippedPath return";
   return clipped_path;
 }
 
 SkPath NWebDragDataImpl::GetShadowPath(int width, int height) {
-  SkPath out_path;
   SkRect out_rect = SkRect::MakeXYWH(0, 0, width, height);
   auto default_round_rect_ratio = ToOhCoordinate(DEAFULT_ROUND_RECT_RATIO);
   if (!is_useful_selection_) {
     // todo: need to process multi-row when width less min width
     LOG(INFO) << "unuseful selection info, return compelete round rect";
-    out_path.addRoundRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
-    return out_path;
+    return SkPath::RRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
   }
+
+  SkPath out_path;
 
   auto ohMinHeightThreshold = ToOhCoordinate(DEFAULT_MIN_HEIGHT_THRESHOLD);
   bool is_oneline = ((start_edge_top_.y == end_edge_top_.y) &&
@@ -249,8 +259,7 @@ SkPath NWebDragDataImpl::GetShadowPath(int width, int height) {
   if (is_oneline || is_both_out_clip_region ||
       (is_start_line_compelete && is_end_line_compelete)) {
     LOG(INFO) << "return compelete round rect";
-    out_path.addRoundRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
-    return out_path;
+    return SkPath::RRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
   } else {
     SkPath clipped_path;
     auto start_rect_ratio = is_start_line_compelete ? default_round_rect_ratio :
@@ -258,13 +267,12 @@ SkPath NWebDragDataImpl::GetShadowPath(int width, int height) {
     auto end_rect_ratio = is_end_line_compelete ? default_round_rect_ratio :
         GetClippedRectRoundRatio((end_edge_bottom_.y - end_edge_top_.y) / DOUBLE_RATIO);
     auto buond_rect_ratio = std::max(std::min(start_rect_ratio, end_rect_ratio), ToOhCoordinate(MIN_BOUND_RECT_RATIO));
-    out_path.addRoundRect(out_rect, buond_rect_ratio, buond_rect_ratio);
+    out_path = SkPath::RRect(out_rect, buond_rect_ratio, buond_rect_ratio);
     if (!Op(out_path,
             GetClippedPath(is_start_line_compelete, is_end_line_compelete),
             SkPathOp::kDifference_SkPathOp, &clipped_path)) {
       LOG(ERROR) << "get clipped path failed";
-      clipped_path.addRoundRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
-      return clipped_path;
+      return SkPath::RRect(out_rect, default_round_rect_ratio, default_round_rect_ratio);
     }
     SkPath final_path = clipped_path;
     if (!is_start_line_compelete) {
@@ -307,8 +315,8 @@ void NWebDragDataImpl::GenerateOhosDragBitmapFromOriginForImage(
 
   width += ToOhCoordinate(IMAGE_EXPAND_PADDING) * DOUBLE_RATIO;
   height += ToOhCoordinate(IMAGE_EXPAND_PADDING) * DOUBLE_RATIO;
-  shadow_path.addRoundRect(out_rect, ToOhCoordinate(IMAGE_ROUND_RECT_RATIO),
-                           ToOhCoordinate(IMAGE_ROUND_RECT_RATIO));
+  shadow_path = SkPath::RRect(out_rect, ToOhCoordinate(IMAGE_ROUND_RECT_RATIO),
+                              ToOhCoordinate(IMAGE_ROUND_RECT_RATIO));
   auto imageInfo =
       SkImageInfo::Make(width, height, SkColorType::kBGRA_8888_SkColorType,
                         SkAlphaType::kUnpremul_SkAlphaType);
@@ -317,12 +325,11 @@ void NWebDragDataImpl::GenerateOhosDragBitmapFromOriginForImage(
   bitmapCanvas.clear(SK_ColorTRANSPARENT);
 
   SkBitmap clip_image_bitmap;
-  SkPath clip_image_path;
   SkRect image_rect =
       SkRect::MakeXYWH(0, 0, drag_clip_width_, drag_clip_height_);
-  clip_image_path.addRoundRect(image_rect,
-                               ToOhCoordinate(IMAGE_ROUND_RECT_RATIO),
-                               ToOhCoordinate(IMAGE_ROUND_RECT_RATIO));
+  SkPath clip_image_path = SkPath::RRect(image_rect,
+                                        ToOhCoordinate(IMAGE_ROUND_RECT_RATIO),
+                                        ToOhCoordinate(IMAGE_ROUND_RECT_RATIO));
   auto clip_image_info = SkImageInfo::Make(drag_clip_width_, drag_clip_height_,
                                            SkColorType::kBGRA_8888_SkColorType,
                                            SkAlphaType::kUnpremul_SkAlphaType);
@@ -390,8 +397,8 @@ void NWebDragDataImpl::GenerateOhosDragBitmapFromOriginForRichtext(
   bitmapCanvas.clear(SK_ColorTRANSPARENT);
 
   // draw shadow path
-  shadow_path.offset(ToOhCoordinate(EXPAND_PADDING - SHADOW_DX),
-                     ToOhCoordinate(EXPAND_PADDING - SHADOW_DY));
+  shadow_path = shadow_path.makeOffset(ToOhCoordinate(EXPAND_PADDING - SHADOW_DX),
+                                       ToOhCoordinate(EXPAND_PADDING - SHADOW_DY));
   SkPaint shadow_layer_paint;
   shadow_layer_paint.setAntiAlias(true);
   shadow_layer_paint.setStyle(SkPaint::kFill_Style);
@@ -785,6 +792,18 @@ void NWebDragDataImpl::ClearImageFileNames() {
       drag_data_->SetReadOnly(true);
     } else {
       drag_data_->ClearFilenames();
+    }
+  }
+}
+
+void NWebDragDataImpl::ClearDragData() {
+  if (drag_data_) {
+    if (drag_data_->IsReadOnly()) {
+      drag_data_->SetReadOnly(false);
+      drag_data_->ClearDragData();
+      drag_data_->SetReadOnly(true);
+    } else {
+      drag_data_->ClearDragData();
     }
   }
 }

@@ -25,7 +25,6 @@
 namespace content {
 
 OHOSCustomMediaPlayerRendererClient::OHOSCustomMediaPlayerRendererClient(
-    mojo::PendingRemote<RendererExtension> renderer_extension_remote,
     mojo::PendingReceiver<ClientExtension> client_extension_receiver,
     scoped_refptr<base::SequencedTaskRunner> media_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> compositor_task_runner,
@@ -39,9 +38,7 @@ OHOSCustomMediaPlayerRendererClient::OHOSCustomMediaPlayerRendererClient(
       media_task_runner_(std::move(media_task_runner)),
       compositor_task_runner_(std::move(compositor_task_runner)),
       delayed_bind_client_extension_receiver_(
-          std::move(client_extension_receiver)),
-      delayed_bind_renderer_extension_remote_(
-          std::move(renderer_extension_remote)) {}
+          std::move(client_extension_receiver)) {}
 
 OHOSCustomMediaPlayerRendererClient::~OHOSCustomMediaPlayerRendererClient() {
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
@@ -61,8 +58,6 @@ void OHOSCustomMediaPlayerRendererClient::Initialize(
 
   // Consume and bind the delayed PendingRemote and PendingReceiver now that we
   // are on |media_task_runner_|.
-  renderer_extension_remote_.Bind(
-      std::move(delayed_bind_renderer_extension_remote_), media_task_runner_);
   client_extension_receiver_.Bind(
       std::move(delayed_bind_client_extension_receiver_), media_task_runner_);
 
@@ -177,7 +172,6 @@ void OHOSCustomMediaPlayerRendererClient::OnVideoSizeChange(
 void OHOSCustomMediaPlayerRendererClient::OnDurationChange(
     base::TimeDelta duration) {
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
-
   if (media_resource_ != nullptr) {
     media_resource_->ForwardDurationChangeToDemuxerHost(duration);
   }

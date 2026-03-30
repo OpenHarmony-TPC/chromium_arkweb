@@ -66,7 +66,8 @@ void VideoEncoderAdapterImpl::OnStreamChanged(OH_AVCodec *codec, OH_AVFormat *fo
     callback->OnOutputFormatChanged(format);
 }
 
-void VideoEncoderAdapterImpl::OnNeedInputBuffer(OH_AVCodec *codec, uint32_t index, OH_AVBuffer *buffer, void *userData) {
+void VideoEncoderAdapterImpl::OnNeedInputBuffer(OH_AVCodec *codec,
+    uint32_t index, OH_AVBuffer *buffer, void *userData) {
     (void)codec;
     if (!userData) {
         return;
@@ -80,7 +81,8 @@ void VideoEncoderAdapterImpl::OnNeedInputBuffer(OH_AVCodec *codec, uint32_t inde
     callback->OnInputBufferAvailable(index, buffer);
 }
 
-void VideoEncoderAdapterImpl::OnNewOutputBuffer(OH_AVCodec *codec, uint32_t index, OH_AVBuffer *buffer, void *userData) {
+void VideoEncoderAdapterImpl::OnNewOutputBuffer(OH_AVCodec *codec,
+    uint32_t index, OH_AVBuffer *buffer, void *userData) {
     (void)codec;
     if (!userData) {
         return;

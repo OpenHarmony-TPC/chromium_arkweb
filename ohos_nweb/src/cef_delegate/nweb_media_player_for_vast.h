@@ -6,6 +6,7 @@
 #define OHOS_NWEB_SRC_CEF_DELEGATE_NWEB_MEDIA_PLAYER_FOR_VAST_H_
 
 #include <memory>
+
 #include "cef/ohos_cef_ext/include/cef_media_player_listener_for_vast.h"
 #include "ohos_nweb/src/capi/nweb_media_player_callback.h"
 

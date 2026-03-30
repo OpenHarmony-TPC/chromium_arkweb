@@ -4,10 +4,11 @@
 
 #include <cstdint>
 #include <string>
+#include "content/common/content_export.h"
 
 namespace content {
 
-class CustomMediaPlayer {
+class CONTENT_EXPORT CustomMediaPlayer {
  public:
   virtual ~CustomMediaPlayer() = default;
 

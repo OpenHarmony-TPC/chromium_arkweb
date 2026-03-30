@@ -22,7 +22,7 @@ import("//testing/test.gni")
 import("//arkweb/build/features/features.gni")
 
 fuzzer_test("ohos_adapter_ndk_api01_fuzzer") {
-  sources = [ "ohos_adapter_ndk_api01_fuzzer.cc" ]
+  sources = [ "ohos_adapter_ndk_api01_fuzzer.cpp" ]
   include_dirs = [
     "//cef",
     "//cef/include",
@@ -39,7 +39,7 @@ fuzzer_test("ohos_adapter_ndk_api01_fuzzer") {
 }
 
 fuzzer_test("ohos_adapter_ndk_api02_fuzzer") {
-  sources = [ "ohos_adapter_ndk_api02_fuzzer.cc" ]
+  sources = [ "ohos_adapter_ndk_api02_fuzzer.cpp" ]
   include_dirs = [
     "//cef",
     "//cef/include",

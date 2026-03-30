@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -52,7 +52,7 @@ class LLVMIRGenerator {
   }
 
  private:
-  Isolate* isolate() 
+  Isolate* isolate()
   {
     return data_->isolate();
   }
@@ -68,7 +68,7 @@ class LLVMIRGenerator {
   }
 
   std::tuple<uint8_t*, int32_t, int32_t> EmitStackMap(uint8_t *src, int32_t size);
-  
+
   PipelineData* data_ {nullptr};
   Linkage* linkage_ {nullptr};
   LLVMModule* llvm_module_ {nullptr};

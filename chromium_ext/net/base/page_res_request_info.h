@@ -17,6 +17,8 @@
 #include "net/http/http_request_headers.h"
 #include "net/log/net_log_with_source.h"
 #include "net/url_request/redirect_info.h"
+#include "net/url_request/storage_access_status_cache.h"
+#include "net/base/net_export.h"
 
 namespace {
   constexpr int32_t MAX_PRECONNECT_COUNT = 6;
@@ -70,7 +72,7 @@ enum PRRequestFlags : uint32_t {
   PRPP_FLAGS_MAX_VALUE = PRPP_FLAGS_HDR_NOT_MATCH | PRPP_FLAGS_VISIBLE | PRPP_FLAGS_HDR_DYNAMIC | PRPP_FLAGS_UNSUPPORT,
 };
 
-class PRRequestInfo {
+class NET_EXPORT PRRequestInfo {
  public:
   PRRequestInfo() = default;
   PRRequestInfo(const GURL& url, bool allow_credentials) :
@@ -105,9 +107,11 @@ class PRRequestInfo {
   void set_referrer(const std::string& referrer) { referrer_ = referrer; }
   const std::string& method() const { return method_; }
   void set_method(const std::string& method) { method_ = method; }
-  std::optional<net::cookie_util::StorageAccessStatus> storage_access_status() const { return storage_access_status_; }
+  std::optional<net::cookie_util::StorageAccessStatus> storage_access_status() const {
+    return storage_access_status_.IsSet() ? storage_access_status_.GetStatusForThirdPartyContext() : std::nullopt;
+  }
   void set_storage_access_status(std::optional<net::cookie_util::StorageAccessStatus> storage_access_status) {
-    storage_access_status_ = storage_access_status;
+    storage_access_status_ = net::StorageAccessStatusCache(storage_access_status);
   }
   net::HttpRequestHeaders extra_request_headers();
   void set_extra_request_headers(const net::HttpRequestHeaders& extra_request_headers);
@@ -115,10 +119,10 @@ class PRRequestInfo {
   void set_load_flags(int load_flags) { load_flags_ = load_flags; }
   net::SecureDnsPolicy secure_dns_policy() const { return secure_dns_policy_; }
   void set_secure_dns_policy(net::SecureDnsPolicy secure_dns_policy) { secure_dns_policy_ = secure_dns_policy; }
-  std::optional<base::flat_set<net::SourceStream::SourceType>> accepted_stream_types() const {
+  std::optional<base::flat_set<net::SourceStreamType>> accepted_stream_types() const {
 	  return accepted_stream_types_;
   }
-  void set_accepted_stream_types(std::optional<base::flat_set<net::SourceStream::SourceType>> accepted_stream_types) {
+  void set_accepted_stream_types(std::optional<base::flat_set<net::SourceStreamType>> accepted_stream_types) {
 	  accepted_stream_types_ = accepted_stream_types;
   }
   bool upgrade_if_insecure() const { return upgrade_if_insecure_; }
@@ -234,11 +238,11 @@ class PRRequestInfo {
   std::optional<url::Origin> initiator_;
   std::string referrer_;
   std::string method_;
-  std::optional<net::cookie_util::StorageAccessStatus> storage_access_status_;
+  net::StorageAccessStatusCache storage_access_status_;
   net::HttpRequestHeaders extra_request_headers_;
   int load_flags_ { net::LOAD_NORMAL };
   net::SecureDnsPolicy secure_dns_policy_ { net::SecureDnsPolicy::kAllow };
-  std::optional<base::flat_set<net::SourceStream::SourceType>>
+  std::optional<base::flat_set<net::SourceStreamType>>
 	  accepted_stream_types_;
   bool upgrade_if_insecure_ { false };
   bool send_client_certs_ { true };

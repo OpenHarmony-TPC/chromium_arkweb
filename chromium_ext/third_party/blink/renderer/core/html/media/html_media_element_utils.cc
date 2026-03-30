@@ -73,8 +73,7 @@ void HTMLMediaElementUtils::ScheduleNamedEventUtils(const AtomicString& event_na
       event_name == event_type_names::kWaiting ||
       event_name == event_type_names::kSeeking ||
       event_name == event_type_names::kStalled) {
-    LOG(INFO) << "OhMedia::ScheduleEvent() " << event_name
-              << "(hash" << std::hex << base::FastHash(base::byte_span_from_ref(htmlMediaElement_)) << ")";
+    LOG(INFO) << "OhMedia::ScheduleEvent() " << event_name;
   }
 #endif // ARKWEB_MEDIA
 
@@ -140,6 +139,7 @@ mojom::blink::VideoExpParamsPtr HTMLMediaElementUtils::ReportVideoExperienceToBI
   if (!htmlMediaElement_ || !htmlMediaElement_->IsHTMLVideoElement()) {
     LOG(INFO) << "OhMedia, ReportVideoExperienceToBI: htmlMediaElement_ is nullptr or not a video element";
     return nullptr;
+ 
   }
   if (IsFeedsPage()) {
     LOG(INFO) << "OhMedia, ReportVideoExperienceToBI: IsFeedPage, returning";
@@ -158,19 +158,18 @@ mojom::blink::VideoExpParamsPtr HTMLMediaElementUtils::ReportVideoExperienceToBI
   }
   freeze_time_recorder_.StopRecord();
   played_time_recorder_.StopRecord();
-
+ 
   int64_t start_used_time = freeze_time_recorder_.GetDuration().InMilliseconds();
   int64_t total_freeze_time = start_used_time;
   if (htmlMediaElement_->web_media_player_) {
     total_freeze_time += htmlMediaElement_->web_media_player_->GetFreezeTime();
   }
   int64_t total_played_time = played_time_recorder_.GetDuration().InMilliseconds();
-
+ 
   if (start_used_time == 0 && total_played_time == 0 && error_code == 0) {
     LOG(INFO) << "OhMedia, ReportVideoExperienceToBI start_used_time and total_played_time is zero";
     return nullptr;
   }
-
   mojom::blink::VideoExpParamsPtr params = mojom::blink::VideoExpParams::New();
   params->start_used_time = start_used_time;
   params->total_freeze_time = total_freeze_time;
@@ -191,7 +190,7 @@ mojom::blink::VideoExpParamsPtr HTMLMediaElementUtils::ReportVideoExperienceToBI
   params->video_width = 0;
   params->video_height = 0;
   params->video_player = htmlMediaElement_->GetMediaPlayerType();
-
+ 
   auto webMediaPlayer =  htmlMediaElement_->GetWebMediaPlayer();
   if (webMediaPlayer) {
     params->pipeline_status = String::FromUTF8(PipelineStatusToString(
@@ -218,7 +217,7 @@ std::string HTMLMediaElementUtils::GetMainUrl() const {
   } else {
     url = htmlMediaElement_->GetDocument().Url();
   }
-
+ 
   GURL main_url;
   if (!url.IsEmpty() && url.IsValid()) {
     main_url = GURL(url.GetString().Utf8().data());
@@ -226,7 +225,6 @@ std::string HTMLMediaElementUtils::GetMainUrl() const {
   return main_url.spec();
 }
 #endif // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
-
 // LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_MEDIA_CAPABILITIES_ENHANCE)
@@ -292,6 +290,8 @@ bool HTMLMediaElementUtils::IsMediaPlayerShown() const {
   return htmlMediaElement_->web_media_player_->IsMediaPlayerShown();
 }
 
+
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 // LCOV_EXCL_START
 media::mojom::blink::VideoAttributesForVASTPtr HTMLMediaElementUtils::CollectVideoAttributesForVAST() {
   auto attributes = media::mojom::blink::VideoAttributesForVAST::New();
@@ -313,11 +313,11 @@ void HTMLMediaElementUtils::TryNotifyVideoPlaying() {
     return;
   }
   if (!htmlMediaElement_->video_assistant_) {
-    auto callback = WTF::BindOnce(&HTMLMediaElement::NotifyVideoPlayingInternal,
-                                  WrapWeakPersistent(htmlMediaElement_.Get()));
+    auto callback = base::BindOnce(&HTMLMediaElement::NotifyVideoPlayingInternal,
+                                   WrapWeakPersistent(htmlMediaElement_.Get()));
     htmlMediaElement_->GetMediaPlayerHostRemote().RequestVideoAssistantConfig(
-        WTF::BindOnce(&HTMLMediaElement::OnVideoAssistantConfigReceived,
-                      WrapWeakPersistent(htmlMediaElement_.Get()), std::move(callback)));
+        base::BindOnce(&HTMLMediaElement::OnVideoAssistantConfigReceived,
+                       WrapWeakPersistent(htmlMediaElement_.Get()), std::move(callback)));
     return;
   }
   htmlMediaElement_->NotifyVideoPlayingInternal();
@@ -549,6 +549,18 @@ void HTMLMediaElementUtils::VideoSizeChangedOverlay(int32_t width, int32_t heigh
   }
 }
 
+bool HTMLMediaElementUtils::IsRTL() const {
+  bool isRTL = base::i18n::IsRTL();
+  const std::string locale = base::i18n::GetConfiguredLocale();
+  std::vector<std::string_view> locale_split = base::SplitStringPiece(
+      locale, "-_", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  const std::string_view& language_code = locale_split[0];
+  if (language_code.compare("ug") == 0) {
+    isRTL = true;
+  }
+  return isRTL && locale.find("ur") == std::string::npos;
+}
+
 void HTMLMediaElementUtils::OnVolumeChanged(double volume)
 {
   LOG(INFO) << "HTMLMediaElementUtils::OnVolumeChanged volume=" << volume;
@@ -563,18 +575,7 @@ void HTMLMediaElementUtils::OnVolumeChanged(double volume)
     }
   }
 }
-
-bool HTMLMediaElementUtils::IsRTL() const {
-  bool isRTL = base::i18n::IsRTL();
-  const std::string locale = base::i18n::GetConfiguredLocale();
-  std::vector<std::string_view> locale_split = base::SplitStringPiece(
-      locale, "-_", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-  const std::string_view& language_code = locale_split[0];
-  if (language_code.compare("ug") == 0) {
-    isRTL = true;
-  }
-  return isRTL && locale.find("ur") == std::string::npos;
-}
+#endif
 
 void HTMLMediaElementUtils::Trace(Visitor* visitor) const {
   visitor->Trace(htmlMediaElement_);
@@ -624,3 +625,4 @@ void HTMLMediaElementUtils::OnNotifyMeidaCastUri() {
 #endif // BUILDFLAG(ARKWEB_MEDIA_CAST)
 
 }
+

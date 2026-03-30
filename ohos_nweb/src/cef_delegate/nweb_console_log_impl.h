@@ -25,6 +25,10 @@ class NWebConsoleLogImpl : public NWebConsoleLog {
   NWebConsoleLogImpl(int line_number,
                      std::string message,
                      NWebConsoleLogLevel log_level,
+                     std::string sourceId);
+  NWebConsoleLogImpl(int line_number,
+                     std::string message,
+                     NWebConsoleLogLevel log_level,
                      NWebConsoleLogSource log_source,
                      std::string sourceId);
   ~NWebConsoleLogImpl() = default;

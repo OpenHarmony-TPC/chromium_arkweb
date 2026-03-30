@@ -30,36 +30,36 @@ class KeySystemSupportUpdateTest : public testing::Test {
 
   media::KeySystemCapability MakeWiseplaySwCap(bool with_temp_session) {
     media::KeySystemCapability sw_cap;
-    sw_cap.sw_secure_capability = media::CdmCapability();
+    sw_cap.sw_cdm_capability_or_status  = media::CdmCapability();
     if (with_temp_session) {
-      sw_cap.sw_secure_capability->session_types.insert(
+      sw_cap.sw_cdm_capability_or_status ->session_types.insert(
           media::CdmSessionType::kTemporary);
     }
 #if BUILDFLAG(USE_PROPRIETARY_CODECS)
-    sw_cap.sw_secure_capability->audio_codecs.insert(media::AudioCodec::kAAC);
+    sw_cap.sw_cdm_capability_or_status ->audio_codecs.insert(media::AudioCodec::kAAC);
     media::VideoCodecInfo vinfo;
     vinfo.supports_clear_lead = true;
-    sw_cap.sw_secure_capability->video_codecs[media::VideoCodec::kH264] = vinfo;
+    sw_cap.sw_cdm_capability_or_status ->video_codecs[media::VideoCodec::kH264] = vinfo;
 #endif
-    sw_cap.sw_secure_capability->encryption_schemes = {
+    sw_cap.sw_cdm_capability_or_status ->encryption_schemes = {
         media::EncryptionScheme::kCenc};
     return sw_cap;
   }
 
   media::KeySystemCapability MakeWiseplayHwCap(bool with_temp_session) {
     media::KeySystemCapability hw_cap;
-    hw_cap.hw_secure_capability = media::CdmCapability();
+    hw_cap.hw_cdm_capability_or_status = media::CdmCapability();
     if (with_temp_session) {
-      hw_cap.hw_secure_capability->session_types.insert(
+      hw_cap.hw_cdm_capability_or_status->session_types.insert(
           media::CdmSessionType::kTemporary);
     }
 #if BUILDFLAG(USE_PROPRIETARY_CODECS)
-    hw_cap.hw_secure_capability->audio_codecs.insert(media::AudioCodec::kAAC);
+    hw_cap.hw_cdm_capability_or_status->audio_codecs.insert(media::AudioCodec::kAAC);
     media::VideoCodecInfo vinfo;
     vinfo.supports_clear_lead = true;
-    hw_cap.hw_secure_capability->video_codecs[media::VideoCodec::kH264] = vinfo;
+    hw_cap.hw_cdm_capability_or_status->video_codecs[media::VideoCodec::kH264] = vinfo;
 #endif
-    hw_cap.hw_secure_capability->encryption_schemes = {
+    hw_cap.hw_cdm_capability_or_status->encryption_schemes = {
         media::EncryptionScheme::kCenc};
     return hw_cap;
   }

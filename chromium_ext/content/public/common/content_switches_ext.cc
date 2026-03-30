@@ -78,8 +78,6 @@ const char kEnableNwebExUa[] = "enable-nweb-ex-ua";
 const char kEnableNwebExNetworkLoad[] = "enable-nweb-ex-network-load";
 const char kEnableNwebExDownload[] = "enable-nweb-ex-download";
 const char kEnableNwebExGetZoomLevel[] = "enable-nweb-ex-get-zoom-level";
-#endif
-#if BUILDFLAG(ARKWEB_PULL_TO_REFRESH)
 const char kEnableNwebExPullToRefresh[] = "enable-nweb-ex-pull-to-refresh";
 #endif
 
@@ -110,9 +108,6 @@ const char  kEnableWebAudioBackgroundTask[] = "enable-web-audio-background-task"
 
 #if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
 const char  kEnableReportCookieMonsterClient[] = "ohos-enable-report-cookie-monster-client";
-#endif // BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
-
-#if BUILDFLAG(IS_ARKWEB)
 const char  kEnableReportThreadPoolForeg[] = "ohos-enable-report-thread-pool-foreg";
-#endif
+#endif // BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
 }  // namespace switches

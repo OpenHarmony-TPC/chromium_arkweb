@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
+
 namespace {
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
@@ -44,7 +46,6 @@ void ApplyOhosMediaPlayerEnabled(const web_pref::WebPreferences& prefs,
 #endif
 }  // namespace
 
-// LCOV_EXCL_START
 void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
                              WebView* web_view,
                              WebSettings* settings,
@@ -96,10 +97,20 @@ void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetEnableAutoFill(prefs.is_autofill_enabled);
 #endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 
+#if BUILDFLAG(ARKWEB_DRAG_DROP)
+  settings->SetEnableDrag(prefs.is_drag_enabled);
+#endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
+
 #if BUILDFLAG(ARKWEB_MENU)
   settings->SetTouchHandleExistState(prefs.touch_handle_exist);
   settings->SetViewportScaleState(prefs.viewport_scale);
 #endif  // BUILDFLAG(ARKWEB_MENU)
+
+#if BUILDFLAG(ARKWEB_INPUT_EVENTS)
+  settings->SetScrollbarLayoutPolicy(
+      static_cast<int>(prefs.scrollbar_layout_policy));
+  settings->SetIsSystemRtlEnable(prefs.is_system_rtl_enabled);
+#endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
 #if BUILDFLAG(ARKWEB_COPY_OPTION)
   settings->SetCopyOption(prefs.copy_option);
@@ -166,6 +177,18 @@ void ApplyOhosWebPreferences(const web_pref::WebPreferences& prefs,
 #if BUILDFLAG(ARKWEB_MEDIA_CAST)
   settings->SetCastEnabled(prefs.cast_enabled);
 #endif  // BUILDFLAG(ARKWEB_MEDIA_CAST)
+
+#if BUILDFLAG(ARKWEB_HTML_SELECT)
+  const bool use_external_popups = !base::ohos::IsPcDevice();
+  if (web_view_impl->GetChromeClient().UseExternalPopupMenus() !=
+      use_external_popups) {
+    // Switching between internal and external popups -- first, cancel any
+    // popups that are open.
+    web_view_impl->CancelPagePopup();
+  }
+  web_view_impl->GetChromeClient().SetUseExternalPopupMenus(
+      use_external_popups);
+#endif // ARKWEB_HTML_SELECT
 }
 
 void WebView::ApplyWebPreferencesForInclude(
@@ -273,7 +296,8 @@ void WebViewImpl::SetScrollOffset(const gfx::PointF point) {
   DCHECK(view->GetScrollableArea());
   view->GetScrollableArea()->SetScrollOffset(
       gfx::Vector2dF(point.OffsetFromOrigin()),
-      mojom::blink::ScrollType::kProgrammatic);
+      mojom::blink::ScrollType::kProgrammatic,
+      cc::ScrollSourceType::kAbsoluteScroll);
 }
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
@@ -303,7 +327,6 @@ void WebViewImpl::EnterFullscreen(
 #endif  // BUILDFLAG(ARKWEB_FULLSCREEN)
   );
 }
-// LCOV_EXCL_STOP
 
 void UpdateStyleAndLayoutTreeForInclude(Page* page) {
   if (page) {
@@ -314,7 +337,6 @@ void UpdateStyleAndLayoutTreeForInclude(Page* page) {
   }
 }
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_PINCH_SMOOTH)
 void WebViewImpl::SetPinchSmoothMode(bool isEnable) {
   if (!MainFrame() || !GetPage() || !GetPage()->MainFrame() ||
@@ -400,4 +422,15 @@ void WebViewImpl::SetDelayDurationForBackgroundTabFreezing(
   }
 }
 #endif
-// LCOV_EXCL_STOP
+
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+static bool g_is_strict_log_mode_ = true;
+void WebView::SetStrictLogMode(bool is_strict_log_mode) {
+  g_is_strict_log_mode_ = is_strict_log_mode;
+}
+
+bool WebView::IsStrictLogMode() {
+  return g_is_strict_log_mode_;
+}
+#endif
+

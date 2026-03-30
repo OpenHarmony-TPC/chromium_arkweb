@@ -158,12 +158,14 @@ void MediaControlsImplUtils::InitMediaControlsImplUtils(MediaControlsImpl* media
 }
 
 bool MediaControlsImplUtils::ShouldShowPlaybackSpeedButtonExt(HTMLMediaElement& media_element) {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (media_element.IsCustomMediaPlayerEnabled()) {
     if (media_element.duration() == 0 &&
       media_element.getReadyState() > HTMLMediaElement::kHaveNothing) {
       return false;
     }
   }
+#endif
   return true;
 }
 
@@ -207,7 +209,7 @@ void MediaControlsImplUtils::InitializeControlsExt() {
     LOG(ERROR) << "InitializeControlsExt entered_fullscreen_panel_ is nullptr";
     return;
   }
-  media_controls_impl_->entered_fullscreen_panel_->setInnerHTML("");
+  media_controls_impl_->entered_fullscreen_panel_->SetInnerHTMLWithoutTrustedTypes("");
   media_controls_impl_->ParserAppendChild(media_controls_impl_->entered_fullscreen_panel_);
 
   media_controls_impl_->entered_fullscreen_panel_->SetIsWanted(false);
@@ -225,14 +227,14 @@ void MediaControlsImplUtils::InitializeControlsExt() {
       LOG(ERROR) << "InitializeControlsExt top_row_panel_ is nullptr";
       return;
     }
-    media_controls_impl_->top_row_panel_->setInnerHTML("");
+    media_controls_impl_->top_row_panel_->SetInnerHTMLWithoutTrustedTypes("");
     media_controls_impl_->timeline_row_panel_ =
       MakeGarbageCollected<MediaControlTimelineRowPanelElement>(*media_controls_impl_);
     if (!(media_controls_impl_->timeline_row_panel_)) {
       LOG(ERROR) << "InitializeControlsExt timeline_row_panel_ is nullptr";
       return;
     }
-    media_controls_impl_->timeline_row_panel_->setInnerHTML("");
+    media_controls_impl_->timeline_row_panel_->SetInnerHTMLWithoutTrustedTypes("");
   }
 #endif // ARKWEB_VIDEO_ASSISTANT
 }
@@ -252,7 +254,7 @@ void MediaControlsImplUtils::PopulatePanelHM() {
     LOG(ERROR) << "PopulatePanelHM media_controls_impl_ is nullptr";
     return;
   }
-  media_controls_impl_->panel_->setInnerHTML("");
+  media_controls_impl_->panel_->SetInnerHTMLWithoutTrustedTypes("");
 
   MaybeParserAppendChild(media_controls_impl_->volume_control_container_, media_controls_impl_->volume_slider_);
   media_controls_impl_->volume_control_container_->ParserAppendChild(media_controls_impl_->mute_button_);
@@ -269,7 +271,7 @@ void MediaControlsImplUtils::PopulatePanelHM() {
 
   // top row panel
   if (media_controls_impl_->top_row_panel_) {
-    media_controls_impl_->top_row_panel_->setInnerHTML("");
+    media_controls_impl_->top_row_panel_->SetInnerHTMLWithoutTrustedTypes("");
     MediaControlElementsHelper::CreateDiv(
         AtomicString("-internal-media-controls-button-spacer"), media_controls_impl_->top_row_panel_);
     media_controls_impl_->top_row_panel_->ParserAppendChild(media_controls_impl_->volume_control_container_);
@@ -278,7 +280,7 @@ void MediaControlsImplUtils::PopulatePanelHM() {
   }
 
   if (media_controls_impl_->media_button_panel_) {
-    media_controls_impl_->media_button_panel_->setInnerHTML("");
+    media_controls_impl_->media_button_panel_->SetInnerHTMLWithoutTrustedTypes("");
   }
 
   // second panel
@@ -295,7 +297,7 @@ void MediaControlsImplUtils::PopulatePanelHM() {
   button_panel->ParserAppendChild(media_controls_impl_->play_button_);
 
   if (media_controls_impl_->timeline_row_panel_) {
-    media_controls_impl_->timeline_row_panel_->setInnerHTML("");
+    media_controls_impl_->timeline_row_panel_->SetInnerHTMLWithoutTrustedTypes("");
     media_controls_impl_->timeline_row_panel_->ParserAppendChild(media_controls_impl_->current_time_display_);
     media_controls_impl_->timeline_row_panel_->ParserAppendChild(media_controls_impl_->timeline_);
     media_controls_impl_->timeline_row_panel_->ParserAppendChild(media_controls_impl_->duration_display_);
@@ -395,13 +397,16 @@ void MediaControlsImplUtils::MakeTransparentExt() {
 }
 
 void MediaControlsImplUtils::BeginScrubbingStartTimer() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (media_controls_impl_ && media_controls_impl_->scrubbing_timer_.IsActive()) {
     media_controls_impl_->scrubbing_timer_.Stop();
   }
   media_controls_impl_->scrubbing_timer_.StartOneShot(kScrubbingDelay, FROM_HERE);
+#endif
 }
 
 void MediaControlsImplUtils::BeginScrubbingStopTimer() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (!media_controls_impl_) {
     LOG(ERROR) << "BeginScrubbingStopTimer media_controls_impl_ is nullptr";
     return;
@@ -410,6 +415,7 @@ void MediaControlsImplUtils::BeginScrubbingStopTimer() {
   if (media_controls_impl_->scrubbing_timer_.IsActive()) {
     media_controls_impl_->scrubbing_timer_.Stop();
   }
+#endif
 }
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
@@ -437,6 +443,7 @@ void MediaControlsImplUtils::MakeTransparentImmediately() {
 #endif
 
 void MediaControlsImplUtils::UpdateSizingCSSClassExt() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (!media_controls_impl_) {
     LOG(ERROR) << "UpdateSizingCSSClassExt media_controls_impl_ is nullptr";
     return;
@@ -448,6 +455,7 @@ void MediaControlsImplUtils::UpdateSizingCSSClassExt() {
     media_controls_impl_->ShouldShowVideoControls() && sizing_class_hm == MediaControlsSizingClass::kMedium);
   media_controls_impl_->SetClass(kMediaControlsSizingLargeCSSClass,
     media_controls_impl_->ShouldShowVideoControls() && sizing_class_hm == MediaControlsSizingClass::kLarge);
+#endif
 }
 
 void MediaControlsImplUtils::OnDurationChangeExt() {
@@ -603,6 +611,7 @@ void MediaControlsImplUtils::BeginScrubbingExt(bool is_touch_event) {
 
 // LCOV_EXCL_START
 void MediaControlsImplUtils::ScrubbingTimerFiredExt() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (!media_controls_impl_ || !media_controls_impl_->MediaElement().isConnected()) {
     return;
   }
@@ -614,6 +623,7 @@ void MediaControlsImplUtils::ScrubbingTimerFiredExt() {
     }
     media_controls_impl_->is_begin_scrubbing = false;
   }
+#endif
 }
 // LCOV_EXCL_STOP
 

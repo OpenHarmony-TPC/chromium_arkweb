@@ -19,6 +19,7 @@
 #include "cef/include/cef_task.h"
 #include "nweb_core_value.h"
 #include "ohos_adapter_helper.h"
+#include "nweb_core_value.h"
 #include "securec.h"
 
 namespace OHOS::NWeb {

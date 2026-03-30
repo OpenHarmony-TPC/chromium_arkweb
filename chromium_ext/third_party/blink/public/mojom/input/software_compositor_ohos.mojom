@@ -23,6 +23,7 @@ struct SoftwareCompositorDemandDrawSwParams {
   gfx.mojom.PointF offset;
 };
 
+[DirectReceiver]
 interface SoftwareCompositorOhos {
   DemandDrawSwAsync(SoftwareCompositorDemandDrawSwParams draw_params) =>
       (bool success);

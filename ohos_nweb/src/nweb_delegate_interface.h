@@ -31,7 +31,9 @@
 #include "nweb_accessibility_node_info.h"
 #endif
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "nweb_download_callback.h"
 #include "nweb_find_callback.h"
 #include "nweb_handler.h"
@@ -39,31 +41,31 @@
 #include "nweb_rom_value.h"
 #include "nweb_web_message.h"
 
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
-
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
 #include "nweb_native_media_player.h"
 #endif  // ARKWEB_CUSTOM_VIDEO_PLAYER
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "cef_delegate/nweb_custom_keyboard_handler_impl.h"
+#include "capi/nweb_context_menus_item.h"
 
 #if BUILDFLAG(ARKWEB_EX_SCREEN_CAPTURE)
 #include "capi/nweb_screencapture_delegate_callback.h"
 #endif  // defined(ARKWEB_EX_SCREEN_CAPTURE)
 
-#if BUILDFLAG(ARKWEB_NWEB_EX)
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "ohos_nweb_ex/core/extension/nweb_app_client_extension_dispatcher.h"
-#endif
-
-#if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
-#include "ui/gfx/geometry/size.h"
 #endif
 
 #if BUILDFLAG(ARKWEB_READER_MODE)
 #include "capi/nweb_extension_distill_item.h"
 #endif // ARKWEB_READER_MODE
+
+#if BUILDFLAG(ARKWEB_SAFEBROWSING)
+#include "capi/nweb_safe_browsing_detection_result_item.h"
+#endif
 
 #if BUILDFLAG(ARKWEB_USERAGENT)
 #include "nweb_user_agent_metadata.h"
@@ -186,8 +188,12 @@ class NWebDelegateInterface
   virtual void UnRegisterWebExtensionListener() = 0;
   virtual void GetImageFromContextNode() = 0;
   virtual void GetImageFromCacheEx(const std::string& url) = 0;
-#endif
 
+  virtual void GetImageInfosByUrls(const std::vector<std::string> &imageUrls,
+                                   std::shared_ptr<NWebImageInfoCallback> callback) = 0;
+  virtual void GetImageInfosByXPaths(const std::vector<std::string> &imageXPaths,
+                                   std::shared_ptr<NWebImageInfoCallback> callback) = 0;
+#endif
 #if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
   virtual void ShowFreeCopyMenu() = 0;
   virtual bool ShouldShowFreeCopyMenu() = 0;
@@ -290,8 +296,7 @@ class NWebDelegateInterface
   virtual std::shared_ptr<NWebPreference> GetPreference() const = 0;
 #if BUILDFLAG(ARKWEB_AI)
   virtual std::shared_ptr<NWebAgentManager> GetAgentManager() const = 0;
-  virtual void RegisterOnLoadStartedCbForContentChange(
-      std::function<void(void)>&& callback) = 0;
+  virtual void RegisterOnLoadStartedCbForContentChange(std::function<void(void)>&& callback) = 0;
 #endif
   virtual std::string Title() = 0;
   virtual std::shared_ptr<HitTestResult> GetHitTestResult() const = 0;
@@ -311,11 +316,11 @@ class NWebDelegateInterface
                            const std::string& encoding) = 0;
 #if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   virtual int LoadUrlWithParams(const std::string& url,
-                                const LoadUrlType load_type,
+                                const LoadUrlType& load_type,
                                 const std::string& refer,
                                 const std::string& headers,
                                 const std::string& post_data,
-                                const bool allow_https_upgrade,
+                                const bool& allow_https_upgrade,
                                 int32_t transition_type) = 0;
 #endif
   virtual int ContentHeight() = 0;
@@ -517,6 +522,8 @@ class NWebDelegateInterface
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   virtual void GetOverScrollOffset(float* offset_x, float* offset_y) = 0;
 #endif
+  virtual void SetScrollbarLayoutPolicy(int policy) = 0;
+  virtual void SetIsSystemRtlEnable(bool enable) = 0;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
 #if BUILDFLAG(ARKWEB_EXT_FORCE_ZOOM) || BUILDFLAG(ARKWEB_ZOOM)
@@ -644,7 +651,7 @@ class NWebDelegateInterface
   virtual void CancelAllPrerendering() = 0;
 #endif
 
-#if BUILDFLAG(ARKWEB_SECURITY_STATE)
+#if BUILDFLAG(ARKWEB_EXT_SECURITY_STATE) || BUILDFLAG(ARKWEB_SECURITY_STATE)
   virtual int GetSecurityLevel() = 0;
 #endif
 #if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
@@ -835,7 +842,7 @@ class NWebDelegateInterface
 
 #if BUILDFLAG(IS_ARKWEB)
   virtual void EnableAppLinking(bool enable) = 0;
-#endif // BUILDFLAG(IS_ARKWEB)
+#endif
 
 #if BUILDFLAG(ARKWEB_MEDIA_NETWORK_TRAFFIC_PROMPT)
   virtual void EnableMediaNetworkTrafficPrompt(bool enable) = 0;
@@ -877,6 +884,12 @@ class NWebDelegateInterface
   virtual void WebExtensionContextMenuReloadFocusedFrame() = 0;
 #endif
 
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  virtual bool SavePage(int32_t type,
+                        const std::string& filePath,
+                        CefRefPtr<CefSavePageResultCallback> callback) = 0;
+#endif  // ARKWEB_SAVE_PAGE
+
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   virtual void WebExtensionContextMenuGetFocusedFrameInfo(
       int32_t& frame_id,
@@ -906,12 +919,11 @@ class NWebDelegateInterface
 #endif
   virtual bool SetFocusByPosition(float x, float y) = 0;
   virtual std::pair<double, double> GetLastTouchMousePosition() = 0;
+  virtual bool IsElementExist(std::string& xPath) = 0;
 
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
-  virtual void OnSafeBrowsingDetectionResult(int code,
-                                             int policy,
-                                             const std::string& mappingType,
-                                             const std::string& url) = 0;
+  virtual void OnSafeBrowsingDetectionResult(
+      const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) = 0;
 #endif
 
 #if BUILDFLAG(ARKWEB_SCROLLBAR_AVOID_CORNER)
@@ -931,9 +943,9 @@ class NWebDelegateInterface
                             int event) = 0;
 #endif
 
-#if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
-  virtual void AvoidVisibleViewportBottom(int32_t avoidHeight) = 0;
-  virtual int32_t GetVisibleViewportAvoidHeight() = 0;
+#if BUILDFLAG(ARKWEB_BGTASK)
+  virtual void OnBrowserForeground() = 0;
+  virtual void OnBrowserBackground() = 0;
 #endif
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
@@ -957,8 +969,13 @@ class NWebDelegateInterface
       OnLastJavaScriptProxyCallingFrameInfoCallback callback) = 0;
 #endif
 
+#if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
+  virtual void AvoidVisibleViewportBottom(int32_t avoidHeight) = 0;
+  virtual int32_t GetVisibleViewportAvoidHeight() = 0;
+#endif  // ARKWEB_VIEWPORT_AVOID
+
 #if BUILDFLAG(ARKWEB_READER_MODE)
-  virtual void Distill(const std::string& guid, const DistillOptions& distill_options, DistillCallback callback) = 0;
+  virtual void Distill(uint64_t request_id, const DistillOptions& distill_options, DistillCallback callback) = 0;
   virtual void AbortDistill() = 0;
 #endif // ARKWEB_READER_MODE
 
@@ -999,14 +1016,12 @@ class NWebDelegateInterface
   virtual void ResourceResponseDelete(int nweb_response_key) = 0;
   virtual int32_t GetLastCommittedEntryPageTransition() = 0;
 #endif
-
-#if BUILDFLAG(ARKWEB_BGTASK)
-  virtual void OnBrowserForeground() = 0;
-  virtual void OnBrowserBackground() = 0;
-#endif
+  virtual std::vector<WebExtensionContextMenusItem> GetContextMenuItem() = 0;
+  virtual void OnContextMenuSelected(int command_id) = 0;
+  virtual void OnContextMenuClosed() = 0;
 
 #if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
-virtual void SetFocusWebId(int32_t nweb_id) = 0;
+  virtual void SetFocusWebId(int32_t nweb_id) = 0;
 #endif
 
 

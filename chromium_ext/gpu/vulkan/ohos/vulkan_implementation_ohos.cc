@@ -15,8 +15,8 @@
 #include "base/files/file_path.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
+#include "base/notimplemented.h"
 #include "gpu/ipc/common/nweb_native_window_tracker.h"
-#include "gpu/ipc/common/vulkan_ycbcr_info.h"
 #include "gpu/vulkan/vulkan_device_queue.h"
 #include "gpu/vulkan/vulkan_function_pointers.h"
 #include "gpu/vulkan/vulkan_image.h"
@@ -25,7 +25,6 @@
 #include "gpu/vulkan/vulkan_util.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #include "ui/gfx/gpu_fence.h"
-#include "ui/gfx/gpu_memory_buffer.h"
 
 namespace gpu {
 
@@ -59,9 +58,7 @@ std::unique_ptr<VulkanSurface> VulkanImplementationOhos::CreateViewSurface(
 
   void* nativeWindow =
       NWebNativeWindowTracker::Instance()->GetNativeWindow(window);
-  LOG(ERROR) << __FUNCTION__
-             << "CreateViewSurface vulkan native_window_id == " << window
-             << " nativeWindow = " << nativeWindow;
+  LOG(INFO) << "CreateViewSurface vulkan native_window_id == " << window;
 
   VkSurfaceCreateInfoOHOS surfaceCreateInfo = {};
   surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_SURFACE_CREATE_INFO_OHOS;
@@ -110,6 +107,7 @@ VulkanImplementationOhos::GetOptionalDeviceExtensions() {
       VK_OHOS_NATIVE_BUFFER_EXTENSION_NAME,
       VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME,
       VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+      VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME,
   };
 }
 

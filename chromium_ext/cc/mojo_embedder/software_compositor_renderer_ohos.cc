@@ -42,37 +42,26 @@ namespace mojo_embedder {
 
 class SoftwareDisplayClientOhos : public viz::DisplayClient {
  public:
-
- // LCOV_EXCL_START
   SoftwareDisplayClientOhos() {}
   ~SoftwareDisplayClientOhos() override = default;
   void DisplayOutputSurfaceLost() override {}
-// LCOV_EXCL_STOP
-
   void DisplayWillDrawAndSwap(
       bool will_draw_and_swap,
       viz::AggregatedRenderPassList* render_passes) override {}
-
-// LCOV_EXCL_START
   void DisplayDidDrawAndSwap() override {}
-// LCOV_EXCL_STOP
-
   void DisplayDidReceiveCALayerParams(
       const gfx::CALayerParams& ca_layer_params) override {}
   void DisplayDidCompleteSwapWithSize(const gfx::Size& pixel_size) override {}
   void DisplayAddChildWindowToBrowser(
       gpu::SurfaceHandle child_window) override {}
   void SetWideColorEnabled(bool enabled) override {}
-  void SetPreferredFrameInterval(base::TimeDelta interval) override {}
+  void SetPreferredFrameInterval(base::TimeDelta interval) {}
   base::TimeDelta GetPreferredFrameIntervalForFrameSinkId(
-      const viz::FrameSinkId& id,
-      viz::mojom::CompositorFrameSinkType* type) override {
+      const viz::FrameSinkId& id) {
     return viz::BeginFrameArgs::MinInterval();
   }
   void RestoreRenderFit(const viz::FrameSinkId& frame_sink_id) override {}
-#if BUILDFLAG(ARKWEB_EVICT_UNLOCK_FRAMES)
-  void DisplayDidRealSwapBuffer() override {}
-#endif
+  void ModifyRenderFit(int32_t fitType, const viz::FrameSinkId& frame_sink_id) override {}
 };
 
 class SoftwareOutputDeviceOhos : public viz::SoftwareOutputDevice {
@@ -89,23 +78,18 @@ class SoftwareOutputDeviceOhos : public viz::SoftwareOutputDevice {
     DCHECK(*canvas_) << "BeginPaint with no canvas set";
     return *canvas_;
   }
-
-// LCOV_EXCL_START
   void EndPaint() override {}
-// LCOV_EXCL_STOP
 
  private:
   raw_ptr<raw_ptr<SkCanvas>> canvas_;
 };
 
-// LCOV_EXCL_START
 SoftwareCompositorRendererOhos::SoftwareCompositorRendererOhos(
     AsyncLayerTreeFrameSink* sink,
     SoftwareCompositorRegistryOhos* registry)
     : sink_(sink), registry_(registry) {}
 
 SoftwareCompositorRendererOhos::~SoftwareCompositorRendererOhos() {}
-// LCOV_EXCL_STOP
 
 void SoftwareCompositorRendererOhos::BindToClient(
     LayerTreeFrameSinkClient* client,
@@ -114,9 +98,8 @@ void SoftwareCompositorRendererOhos::BindToClient(
 
   registry_->RegisterSoftwareRenderer(this);
 
-  shared_bitmap_manager_ = std::make_unique<viz::ServerSharedBitmapManager>();
   frame_sink_manager_ = std::make_unique<viz::FrameSinkManagerImpl>(
-      viz::FrameSinkManagerImpl::InitParams(shared_bitmap_manager_.get()));
+      viz::FrameSinkManagerImpl::InitParams());
 
   constexpr bool root_support_is_root = true;
   root_support_ = std::make_unique<viz::CompositorFrameSinkSupport>(
@@ -133,12 +116,11 @@ void SoftwareCompositorRendererOhos::BindToClient(
   display_client_ = std::make_unique<SoftwareDisplayClientOhos>();
 
   display_ = std::make_unique<viz::Display>(
-      shared_bitmap_manager_.get(), /*shared_image_manager=*/nullptr,
-      /*sync_point_manager=*/nullptr,
+      /*shared_image_manager=*/nullptr,
       /*gpu_scheduler=*/nullptr, software_renderer_settings, &debug_settings_,
-      kRootFrameSinkId, nullptr /* gpu::GpuTaskSchedulerHelper */,
+      kRootFrameSinkId, nullptr /* gpu_dependency */,
       std::move(output_surface_), std::move(overlay_processor),
-      std::move(scheduler) /* scheduler */, nullptr /* current_task_runner */);
+      std::move(scheduler), nullptr /* current_task_runner */);
   display_->Initialize(display_client_.get(),
                        frame_sink_manager_->surface_manager());
   frame_sink_manager_->RegisterFrameSinkId(kRootFrameSinkId, false);
@@ -146,16 +128,13 @@ void SoftwareCompositorRendererOhos::BindToClient(
   display_->SetVisible(true);
 }
 
-// LCOV_EXCL_START
 void SoftwareCompositorRendererOhos::DetachFromClient() {
   registry_->UnregisterSoftwareRenderer(this);
-  shared_bitmap_manager_.reset();
   root_support_.reset();
   display_client_.reset();
   display_.reset();
   frame_sink_manager_ = nullptr;
 }
-// LCOV_EXCL_STOP
 
 void SoftwareCompositorRendererOhos::DrawAndSwapOnRenderer(
     viz::CompositorFrame frame) {
@@ -193,7 +172,6 @@ bool SoftwareCompositorRendererOhos::DemandDrawSw(SkCanvas* canvas,
   return software_draw_result_;
 }
 
-// LCOV_EXCL_START
 void SoftwareCompositorRendererOhos::DrawRect(const gfx::Rect& rect) {
   if (client_ == nullptr) {
     LOG(ERROR) << "SW render DrawRect.";
@@ -205,7 +183,7 @@ void SoftwareCompositorRendererOhos::DrawRect(const gfx::Rect& rect) {
 void SoftwareCompositorRendererOhos::SendCompositorFrameAckToClient() {
   client_->DidReceiveCompositorFrameAck();
 }
-// LCOV_EXCL_STOP
 
 }  // namespace mojo_embedder
 }  // namespace cc
+                  

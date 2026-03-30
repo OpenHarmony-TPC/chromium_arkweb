@@ -161,7 +161,8 @@ void JsonToResReqPreloadInfoList(const std::string& content,
     preconnect_limit_info_list.clear();
     return;
   }
-  absl::optional<base::Value> json_value = base::JSONReader::Read(content);
+  absl::optional<base::Value> json_value = base::JSONReader::Read(
+      content, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!json_value || !json_value->is_list()) {
     LOG(WARNING) << "PRPPreload.JsonToResReqPreloadInfoList failed";
     return;

@@ -86,8 +86,7 @@ std::vector<sk_sp<SkSurface>> SkiaVkNBImageRepresentation::BeginWriteAccess(
 
   if (!surface_ || final_msaa_count != surface_msaa_count_ ||
       surface_props != surface_->props()) {
-    SkColorType sk_color_type = viz::ToClosestSkColorType(
-        /*gpu_compositing=*/true, format());
+    SkColorType sk_color_type = viz::ToClosestSkColorType(format());
     surface_ = SkSurfaces::WrapBackendTexture(
         gr_context, promise_texture_->backendTexture(), surface_origin(),
         final_msaa_count, sk_color_type, color_space().ToSkColorSpace(),
@@ -305,15 +304,15 @@ SkiaVkNBImageRepresentation::GetEndAccessState() {
 
   const SharedImageUsageSet kSingleDeviceUsage =
       SHARED_IMAGE_USAGE_DISPLAY_READ | SHARED_IMAGE_USAGE_DISPLAY_WRITE |
-      SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE |
-      SHARED_IMAGE_USAGE_OOP_RASTERIZATION;
+      SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE;
 
   // If SharedImage is used outside of current VkDeviceQueue we need to transfer
   // image back to it's original queue. Note, that for multithreading we use
   // same vkDevice, so technically we could transfer between queues instead of
   // jumping to external queue. But currently it's not possible because we
   // create new vkImage each time.
-  if ((ohos_backing()->usage() & ~kSingleDeviceUsage) ||
+  if ((static_cast<uint32_t>(ohos_backing()->usage()) &
+       ~static_cast<uint32_t>(kSingleDeviceUsage)) ||
       ohos_backing()->is_thread_safe()) {
     return std::make_unique<skgpu::MutableTextureState>(
         skgpu::MutableTextureStates::MakeVulkan(

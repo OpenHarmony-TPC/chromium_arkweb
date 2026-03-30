@@ -88,7 +88,7 @@ class MockSharedContextState : public SharedContextState {
       viz::VulkanContextProvider* vulkan_context_provider = nullptr,
       viz::MetalContextProvider* metal_context_provider = nullptr,
       gpu::DawnContextProvider* dawn_context_provider = nullptr,
-      base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
+      scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
       bool created_on_compositor_gpu_thread = false)
       : SharedContextState(share_group,
                            surface,
@@ -159,7 +159,7 @@ class CodecBufferWaitCoordinatorTest : public testing::Test {
     viz::VulkanContextProvider* vulkan_context_provider = nullptr;
     viz::MetalContextProvider* metal_context_provider = nullptr;
     gpu::DawnContextProvider* dawn_context_provider = nullptr;
-    base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
+    scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
     bool created_on_compositor_gpu_thread = false;
     scoped_refptr<gpu::SharedContextState> context_state =
         new gpu::SharedContextState(

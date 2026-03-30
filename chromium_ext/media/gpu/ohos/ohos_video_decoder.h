@@ -220,7 +220,7 @@ class MEDIA_GPU_EXPORT OhosVideoDecoder final
 #endif // ARKWEB_VIDEO_ASSISTANT
 
   // ohos cdm object
-  raw_ptr<OHOSMediaCryptoContext> ohos_crypto_context_;
+  raw_ptr<OHOSMediaCryptoContext> ohos_crypto_context_ = nullptr;
 
   std::unique_ptr<CallbackRegistration> event_cb_registration_;
 

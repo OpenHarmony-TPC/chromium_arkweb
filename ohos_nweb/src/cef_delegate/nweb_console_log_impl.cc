@@ -20,6 +20,15 @@ namespace OHOS::NWeb {
 NWebConsoleLogImpl::NWebConsoleLogImpl(int line_number,
                                        std::string message,
                                        NWebConsoleLogLevel log_level,
+                                       std::string sourceId)
+    : line_number_(line_number),
+      log_(message),
+      log_level_(log_level),
+      sourceId_(sourceId) {}
+
+NWebConsoleLogImpl::NWebConsoleLogImpl(int line_number,
+                                       std::string message,
+                                       NWebConsoleLogLevel log_level,
                                        NWebConsoleLogSource log_source,
                                        std::string sourceId)
     : line_number_(line_number),

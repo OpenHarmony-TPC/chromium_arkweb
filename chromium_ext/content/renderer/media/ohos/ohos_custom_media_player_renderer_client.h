@@ -41,12 +41,10 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRendererClient
     : public media::mojom::CustomMediaPlayerRendererClientExtension,
       public media::MojoRendererWrapper {
  public:
-  using RendererExtension = media::mojom::MediaPlayerRendererExtension;
   using ClientExtension =
       media::mojom::CustomMediaPlayerRendererClientExtension;
 
   OHOSCustomMediaPlayerRendererClient(
-      mojo::PendingRemote<RendererExtension> renderer_extension_remote,
       mojo::PendingReceiver<ClientExtension> client_extension_receiver,
       scoped_refptr<base::SequencedTaskRunner> media_taks_runner,
       scoped_refptr<base::SingleThreadTaskRunner> compositor_task_runner,
@@ -117,11 +115,6 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRendererClient
 
   mojo::PendingReceiver<ClientExtension>
       delayed_bind_client_extension_receiver_;
-  mojo::PendingRemote<RendererExtension>
-      delayed_bind_renderer_extension_remote_;
-
-  // Used to call methods on MediaPlayerRenderer in the browser process.
-  mojo::Remote<RendererExtension> renderer_extension_remote_;
 
   // Used to receive events from MediaPlayerRenderer in the browser process.
   mojo::Receiver<CustomMediaPlayerRendererClientExtension>

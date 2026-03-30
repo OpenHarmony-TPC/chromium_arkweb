@@ -17,9 +17,10 @@
 
 #include "base/logging.h"
 #include "base/no_destructor.h"
+#include "base/strings/stringprintf.h"
 #include "chrome/browser/extensions/menu_manager.h"
 #include "chrome/common/extensions/api/omnibox/omnibox_handler.h"
-#include "chrome/common/extensions/chrome_manifest_url_handlers.h"
+#include "extensions/common/manifest_handlers/chrome_url_overrides_handler.h"
 #include "chrome/common/extensions/manifest_handlers/settings_overrides_handler.h"
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/extension_system.h"
@@ -42,6 +43,10 @@
 #include "ohos_nweb/src/nweb_common.h"
 #include "ui/gfx/image/image_skia_operations.h"
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+
 #if BUILDFLAG(ARKWEB_TEST)
 #include "extension_registry_info_manager_test.h"
 #endif
@@ -50,7 +55,6 @@
 #include "extensions/browser/extension_util.h"
 #include "extensions/common/manifest_handlers/incognito_info.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_manager_dispatcher.h"
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
 
 namespace extensions {
@@ -505,9 +509,10 @@ void ExtensionRegistryInfoManager::BrowserNotifier::PopulateAllSyncInfo() {
       info_manager_->GetAllExtensionContextMenusV2(extension_->id());
   loaded_info_.action_v2 =
       info_manager_->GetExtensionActionInfoV2(*extension_, kTabIdNone);
-  loaded_info_.install_time = ExtensionPrefs::Get(browser_context_)
-                                  ->GetFirstInstallTime(extension_->id())
-                                  .InMillisecondsFSinceUnixEpoch();
+  loaded_info_.install_time =
+      extensions::GetFirstInstallTime(ExtensionPrefs::Get(browser_context_),
+                                      extension_->id())
+          .InMillisecondsFSinceUnixEpoch();
 #endif
 }
 

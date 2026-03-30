@@ -15,6 +15,7 @@
 #include "ui/accessibility/platform/browser_accessibility.h"
 #include "ui/accessibility/platform/browser_accessibility_manager.h"
 #include "ui/accessibility/platform/one_shot_accessibility_tree_search.h"
+#include "base/task/delayed_task_handle.h"
 
 namespace ui {
 
@@ -68,9 +69,9 @@ class CONTENT_EXPORT BrowserAccessibilityManagerOHOS
      void FireAriaNotificationEvent(
       BrowserAccessibility* node,
       const std::string& announcement,
-      const std::string& notification_id,
+      ax::mojom::AriaNotificationPriority priority_property,
       ax::mojom::AriaNotificationInterrupt interrupt_property,
-      ax::mojom::AriaNotificationPriority priority_property) override {}
+      const std::string& type) override {}
 
   void FireFocusEvent(AXNode* node) override;
 

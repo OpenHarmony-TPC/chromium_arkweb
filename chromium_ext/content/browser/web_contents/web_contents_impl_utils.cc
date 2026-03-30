@@ -30,11 +30,9 @@
 
 namespace content {
 
-// LCOV_EXCL_START
 WebContentsImplUtils::WebContentsImplUtils(WebContentsImpl* impl) {
   this->webContentsImpl = impl;
 }
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_I18N)
 void WebContentsImplUtils::UpdateRenderAcceptLanguageIfNeed(
@@ -112,9 +110,9 @@ void WebContentsImplUtils::UpdateUserAgentOverride(const blink::UserAgentOverrid
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_PDF) && !defined(COMPONENT_BUILD)  // FIXME
 bool WebContentsImplUtils::is_pdf_static = false;
 
-#if BUILDFLAG(ARKWEB_PDF)
 void WebContentsImplUtils::JudgeIsPdfPageVisibilityChanged(Visibility visibility) {
   if (visibility == Visibility::VISIBLE && !webContentsImpl->did_first_set_visible_) {
     GURL url = webContentsImpl->GetVisibleURL();
@@ -130,13 +128,9 @@ void WebContentsImplUtils::JudgeIsPdfPageVisibilityChanged(Visibility visibility
 void WebContentsImplUtils::EvictFrameBackBuffersWhenNWebWasHidden() {
   DCHECK(!webContentsImpl->IsBeingDestroyed());
   PageVisibilityState page_visibility = webContentsImpl->CalculatePageVisibilityState(Visibility::HIDDEN);
-
-  bool view_is_visible = !webContentsImpl->IsCrashed() && page_visibility != PageVisibilityState::kHidden;
   if (auto* view = webContentsImpl->GetRenderWidgetHostView()) {
-    if (!view_is_visible) {
-#if BUILDFLAG(ARKWEB_OCCLUDED_OPT)
+    if (webContentsImpl->IsCrashed() || page_visibility == PageVisibilityState::kHidden) {
       view->EvictFrameBackBuffers();
-#endif
     }
   }
 }

@@ -17,7 +17,7 @@
 
 #include <map>
 
-#if BUILDFLAG(ARKWEB_NWEB_EX)
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
 #include "base/logging.h"

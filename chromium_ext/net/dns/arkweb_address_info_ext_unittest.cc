@@ -14,6 +14,9 @@
  */
 
 #include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/compiler_specific.h"
 #include "base/test/task_environment.h"
 #include "build/buildflag.h"
@@ -62,7 +65,7 @@ OHFreeDnsResult __wrap_GetOHFreeDnsResult() {
 }
 #endif
 
-namespace {
+namespace ohos {
 
 class ArkWebAddressInfoExtTest : public ::testing::Test {
  protected:
@@ -142,6 +145,6 @@ TEST_F(ArkWebAddressInfoExtTest, TestFreeDnsResultNull) {
   EXPECT_EQ(errno, ENOSYS);
 }
 
-}  // namespace
+}  // namespace ohos
 
 }  // namespace net

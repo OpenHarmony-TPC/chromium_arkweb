@@ -15,6 +15,7 @@
 
 #include "arkweb/chromium_ext/gpu/ipc/service/gpu_hang_adapter.h"
 
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/current_thread.h"
 #include "base/task/task_observer.h"

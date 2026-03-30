@@ -17,7 +17,6 @@
 
 #include "base/logging.h"
 #include "base/test/task_environment.h"
-#include "chrome/browser/notifications/notification_platform_bridge_ohos.h"
 #include "components/download/public/common/download_save_info.h"
 #include "components/download/internal/common/parallel_download_utils.h"
 #include "components/download/public/common/download_create_info.h"

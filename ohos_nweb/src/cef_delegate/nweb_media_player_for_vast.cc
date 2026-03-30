@@ -21,7 +21,7 @@ NWebMediaPlayerListenerForVAST::NWebMediaPlayerListenerForVAST(
     : arkweb_listener_(std::move(arkweb_listener)) {}
 
 NWebMediaPlayerListenerForVAST::~NWebMediaPlayerListenerForVAST() = default;
-
+ 
 NO_SANITIZE("cfi-icall")
 void NWebMediaPlayerListenerForVAST::OnStatusChanged(uint32_t status) {
   if (arkweb_listener_ && arkweb_listener_.get()->on_status_changed) {

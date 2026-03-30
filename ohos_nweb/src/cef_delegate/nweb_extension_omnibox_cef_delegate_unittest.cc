@@ -18,11 +18,11 @@
 #include <string>
 
 #include "nweb_extension_omnibox_cef_delegate.h"
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "nweb_extension_utils.h"
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_omnibox_dispatcher.h"
 #endif
 

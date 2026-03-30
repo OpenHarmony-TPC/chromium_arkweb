@@ -158,9 +158,8 @@ public:
     OHOSMediaCodecBridgeImpl bridge_impl = OHOSMediaCodecBridgeImpl(refToMyString);
     std::optional<VideoFrameLayout> layout =
     VideoFrameLayout::Create(VideoPixelFormat::PIXEL_FORMAT_I422A, gfx::Size());
-    scoped_refptr<VideoFrame> video_frame = new VideoFrame(
-        layout.value(), VideoFrame::StorageType::STORAGE_GPU_MEMORY_BUFFER,
-        gfx::Rect(), gfx::Size(), base::Seconds(1));
+    scoped_refptr<VideoFrame> video_frame = media::VideoFrame::CreateFrameWithLayout(
+        layout.value(), gfx::Rect(), gfx::Size(), base::Seconds(1), false);
 protected:
     void SetUp() override
     {
@@ -208,7 +207,7 @@ protected:
     }
 
     void SetData(size_t plane, const uint8_t* ptr) {
-        video_frame->data_[plane] = ptr;
+        video_frame->data_[plane] = base::raw_span<const uint8_t>(ptr, plane);
     }
 
     void SetStorageType(VideoFrame::StorageType storage_type) {

@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "arkweb/build/features/features.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
+#include "arkweb/build/features/features.h"
+
 #if BUILDFLAG(IS_ARKWEB)
 #include "third_party/blink/public/common/messaging/web_message_port.h"
 #endif
 
 #if BUILDFLAG(ARKWEB_DATALIST)
-#include "components/autofill/core/browser/ui/suggestion.h"
+#include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "ui/gfx/geometry/rect_f.h"
 #endif
 

@@ -1,0 +1,16 @@
+module media.mojom;
+
+import "url/mojom/origin.mojom";
+import "url/mojom/url.mojom";
+import "services/network/public/mojom/site_for_cookies.mojom";
+
+struct MediaPlayerUrlParams {
+  url.mojom.Url media_url;
+  network.mojom.SiteForCookies site_for_cookies;
+  url.mojom.Origin top_frame_origin;
+  int32 storage_access_api_status;
+  bool is_hls;
+  map<string, string> headers;
+  uint32 preload_type;
+  uint32 media_source_type;
+};

@@ -82,7 +82,6 @@ TEST(NWebWebStorageDelegateTEST, GetOriginUsage002) {
     web_storage->GetOriginUsage("");
 }
 
-#if BUILDFLAG(ARKWEB_EXT_PASSWORD)
 TEST(NWebWebStorageDelegateTEST, GetPassword) {
     auto web_storage = std::make_shared<NWebWebStorageDelegate>();
     web_storage->GetPassword("", "", 1);
@@ -119,4 +118,3 @@ TEST(NWebWebStorageDelegateTEST, RemovePasswordByUrl) {
     auto web_storage = std::make_shared<NWebWebStorageDelegate>();
     web_storage->RemovePasswordByUrl("");
 }
-#endif

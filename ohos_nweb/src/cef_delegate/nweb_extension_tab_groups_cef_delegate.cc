@@ -17,12 +17,14 @@
 
 #include <map>
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "cef/ohos_cef_ext/libcef/browser/extensions/api/tabGroups/tab_groups_event_router_ext.h"
 #include "content/public/browser/browser_context.h"
 #include "nweb_common.h"
 #include "nweb_extension_utils.h"
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_tab_groups_dispatcher.h"
 #endif
 
@@ -117,7 +119,8 @@ void NWebExtensionTabGroupsCefDelegate::QueryTabGroupCallback(
 }
 
 bool NWebExtensionTabGroupsCefDelegate::UpdateTabGroup(
-    UpdateTabGroupsCallback callback, int32_t groupId, const NWebExtensionTabGroupsUpdateProperties& update_properties) {
+    UpdateTabGroupsCallback callback, int32_t groupId,
+    const NWebExtensionTabGroupsUpdateProperties& update_properties) {
 #if !BUILDFLAG(ARKWEB_NWEB_EX)
   return false;
 #else

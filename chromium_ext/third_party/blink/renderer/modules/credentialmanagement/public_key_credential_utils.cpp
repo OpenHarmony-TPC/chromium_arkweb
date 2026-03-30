@@ -25,16 +25,14 @@ void OnGetClientCapabilitiesFullComplete(
     results.emplace_back("extension:enforceCredentialProtectionPolicy", true);
     results.emplace_back("extension:minPinLength", true);
     results.emplace_back("extension:credProps", true);
-    results.emplace_back(
-        "extension:largeBlob",
-        RuntimeEnabledFeatures::WebAuthenticationLargeBlobExtensionEnabled());
+    results.emplace_back("extension:largeBlob", true);
     results.emplace_back("extension:credBlob", true);
     results.emplace_back("extension:getCredBlob", true);
     results.emplace_back(
         "extension:payment",
         RuntimeEnabledFeatures::SecurePaymentConfirmationEnabled());
     results.emplace_back("extension:prf",
-                         RuntimeEnabledFeatures::WebAuthenticationPRFEnabled());
+                         RuntimeEnabledFeatures::WebAuthenticationUiModeEnabled());
 
     // Results should be sorted lexicographically based on the keys.
     std::sort(

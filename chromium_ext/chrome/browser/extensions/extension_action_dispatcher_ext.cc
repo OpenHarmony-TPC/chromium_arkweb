@@ -15,9 +15,9 @@
 
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
 #include "chrome/browser/extensions/extension_tab_util.h"
-#include "chrome/browser/extensions/permissions/active_tab_permission_granter.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/browser/permissions/active_tab_permission_granter.h"
 #include "extensions/common/mojom/context_type.mojom.h"
 #include "ohos_cef_ext/libcef/browser/extensions/tab_extensions_util.h"
 #endif
@@ -46,9 +46,9 @@ void ExtensionActionInvokeActiveTab(
  
   content::WebContents* out_contents = nullptr;
   if (ExtensionTabUtil::GetTabById(tab_id, context, true, &out_contents)) {
-    auto tab_helper = TabHelper::FromWebContents(out_contents);
-    if (tab_helper) {
-      tab_helper->active_tab_permission_granter()->GrantIfRequested(extension);
+    auto* permission_granter = ActiveTabPermissionGranter::FromWebContents(out_contents);
+    if (permission_granter) {
+      permission_granter->GrantIfRequested(extension);
     }
   }
 }
@@ -92,6 +92,10 @@ void ExtensionActionDispatcher::DispatchExtensionActionClickedWithCustomArgs(
     event_name = "action.onClicked";
   }
 
+  if (!custom_tab) {
+    LOG(ERROR) << "custom_tab is null, cannot dispatch event";
+    return;
+  }
   base::Value::List args;
   GURL gurl(custom_tab->url.value_or(""));
   constexpr mojom::ContextType context_type =

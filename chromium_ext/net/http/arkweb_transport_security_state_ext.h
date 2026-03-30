@@ -27,6 +27,7 @@
 #include "net/base/net_export.h"
 #include "net/base/network_anonymization_key.h"
 #include "net/cert/signed_certificate_timestamp_and_status.h"
+#include "net/http/transport_security_state.h"
 #include "net/http/transport_security_state_source.h"
 #include "net/log/net_log_with_source.h"
 #include "net/net_buildflags.h"
@@ -58,7 +59,7 @@ class NET_EXPORT ArkWebTransportSecurityStateExt
   ArkWebTransportSecurityStateExt& operator=(
       const ArkWebTransportSecurityStateExt&) = delete;
 
-  ~ArkWebTransportSecurityStateExt();
+  ~ArkWebTransportSecurityStateExt() override;
 
   ArkWebTransportSecurityStateExt* AsArkWebTransportSecurityStateExt()
       override {

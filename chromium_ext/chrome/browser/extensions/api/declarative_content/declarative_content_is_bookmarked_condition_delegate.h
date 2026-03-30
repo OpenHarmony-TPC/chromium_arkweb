@@ -17,6 +17,7 @@
 #define CHROME_BROWSER_EXTENSIONS_API_DECLARATIVE_CONTENT_DECLARATIVE_CONTENT_IS_BOOKMARKED_CONDITION_DELEGATE_H_
 
 #include <mutex>
+#include <set>
 
 #include "base/functional/callback.h"
 #include "base/observer_list.h"

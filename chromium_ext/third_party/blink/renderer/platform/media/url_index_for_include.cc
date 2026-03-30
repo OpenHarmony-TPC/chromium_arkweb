@@ -31,7 +31,6 @@ void UrlData::NotifyMediaWebURLError(int reason) {
 }
 #endif  // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
 
-
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
 std::unique_ptr<MultiBuffer::DataProvider> ResourceMultiBuffer::CreateWriter(
     const MultiBufferBlockId& pos,

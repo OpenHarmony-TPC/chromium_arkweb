@@ -17,7 +17,6 @@
 #include "components/viz/common/display/renderer_settings.h"
 #include "components/viz/service/frame_sinks/root_compositor_frame_sink_impl_ext.h"
 #include "components/viz/service/display/display.h"
-#include "components/viz/service/display_embedder/server_shared_bitmap_manager.h"
 #include "components/viz/test/mock_compositor_frame_sink_client.h"
 #include "components/viz/test/mock_display_client.h"
 #include "components/viz/test/test_output_surface_provider.h"
@@ -93,6 +92,14 @@ class MockFrameSinkManagerClient : public mojom::FrameSinkManagerClient {
               RestoreRenderFit,
               (uint32_t client_id, uint32_t sink_id),
               (override));
+  MOCK_METHOD(void,
+              ModifyRenderFit,
+              (int32_t fitType, uint32_t client_id, uint32_t sink_id),
+              (override));
+  MOCK_METHOD(void,
+              OnVizTouchStateAvailable,
+              (::base::ReadOnlySharedMemoryRegion region),
+              (override));
   mojo::PendingRemote<mojom::FrameSinkManagerClient> BindInterfaceRemote() {
   return receiver_.BindNewPipeAndPassRemote();
 }
@@ -108,10 +115,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 
 #if BUILDFLAG(ARKWEB_OCCLUDED_OPT)
   void TestEvictFrameBackBuffers() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -130,10 +135,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
   }
 
   void TestSetIsOfflineWebComponentInactive() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -148,10 +151,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
   }
 
   void TestSetRootCompositorFrameSink() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -166,10 +167,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
   }
 
   void TestSetEnableLowerFrameRate() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -184,10 +183,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
   }
 
   void TestSetEnableHalfFrameRate() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -204,10 +201,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 
 #if BUILDFLAG(ARKWEB_VIDEO_LTPO)
   void TestUpdateVSyncFrequency() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     MockCompositorFrameSinkClient compositor_frame_sink_client;
@@ -236,10 +231,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
   }
 
   void TestResetVSyncFrequency() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     managerImpl.root_sink_map_.clear();
@@ -256,10 +249,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 
 #if BUILDFLAG(ARKWEB_PIP)
   void TestSetPipActive() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     utils_.SetPipActive(true, frameSinkId1);
@@ -274,10 +265,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
   void TestClearBlanklessSnapshotInfo() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
 
     ASSERT_NO_FATAL_FAILURE(utils_.ClearBlanklessSnapshotInfo(1));
@@ -288,10 +277,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
   void TestRestoreRenderFit() {
-    ServerSharedBitmapManager shared_bitmap_manager_;
     TestOutputSurfaceProvider output_surface_provider_;
-    FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-      InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+    FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
     FrameSinkManagerImplUtils utils_(&managerImpl);
     ASSERT_NO_FATAL_FAILURE(utils_.RestoreRenderFit(frameSinkId1));
 
@@ -306,10 +293,8 @@ class FrameSinkManagerImplUtilsTest : public testing::Test {
 };
 
 TEST_F(FrameSinkManagerImplUtilsTest, CreateRootCompositorFrameSink) {
-  ServerSharedBitmapManager shared_bitmap_manager_;
   TestOutputSurfaceProvider output_surface_provider_;
-  FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-    InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+  FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
   FrameSinkManagerImplUtils utils_(&managerImpl);
 
   managerImpl.root_sink_map_.clear();

@@ -8,7 +8,6 @@
 #include "gpu/ipc/common/nweb_native_window_tracker.h"
 
 namespace content {
-// LCOV_EXCL_START
 void* HostProxy::GetSurfaceFromKernel(int32_t surface_id) {
   return NWebNativeWindowTracker::GetInstance()->GetNativeWindow(surface_id);
 }
@@ -22,6 +21,5 @@ void* HostProxy::GetSurfaceFromKernelWithRef(int32_t surface_id) {
   return NWebNativeWindowTracker::GetInstance()->GetNativeWindow(surface_id, true);
 }
 // LCOV_EXCL_STOP
-
 }  // namespace content
                       

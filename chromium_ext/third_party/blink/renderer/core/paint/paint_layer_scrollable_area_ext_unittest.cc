@@ -64,7 +64,7 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale002) {
     </body>
     </html>
   )HTML");
-
+ 
   PaintLayer* scroll_layer = GetPaintLayerByElementId("body");
   ASSERT_TRUE(scroll_layer);
   PaintLayerScrollableArea* scrollable_area = scroll_layer->GetScrollableArea();
@@ -75,17 +75,17 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale002) {
   Page* page = scrollable_area_ext->GetLayoutBox()->GetDocument().GetPage();
   ASSERT_TRUE(page);
   auto& port = page->GetVisualViewport();
-
+ 
   // Enable pinch gesture and set scale > 1
   scrollable_area_ext->is_pinch_gesture_active_ = true;
   port.scale_ = SCALE_VAL_C;  // scale = 2.0
-
+ 
   // With overlay scrollbar (assuming default is overlay), should return scale factor
   float result = scrollable_area_ext->ComputeVisibleAreaScale();
   // Result should be either 2.0 (if overlay scrollbar) or 1.0 (if not overlay)
   EXPECT_TRUE(result == SCALE_VAL_C || result == SCALE_VAL_B);
 }
-
+ 
 // Test root layer without pinch gesture should return 1.0
 TEST_P(PaintLayerTest, ComputeVisibleAreaScale003) {
   SetBodyInnerHTML(R"HTML(
@@ -96,7 +96,7 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale003) {
     </body>
     </html>
   )HTML");
-
+ 
   PaintLayer* scroll_layer = GetPaintLayerByElementId("body");
   ASSERT_TRUE(scroll_layer);
   PaintLayerScrollableArea* scrollable_area = scroll_layer->GetScrollableArea();
@@ -107,13 +107,13 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale003) {
   Page* page = scrollable_area_ext->GetLayoutBox()->GetDocument().GetPage();
   ASSERT_TRUE(page);
   auto& port = page->GetVisualViewport();
-
+ 
   // pinch gesture not active (default is false)
   port.scale_ = SCALE_VAL_C;  // scale = 2.0
-
+ 
   EXPECT_EQ(scrollable_area_ext->ComputeVisibleAreaScale(), SCALE_VAL_B);
 }
-
+ 
 // Test root layer with scale <= 1.0 should return 1.0
 TEST_P(PaintLayerTest, ComputeVisibleAreaScale004) {
   SetBodyInnerHTML(R"HTML(
@@ -124,7 +124,7 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale004) {
     </body>
     </html>
   )HTML");
-
+ 
   PaintLayer* scroll_layer = GetPaintLayerByElementId("body");
   ASSERT_TRUE(scroll_layer);
   PaintLayerScrollableArea* scrollable_area = scroll_layer->GetScrollableArea();
@@ -135,14 +135,14 @@ TEST_P(PaintLayerTest, ComputeVisibleAreaScale004) {
   Page* page = scrollable_area_ext->GetLayoutBox()->GetDocument().GetPage();
   ASSERT_TRUE(page);
   auto& port = page->GetVisualViewport();
-
+ 
   // Enable pinch gesture
   scrollable_area_ext->is_pinch_gesture_active_ = true;
-
+ 
   // Test scale = 1.0 (not greater than 1)
   port.scale_ = SCALE_VAL_B;
   EXPECT_EQ(scrollable_area_ext->ComputeVisibleAreaScale(), SCALE_VAL_B);
-
+ 
   // Test scale = 0.1 (less than 1)
   port.scale_ = SCALE_VAL_A;
   EXPECT_EQ(scrollable_area_ext->ComputeVisibleAreaScale(), SCALE_VAL_B);

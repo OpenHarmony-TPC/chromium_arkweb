@@ -27,8 +27,7 @@ namespace network {
 class ThrottlingNetworkTransactionForIncludeTest : public ::testing::Test {
  public:
   std::unique_ptr<ThrottlingNetworkTransaction> CreateTransaction() {
-    std::unique_ptr<net::HttpTransaction> trans;
-    layer_.CreateTransaction(net::DEFAULT_PRIORITY, &trans);
+    auto trans = layer_.CreateTransaction(net::DEFAULT_PRIORITY);
     return std::make_unique<ThrottlingNetworkTransaction>(std::move(trans));
   }
 
@@ -63,61 +62,61 @@ TEST_F(ThrottlingNetworkTransactionForIncludeTest,
   int rv = txn->RestartWithSecureDnsOnly(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_FAILED);
 }
-#endif  // BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#endif  // BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 
 #if BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithFallbackProxy_CheckFailedTrue) {
   auto txn = CreateTransaction();
   txn->failed_ = true;
-
+ 
   int rv = txn->RestartWithFallbackProxy(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_INTERNET_DISCONNECTED);
 }
-
+ 
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithFallbackProxy_NoInterceptor) {
   auto txn = CreateTransaction();
-
+ 
   int rv = txn->RestartWithFallbackProxy(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_FAILED);
 }
-
+ 
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithFallbackProxy_WithInterceptor) {
   auto txn = CreateTransaction();
-
+ 
   auto interceptor = std::make_unique<ThrottlingNetworkInterceptor>();
   txn->interceptor_ = interceptor->GetWeakPtr();
-
+ 
   int rv = txn->RestartWithFallbackProxy(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_FAILED);
 }
-
+ 
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithDirect_CheckFailedTrue) {
   auto txn = CreateTransaction();
   txn->failed_ = true;
-
+ 
   int rv = txn->RestartWithDirect(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_INTERNET_DISCONNECTED);
 }
-
+ 
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithDirect_NoInterceptor) {
   auto txn = CreateTransaction();
-
+ 
   int rv = txn->RestartWithDirect(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_FAILED);
 }
-
+ 
 TEST_F(ThrottlingNetworkTransactionForIncludeTest,
        RestartWithDirect_WithInterceptor) {
   auto txn = CreateTransaction();
-
+ 
   auto interceptor = std::make_unique<ThrottlingNetworkInterceptor>();
   txn->interceptor_ = interceptor->GetWeakPtr();
-
+ 
   int rv = txn->RestartWithDirect(base::DoNothing());
   EXPECT_EQ(rv, net::ERR_FAILED);
 }

@@ -15,6 +15,8 @@
 
 #include "arkweb/chromium_ext/content/browser/arkweb_child_process_launcher_helper_utils.h"
 
+#include "content/public/common/content_switches.h"
+#include "ohos_nweb/src/sysevent/event_reporter.h"
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_STARTUP)
 #include "content/public/common/content_switches.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
@@ -71,10 +73,12 @@ void ArkwebChildProcessLauncherHelperUtils::LaunchChildProcess(
       save_browser_connect_ = true;
     }
 #endif
+
     auto process_type = child_process_launcher_helper_->GetProcessType();
     LOG(INFO)
         << "Initiate a request to AMS to create a child process, child type: "
         << process_type;
+
     int ret =
         child_process_launcher_helper_->app_mgr_client_adapter_
             ->StartChildProcess(
@@ -86,6 +90,10 @@ void ArkwebChildProcessLauncherHelperUtils::LaunchChildProcess(
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_STARTUP) && !defined(COMPONENT_BUILD)
       if (process_type == switches::kRendererProcess) {
         ReportRenderProcessTerminate(false, -1, std::string("TERMINATION_STATUS_LAUNCH_FAILED"), ret);
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
+      } else {
+        ReportChildProcessInitFail(process_type == switches::kGpuProcess, ret);
+#endif
       }
 #endif
       process.process = base::Process();
@@ -121,7 +129,7 @@ ArkwebChildProcessLauncherHelperUtils::GetProcessStatusByExitCode(
         if (!known_dead) {
           return base::TERMINATION_STATUS_NORMAL_TERMINATION;
         }
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
         // On ChromeOS, only way a process gets kill by SIGKILL
         // is by oom-killer.
         return TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM;
@@ -147,7 +155,7 @@ void ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(pid_t pid, i
   base::TerminationStatus status = GetProcessStatusByExitCode(exitCode, known_dead);
   switch(status) {
     case base::TERMINATION_STATUS_NORMAL_TERMINATION:
-      if (WIFSIGNALED(exitCode)) {
+      if (known_dead && WIFSIGNALED(exitCode)) {
         LOG(WARNING) << "RenderExited pid: " << pid << " known_dead: " << known_dead << " exitCode: " << exitCode
                      << " exitSig: " << WTERMSIG(exitCode) << " exitReason: process exit unknown";
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_STARTUP) && !defined(COMPONENT_BUILD)
@@ -177,7 +185,7 @@ void ArkwebChildProcessLauncherHelperUtils::RenderProcessExitedInfo(pid_t pid, i
     default:
       LOG(ERROR) << "RenderExited pid: " << pid << " known_dead: " << known_dead << " exitCode: " << exitCode
                  << " exitStatus: " << WEXITSTATUS(exitCode) << " exitSig: " << WTERMSIG(exitCode)
-		         << " exitReason: process exit unknown";
+                 << " exitReason: process exit unknown";
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_STARTUP) && !defined(COMPONENT_BUILD)
       ReportRenderProcessTerminate(false, pid, std::string("TERMINATION_STATUS_PROCESS_UNKNOWN"), exitCode);
 #endif
@@ -202,7 +210,7 @@ ArkwebChildProcessLauncherHelperUtils::GetExitReasonByTerminationStatus(
     case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
       reason = "process was killed";
       break;
-#if BUILDFLAG(IS_CHROMEOS_ASH) || BUILDFLAG(IS_CHROMEOS_LACROS)
+#if BUILDFLAG(IS_CHROMEOS_ASH)
     case base::TERMINATION_STATUS_PROCESS_WAS_KILLED_BY_OOM:
       reason = "process out of memory";
       break;
@@ -225,6 +233,7 @@ bool ArkwebChildProcessLauncherHelperUtils::TerminateProcessByAppMgr(
     return false;
   }
 
+  std::string renderExitReason;
   int exitStatus;
   int ret = app_mgr_client_adapter->GetRenderProcessTerminationStatus(
       process.Handle(), exitStatus);

@@ -103,7 +103,6 @@ void OH_WebMessage_FuzzTest(FuzzedDataProvider* fdp) {
   webMessagePort.portHandle = const_cast<char*>(portHandle.c_str());
 
   ArkWeb_WebMessagePtr messagePtr = OH_WebMessage_CreateWebMessage();
-
   std::string dataStr = fdp->ConsumeRandomLengthString(dataLength);
   char* data = strdup(dataStr.c_str());
   size_t dataSize = dataStr.size();
@@ -169,7 +168,10 @@ void OH_ArkWeb_JavaScriptProxyEx_FuzzTest(FuzzedDataProvider* fdp) {
 
   ArkWeb_JavaScriptValuePtr javaScriptPtr = OH_JavaScript_CreateJavaScriptValue(type, data, dataSize);
 
-  free(javaScriptPtr);
+  if (javaScriptPtr != nullptr) {
+    delete[] (char*)(javaScriptPtr->data);
+  }
+  delete javaScriptPtr;
   javaScriptPtr = nullptr;
 
   free(data);

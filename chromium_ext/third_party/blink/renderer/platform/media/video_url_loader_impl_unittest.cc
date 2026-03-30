@@ -73,7 +73,7 @@ public:
   }
 
   KURL RegisterMockedUrl(const std::string& url_root,
-                         const WTF::String& filename) {
+                         const blink::String& filename) {
     WebURLResponse response;
     response.SetMimeType("text/html");
     KURL url = ToKURL(url_root + filename.Utf8());
@@ -672,7 +672,7 @@ public:
   }
 
   KURL RegisterMockedUrl(const std::string& url_root,
-                         const WTF::String& filename) {
+                         const blink::String& filename) {
     WebURLResponse response;
     response.SetMimeType("text/html");
     KURL url = ToKURL(url_root + filename.Utf8());

@@ -37,6 +37,7 @@ void NwebFallbackProxy::PutProxyClientCallback(
 }
  
 // static
+NO_SANITIZE("cfi")
 void NwebFallbackProxy::OnUpdateProxyToken(std::string old_token) {
   LOG(DEBUG) << "NwebFallbackProxy::onUpdateProxyToken";
   if (!GetProxyClientCallback() || !GetProxyClientCallback()->onUpdateProxyToken) {

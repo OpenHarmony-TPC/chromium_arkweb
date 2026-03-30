@@ -68,6 +68,8 @@ public:
 
     void SetScreenCaptureState(const OHOS::NWeb::ScreenCaptureStateCodeAdapter& stateCode, int nweb_id);
 
+    void OnUserSelected(int nweb_id);
+
     int32_t StopCapture(int nweb_id);
 
     int32_t StartCapture(int nweb_id);
@@ -78,7 +80,8 @@ public:
 
     int32_t ReleaseVideoBuffer(int nweb_id);
 
-    int32_t AcquireAudioBuffer(std::shared_ptr<AudioBufferAdapter> audiobuffer, AudioCaptureSourceTypeAdapter type, int nweb_id);
+    int32_t AcquireAudioBuffer(
+        std::shared_ptr<AudioBufferAdapter> audiobuffer, AudioCaptureSourceTypeAdapter type, int nweb_id);
 
     int32_t ReleaseAudioBuffer(AudioCaptureSourceTypeAdapter type, int nweb_id);
 
@@ -108,6 +111,7 @@ public:
 
     base::WeakPtrFactory<BaseScreenCaptureSource> weak_factory_{this};
 };
-}
+
+} // namespace webrtc
 
 #endif // MEDIA_OHOS_BASE_SCREEN_CAPTURE_SOURCE_BRIDGE_H_

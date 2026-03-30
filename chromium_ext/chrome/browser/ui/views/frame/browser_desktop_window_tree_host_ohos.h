@@ -9,7 +9,7 @@
 #include "chrome/browser/ui/views/frame/browser_desktop_window_tree_host.h"
 #include "ui/views/widget/desktop_aura/desktop_window_tree_host_ohos.h"  // nogncheck
 
-class BrowserFrame;
+class BrowserWidget;
 class BrowserView;
 
 namespace views {
@@ -24,7 +24,7 @@ class BrowserDesktopWindowTreeHostOhos
       views::internal::NativeWidgetDelegate* native_widget_delegate,
       views::DesktopNativeWidgetAura* desktop_native_widget_aura,
       BrowserView* browser_view,
-      BrowserFrame* browser_frame);
+      BrowserWidget* browser_widget);
 
   ~BrowserDesktopWindowTreeHostOhos() override = default;
 
@@ -35,7 +35,6 @@ class BrowserDesktopWindowTreeHostOhos
 
  private:
   DesktopWindowTreeHost* AsDesktopWindowTreeHost() override;
-  int GetMinimizeButtonOffset() const override;
   bool UsesNativeSystemMenu() const override;
 };
 

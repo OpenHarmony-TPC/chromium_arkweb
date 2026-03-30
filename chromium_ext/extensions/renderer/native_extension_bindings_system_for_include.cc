@@ -20,7 +20,7 @@ void CreateAliasName(v8::Local<v8::Context> context,
                        std::string alias_name) {
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   v8::Local<v8::String> alias_string =
-      gin::StringToSymbol(context->GetIsolate(), alias_name);
+      gin::StringToSymbol(v8::Isolate::GetCurrent(), alias_name);
   v8::Local<v8::Value> alias_value;
 
   if (!context->Global()->Get(context, alias_string).ToLocal(&alias_value)) {

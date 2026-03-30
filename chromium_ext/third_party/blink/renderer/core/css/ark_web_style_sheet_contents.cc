@@ -19,7 +19,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_ADBLOCK)
 void StyleSheetContents::SetStyleSheetType(WebDocument::StyleSheetType type) {
   switch (type) {
@@ -34,6 +33,5 @@ void StyleSheetContents::SetStyleSheetType(WebDocument::StyleSheetType type) {
   }
 }
 #endif  // BUILDFLAG(ARKWEB_ADBLOCK)
-// LCOV_EXCL_STOP
 
 }  // namespace blink

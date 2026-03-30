@@ -21,7 +21,7 @@
 #include "libcef/common/arkweb_request_impl_ext.h"
 #include "ohos_nweb/src/capi/arkweb_scheme_handler.h"
 #include "ohos_nweb/src/ndk/scheme_handler/http_body_stream.h"
-#include "securec.h"
+#include "ohos_nweb/src/ndk/common/mem_hook.h"
 
 ArkWeb_ResourceRequest_::ArkWeb_ResourceRequest_(CefRefPtr<CefRequest> request)
     : cef_request(request) {
@@ -57,15 +57,15 @@ void ArkWeb_ResourceRequest_::GetMethod(char** method) const {
 
   std::string cef_method = cef_request->GetMethod().ToString();
   const uint32_t length = cef_method.length();
-  *method = new char[length + 1];
-  if (!(*method)) {
-    LOG(ERROR) << "GetMethod method is nullptr.";
+  *method = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*method == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for method.";
     return;
   }
   int ret = strcpy_s(*method, length + 1, cef_method.c_str());
   if (ret != EOK) {
     LOG(ERROR) << "GetMethod error, call strcpy_s ret = " << ret;
-    delete[] *method;
+    free(*method);
     *method = nullptr;
   }
 }
@@ -78,15 +78,15 @@ void ArkWeb_ResourceRequest_::GetUrl(char** url) const {
 
   std::string cef_url = cef_request->GetURL().ToString();
   const uint32_t length = cef_url.length();
-  *url = new char[length + 1];
-  if (!(*url)) {
-    LOG(ERROR) << "GetUrl url is nullptr.";
+  *url = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*url == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for url.";
     return;
   }
   int ret = strcpy_s(*url, length + 1, cef_url.c_str());
-  if (ret != 0) {
+  if (ret != EOK) {
     LOG(ERROR) << "GetUrl error, call strcpy_s ret = " << ret;
-    delete[] *url;
+    free(*url);
     *url = nullptr;
   }
 }
@@ -127,15 +127,15 @@ void ArkWeb_ResourceRequest_::GetReferrer(char** referrer) const {
 
   std::string cef_referrer = cef_request->GetReferrerURL().ToString();
   const uint32_t length = cef_referrer.length();
-  *referrer = new char[length + 1];
-  if (!(*referrer)) {
-    LOG(ERROR) << "GetReferrer referrer is nullptr.";
+  *referrer = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*referrer == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for referrer.";
     return;
   }
   int ret = strcpy_s(*referrer, length + 1, cef_referrer.c_str());
-  if (ret != 0) {
+  if (ret != EOK) {
     LOG(ERROR) << "GetReferrer error, call strcpy_s ret = " << ret;
-    delete[] *referrer;
+    free(*referrer);
     *referrer = nullptr;
   }
 }
@@ -158,15 +158,15 @@ void ArkWeb_ResourceRequest_::GetFrameUrl(char** frame_url) const {
   std::string cef_frame_url =
       cef_request->AsArkWebRequestExt()->GetFrameUrl().ToString();
   const uint32_t length = cef_frame_url.length();
-  *frame_url = new char[length + 1];
-  if (!(*frame_url)) {
-    LOG(ERROR) << "GetFrameUrl frame_url is nullptr.";
+  *frame_url = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*frame_url == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for frame_url.";
     return;
   }
   int ret = strcpy_s(*frame_url, length + 1, cef_frame_url.c_str());
-  if (ret != 0) {
+  if (ret != EOK) {
     LOG(ERROR) << "GetFrameUrl error, call strcpy_s ret = " << ret;
-    delete[] *frame_url;
+    free(*frame_url);
     *frame_url = nullptr;
   }
 }
@@ -199,29 +199,30 @@ void ArkWeb_RequestHeaderList_::GetHeader(int index,
 
   std::string cef_key = header_value[index].key;
   uint32_t length = cef_key.length();
-  *key = new char[length + 1];
-  if (!(*key)) {
-    LOG(ERROR) << "GetHeader key is nullptr.";
+  *key = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*key == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for key.";
     return;
   }
   int ret = strcpy_s(*key, length + 1, cef_key.c_str());
-  if (ret != 0) {
-    LOG(ERROR) << "GetHeader key error, call key strcpy_s ret = " << ret;
-    delete[] *key;
+  if (ret != EOK) {
+    LOG(ERROR) << "GetHeader key error, call strcpy_s ret = " << ret;
+    free(*key);
     *key = nullptr;
+    return;
   }
 
   std::string cef_value = header_value[index].value;
   length = cef_value.length();
-  *value = new char[length + 1];
-  if (!(*value)) {
-    LOG(ERROR) << "GetHeader value is nullptr.";
+  *value = OHOS::NWeb::malloc_wrapper(length + 1);
+  if (*value == nullptr) {
+    LOG(ERROR) << "Failed to allocate memory for value.";
     return;
   }
   ret = strcpy_s(*value, length + 1, cef_value.c_str());
-  if (ret != 0) {
-    LOG(ERROR) << "GetHeader value error, call value strcpy_s ret = " << ret;
-    delete[] *value;
+  if (ret != EOK) {
+    LOG(ERROR) << "GetHeader value error, call strcpy_s ret = " << ret;
+    free(*value);
     *value = nullptr;
   }
 }

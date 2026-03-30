@@ -39,7 +39,7 @@ namespace blink {
 class StubWidgetBaseClient : public WidgetBaseClient {
  public:
   void OnCommitRequested() override {}
-  void BeginMainFrame(base::TimeTicks) override {}
+  void BeginMainFrame(const viz::BeginFrameArgs&) override {}
   void UpdateLifecycle(WebLifecycleUpdate, DocumentUpdateReason) override {}
   std::unique_ptr<cc::LayerTreeFrameSink> AllocateNewLayerTreeFrameSink() override {
     return nullptr;
@@ -110,9 +110,7 @@ class MockFrameWidgetInputHandler : public mojom::blink::FrameWidgetInputHandler
   }
   
   MOCK_METHOD(void, SelectRangeV2, (const gfx::Point&, bool), (override));
-#if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
   MOCK_METHOD(void, ShowFreeCopyMenu, (), (override));
-#endif
 #if BUILDFLAG(ARKWEB_AI)
   MOCK_METHOD(void, OnDataDetectorSelectText, (), (override));
 #endif  // BUILDFLAG(ARKWEB_AI)

@@ -13,6 +13,8 @@
 #include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "media/audio/ohos/audio_dump.h"
 #include "media/audio/ohos/ohos_audio_focus_controller.h"
+#include "media/base/audio_sample_types.h"
+#include "media/base/audio_bus.h"
 
 namespace media {
 std::vector<AudioParameters> OHOSAudioOutputStream::audioParameterSet_ = {};
@@ -179,7 +181,7 @@ void OHOSAudioOutputStream::OnSuspend() {
     LOG(ERROR) << "The playback is stopped. Exit OnSuspend.";
     return;
   }
-  if (OHOSAudioFocusController::IsActive(parameters)) {
+  if (OHOSAudioFocusController::IsActive(parameters) || !isSuspended_) {
     if (audioResumeInterval_ != 0) {
       intervalSinceLastSuspend_ = std::time(nullptr);
     }
@@ -193,7 +195,7 @@ void OHOSAudioOutputStream::OnSuspend() {
     // After stopping playback, it is necessary to continue obtaining audio
     // data, which will trigger the pause action of the render process.
     if (audio_task_runner_) {
-      audio_task_runner_->PostTask(
+        audio_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&OHOSAudioOutputStream::PumpSamples,
                                   weak_factory_.GetWeakPtr()));
     }
@@ -334,12 +336,12 @@ void OHOSAudioOutputStream::SuspendOtherMediaSession() {
       it++;
       continue;
     }
-    if (GetInterruptMode() && !IsPreloadOrMutedMediaMode()) {
-      LOG(INFO) << "MediaSession is suspending the audio in other web.";
+  if (GetInterruptMode() && !IsPreloadOrMutedMediaMode()) {
+    LOG(INFO) << "MediaSession is suspending the audio in other web.";
       main_task_runner_->PostTask(
           FROM_HERE,
           base::BindOnce(OHOSAudioFocusController::OnSuspend, (*it)));
-    }
+  }
     it++;
   }
 
@@ -455,8 +457,8 @@ bool OHOSAudioOutputStream::InitRender() {
   OH_AudioStreamBuilder_SetChannelCount(audio_stream_builder_,
                                         parameters_.channels());
   if (parameters_.latency_tag() == AudioLatency::Type::kPlayback) {
-    OH_AudioStreamBuilder_SetLatencyMode(audio_stream_builder_,
-                                      AUDIOSTREAM_LATENCY_MODE_NORMAL);
+  OH_AudioStreamBuilder_SetLatencyMode(audio_stream_builder_,
+                                       AUDIOSTREAM_LATENCY_MODE_NORMAL);
   } else {
     LOG(INFO) << "OHOSAudioOutputStream InitRender low latency stream";
     OH_AudioStreamBuilder_SetLatencyMode(audio_stream_builder_,
@@ -498,6 +500,7 @@ bool OHOSAudioOutputStream::InitRender() {
   if (res != AUDIOSTREAM_SUCCESS) {
     return false;
   }
+
   OH_AudioStream_Result ret;
   // create audio render
   OH_AudioRenderer* tempAudioRenderer = audio_renderer_.get();

@@ -18,7 +18,7 @@
 #include "gpu/gpu_export.h"
 #include "gpu/ipc/common/surface_handle.h"
 #include "third_party/abseil-cpp/absl/types/variant.h"
-#include "ui/gfx/native_widget_types.h"
+#include "ui/gfx/native_ui_types.h"
 
 namespace gpu {
 

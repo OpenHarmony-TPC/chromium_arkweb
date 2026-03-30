@@ -36,7 +36,12 @@ class MockDisabledReason : public BackForwardCache {
   void Flush();
   void Flush(NotRestoredReason reason);
 
-  void Prune(size_t limit);
+  size_t Prune(size_t limit, NotRestoredReason reason);
+
+  void SetEmbedderSuppliedCacheSize(size_t cache_size) {};
+
+  void SetEmbedderSuppliedTimeToLive(base::TimeDelta time_to_live) {};
+
   void DisableForTesting(DisableForTestingReason reason);
 
   size_t GetStoredEntriesNumber();
@@ -49,7 +54,8 @@ void MockDisabledReason::Flush() {
 }
 void MockDisabledReason::Flush(NotRestoredReason reason) {}
 
-void MockDisabledReason::Prune(size_t limit) {}
+size_t MockDisabledReason::Prune(size_t limit, NotRestoredReason reason) {}
+
 void MockDisabledReason::DisableForTesting(DisableForTestingReason reason) {}
 
 size_t MockDisabledReason::GetStoredEntriesNumber() {
@@ -82,7 +88,7 @@ TEST_F(ArkWebRenderFrameHostManagerTest, ArkWebUnloadOldFrame001) {
   EXPECT_CALL(*mock_, ArkWebGetTimeToLive())
       .Times(1)
       .WillOnce(Return(expected_time_value));
-  ArkWebUnloadOldFrame(nullptr, *mock_, reason, can_store);
+  ArkWebUnloadOldFrame(*mock_, reason, can_store);
 }
 
 TEST_F(ArkWebRenderFrameHostManagerTest, ArkWebUnloadOldFrame002) {
@@ -98,7 +104,7 @@ TEST_F(ArkWebRenderFrameHostManagerTest, ArkWebUnloadOldFrame002) {
   EXPECT_CALL(*mock_, ArkWebGetTimeToLive())
       .Times(1)
       .WillOnce(Return(expected_time_value));
-  ArkWebUnloadOldFrame(nullptr, *mock_, reason, can_store);
+  ArkWebUnloadOldFrame(*mock_, reason, can_store);
 }
 
 TEST_F(ArkWebRenderFrameHostManagerTest, ArkWebUnloadOldFrame003) {
@@ -114,6 +120,6 @@ TEST_F(ArkWebRenderFrameHostManagerTest, ArkWebUnloadOldFrame003) {
   EXPECT_CALL(*mock_, ArkWebGetTimeToLive())
       .Times(1)
       .WillOnce(Return(expected_time_value));
-  ArkWebUnloadOldFrame(nullptr, *mock_, reason, can_store);
+  ArkWebUnloadOldFrame(*mock_, reason, can_store);
 }
 }  // namespace content

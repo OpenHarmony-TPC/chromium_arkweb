@@ -42,7 +42,6 @@ public:
     gpu_info.in_process_gpu = false;
     GpuServiceImpl::InitParams init_params;
     init_params.io_runner = io_thread_.task_runner();
-    init_params.exit_callback = base::DoNothing();
     gpu_service_ = std::make_unique<GpuServiceImpl>(
         gpu::GpuPreferences(), gpu_info, gpu::GpuFeatureInfo(), gpu::GPUInfo(),
         gpu::GpuFeatureInfo(), gfx::GpuExtraInfo(), std::move(init_params));

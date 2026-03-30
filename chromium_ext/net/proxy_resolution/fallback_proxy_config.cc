@@ -31,5 +31,5 @@ int FallbackProxyConfigStatus::ProxyConfigEnable() {
 int FallbackProxyConfigStatus::HasToken() {
   return has_token_ ? 1 : 0;
 }
-
+ 
 }  // namespace net

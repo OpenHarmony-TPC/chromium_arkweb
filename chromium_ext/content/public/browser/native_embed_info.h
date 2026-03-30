@@ -18,6 +18,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include "content/common/content_export.h"
 #include "ui/gfx/geometry/rect.h"

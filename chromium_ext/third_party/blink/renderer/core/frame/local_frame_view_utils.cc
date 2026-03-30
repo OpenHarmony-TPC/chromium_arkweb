@@ -27,7 +27,6 @@
 #include "ui/gfx/geometry/rect_f.h"
 
 namespace blink {
-// LCOV_EXCL_START
 LocalFrameViewUtils::LocalFrameViewUtils(LocalFrameView* local_frame_view)
     : local_frame_view_(local_frame_view) {}
 
@@ -61,7 +60,6 @@ void LocalFrameViewUtils::UpdateCompositedSelectionIfNeed() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
 void LocalFrameViewUtils::PerformLayoutOnPreload(Document* document) {
@@ -69,7 +67,7 @@ void LocalFrameViewUtils::PerformLayoutOnPreload(Document* document) {
     LOG(ERROR) << "document is nullptr";
     return;
   }
-  document->Fetcher()->UpdateAllImageResourcePriorities();
+  document->Fetcher()->UpdateImagePrioritiesAndSpeculativeDecodes();
   if (!document->Url().GetString().Utf8().empty()) {
     LayoutBox* body_box = nullptr;
     const LayoutBox* html_box = nullptr;

@@ -148,12 +148,12 @@ void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnEndAVSession(
 }
 #endif // ARKWEB_MEDIA_AVSESSION
 
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 bool MediaWebContentsObserver::IsMediaPlaying(const MediaPlayerId& player_id) {
   auto player_info = GetPlayerInfo(player_id);
   return player_info && player_info->is_playing();
 }
 
-#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 void MediaWebContentsObserver::SetPlaybackRate(double playback_rate,
                                                const MediaPlayerId& player_id) {
   const auto iter = media_player_remotes_.find(player_id);
@@ -193,6 +193,7 @@ double MediaWebContentsObserver::GetVolume(const MediaPlayerId& player_id)
 
   return volume;
 }
+ 
 void MediaWebContentsObserver::RequestFullScreen(
     bool enable,
     const MediaPlayerId& player_id) {
@@ -470,7 +471,6 @@ void MediaWebContentsObserver::MediaPlayerObserverHostImpl::OnMediaCastEnter() {
 
 void MediaWebContentsObserver::MediaPlayerObserverHostImpl::
     OnNotifyMeidaCastUri(const std::string& media_uri) {
-    LOG(INFO) << "MediaPlayerObserverHostImpl::OnNotifyMeidaCastUri, mediaUri: " << media_uri;
     if (media_web_contents_observer_->session_controllers_manager()) {
       media_web_contents_observer_->session_controllers_manager()->OnNotifyMeidaCastUri(media_player_id_, media_uri);
     }

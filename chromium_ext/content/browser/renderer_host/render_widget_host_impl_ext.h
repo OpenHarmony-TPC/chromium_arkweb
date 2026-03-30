@@ -17,6 +17,7 @@
 #define CONTENT_BROWSER_RENDERER_HOST_RENDERE_WIDGET_HOST_IMPL_EXT_H_
 
 #include "content/browser/renderer_host/render_widget_host_impl.h"
+#include "content/common/content_export.h"
 
 namespace content {
 #if BUILDFLAG(ARKWEB_RENDERER_ANR_DUMP)
@@ -29,7 +30,7 @@ enum class RendererIsUnresponsiveReason {
 };
 #endif
 
-class RenderWidgetHostImplExt : public RenderWidgetHostImpl {
+class CONTENT_EXPORT RenderWidgetHostImplExt : public RenderWidgetHostImpl {
  public:
   RenderWidgetHostImplExt(
       FrameTree* frame_tree,
@@ -39,8 +40,7 @@ class RenderWidgetHostImplExt : public RenderWidgetHostImpl {
       base::SafeRef<SiteInstanceGroup> site_instance_group,
       int32_t routing_id,
       bool hidden,
-      bool renderer_initiated_creation,
-      std::unique_ptr<FrameTokenMessageQueue> frame_token_message_queue);
+      bool renderer_initiated_creation);
 
   RenderWidgetHostImplExt* AsRenderWidgetHostImplExt() override { return this; }
 
@@ -65,6 +65,7 @@ class RenderWidgetHostImplExt : public RenderWidgetHostImpl {
 
 #if BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
   void SendCurrentLanguage(const std::string& ans) override;
+  void ReSendCurrentLanguage();
 #endif
 
 #if BUILDFLAG(ARKWEB_AI)

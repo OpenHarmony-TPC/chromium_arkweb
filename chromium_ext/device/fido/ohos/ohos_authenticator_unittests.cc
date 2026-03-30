@@ -221,7 +221,7 @@ TEST_F(OhosAuthenticatorTest, GetId_001)
     std::string id = ohosAuthenticator.GetId();
     EXPECT_FALSE(id.empty());
 }
-
+ 
 TEST_F(OhosAuthenticatorTest, Options_001)
 {
     OhosAuthenticator ohosAuthenticator;
@@ -231,19 +231,19 @@ TEST_F(OhosAuthenticatorTest, Options_001)
                 options.user_verification_availability != 
                 device::AuthenticatorSupportedOptions::UserVerificationAvailability::kNotSupported);
 }
-
+ 
 TEST_F(OhosAuthenticatorTest, AuthenticatorTransport_001)
 {
     OhosAuthenticator ohosAuthenticator;
     auto transport = ohosAuthenticator.AuthenticatorTransport();
     ASSERT_FALSE(transport.has_value());
 }
-
+ 
 TEST_F(OhosAuthenticatorTest, GetWeakPtr_001)
 {
     OhosAuthenticator ohosAuthenticator;
     auto weak_ptr = ohosAuthenticator.GetWeakPtr();
     EXPECT_TRUE(weak_ptr.get() != nullptr);
 }
-
+ 
 } // namespace

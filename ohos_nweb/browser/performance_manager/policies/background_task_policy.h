@@ -11,6 +11,7 @@
 #define BACKGROUND_TASK_POLICY_H_
 
 #include <memory>
+#include <set>
 #include "arkweb/build/features/features.h"
 #if BUILDFLAG(ARKWEB_TEST)
 #undef private
@@ -28,7 +29,7 @@ class BackgroundTaskHolder;
 }  // namespace mechanism
 namespace policies {
 class BackgroundTaskPolicy : public GraphOwnedDefaultImpl,
-                             public PageNode::ObserverDefaultImpl {
+                             public PageNodeObserver {
  public:
   BackgroundTaskPolicy();
   BackgroundTaskPolicy(const BackgroundTaskPolicy&) = delete;
@@ -53,11 +54,13 @@ class BackgroundTaskPolicy : public GraphOwnedDefaultImpl,
 #if BUILDFLAG(ARKWEB_PERFORMANCE_PERSISTENT_TASK)
   void OnDecrementAudioNum(const PageNode* page_node) override;
 #endif
+
   void MaybeChangeBackgroundTask(const PageNode* page_node);
 #if BUILDFLAG(ARKWEB_BGTASK)
   void SetBrowserForeground(const PageNode* page_node) override;
   void SetBrowserBackground(const PageNode* page_node) override;
 #endif
+
 #if BUILDFLAG(ARKWEB_PERFORMANCE_PERSISTENT_TASK)
   void OnAudioContextPlaybackStarted(content::GlobalRenderFrameHostId rfh_id, int audio_context_id) override;
   void OnAudioContextPlaybackStopped(content::GlobalRenderFrameHostId rfh_id, int audio_context_id) override;

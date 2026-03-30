@@ -29,7 +29,9 @@ MediaControlEnteredFullscreenTitleDisplayElement::
 }
 
 void MediaControlEnteredFullscreenTitleDisplayElement::UpdateTitle() {
+#if BUILDFLAG(ARKWEB_MEDIA) || BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   SetTitle(MediaElement().html_media_element_utils_.GetTitle());
+#endif
 }
 
 void MediaControlEnteredFullscreenTitleDisplayElement::SetTitle(
@@ -41,16 +43,16 @@ void MediaControlEnteredFullscreenTitleDisplayElement::SetTitle(
 
   bool isRTL = false;
   for (unsigned i = 0; i < title_.length(); ++i) {
-    auto direction = WTF::unicode::Direction(title_[i]);
-    if (direction == WTF::unicode::kRightToLeft ||
-        direction == WTF::unicode::kRightToLeftArabic ||
-        direction == WTF::unicode::kRightToLeftEmbedding ||
-        direction == WTF::unicode::kRightToLeftOverride) {
+    auto direction = unicode::Direction(title_[i]);
+    if (direction == unicode::kRightToLeft ||
+        direction == unicode::kRightToLeftArabic ||
+        direction == unicode::kRightToLeftEmbedding ||
+        direction == unicode::kRightToLeftOverride) {
       isRTL = true;
       break;
-    } else if (direction == WTF::unicode::kLeftToRight ||
-               direction == WTF::unicode::kLeftToRightEmbedding ||
-               direction == WTF::unicode::kLeftToRightOverride) {
+    } else if (direction == unicode::kLeftToRight ||
+               direction == unicode::kLeftToRightEmbedding ||
+               direction == unicode::kLeftToRightOverride) {
       isRTL = false;
       break;
     }

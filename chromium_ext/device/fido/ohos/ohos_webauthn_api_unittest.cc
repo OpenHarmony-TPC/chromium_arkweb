@@ -74,7 +74,7 @@ TEST_F(OhosWebAuthnApiTest, GetClientCapabilities_002)
     // Verify we get some capabilities (may be empty if API not available)
     EXPECT_TRUE(capabilities.empty() || !capabilities.empty());
 }
-
+ 
 TEST_F(OhosWebAuthnApiTest, Register_002)
 {
     // Test with more complete request
@@ -87,15 +87,15 @@ TEST_F(OhosWebAuthnApiTest, Register_002)
     credential_infos.emplace_back(info);
     PublicKeyCredentialParams params(credential_infos);
     CtapMakeCredentialRequest request(in_client_data_json, in_rp, in_user, params);
-
+ 
     AuthenticatorSelectionCriteria authenticator_selection_criteria;
     MakeCredentialOptions options(authenticator_selection_criteria);
-
+ 
     auto ret = OhosWebAuthnApi::Instance()->Register(request, options);
     // Check the status
     EXPECT_EQ(ret.first, MakeCredentialStatus::kAuthenticatorResponseInvalid);
 }
-
+ 
 TEST_F(OhosWebAuthnApiTest, GetAssertion_002)
 {
     // Test with more complete request
@@ -103,12 +103,12 @@ TEST_F(OhosWebAuthnApiTest, GetAssertion_002)
     std::string in_client_data_json = "test_client_data";
     CtapGetAssertionRequest request(in_rp_id, in_client_data_json);
     CtapGetAssertionOptions options;
-
+ 
     auto ret = OhosWebAuthnApi::Instance()->GetAssertion(request, options);
     // Check the status
     EXPECT_EQ(ret.first, GetAssertionStatus::kAuthenticatorResponseInvalid);
 }
-
+ 
 TEST_F(OhosWebAuthnApiTest, MultipleRegisterCalls_001)
 {
     // Test multiple sequential register calls
@@ -123,15 +123,15 @@ TEST_F(OhosWebAuthnApiTest, MultipleRegisterCalls_001)
     CtapMakeCredentialRequest request(in_client_data_json, in_rp, in_user, params);
     AuthenticatorSelectionCriteria authenticator_selection_criteria;
     MakeCredentialOptions options(authenticator_selection_criteria);
-
+ 
     // Multiple calls should work without crashing
     auto ret1 = OhosWebAuthnApi::Instance()->Register(request, options);
     auto ret2 = OhosWebAuthnApi::Instance()->Register(request, options);
-
+ 
     EXPECT_FALSE(ret1.second.has_value());
     EXPECT_FALSE(ret2.second.has_value());
 }
-
+ 
 TEST_F(OhosWebAuthnApiTest, MultipleGetAssertionCalls_001)
 {
     // Test multiple sequential get assertion calls
@@ -139,13 +139,13 @@ TEST_F(OhosWebAuthnApiTest, MultipleGetAssertionCalls_001)
     std::string in_client_data_json = "test";
     CtapGetAssertionRequest request(in_rp_id, in_client_data_json);
     CtapGetAssertionOptions options;
-
+ 
     // Multiple calls should work without crashing
     auto ret1 = OhosWebAuthnApi::Instance()->GetAssertion(request, options);
     auto ret2 = OhosWebAuthnApi::Instance()->GetAssertion(request, options);
-
+ 
     EXPECT_FALSE(ret1.second.has_value());
     EXPECT_FALSE(ret2.second.has_value());
 }
-
+ 
 } // namespace device

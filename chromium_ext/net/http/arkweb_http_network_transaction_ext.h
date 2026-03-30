@@ -12,12 +12,14 @@
 #include <string>
 #include <vector>
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/time/time.h"
 #include "build/buildflag.h"
-#include "crypto/ec_private_key.h"
 #include "net/base/completion_once_callback.h"
 #include "net/base/completion_repeating_callback.h"
 #include "net/base/net_error_details.h"
@@ -38,10 +40,6 @@
 #include "net/third_party/quiche/src/quiche/quic/core/quic_versions.h"
 #include "net/websockets/websocket_handshake_stream_base.h"
 
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
-
 namespace net {
 
 class HttpNetworkSession;
@@ -59,7 +57,7 @@ class NET_EXPORT_PRIVATE ArkWebHttpNetworkTransactionExt : public HttpNetworkTra
 
   ArkWebHttpNetworkTransactionExt *AsArkWebHttpNetworkTransactionExt() override { return this; }
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
   int RestartWithSecureDnsOnly(CompletionOnceCallback callback) override;
 #endif
 
@@ -68,13 +66,8 @@ class NET_EXPORT_PRIVATE ArkWebHttpNetworkTransactionExt : public HttpNetworkTra
   int RestartWithDirect(CompletionOnceCallback callback) override;
 #endif
 
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-  ConnectionAttempts GetExtraConnectionAttempts() const override;
-  void CopyConnectionAttemptsFromStreamRequest() override;
-#endif
-
  private:
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
   int DoCreateFallbackStreamWithSecureDnsOnly();
   int DoCreateFallbackStreamWithSecureDnsOnlyComplete(int result);
 #endif
@@ -91,10 +84,6 @@ class NET_EXPORT_PRIVATE ArkWebHttpNetworkTransactionExt : public HttpNetworkTra
 
   base::RepeatingTimer timer_;
   bool is_recording_;
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-  ConnectionAttempts extra_connection_attempts_;
 #endif
 };
 

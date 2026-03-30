@@ -509,8 +509,8 @@ bool NWebInputMethodHandler::Reattach(uint32_t nwebId, ReattachType type) {
     if (!isNeedReattachOncontinue_ || !is_editable_node_) {
       LOG(INFO) << "don't need reattach input method " << textInputState;
       if (textInputState) {
-        return false;
-      }
+      return false;
+    }
     }
     isNeedReattachOncontinue_ = false;
   }
@@ -605,8 +605,8 @@ void NWebInputMethodHandler::HideTextInput(uint32_t nwebId,
     }
     return;
   }
+
   if (isFocusSwitchOnBlur_) {
-    LOG(INFO) << "triggered by focus switch, inputmethod is not attached, do not need hidetextinput";
     return;
   }
 

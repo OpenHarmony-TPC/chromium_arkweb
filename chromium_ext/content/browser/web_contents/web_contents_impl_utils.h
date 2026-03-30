@@ -34,7 +34,6 @@ class WebContentsImpl;
 
 class WebContentsImplUtils {
  public:
-  static bool is_pdf_static;
   raw_ptr<WebContentsImpl> webContentsImpl;
   WebContentsImplUtils(WebContentsImpl* impl);
 
@@ -56,6 +55,7 @@ class WebContentsImplUtils {
 #endif
 
 #if BUILDFLAG(ARKWEB_PDF)
+  static bool is_pdf_static;
   void JudgeIsPdfPageVisibilityChanged(Visibility visibility);
 #endif
 

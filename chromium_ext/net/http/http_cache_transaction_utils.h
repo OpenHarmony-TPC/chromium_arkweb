@@ -26,15 +26,15 @@ class HttpTransactionUtils {
  public:
   raw_ptr<HttpCache::Transaction> http_cache_transaction_;
   HttpTransactionUtils(HttpCache::Transaction* http_cache_transaction);
-#if BUILDFLAG(ARKWEB_PRP_PRELOAD)
+#if BUILDFLAG(ARKWEB_PRP_PRELOAD) && BUILDFLAG(IS_OHOS)
   void UpdateCacheInfo(const HttpResponseInfo& response);
 #endif
   int RestartWithSecureDnsOnly(CompletionOnceCallback& callback);
 
  private:
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
   int RestartNetworkRequestWithSecureDnsOnly();
-#endif  // BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#endif  // BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 };
 }  // namespace net
 

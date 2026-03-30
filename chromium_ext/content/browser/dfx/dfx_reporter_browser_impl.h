@@ -26,7 +26,11 @@
 class DfxReporterImpl : public dfx::mojom::DfxReporter {
 public:
   static constexpr uint16_t BYTES_TO_KB = 1024;
+#if BUILDFLAG(IS_ARKWEB_EXT)
+   static constexpr std::string PAGE_MEM_LEAK = "PAGE_MEM_LEAK";
+#else
   static constexpr char PAGE_MEM_LEAK[] = "PAGE_MEM_LEAK";
+#endif
 
   DfxReporterImpl() {}
   ~DfxReporterImpl() override {}
@@ -42,7 +46,8 @@ public:
   FreezeReporterImpl() {}
   ~FreezeReporterImpl() override {}
   static void ProcessPendingReceiver(mojo::PendingReceiver<dfx::mojom::FreezeReporter> receiver);
-  void ReportRenderFreeze(dfx::mojom::FreezeInfoPtr freezeInfo) override;
+  void ReportRenderFreeze(int32_t pid, const std::string& processName, const std::string& freezeMsg,
+                          int32_t uid) override;
 };
 
 void OnVideoMemoryUsageStatsUpdate(pid_t pid, const std::map<std::string, std::string>& memMap, bool isSysEvent,

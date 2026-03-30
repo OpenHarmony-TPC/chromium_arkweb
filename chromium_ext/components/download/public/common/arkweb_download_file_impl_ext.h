@@ -39,12 +39,15 @@
 #include "components/download/public/common/base_file.h"
 #include "components/download/public/common/download_file.h"
 #include "components/download/public/common/download_item.h"
-#include "components/download/public/common/download_file_impl.h"
 #include "components/download/public/common/download_save_info.h"
 #include "components/download/public/common/rate_estimator.h"
 #include "components/enterprise/buildflags/buildflags.h"
 #include "components/services/quarantine/public/mojom/quarantine.mojom.h"
 #include "mojo/public/cpp/system/simple_watcher.h"
+
+#if !BUILDFLAG(IS_ARKWEB_EXT)
+#include "components/download/public/common/download_file_impl.h"
+#endif
 
 #if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
 #include "components/enterprise/obfuscation/core/download_obfuscator.h"  // nogncheck
@@ -105,6 +108,7 @@ class COMPONENTS_DOWNLOAD_EXPORT ArkWebDownloadFileImplExt
   void ResetDownloadJobTimer();
 
   void ReadDownloadDataAndRunCallback(int32_t read_download_size) override;
+
 #endif
 
  protected:

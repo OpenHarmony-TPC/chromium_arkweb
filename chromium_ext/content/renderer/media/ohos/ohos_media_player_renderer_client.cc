@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "content/renderer/media/ohos/ohos_media_player_renderer_client.h"
-
-#include <sys/mman.h>
+#include "content/renderer/media/ohos/ohos_media_player_renderer_client.h"#include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <cerrno>
@@ -21,8 +19,6 @@
 namespace content {
 
 OHOSMediaPlayerRendererClient::OHOSMediaPlayerRendererClient(
-    mojo::PendingRemote<RendererExtention> renderer_extension_remote,
-    mojo::PendingReceiver<ClientExtention> client_extension_receiver,
     scoped_refptr<base::SequencedTaskRunner> media_task_runner,
     scoped_refptr<base::SingleThreadTaskRunner> compositor_task_runner,
     std::unique_ptr<media::MojoRenderer> mojo_renderer,
@@ -33,11 +29,7 @@ OHOSMediaPlayerRendererClient::OHOSMediaPlayerRendererClient(
       client_(nullptr),
       sink_(sink),
       media_task_runner_(std::move(media_task_runner)),
-      compositor_task_runner_(std::move(compositor_task_runner)),
-      delayed_bind_client_extension_receiver_(
-          std::move(client_extension_receiver)),
-      delayed_bind_renderer_extention_remote_(
-          std::move(renderer_extension_remote)) {}
+      compositor_task_runner_(std::move(compositor_task_runner)) {}
 
 OHOSMediaPlayerRendererClient::~OHOSMediaPlayerRendererClient() {
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
@@ -54,13 +46,6 @@ void OHOSMediaPlayerRendererClient::Initialize(
     media::PipelineStatusCallback init_cb) {
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(!init_cb_);
-
-  // Consume and bind the delayed PendingRemote and PendingReceiver now that we
-  // are on |media_task_runner_|.
-  renderer_extension_remote_.Bind(
-      std::move(delayed_bind_renderer_extention_remote_), media_task_runner_);
-  client_extension_receiver_.Bind(
-      std::move(delayed_bind_client_extension_receiver_), media_task_runner_);
 
   media_resource_ = media_resource;
   client_ = client;
@@ -142,7 +127,6 @@ void OHOSMediaPlayerRendererClient::OnSurfaceDestroyed() {
 // LCOV_EXCL_START
 void OHOSMediaPlayerRendererClient::OnFrameAvailable() {
   DCHECK(compositor_task_runner_->BelongsToCurrentThread());
-  TRACE_EVENT2("base", __FILE__, "func", __func__, "line", __LINE__);
 
   auto frame = native_texture_wrapper_->GetCurrentFrame();
   auto unique_frame = media::VideoFrame::WrapVideoFrame(
@@ -150,23 +134,6 @@ void OHOSMediaPlayerRendererClient::OnFrameAvailable() {
   sink_->PaintSingleFrame(std::move(unique_frame));
 }
 // LCOV_EXCL_STOP
-
-void OHOSMediaPlayerRendererClient::OnVideoSizeChange(const gfx::Size& size) {
-  DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
-
-  LOG(INFO) << "OHOSMediaPlayerRendererClient, OnVideoSizeChange size:" << size.ToString();
-  native_texture_wrapper_->UpdateTextureSize(size);
-  client_->OnVideoNaturalSizeChange(size);
-}
-
-void OHOSMediaPlayerRendererClient::OnDurationChange(base::TimeDelta duration) {
-  DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
-  media_resource_->ForwardDurationChangeToDemuxerHost(duration);
-}
-
-void OHOSMediaPlayerRendererClient::OnFrameUpdate(
-    media::mojom::OhosSurfaceBufferHandlePtr ohos_surface_buffer_handle) {
-}
 
 void OHOSMediaPlayerRendererClient::PaintNV12VideoFrame(
     const gfx::Size& coded_size,

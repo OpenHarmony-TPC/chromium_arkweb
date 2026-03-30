@@ -22,6 +22,9 @@
 #include <string>
 
 #include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "ohos_nweb/src/capi/nweb_extension_javascript_item.h"
 #include "ohos_nweb/src/capi/nweb_native_embed_first_frame_paint_event.h"
 #include "ohos_nweb/src/capi/nweb_permission_request.h"
@@ -48,10 +51,6 @@ struct NWebAppClientExtensionCallback {
   void (*OnLoadStarted)(bool toDifferentDocument, int nweb_id);
   void (*OnActivityStateChanged)(int state, int type, int nweb_id);
   void (*OnOpenURLFromTab)(std::string target_url,
-                           int type,
-                           bool user_gesture,
-                           int nweb_id);
-  bool (*OnOpenURLFromTabV2)(std::string target_url,
                            int type,
                            bool user_gesture,
                            int nweb_id);
@@ -97,7 +96,7 @@ struct NWebAppClientExtensionCallback {
   void (*OnActivateContent)(int nweb_id);
 #endif
 
-#if BUILDFLAG(ARKWEB_PULL_TO_REFRESH)
+#if BUILDFLAG(ARKWEB_EXT_PULL_TO_REFRESH) || BUILDFLAG(ARKWEB_PULL_TO_REFRESH)
   bool (*OnPullToRefreshAction)(int action, int nweb_id);
   void (*OnPullToRefreshPull)(float offset_x, float offset_y, int nweb_id);
 #endif
@@ -127,6 +126,7 @@ struct NWebAppClientExtensionCallback {
   void (*OnShowVideoAssistant)(int32_t nweb_id,
                                const char* video_assistant_items);
   void (*OnPipEvent)(int32_t nweb_id, int event);
+
   void (*OnFrameCreated)(int32_t nweb_id, const FrameInfos& frame);
 #if BUILDFLAG(ARKWEB_PERFORMANCE_PERSISTENT_TASK)
   bool (*OnStartBackgroundTask)(int32_t type,

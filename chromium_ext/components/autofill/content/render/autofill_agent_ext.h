@@ -43,7 +43,6 @@ class AutofillAgentExt : public AutofillAgent {
  public:
   AutofillAgentExt(
       content::RenderFrame* render_frame,
-      Config config,
       std::unique_ptr<PasswordAutofillAgent> password_autofill_agent,
       std::unique_ptr<PasswordGenerationAgent> password_generation_agent,
       blink::AssociatedInterfaceRegistry* registry);

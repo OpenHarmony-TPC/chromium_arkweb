@@ -16,7 +16,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 DocumentResourceCoordinatorUtils::DocumentResourceCoordinatorUtils(
     DocumentResourceCoordinator* document_resource_coordinator)
 {
@@ -30,10 +29,13 @@ void DocumentResourceCoordinatorUtils::OnFormEditingStateChanged(
     uint64_t form_id,
     bool did_submit)
 {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!document_resource_coordinator_ || !document_resource_coordinator_->service_) {
+    return;
+  }
   document_resource_coordinator_->service_->OnFormEditingStateChanged(
       form_id, did_submit);
 }
 #endif
-// LCOV_EXCL_STOP
 
 }  // namespace blink

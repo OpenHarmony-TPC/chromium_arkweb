@@ -42,15 +42,33 @@ class MockReadDataCallback {
   MOCK_METHOD(void, Run, (), ());
 };
 
+class MockStateChangedCallback {
+  public:
+   MOCK_METHOD(void, Run, (OHOS::NWeb::ScreenCaptureStateCodeAdapter), ());
+};
+
+class MockUserSelectedCallback {
+  public:
+   MOCK_METHOD(void, Run, (), ());
+};
+
 class WindowCapturerReadCallbackTest : public ::testing::Test {
  public:
   WindowCapturerReadCallbackTest()
       : mock_callback(),
+        mock_state_callback_(),
+        mock_user_callback_(),
         read_callback(base::BindRepeating(&MockReadDataCallback::Run,
-                                          base::Unretained(&mock_callback))) {}
+                                          base::Unretained(&mock_callback)),
+                      base::BindRepeating(&MockStateChangedCallback::Run,
+                                          base::Unretained(&mock_state_callback_)),
+                      base::BindOnce(&MockUserSelectedCallback::Run,
+                                     base::Unretained(&mock_user_callback_))) {}
 
  protected:
   MockReadDataCallback mock_callback;
+  MockStateChangedCallback mock_state_callback_;
+  MockUserSelectedCallback mock_user_callback_;
   WindowCapturerReadCallback read_callback;
 };
 
@@ -65,8 +83,60 @@ TEST_F(WindowCapturerReadCallbackTest, OnReadDataNoCallbackTest) {
   read_callback.readDataCallback_ = base::RepeatingCallback<void()>();
   bool result = read_callback.readDataCallback_.is_null();
   EXPECT_CALL(mock_callback, Run()).Times(0);
-  read_callback = WindowCapturerReadCallback(base::RepeatingCallback<void()>());
-  read_callback.OnReadData();
+  WindowCapturerReadCallback temp_callback(
+    base::RepeatingCallback<void()>(),
+    base::BindRepeating(&MockStateChangedCallback::Run,
+                        base::Unretained(&mock_state_callback_)),
+    base::BindOnce(&MockUserSelectedCallback::Run,
+                   base::Unretained(&mock_user_callback_)));
+  temp_callback.OnReadData();
+  EXPECT_TRUE(result);
+}
+
+TEST_F(WindowCapturerReadCallbackTest, OnStateChangedTest) {
+  bool result = read_callback.stateChangedCallback_.is_null();
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode =
+    OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_STARTED;
+  EXPECT_CALL(mock_state_callback_, Run(stateCode)).Times(1);
+  read_callback.OnStateChanged(stateCode);
+  EXPECT_FALSE(result);
+}
+
+TEST_F(WindowCapturerReadCallbackTest, OnStateChangedNoCallbackTest) {
+  read_callback.stateChangedCallback_ =
+    base::RepeatingCallback<void(OHOS::NWeb::ScreenCaptureStateCodeAdapter)>();
+  bool result = read_callback.stateChangedCallback_.is_null();
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode =
+    OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_STARTED;
+  EXPECT_CALL(mock_state_callback_, Run(stateCode)).Times(0);
+  WindowCapturerReadCallback temp_callback(
+    base::BindRepeating(&MockReadDataCallback::Run,
+                        base::Unretained(&mock_callback)),
+    base::RepeatingCallback<void(OHOS::NWeb::ScreenCaptureStateCodeAdapter)>(),
+    base::BindOnce(&MockUserSelectedCallback::Run,
+                   base::Unretained(&mock_user_callback_)));
+  temp_callback.OnStateChanged(stateCode);
+  EXPECT_TRUE(result);
+}
+
+TEST_F(WindowCapturerReadCallbackTest, OnUserSelectedTest) {
+  bool result = read_callback.userSelectedCallback_.is_null();
+  EXPECT_CALL(mock_user_callback_, Run()).Times(1);
+  read_callback.OnUserSelected();
+  EXPECT_FALSE(result);
+}
+
+TEST_F(WindowCapturerReadCallbackTest, OnUserSelectedNoCallbackTest) {
+  read_callback.userSelectedCallback_ = base::OnceCallback<void()>();
+  bool result = read_callback.userSelectedCallback_.is_null();
+  EXPECT_CALL(mock_user_callback_, Run()).Times(0);
+  WindowCapturerReadCallback temp_callback(
+    base::BindRepeating(&MockReadDataCallback::Run,
+                        base::Unretained(&mock_callback)),
+    base::BindRepeating(&MockStateChangedCallback::Run,
+                        base::Unretained(&mock_state_callback_)),
+    base::OnceCallback<void()>());
+  temp_callback.OnUserSelected();
   EXPECT_TRUE(result);
 }
 
@@ -484,6 +554,50 @@ TEST_F(BaseWindowCapturerTest, HandleBuffer08) {
   base_window_capturer->portal_init_failed_ = false;
 
   base_window_capturer->HandleBuffer();
+}
+
+TEST_F(BaseWindowCapturerTest, HandleStateChanged01) {
+  std::unique_ptr<OHOS::NWeb::ScreenCaptureAdapter> screen_capture_adapter =
+    std::make_unique<ScreenCaptureAdapterMock>();
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode =
+    OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_STARTED;
+  base_window_capturer->portal_init_failed_ = true;
+
+  base_window_capturer->HandleStateChanged(stateCode);
+
+  EXPECT_TRUE(base_window_capturer->portal_init_failed_);
+}
+
+TEST_F(BaseWindowCapturerTest, HandleStateChanged02) {
+  std::unique_ptr<OHOS::NWeb::ScreenCaptureAdapter> screen_capture_adapter =
+    std::make_unique<ScreenCaptureAdapterMock>();
+  OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode =
+    OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_CANCELED;
+  base_window_capturer->portal_init_failed_ = false;
+
+  base_window_capturer->HandleStateChanged(stateCode);
+
+  EXPECT_FALSE(base_window_capturer->portal_init_failed_);
+}
+
+TEST_F(BaseWindowCapturerTest, HandleUserSelected01) {
+  std::unique_ptr<OHOS::NWeb::ScreenCaptureAdapter> screen_capture_adapter =
+    std::make_unique<ScreenCaptureAdapterMock>();
+  base_window_capturer->portal_init_failed_ = true;
+
+  base_window_capturer->HandleUserSelected();
+
+  EXPECT_TRUE(base_window_capturer->portal_init_failed_);
+}
+
+TEST_F(BaseWindowCapturerTest, HandleUserSelected02) {
+  std::unique_ptr<OHOS::NWeb::ScreenCaptureAdapter> screen_capture_adapter =
+    std::make_unique<ScreenCaptureAdapterMock>();
+  base_window_capturer->portal_init_failed_ = false;
+
+  base_window_capturer->HandleUserSelected();
+
+  EXPECT_FALSE(base_window_capturer->portal_init_failed_);
 }
 
 TEST_F(BaseWindowCapturerTest, Start01) {

@@ -16,6 +16,7 @@
 #include "gpu/ipc/common/nweb_native_window_tracker.h"
 #if BUILDFLAG(IS_OHOS)
 #include "ohos_adapter_helper.h"
+#include "ohos_nweb/src/sysevent/event_reporter.h"
 
 namespace content {
 std::unique_ptr<OHOS::NWeb::AafwkAppMgrClientAdapter> g_app_mgr_client_adapter{
@@ -31,7 +32,6 @@ bool RenderRemoteProxy::fds_channel_ready_{false};
 void RenderRemoteProxy::SetBrowserFd(int32_t ipcFd, int32_t sharedFd, int32_t crashFd) {
   LOG(INFO) << "RenderRemoteProxy::SetBrowserFd, ipcfd=" << ipcFd
             << ", sharedFd=" << sharedFd << ", crashFd=" << crashFd;
-
   base::GlobalDescriptors* g_fds = base::GlobalDescriptors::GetInstance();
   if (g_fds != nullptr) {
     g_fds->Set(kMojoIPCChannel, ipcFd);
@@ -134,7 +134,7 @@ void RenderRemoteProxy::NotifyBrowser(
         close(crashFd);
       }
     }
-    
+
     LOG(INFO) << "Wait for AMS to return IPC fd success and wake up process";
     RenderRemoteProxy::is_browser_fd_received_ = true;
     RenderRemoteProxy::browser_fd_cv_.notify_one();
@@ -144,6 +144,7 @@ void RenderRemoteProxy::NotifyBrowser(
     }
     return;
   }
+
   LOG(INFO) << "Wait for AMS to return IPC fd success and wake up process";
   const base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (!command_line) {
@@ -221,6 +222,9 @@ bool RenderRemoteProxy::WaitForBrowserFd() {
       return true;
     }
   }
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
+  ReportChildProcessInitFail(false, RenderError::RENDER_START_TIMEOUT);
+#endif
   LOG(ERROR)
       << "Request to AMS to obtain the main process IPC fd failed, timeout("
       << (kTimeOutDur * kMaxWaitCount) << "ms)";

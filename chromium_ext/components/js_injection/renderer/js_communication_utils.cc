@@ -135,9 +135,9 @@ void JsCommunicationUtils::RunScriptsAtDocumentEnd()
       jsCommunication_->render_frame()->GetWebFrame()->GetSecurityOrigin());
   for (const auto& script : document_end_scripts_) {
     if (!script->origin_matcher.rules().empty()) {
-      if (!script->origin_matcher.Matches(frame_origin)) {
-        continue;
-      }
+    if (!script->origin_matcher.Matches(frame_origin)) {
+      continue;
+    }
     } else {
       if (!MatchUrlRegexRules(script->script, end_scripts_regex_rules_)) {
         continue;
@@ -192,9 +192,9 @@ void JsCommunicationUtils::RunScriptsAtHeadReady()
 
   for (const auto& script : head_ready_scripts_) {
     if (!script->origin_matcher.rules().empty()) {
-      if (!script->origin_matcher.Matches(frame_origin)) {
-        continue;
-      }
+    if (!script->origin_matcher.Matches(frame_origin)) {
+      continue;
+    }
     } else {
       if (!MatchUrlRegexRules(script->script, head_ready_regex_rules_)) {
         continue;

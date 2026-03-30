@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-
 #include "ohos_sdk/openharmony/native/llvm/bin/../include/libcxx-ohos/include/c++/v1/__ranges/lazy_split_view.h"
 #define private public
 #include "arkweb/chromium_ext/media/base/ohos/ohos_media_decoder_bridge_impl.h"
@@ -278,7 +277,7 @@ class OhosVideoDecoderTest : public ::testing::Test {
 TEST_F(OhosVideoDecoderTest, PendingDecode_CreateEos) {
   PendingDecode pending_decode = PendingDecode::CreateEos();
   ASSERT_TRUE(pending_decode.buffer.get());
-  EXPECT_FALSE(pending_decode.buffer->data());
+  EXPECT_FALSE(pending_decode.buffer->writable_data());
   EXPECT_EQ(0u, pending_decode.buffer->data_size());
   EXPECT_TRUE(pending_decode.buffer->end_of_stream());
 }
@@ -429,7 +428,7 @@ TEST_F(OhosVideoDecoderTest, Decode) {
   base::span<const uint8_t> data(kData);
   scoped_refptr<DecoderBuffer> buffer(DecoderBuffer::CopyFrom(data));
   ASSERT_TRUE(buffer.get());
-  EXPECT_NE(kData, buffer->data());
+  EXPECT_NE(kData, buffer->writable_data());
   EXPECT_FALSE(buffer->end_of_stream());
   EXPECT_FALSE(buffer->is_key_frame());
   ohos_video_decoder_->state_ = OhosVideoDecoder::State::kError;

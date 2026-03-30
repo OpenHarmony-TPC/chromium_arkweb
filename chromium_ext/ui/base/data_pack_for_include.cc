@@ -28,7 +28,6 @@
 
 namespace {
 
-bool MmapHasGzipHeader(const base::MemoryMappedFile* mmap);
 
 // We're crashing when trying to load a pak file on Windows.  Add some error
 // codes for logging.
@@ -165,7 +164,6 @@ bool GetPathFromHap(ui::ResourceScaleFactor factor,
     LOG(ERROR) << "kPakFileNameHapMap not find path: " << path;
     return false;
   }
-
   pathHap = iter->second;
   return true;
 }
@@ -195,19 +193,19 @@ bool DataPackUtil::LoadFromPathExt(raw_ptr<DataPack> dataPackObj, const base::Fi
     std::unique_ptr<base::MemoryMappedFile> mmap =
         std::make_unique<base::MemoryMappedFile>();
     mmap->SetOhosFileMapper(fileMapper);
-    if (MmapHasGzipHeader(mmap.get())) {
+    if (net::GZipHeader::HasGZipHeader(mmap->bytes())) {
       std::string_view compressed(reinterpret_cast<char*>(mmap->data()),
                                     mmap->length());
       std::string data;
       if (!compression::GzipUncompress(compressed, &data)) {
         LOG(ERROR) << "Failed to unzip compressed datapack: "
-                   << pathPrint.c_str();
+                    << pathPrint.c_str();
 
         return false;
       }
-      return dataPackObj->LoadImpl(std::make_unique<DataPack::StringDataSource>(std::move(data)));;
+      return dataPackObj->LoadImpl(std::make_unique<DataPack::StringDataSource>(std::move(data))).has_value();
     }
-    return dataPackObj->LoadImpl(std::make_unique<DataPack::MemoryMappedDataSource>(std::move(mmap)));;
+    return dataPackObj->LoadImpl(std::make_unique<DataPack::MemoryMappedDataSource>(std::move(mmap))).has_value();
   } else {
     LOG(ERROR) << "LoadFromPath failed file not exist";
     return false;

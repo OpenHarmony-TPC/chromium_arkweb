@@ -14,14 +14,17 @@ import("//build/config/features.gni")
 import("//sandbox/features.gni")
 import("//testing/test.gni")
 
-component("arkweb_sandbox") {
+static_library("arkweb_sandbox") {
   sources = [
     "seccomp-bpf-helpers/baseline_policy_ohos.cc",
     "seccomp-bpf-helpers/baseline_policy_ohos.h",
   ]
 
+  defines = [ "SANDBOX_IMPLEMENTATION" ]
+
   deps = [
     "//base",
+    "//sandbox:sandbox_export",
   ]
 }
 

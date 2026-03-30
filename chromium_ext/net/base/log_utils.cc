@@ -51,7 +51,7 @@ void AppendIPv6Address(const unsigned char address[16], url::CanonOutput* output
     char str[5];
     url::_itoa_s(x, str, 16);
     for (int ch = 0; str[ch] != 0; ++ch) {
-      // Noise the ip addressed.
+      // Noise the ip address.
       if (i >= 6) {
         output->push_back('*');
       } else {
@@ -64,7 +64,6 @@ void AppendIPv6Address(const unsigned char address[16], url::CanonOutput* output
       output->push_back(':');
   }
 }
-
 }  // namespace
 
 namespace net {

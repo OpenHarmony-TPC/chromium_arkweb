@@ -1,0 +1,13 @@
+import("//build/config/sanitizers/sanitizers.gni")
+ 
+declare_args() {
+  # If the compilation parameter -use-pac is included, the PAC forward CFI 
+  # protection function will be enabled. Otherwise, it will not take effect.
+  build_pac_cfi = false
+
+  enable_blink_gc_check = false
+}
+ 
+declare_args() {
+  enable_cfi_protection = build_pac_cfi && current_cpu == "arm64"
+}

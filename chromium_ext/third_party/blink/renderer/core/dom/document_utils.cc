@@ -19,7 +19,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 void DocumentUtils::Trace(Visitor* visitor) const {}
 
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
@@ -56,11 +55,10 @@ void DocumentUtils::SetURLUtils()
       DocumentUtils::MAX_TOUCH_UP_INTERVAL) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        WTF::BindOnce(&DocumentUtils::StartBoostingUtils),
+        BindOnce(&DocumentUtils::StartBoostingUtils),
         base::Milliseconds(DocumentUtils::LOAD_URL_DELAY_TIME));
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 }

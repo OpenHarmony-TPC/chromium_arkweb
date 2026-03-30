@@ -176,13 +176,11 @@ void MediaSessionImpl::CreateSessionOhos() {
 
 #if BUILDFLAG(ARKWEB_PIP)
 void MediaSessionImpl::OnPictureInPictureStateChanged(
-    const MediaPlayerId& id,
-    uint32_t state, int32_t width, int32_t height) {
+    const MediaPlayerId& id, uint32_t state, int32_t width, int32_t height) {
   if (auto* pip_window_controller_ =
           VideoPictureInPictureWindowControllerImpl::FromWebContents(
               web_contents())) {
-    pip_window_controller_->OnPictureInPictureStateChanged(
-        id, state, width, height);
+    pip_window_controller_->OnPictureInPictureStateChanged(id, state, width, height);
   }
 }
 #endif

@@ -27,10 +27,16 @@ arkweb_media_gpu_ohos_sources = [
       "//arkweb/chromium_ext/media/gpu/ohos/video_frame_factory.h",
       "//arkweb/chromium_ext/media/gpu/ohos/video_frame_factory_impl.cc",
       "//arkweb/chromium_ext/media/gpu/ohos/video_frame_factory_impl.h",
-      "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decode_accelerator_worker.cc",
-      "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decode_accelerator_worker.h",
+# Follow-up Processing:
+# 141彻底删除了image_decode_accelerator_worker相关文件/功能，ohos扩展类无法正常编译，暂时注释
+#      "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decode_accelerator_worker.cc",
+#     "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decode_accelerator_worker.h",
       "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decoder.cc",
       "//arkweb/chromium_ext/media/gpu/ohos/ohos_image_decoder.h",
       "//arkweb/chromium_ext/media/gpu/ohos/ohos_heif_image_decoder.cc",
       "//arkweb/chromium_ext/media/gpu/ohos/ohos_heif_image_decoder.h",
 ]
+if(is_component_build) {
+  # Dependency violation FIXME
+  arkweb_media_gpu_ohos_sources = []
+}

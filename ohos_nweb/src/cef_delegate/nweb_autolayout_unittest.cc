@@ -142,7 +142,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void DownloadImage(const CefString&, bool, uint32_t, bool, CefRefPtr<CefDownloadImageCallback>) override {}
   void Print() override {}
   void PrintToPDF(const CefString&, const CefPdfPrintSettings&, CefRefPtr<CefPdfPrintCallback>) override {}
-  void Find(const CefString&, bool, bool, bool) override {}
+  void Find(const CefString&, bool, bool, bool
+#if BUILDFLAG(ARKWEB_FIND_IN_PAGE)
+          , bool
+#endif
+    ) override {}
   void StopFinding(bool) override {}
   void ShowDevTools(const CefWindowInfo&, CefRefPtr<CefClient>, const CefBrowserSettings&, const CefPoint&) override {}
   void CloseDevTools() override {}
@@ -298,7 +302,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void SetBrowserZoomLevel(double) override {}
   int GetTopControlsOffset() override { return 0; }
   int GetShrinkViewportHeight() override { return 0; }
-  void OnEyeDropperResult(bool, uint32_t) override {}
   void SetPrintBackground(bool) override {}
   bool GetPrintBackground() override { return false; }
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
@@ -467,6 +470,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   bool Release() const override { return false; }
   bool HasOneRef() const override { return false; }
   bool HasAtLeastOneRef() const override { return false; }
+  int32_t GetLastCommittedEntryPageTransition() override { return 0; }
 };
 
 class MockCefBrowser : public CefBrowser {
@@ -558,7 +562,7 @@ class NwebAutolayoutTest : public testing::Test, public NwebAutolayout {
  
 TEST_F(NwebAutolayoutTest, ParseToplevelConfig_Valid)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     
@@ -577,7 +581,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_Invalid)
     const std::string invalid_config = R"({
         "minMaskAreaRatioThreshold": 200
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -624,7 +628,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidMinScaleFactor)
     };
 
     for (const auto& config_str : invalid_min_scale_factor_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -666,7 +670,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidOpacityFilterFormat)
     };
 
     for (const auto& config_str : invalid_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -715,7 +719,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidOpacityFilterValues)
     };
 
     for (const auto& config_str : invalid_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -746,7 +750,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidMinMaskAreaRatioThreshold)
     };
  
     for (const auto& config_str : invalid_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -777,7 +781,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidMinContentAreaRatioThresho
     };
  
     for (const auto& config_str : invalid_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -808,7 +812,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidScaleAnimationDuration)
     };
  
     for (const auto& config_str : invalid_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -823,7 +827,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MissingKey)
         "scaleAnimationDuration": 100,
         "opacityFilter": [10, 90]
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
@@ -837,7 +841,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_Valid)
         "GetPage": "get_page_func",
         "appRuleInfos": [ { "id": "rule1" } ]
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
  
@@ -856,7 +860,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_Invalid)
         "GetPage": "get_page_func",
         "appRuleInfos": []
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(invalid_entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(invalid_entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -871,7 +875,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_EmptyFields)
     };
  
     for (const auto& entry_str : invalid_entries) {
-        std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+        std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(entry_val.has_value());
         ASSERT_TRUE(entry_val->is_dict());
         EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -886,7 +890,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_InvalidAppRuleInfos)
         "GetPage": "gp",
         "appRuleInfos": "not_a_list"
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(invalid_entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(invalid_entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -902,7 +906,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_MissingKeys)
     };
  
     for (const auto& entry_str : invalid_entries) {
-        std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+        std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(entry_val.has_value());
         ASSERT_TRUE(entry_val->is_dict());
         EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -911,7 +915,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_MissingKeys)
  
 TEST_F(NwebAutolayoutTest, ParseWhitelist_Valid)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     const base::Value::Dict* whitelist_dict = root->GetDict().FindDict("whitelist");
     ASSERT_TRUE(whitelist_dict);
@@ -925,7 +929,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_InvalidEntryType)
     const std::string invalid_whitelist = R"({
         "com.example.app": "not_a_dict"
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "com.example.app";
@@ -943,7 +947,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_InvalidEntryContents)
         }
     })";
 
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "com.example.app";
@@ -952,7 +956,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_InvalidEntryContents)
 
 TEST_F(NwebAutolayoutTest, Parse_Valid)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     mAppBundleName_ = "com.example.app";
     EXPECT_TRUE(Parse(*root));
@@ -961,7 +965,7 @@ TEST_F(NwebAutolayoutTest, Parse_Valid)
 TEST_F(NwebAutolayoutTest, Parse_Invalid)
 {
     const std::string invalid_config = "[]";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -990,7 +994,7 @@ TEST_F(NwebAutolayoutTest, Parse_InvalidWhitelistType)
         "whitelist": []
     })";
 
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -1012,7 +1016,7 @@ TEST_F(NwebAutolayoutTest, Parse_InvalidWhitelistEntry)
         }
     })";
 
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -1027,7 +1031,7 @@ TEST_F(NwebAutolayoutTest, Parse_InvalidTopLevelConfig)
         "whitelist": {}
     })";
 
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -1040,7 +1044,7 @@ TEST_F(NwebAutolayoutTest, Parse_MissingWhitelist)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -1151,7 +1155,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_BoundaryValues)
         "minContentAreaRatioThreshold": 11,
         "scaleAnimationDuration": 51
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 50);
@@ -1169,7 +1173,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MaxBoundaryValues)
         "minContentAreaRatioThreshold": 99,
         "scaleAnimationDuration": 399
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_max);
+    std::optional<base::Value> root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 100);
@@ -1188,7 +1192,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_WithMultipleRules)
             { "id": "*", "pg": "*" }
         ]
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
 
@@ -1220,7 +1224,7 @@ TEST_F(NwebAutolayoutTest, Parse_ValidComplexConfig)
         }
     })";
     
-    std::optional<base::Value> root = base::JSONReader::Read(complex_config);
+    std::optional<base::Value> root = base::JSONReader::Read(complex_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     mAppBundleName_ = "com.app2";
     EXPECT_TRUE(Parse(*root));
@@ -1237,7 +1241,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterEdgeCases)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_equal);
+    std::optional<base::Value> root = base::JSONReader::Read(config_equal, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 50);
@@ -1335,7 +1339,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_JSONWriterFailure)
         "GetPage": "test_page",
         "appRuleInfos": []
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
 
@@ -1350,7 +1354,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_NonDictEntry)
     const std::string invalid_whitelist = R"({
         "com.example.app": "not_a_dict"
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(invalid_whitelist, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());    
     mAppBundleName_ = "com.example.app";
@@ -1384,7 +1388,7 @@ TEST_F(NwebAutolayoutTest, Parse_WhitelistEmpty)
         "scaleAnimationDuration": 100,
         "whitelist": {}
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_empty_whitelist);
+    std::optional<base::Value> root = base::JSONReader::Read(config_empty_whitelist, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
     EXPECT_EQ(mWListEntry_, nullptr);
@@ -1395,7 +1399,7 @@ TEST_F(NwebAutolayoutTest, Parse_JsonRootInvalid)
     // Test line 67: !mJsonRoot.has_value() branch
     // This is tested indirectly through Initialize, but we can test Parse with invalid JSON
     const std::string invalid_json = "not valid json";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_json);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     // If Read fails, root will be nullopt
     if (!root.has_value()) {
         // This simulates the case where mJsonRoot.has_value() is false
@@ -1413,7 +1417,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstLessThanMin)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1428,7 +1432,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSecondGreaterThanMax
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1443,7 +1447,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstGreaterThanSeco
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1458,7 +1462,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSecondLessThanMin)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1473,7 +1477,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstGreaterThanMax)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1488,7 +1492,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdBound
         "minContentAreaRatioThreshold": 10,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1503,7 +1507,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MaxContentAreaRatioThresholdBound
         "minContentAreaRatioThreshold": 100,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1518,7 +1522,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinScaleAnimationDurationBoundary
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 50
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1533,7 +1537,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MaxScaleAnimationDurationBoundary
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 400
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1589,7 +1593,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSizeNotTwo)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_size1);
+    std::optional<base::Value> root = base::JSONReader::Read(config_size1, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
     
@@ -1601,7 +1605,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSizeNotTwo)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    root = base::JSONReader::Read(config_size3);
+    root = base::JSONReader::Read(config_size3, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1616,7 +1620,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstNotInt)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1631,7 +1635,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSecondNotInt)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1646,7 +1650,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterBothNotInt)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1661,7 +1665,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstAtMaxBoundary)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 100);
@@ -1678,7 +1682,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSecondAtMaxBoundary)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 50);
@@ -1695,7 +1699,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterFirstAtMinBoundary)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 0);
@@ -1712,7 +1716,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterSecondAtMinBoundary)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 0);
@@ -1729,7 +1733,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinMaskAreaRatioThresholdAtBounda
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 50);
@@ -1741,7 +1745,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinMaskAreaRatioThresholdAtBounda
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 100);
@@ -1757,7 +1761,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdAtVal
         "minContentAreaRatioThreshold": 11,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_content_area_ratio_threshold, 11);
@@ -1769,7 +1773,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdAtVal
         "minContentAreaRatioThreshold": 99,
         "scaleAnimationDuration": 100
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_content_area_ratio_threshold, 99);
@@ -1785,7 +1789,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ScaleAnimationDurationAtValidBoun
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 51
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.scale_animation_duration, 51);
@@ -1797,7 +1801,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ScaleAnimationDurationAtValidBoun
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 399
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.scale_animation_duration, 399);
@@ -1811,7 +1815,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_PatternPtrNull)
         "GetPage": "get_page_func",
         "appRuleInfos": []
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -1825,7 +1829,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_GetIDPtrNull)
         "GetPage": "get_page_func",
         "appRuleInfos": []
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -1839,7 +1843,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_GetPagePtrNull)
         "GetID": "get_id_func",
         "appRuleInfos": []
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -1853,7 +1857,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelistEntry_AppRuleInfosNull)
         "GetID": "get_id_func",
         "GetPage": "get_page_func"
     })";
-    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str);
+    std::optional<base::Value> entry_val = base::JSONReader::Read(entry_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(entry_val.has_value());
     ASSERT_TRUE(entry_val->is_dict());
     EXPECT_FALSE(ParseWhitelistEntry(entry_val->GetDict()));
@@ -1868,7 +1872,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinMaskAreaRatioThresholdNull)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1882,7 +1886,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdNull)
         "opacityFilter": [10, 90],
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1896,7 +1900,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ScaleAnimationDurationNull)
         "opacityFilter": [10, 90],
         "minContentAreaRatioThreshold": 20
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1910,7 +1914,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterNull)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(ParseToplevelConfig(root->GetDict()));
 }
@@ -1935,7 +1939,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidRootDict)
         "scaleAnimationDuration": 100,
         "whitelist": {}
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(invalid_config);
+    std::optional<base::Value> root = base::JSONReader::Read(invalid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_FALSE(Parse(*root));
 }
@@ -1951,7 +1955,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_EmptyWhitelist)
         "scaleAnimationDuration": 100,
         "whitelist": {}
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config);
+    std::optional<base::Value> root = base::JSONReader::Read(config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     const base::Value::Dict* whitelist_dict = root->GetDict().FindDict("whitelist");
     ASSERT_TRUE(whitelist_dict);
@@ -1982,7 +1986,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_MultipleValidEntries)
             "appRuleInfos": [{"id": "3"}]
         }
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(multi_entry);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(multi_entry, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "app1";
@@ -2003,7 +2007,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_OneValidOneInvalidInLoop)
         },
         "app2": "not_a_dict"
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "app2";
@@ -2027,7 +2031,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_SecondEntryInvalid)
             "appRuleInfos": []
         }
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "app2";
@@ -2044,7 +2048,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterBoundaryValues)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 0);
@@ -2061,7 +2065,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_OpacityFilterMaxValues)
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_max);
+    std::optional<base::Value> root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.opacity_filter.first, 100);
@@ -2079,7 +2083,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinMaskAreaRatioThresholdBoundary
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 50);
@@ -2092,7 +2096,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinMaskAreaRatioThresholdBoundary
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 100
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_mask_area_ratio_threshold, 100);
@@ -2108,7 +2112,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdValid
         "minContentAreaRatioThreshold": 11,
         "scaleAnimationDuration": 100
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_content_area_ratio_threshold, 11);
@@ -2120,7 +2124,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_MinContentAreaRatioThresholdValid
         "minContentAreaRatioThreshold": 99,
         "scaleAnimationDuration": 100
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.min_content_area_ratio_threshold, 99);
@@ -2136,7 +2140,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ScaleAnimationDurationValidBounda
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 51
     })";
-    std::optional<base::Value> root = base::JSONReader::Read(config_min);
+    std::optional<base::Value> root = base::JSONReader::Read(config_min, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.scale_animation_duration, 51);
@@ -2148,7 +2152,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ScaleAnimationDurationValidBounda
         "minContentAreaRatioThreshold": 20,
         "scaleAnimationDuration": 399
     })";
-    root = base::JSONReader::Read(config_max);
+    root = base::JSONReader::Read(config_max, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     EXPECT_TRUE(ParseToplevelConfig(root->GetDict()));
     EXPECT_EQ(mCCMConfig_.scale_animation_duration, 399);
@@ -2177,7 +2181,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_MultipleEntries)
             "appRuleInfos": [{"id": "3"}]
         }
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(multi_entry_config);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(multi_entry_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     mAppBundleName_ = "com.app1";
@@ -2197,7 +2201,7 @@ TEST_F(NwebAutolayoutTest, ParseWhitelist_OneValidOneInvalid)
         },
         "com.invalid": "not_a_dict"
     })";
-    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed_config);
+    std::optional<base::Value> whitelist_val = base::JSONReader::Read(mixed_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(whitelist_val.has_value());
     ASSERT_TRUE(whitelist_val->is_dict());
     // Should fail because one entry is not a dict
@@ -2247,7 +2251,7 @@ TEST_F(NwebAutolayoutTest, CheckCCMandApplyRule_WithMockFrame)
 
 TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ValidConfigWithNewParams)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
 
@@ -2267,7 +2271,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_ValidConfigWithNewParams)
 TEST_F(NwebAutolayoutTest, ParseToplevelConfig_CompatibleConfigFile)
 {
     // previous JSON formats without alphabetIdentificationMinSize and alphabetHeightWidthMinRatio
-    std::optional<base::Value> previous_config = base::JSONReader::Read(g_valid_config);
+    std::optional<base::Value> previous_config = base::JSONReader::Read(g_valid_config, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(previous_config.has_value());
     ASSERT_TRUE(previous_config->is_dict());
     EXPECT_TRUE(ParseToplevelConfig(previous_config->GetDict()));
@@ -2275,7 +2279,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_CompatibleConfigFile)
     EXPECT_EQ(mCCMConfig_.alphabet_height_width_min_ratio, ConfigConstants::kInvalidValue);
 
     // current JSON formats with alphabetIdentificationMinSize and alphabetHeightWidthMinRatio
-    std::optional<base::Value> config = base::JSONReader::Read(g_valid_config_with_nwe_params);
+    std::optional<base::Value> config = base::JSONReader::Read(g_valid_config_with_nwe_params, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(config.has_value());
     ASSERT_TRUE(config->is_dict());
     EXPECT_TRUE(ParseToplevelConfig(config->GetDict()));
@@ -2328,7 +2332,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidAlphabetIdentificationMinS
             "minContentAreaRatioThreshold": 20,
             "scaleAnimationDuration": 100})"}; 
     for (const auto& config_str : invalid_alphabet_identification_min_size_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         // To maintain compatibility with previous WebAutoLayout.json formats,
@@ -2382,7 +2386,7 @@ TEST_F(NwebAutolayoutTest, ParseToplevelConfig_InvalidAlphabetHeightWidthMinRati
             "minContentAreaRatioThreshold": 20,
             "scaleAnimationDuration": 100})"}; 
     for (const auto& config_str : invalid_alphabet_height_width_min_ratio_configs) {
-        std::optional<base::Value> root = base::JSONReader::Read(config_str);
+        std::optional<base::Value> root = base::JSONReader::Read(config_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
         ASSERT_TRUE(root.has_value());
         ASSERT_TRUE(root->is_dict());
         // To maintain compatibility with previous WebAutoLayout.json formats,
@@ -2404,7 +2408,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_ValidConfig)
                 "targetHeightRatio": 90
             }
         ]})";
-    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_infos.has_value());
     ASSERT_TRUE(url_rule_infos->is_dict());
     int globalAlphabetIdentificationMinSize = 20;
@@ -2435,7 +2439,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_MissKey)
                 "params": 3
             }
         ]})";
-    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_infos.has_value());
     ASSERT_TRUE(url_rule_infos->is_dict());
     int globalAlphabetIdentificationMinSize = 20;
@@ -2472,7 +2476,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_OptionalParams)
                 "strategy": 3
             }
         ]})";
-    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_infos = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_infos.has_value());
     ASSERT_TRUE(url_rule_infos->is_dict());
     int globalAlphabetIdentificationMinSize = 20;
@@ -2509,7 +2513,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_InvalidUrlPrefixPattern)
                 "alphabetHeightWidthMinRatio": 15
             }
         ]})";
-    std::optional<base::Value> rule_with_invalid_url_prefix = base::JSONReader::Read(invalid_url_prefix_str);
+    std::optional<base::Value> rule_with_invalid_url_prefix = base::JSONReader::Read(invalid_url_prefix_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(rule_with_invalid_url_prefix.has_value());
     ASSERT_TRUE(rule_with_invalid_url_prefix->is_dict());
     int globalAlphabetIdentificationMinSize = 20;
@@ -2545,7 +2549,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_InvalidStrategy)
                 "alphabetHeightWidthMinRatio": 15
             }
         ]})";
-    std::optional<base::Value> rule_with_invalid_strategy = base::JSONReader::Read(invalid_strategy_str);
+    std::optional<base::Value> rule_with_invalid_strategy = base::JSONReader::Read(invalid_strategy_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(rule_with_invalid_strategy.has_value());
     ASSERT_TRUE(rule_with_invalid_strategy->is_dict());
     mCCMConfig_.alphabet_identification_min_size = 20;
@@ -2585,7 +2589,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_InvalidAlphabetIdentificationMinSize
             }
         ]})";
     std::optional<base::Value> rule_with_invalid_alphabet_identification_min_size =
-        base::JSONReader::Read(invalid_alphabet_identification_min_size_str);
+        base::JSONReader::Read(invalid_alphabet_identification_min_size_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(rule_with_invalid_alphabet_identification_min_size.has_value());
     ASSERT_TRUE(rule_with_invalid_alphabet_identification_min_size->is_dict());
     mCCMConfig_.alphabet_identification_min_size = 20;
@@ -2630,7 +2634,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_InvalidAlphabetHeightWidthMinRatio)
             }
         ]})";
     std::optional<base::Value> rule_with_invalid_alphabet_height_width_min_ratio =
-        base::JSONReader::Read(invalid_alphabet_height_width_min_ratio_str);
+        base::JSONReader::Read(invalid_alphabet_height_width_min_ratio_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(rule_with_invalid_alphabet_height_width_min_ratio.has_value());
     ASSERT_TRUE(rule_with_invalid_alphabet_height_width_min_ratio->is_dict());
     mCCMConfig_.alphabet_identification_min_size = 20;
@@ -2647,7 +2651,7 @@ TEST_F(NwebAutolayoutTest, ParseUrlRuleInfo_InvalidAlphabetHeightWidthMinRatio)
 
 TEST_F(NwebAutolayoutTest, CreateH5AutoLayoutParam_ValidOutput)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     mAppBundleName_ = "com.example.app";
@@ -2656,7 +2660,7 @@ TEST_F(NwebAutolayoutTest, CreateH5AutoLayoutParam_ValidOutput)
     ASSERT_FALSE(mCCMConfig_.whitelist.urlRuleInfos.value().empty());
     std::string output = CreateH5AutoLayoutParam(mCCMConfig_.whitelist.urlRuleInfos.value()[0]);
 
-    std::optional<base::Value> autoLayout_param = base::JSONReader::Read(output);
+    std::optional<base::Value> autoLayout_param = base::JSONReader::Read(output, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(autoLayout_param.has_value());
     ASSERT_TRUE(autoLayout_param->is_dict());
     const base::Value::Dict& param_dict = autoLayout_param.value().GetDict();
@@ -2707,7 +2711,7 @@ TEST_F(NwebAutolayoutTest, FindBestMatchRule_EmptyUrlRule)
 
 TEST_F(NwebAutolayoutTest, FindBestMatchRule_MatchWhitelist)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     mAppBundleName_ = "com.example.app";
@@ -2726,7 +2730,7 @@ TEST_F(NwebAutolayoutTest, FindBestMatchRule_MatchWhitelist)
 
 TEST_F(NwebAutolayoutTest, FindBestMatchRule_NotMatchWhitelist)
 {
-    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params);
+    std::optional<base::Value> root = base::JSONReader::Read(g_valid_config_with_nwe_params, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(root.has_value());
     ASSERT_TRUE(root->is_dict());
     mAppBundleName_ = "com.example.app";
@@ -2755,7 +2759,7 @@ TEST_F(NwebAutolayoutTest, FindBestMatchRule_BestMatch)
                 "alphabetHeightWidthMinRatio": 2
             }
         ]})";
-    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_info.has_value());
     ASSERT_TRUE(url_rule_info->is_dict());
 
@@ -2782,7 +2786,7 @@ TEST_F(NwebAutolayoutTest, FindBestMatchRule_RegaxMatch)
                 "alphabetHeightWidthMinRatio": 1
             }
         ]})";
-    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_info.has_value());
     ASSERT_TRUE(url_rule_info->is_dict());
 
@@ -2828,7 +2832,7 @@ TEST_F(NwebAutolayoutTest, FindBestMatchRule_RegaxBestMatch)
                 "alphabetHeightWidthMinRatio": 3
             }
         ]})";
-    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str);
+    std::optional<base::Value> url_rule_info = base::JSONReader::Read(url_rule_info_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
     ASSERT_TRUE(url_rule_info.has_value());
     ASSERT_TRUE(url_rule_info->is_dict());
 

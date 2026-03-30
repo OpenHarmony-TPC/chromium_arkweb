@@ -42,7 +42,7 @@ void InitForRegularProfileForInclude(
 
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
 ExtensionRegistryInfoManager*
-ExtensionSystemImpl::GetExtensionRegistryInfoManager() {
+ChromeExtensionSystem::GetExtensionRegistryInfoManager() {
   return extension_registry_info_manager_.get();
 }
 #endif

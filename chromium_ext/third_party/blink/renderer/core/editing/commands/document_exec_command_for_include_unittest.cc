@@ -70,10 +70,12 @@ public:
 
   void RegisterPageEmbeddedPermissionControl(
       Vector<PermissionDescriptorPtr> permissions,
+      EmbeddedPermissionRequestDescriptorPtr descriptor,
       mojo::PendingRemote<mojom::blink::EmbeddedPermissionControlClient>
           pending_client) override {}
   void RequestPageEmbeddedPermission(
-      EmbeddedPermissionRequestDescriptorPtr permissions,
+      Vector<PermissionDescriptorPtr> permissions,
+      EmbeddedPermissionRequestDescriptorPtr descriptor,
       RequestPageEmbeddedPermissionCallback) override {}
   void RequestPermission(PermissionDescriptorPtr permission,
                          bool user_gesture,

@@ -45,9 +45,9 @@ void VideoFrameSubmitter::StartRenderingForSameLayer()
   vsync_period_cnt_without_submit_ = 0;
   if (!start_begin_frame_) {
     if (compositor_frame_sink_) {
+        start_begin_frame_ =  true;
         compositor_frame_sink_->SetNeedsBeginFrame(true);
     }
-    start_begin_frame_ =  true;
   }
 }
 
@@ -70,8 +70,8 @@ void VideoFrameSubmitter::StopRenderingForSameLayerImpl()
     vsync_period_cnt_without_submit_);
   if (++vsync_period_cnt_without_submit_ > kMaxVsyncInterval) {
     if (start_begin_frame_) {
-      start_begin_frame_ = false;
       if (compositor_frame_sink_) {
+        start_begin_frame_ = false;
         compositor_frame_sink_->SetNeedsBeginFrame(false);
       }
     }
@@ -79,6 +79,7 @@ void VideoFrameSubmitter::StopRenderingForSameLayerImpl()
   }
 }
 
+#if !defined(COMPONENT_BUILD) // Avoid component compilation.
 void VideoFrameSubmitter::UpdateDroppedFrameMetrics(const viz::BeginFrameArgs& args) {
   if (args.interval <= base::TimeDelta::Min() || args.interval.is_zero()) {
     return;
@@ -103,5 +104,5 @@ void VideoFrameSubmitter::SubmitDroppedFrameMetricsToMetadata(viz::CompositorFra
     should_report_frame_dropped_ = false;
   }
 }
-
+#endif // COMPONENT_BUILD
 }  // namespace blink

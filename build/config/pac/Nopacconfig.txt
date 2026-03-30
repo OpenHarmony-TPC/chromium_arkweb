@@ -1,0 +1,29 @@
+[outer_headers]
+../../ohos_glue headers recursive
+../../ohos_sdk headers recursive
+../../ohos_nweb/src/capi
+../../ohos_nweb_ex/public
+# the following is because declare ahead of typedef. NOTE: callsite include typedef then declaration. impl include declaration then typedef.
+../../ohos_nweb/src/ndk/scheme_handler/response.h
+# class ResolveSet 为nopac 添加attribute
+#../../v8/src/objects/module.h
+#被nopac的头文件包含
+../../third_party/ohos_ndk/includes/ohos_adapter
+../../arkweb/ohos_adapter_ndk/interfaces
+../../arkweb/ohos_nweb/include/
+../../third_party/crashpad/crashpad/compat/linux/signal.h
+#typedef在nopac目录，define也需要nopac
+#../../ohos_nweb/src/ndk/scheme_handler/http_body_stream.h
+#基类nopac，子类继承nopac，子类其他父类需添加nopac
+../../cef/ohos_cef_ext/libcef/browser/policy/browser_policy_handler.h
+../../third_party/dawn/src/dawn/native/stream/Sink.h
+../../third_party/swiftshader/third_party/llvm-10.0/llvm/include/llvm/Support/CommandLine.h
+../../third_party/swiftshader/third_party/llvm-10.0/llvm/include/llvm/CodeGen/MachinePassRegistry.h
+../../third_party/swiftshader/third_party/llvm-10.0/llvm/include/llvm/IR/LegacyPassNameParser.h
+../../third_party/swiftshader/third_party/llvm-10.0/llvm/include/llvm/PassSupport.h
+../../third_party/swiftshader/third_party/llvm-10.0/llvm/include/llvm/Support/StringSaver.h
+../../third_party/libc++ headers recursive
+../../buildtools/third_party/libc++ headers recursive
+../../third_party/libc++abi headers recursive
+../../third_party/llvm-libc headers recursive
+../../third_party/libc++abi/src/src/demangle/ItaniumNodes.def

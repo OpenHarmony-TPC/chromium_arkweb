@@ -261,7 +261,7 @@ CodecWrapperImpl::QueueStatus CodecWrapperImpl::QueueInputBuffer(
     return QueueStatus::kOk;
   }
   DecoderAdapterCode status;
-  status = codec_->QueueInputBuffer(buffer.data(), buffer.size(),
+  status = codec_->QueueInputBuffer(&*buffer.begin(), buffer.size(),
                                     buffer.timestamp().ToInternalValue(),
                                     buffer.decrypt_config(),
                                     buffer.is_key_frame());
@@ -388,8 +388,8 @@ bool CodecWrapperImpl::SetSurface(
 void CodecWrapperImpl::SetVideoSurface(int32_t widget_id, bool is_surface_pending) {
   if (!is_surface_pending) {
     if (codec_) {
-      codec_->SetVideoSurface(widget_id);
-      render_video_view_ = widget_id > 0;
+        codec_->SetVideoSurface(widget_id);
+        render_video_view_ = widget_id > 0;
     }
   } else {
     pending_surface_id_ = widget_id;
@@ -488,7 +488,6 @@ bool CodecWrapperImpl::ReleaseCodecOutputBuffer(int64_t id, bool render) {
 #endif // ARKWEB_VIDEO_ASSISTANT
   codec_->ReleaseOutputBuffer(index, render);
   buffer_ids_.erase(buffer_it);
-
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   did_last_outputbuffer_rendered_ = render;
   buffer_timestamp_map_.erase(id);

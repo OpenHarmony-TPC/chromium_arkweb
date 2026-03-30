@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,18 +44,18 @@ const std::pair<const char*, int>* GetGlobalSmiConstants() {
 size_t GetGlobalSmiConstantsCount() {
   return arraysize(global_smi_constants);
 }
-} // namespace longque
+}  // namespace longque
 
 class DelegateBuilder {
  public:
   DelegateBuilder(Isolate* isolate, Handle<JSObject> underlying_object,
                   Handle<JSObject> init_object, Handle<Object> filter,
                   bool skip_prototype_chain)
-      :isolate_(isolate),
-      underlying_object_(underlying_object),
-      init_object_(init_object),
-      filter_(filter),
-      skip_prototype_chain_(skip_prototype_chain) {
+      : isolate_(isolate),
+        underlying_object_(underlying_object),
+        init_object_(init_object),
+        filter_(filter),
+        skip_prototype_chain_(skip_prototype_chain) {
     ParsePropertyFilterFlags();
   }
 
@@ -118,16 +118,16 @@ static inline void SetDelegateKey(Isolate* isolate, Handle<JSObject> object,
   DCHECK(result.ToChecked());
 }
 
-static void GetterForDelegate(v8::Local<v8::Name> name, 
+static void GetterForDelegate(v8::Local<v8::Name> name,
                               const v8::PropertyCallbackInfo<v8::Value>& info) {
   Isolate* isolate = reinterpret_cast<Isolate*>(info.GetIsolate());
   HandleScope scope(isolate);
-  Tagged<JSObject> holder = 
+  Tagged<JSObject> holder =
       Cast<JSObject>(*Utils::OpenDirectHandle(*info.HolderV2()));
   auto symbol_key = GetDelegateKey(isolate);
-  Handle<Object> target = 
+  Handle<Object> target =
       JSReceiver::GetDataProperty(isolate, handle(holder, isolate), symbol_key);
-  //Maybe not data property
+  // Maybe not data property
   Handle<Name> property_name = Utils::OpenHandle(*name);
   MaybeHandle<Object> maybe;
   if (property_name->IsArrayIndex()) {
@@ -138,8 +138,8 @@ static void GetterForDelegate(v8::Local<v8::Name> name,
     maybe = JSReceiver::GetProperty(isolate, Cast<JSReceiver>(target),
                                     property_name);
   }
-  //`maybe`may be null if the underlyingObject's getter throw exception
-  if(maybe.is_null()) {
+  // `maybe` may be null if the underlyingObject's getter throw exception.
+  if (maybe.is_null()) {
     info.GetReturnValue().Set(
         Utils::ToLocal(isolate->factory()->undefined_value()));
     return;
@@ -152,10 +152,10 @@ static void SetterForDelegate(Local<v8::Name> property, Local<v8::Value> value,
                               const PropertyCallbackInfo<v8::Boolean>& info) {
   Isolate* isolate = reinterpret_cast<Isolate*>(info.GetIsolate());
   HandleScope scope(isolate);
-  Tagged<JSObject> holder = 
+  Tagged<JSObject> holder =
       Cast<JSObject>(*Utils::OpenDirectHandle(*info.HolderV2()));
   auto symbol_key = GetDelegateKey(isolate);
-  Handle<Object> target = 
+  Handle<Object> target =
       JSReceiver::GetDataProperty(isolate, handle(holder, isolate), symbol_key);
   AllowGarbageCollection allow_gc;
   // Handle exception if needed
@@ -207,20 +207,20 @@ inline void DelegateBuilder::MayDefineAccessor(Handle<JSObject> object,
     return;
   }
   Handle<String> name = handle(str_key, isolate_);
-  Handle<AccessorInfo> accessor = Accessors::MakeAccessor(
+  DirectHandle<AccessorInfo> accessor = Accessors::MakeAccessor(
       isolate_, name, GetterForDelegate, SetterForDelegate);
-  MaybeHandle<Object> maybe =
+  MaybeDirectHandle<Object> maybe =
       JSObject::SetAccessor(object, name, accessor, NONE);
   if (maybe.is_null() || IsUndefined(*maybe.ToHandleChecked())) {
     redefined_property_ = name;
     return;
-  }                                         
+  }
 }
 
 static inline Tagged<JSReceiver> NextHolder(Isolate* isolate, Tagged<Map> map) {
   DisallowGarbageCollection no_gc;
   if (map->prototype(isolate) == ReadOnlyRoots(isolate).null_value()) {
-    return JSReceiver();  
+    return JSReceiver();
   }
   return Cast<JSReceiver>(map->prototype(isolate));
 }
@@ -230,7 +230,7 @@ inline bool IsPrototypeChainContainsNonJSObject(Isolate* isolate,
   Handle<JSReceiver> holder = receiver;
   do {
     if (!IsJSObject(*holder)) {
-        // For example: JSProxy, WasmObject
+      // For example: JSProxy, WasmObject
       return true;
     }
     holder = handle(NextHolder(isolate, holder->map()), isolate);
@@ -279,35 +279,35 @@ BUILTIN(CreateDelegate) {
   if (!IsJSObject(*underlying_object)) {
     if (!IsJSReceiver(*underlying_object)) {
       return ThrowTypeError(
-        isolate, "The 1st parameter (underlyingObject) is not an object");
+          isolate, "The 1st parameter (underlyingObject) is not an object");
     }
     return ThrowTypeError(
-        isolate, 
+        isolate,
         "The 1st parameter (underlyingObject) is an unsupported "
-        "exotic object (such as proxy)"); 
+        "exotic object (such as proxy)");
   }
 
   // 2. Check parameter initObject.
   Handle<Object> init_object = args.at(kInitObject);
   Handle<JSObject> real_init_object{};
   if (!IsUndefined(*init_object)) {
-    // Check user_defined initObject.
+    // Check user-defined initObject.
     if (!IsJSObject(*init_object)) {
-        if (!IsJSReceiver(*init_object)) {
-            return ThrowTypeError(
-                isolate, "The 2nd parameter (initObject) is not an object");
-        }
-      return ThrowTypeError(isolate, 
+      if (!IsJSReceiver(*init_object)) {
+        return ThrowTypeError(
+            isolate, "The 2nd parameter (initObject) is not an object");
+      }
+      return ThrowTypeError(isolate,
                             "The 2nd parameter (initObject) is an unsupported "
                             "exotic object (such as proxy)");
     }
     if (IsDelegate(isolate, Cast<JSObject>(init_object))) {
       return ThrowTypeError(
-          isolate, 
+          isolate,
           "The 2nd parameter (initObject) should not be a delegate object");
     }
     if (!JSObject::IsExtensible(isolate, Cast<JSObject>(init_object))) {
-      return ThrowTypeError(isolate, 
+      return ThrowTypeError(isolate,
                             "The 2nd parameter (initObject) is not extensible");
     }
     real_init_object = Cast<JSObject>(init_object);
@@ -338,7 +338,7 @@ BUILTIN(CreateDelegate) {
       return ThrowTypeError(isolate,
                             "The 1st parameter (underlyingObject)'s prototype "
                             "chain contains unsupported "
-                            "exotic object (such as proxy)"); 
+                            "exotic object (such as proxy)");
     }
   }
 

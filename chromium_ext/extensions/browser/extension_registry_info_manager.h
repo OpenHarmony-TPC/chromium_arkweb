@@ -16,6 +16,10 @@
 #ifndef EXTENSIONS_BROWSER_EXTENSION_REGISTRY_INFO_MANAGER_H_
 #define EXTENSIONS_BROWSER_EXTENSION_REGISTRY_INFO_MANAGER_H_
 
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/memory/raw_ref.h"
 #include "base/scoped_multi_source_observation.h"
 #include "chrome/browser/extensions/api/side_panel/side_panel_service.h"
@@ -105,7 +109,6 @@ class ExtensionRegistryInfoManager : public MenuManager::LoadObserver,
 
   std::vector<NWebContextMenusItem> GetAllExtensionContextMenus(
       const std::string& extensionId) const;
-
   std::vector<NWebContextMenusItemV2> GetAllExtensionContextMenusV2(
       const std::string& extensionId) const;
 

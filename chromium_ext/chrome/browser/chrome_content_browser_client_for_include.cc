@@ -17,7 +17,7 @@
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
-#include "cef/ohos_cef_ext/libcef/browser/net_service/net_helpers.h"
+#include "arkweb/chromium_ext/net/base/net_helpers.h"
 #include "content/public/browser/shared_cors_origin_access_list.h"
 
 #if BUILDFLAG(ARKWEB_NO_STATE_PREFETCH)
@@ -60,7 +60,6 @@
 #include "components/page_load_metrics/browser/metrics_navigation_throttle.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/page_load_metrics/browser/page_load_metrics_embedder_base.h"
-#include "components/page_load_metrics/browser/page_load_metrics_memory_tracker.h"
 #endif
 
 #if BUILDFLAG(IS_ARKWEB)
@@ -107,7 +106,7 @@ AppLoadedInTabSource ClassifyAppLoadedInTabSource(
     return APP_LOADED_IN_TAB_SOURCE_OTHER;
   }
 
-  if (opener_url.host_piece() != target_platform_app->id()) {
+  if (opener_url.host() != target_platform_app->id()) {
     // The forbidden app URL was being opened by a different app or extension.
     return APP_LOADED_IN_TAB_SOURCE_OTHER_EXTENSION;
   }
@@ -243,7 +242,7 @@ class ChromeContentBrowserClientUtils {
  
     CefRefPtr<CefBrowserHostBase> browser_host =
         CefBrowserHostBase::GetBrowserForContents(web_contents);
-    if (browser_host == nullptr) {
+    if (browser_host == nullptr || browser_host->GetHost() == nullptr) {
       return;
     }
  
@@ -251,7 +250,6 @@ class ChromeContentBrowserClientUtils {
       LOG(DEBUG) << "AppLinkThrottleExt, applink disabled";
       return;
     }
-    
     if (request.destination == network::mojom::RequestDestination::kDocument &&
         request.url.SchemeIs(url::kHttpsScheme) &&
         request.transition_type !=
@@ -301,8 +299,9 @@ class ChromeContentBrowserClientUtils {
           net_service::NetHelpers::DnsOverHttpServerConfig());
       if (config.has_value()) {
         network_service->ConfigureStubHostResolver(
-            true, net_service::NetHelpers::DnsOverHttpMode(),
-            net::DnsOverHttpsConfig({{std::move(*config)}}), true);
+            true, true, net_service::NetHelpers::DnsOverHttpMode(),
+            net::DnsOverHttpsConfig({{std::move(*config)}}), true,
+            std::vector<::net::IPEndPoint>());
       } else {
         LOG(INFO) << "doh server invalid";
       }

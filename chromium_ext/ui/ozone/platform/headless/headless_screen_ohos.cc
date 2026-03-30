@@ -56,7 +56,6 @@ bool ParseScreenSizeOhos(const std::string& screen_size,
   return true;
 }
 
-// LCOV_EXCL_START
 gfx::Rect GetDisplayBoundsOhos() {
   gfx::Rect bounds(kHeadlessOhosDisplaySize);
 
@@ -73,7 +72,6 @@ gfx::Rect GetDisplayBoundsOhos() {
 
   return bounds;
 }
-// LCOV_EXCL_STOP
 
 bool DisplayInfosTouch(const display::Display& a, const display::Display& b) {
   const gfx::Rect a_rect(a.native_origin(), a.GetSizeInPixel());
@@ -209,7 +207,6 @@ display::DisplayPlacement CalculateDisplayPlacement(
 }
 }  // namespace
 
-// LCOV_EXCL_START
 HeadlessScreenListener::HeadlessScreenListener(
     base::WeakPtr<HeadlessScreenOhos> headless_screen_ohos)
     : headless_screen_ohos_(headless_screen_ohos) {
@@ -285,11 +282,10 @@ bool HeadlessScreenOhos::Initialize() {
   }
   return result;
 }
-// LCOV_EXCL_STOP
 
 void HeadlessScreenOhos::LayoutDisplays(std::vector<display::Display>& displays) {
   std::vector<display::Display> displays_remaining = displays;
-  auto primary_display_iter = base::ranges::find_if(
+  auto primary_display_iter = std::ranges::find_if(
       displays_remaining, [](const display::Display& display) {
         return display.native_origin().IsOrigin();
       });
@@ -353,6 +349,11 @@ bool HeadlessScreenOhos::ConvertDisplay(
     std::shared_ptr<OHOS::NWeb::DisplayAdapter> src_display,
     display::Display& dst_display) {
   if (!src_display) {
+    return false;
+  }
+  OHOS::NWeb::DisplaySourceMode mode = src_display->GetDisplaySourceMode();
+  if (mode != OHOS::NWeb::DisplaySourceMode::MAIN &&
+      mode != OHOS::NWeb::DisplaySourceMode::EXTEND) {
     return false;
   }
   auto display_id = static_cast<int64_t>(src_display->GetId());
@@ -427,7 +428,6 @@ void HeadlessScreenOhos::OnDisplayEvent(const std::string& event,
   }
 }
 
-// LCOV_EXCL_START
 void HeadlessScreenOhos::OnDisplayCreate(
     const OHOS::NWeb::DisplayId display_id) {
   if (!weak_factory_.HasWeakPtrs()) {
@@ -476,5 +476,4 @@ void HeadlessScreenOhos::AddObserver(display::DisplayObserver* observer) {
 void HeadlessScreenOhos::RemoveObserver(display::DisplayObserver* observer) {
   display_list_.RemoveObserver(observer);
 }
-// LCOV_EXCL_STOP
 }  // namespace ui

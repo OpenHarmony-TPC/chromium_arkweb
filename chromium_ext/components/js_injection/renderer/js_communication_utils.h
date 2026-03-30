@@ -17,6 +17,7 @@
 #define COMPONENTS_JS_INJECTION_RENDERER_JS_COMMUNICATION_UTILS_H
 
 #include "components/js_injection/renderer/js_communication.h"
+#include "components/origin_matcher/origin_matcher.h"
 
 typedef int int32_t;
 
@@ -46,11 +47,11 @@ class JsCommunicationUtils {
   void AddDocumentStartScriptRegexRules(mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
 
   void AddPendingJavascriptAtDocumentEnd(
-      mojom::DocumentEndJavaScriptPtr& script_ptr,
-      mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
+     mojom::DocumentEndJavaScriptPtr& script_ptr,
+     mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
   void AddPendingJavascriptAtHeadReady(
-      mojom::DocumentStartJavaScriptPtr& script_ptr,
-      mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
+     mojom::DocumentStartJavaScriptPtr& script_ptr,
+     mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
   void CommitPendingJavascriptsAtDocumentEnd();
   void CommitPendingJavascriptsAtHeadReady();
   void AddPendingJavascriptAtDocumentStartRegexRules(
@@ -64,12 +65,12 @@ class JsCommunicationUtils {
     const mojom::DocumentJavaScriptRegexRulesPtr& script_regex_rules_ptr);
  private:
   struct DocumentStartJavaScript {
-    OriginMatcher origin_matcher;
+    origin_matcher::OriginMatcher origin_matcher;
     blink::WebString script;
     int32_t script_id;
   };
   struct DocumentEndJavaScript {
-    OriginMatcher origin_matcher;
+    origin_matcher::OriginMatcher origin_matcher;
     blink::WebString script;
     int32_t script_id;
   };

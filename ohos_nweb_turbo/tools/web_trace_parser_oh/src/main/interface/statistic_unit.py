@@ -24,3 +24,4 @@ class StatisticUnit:
     @property
     def data_map(self) -> dict[str, str | int | float]:
         return self._data_map
+

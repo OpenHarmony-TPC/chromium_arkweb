@@ -233,8 +233,7 @@ UserRulesetService::UserRulesetService(
       unindexed_ruleset_base_dir_(unindexed_ruleset_base_dir),
       ruleset_service_client_(client) {
   CHECK_NE(local_state_->GetInitializationStatus(),
-            PrefService::INITIALIZATION_STATUS_WAITING,
-            base::NotFatalUntil::M129);
+            PrefService::INITIALIZATION_STATUS_WAITING);
   publisher_ = publisher_factory.Create(this, std::move(blocking_task_runner));
   UserIndexedRulesetVersion most_recently_indexed_version(config.filter_tag);
   most_recently_indexed_version.ReadFromPrefs(local_state_);
@@ -403,17 +402,15 @@ bool UserRulesetService::IndexRuleset(
       }
     }
 
-    for (const auto& rule : ruleset_chunk.css_rules()) {
 #if BUILDFLAG(ARKWEB_ADBLOCK)
+    for (const auto& rule : ruleset_chunk.css_rules()) {
       if (!indexer->AsArkWebRulesetIndexerExt()->AddCssRule(rule)) {
-#else
-      if (!indexer->AddCssRule(rule)) {
-#endif
         ++num_unsupported_css_rules;
       } else {
         ++num_supported_css_rules;
       }
     }
+#endif
   }
   indexer->Finish();
 

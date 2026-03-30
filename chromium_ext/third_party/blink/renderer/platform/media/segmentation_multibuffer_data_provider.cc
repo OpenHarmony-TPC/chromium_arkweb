@@ -177,7 +177,7 @@ int64_t SegmentationMultiBufferDataProvider::AvailableBytes() const {
     if (i->end_of_stream()) {
       return bytes;
     }
-    bytes += i->data_size();
+    bytes += i->size();
   }
   return bytes;
 }
@@ -194,7 +194,7 @@ bool SegmentationMultiBufferDataProvider::Available() const {
     }
   }
   if (!fifo_vector_[read_index_].front()->end_of_stream() &&
-    fifo_vector_[read_index_].front()->data_size() == block_size()) {
+    fifo_vector_[read_index_].front()->size() == block_size()) {
     return true;
   }
   return false;

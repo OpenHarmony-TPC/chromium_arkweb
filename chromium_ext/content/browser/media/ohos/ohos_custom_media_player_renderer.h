@@ -37,6 +37,7 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "url/gurl.h"
+#include "arkweb/chromium_ext/media/base/media_player_url_params.h"
 
 namespace content {
 
@@ -45,11 +46,9 @@ struct MediaInfo;
 
 class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
     : public media::Renderer,
-      public media::mojom::MediaPlayerRendererExtension,
       public WebContentsObserver,
       public media::OHOSMediaPlayerBridge::Client {
  public:
-  using RendererExtension = media::mojom::MediaPlayerRendererExtension;
   using ClientExtension =
       media::mojom::CustomMediaPlayerRendererClientExtension;
 
@@ -62,8 +61,8 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
       int routing_id,
       int player_id,
       WebContents* web_contents,
-      mojo::PendingReceiver<RendererExtension> renderer_extension_receiver,
-      mojo::PendingRemote<ClientExtension> client_extension_remote);
+      mojo::PendingRemote<ClientExtension> client_extension_remote,
+      const media::MediaPlayerUrlParams& params);
 
   ~OHOSCustomMediaPlayerRenderer() override;
 
@@ -115,10 +114,6 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   void OnAudioStateChanged(bool isAudible) override {}
   void OnPlayerSeekBack(base::TimeDelta back_time) override {}
 
-  // media::mojom::MediaPlayerRendererExtension implementation.
-  void InitiateScopedSurfaceRequest(
-      InitiateScopedSurfaceRequestCallback callback) override {}
-  void FinishPaint(int32_t fd) override {}
   media::OHOSMediaResourceGetter* GetMediaResourceGetter() override;
 
   void OnTimeUpdate(base::TimeDelta media_time);
@@ -159,13 +154,10 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   bool web_contents_muted_;
   float volume_;
 
-  mojo::Receiver<MediaPlayerRendererExtension> renderer_extension_receiver_;
-
   media::PipelineStatusCallback init_cb_;
 
   bool initialized_ = false;
 
-  // TODO : delete
   GlobalRenderFrameHostId global_render_frame_host_id_;
 
   MediaPlayerId media_player_id_;
@@ -175,8 +167,6 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   int surface_id_ = -1;
 
   gfx::Rect video_rect_;
-
-  std::unique_ptr<media::MediaUrlParams> media_url_params_;
 
   base::TimeDelta media_time_;
 
@@ -199,6 +189,8 @@ class CONTENT_EXPORT OHOSCustomMediaPlayerRenderer
   bool is_playing_ = false;
 
   absl::optional<std::string> cookies_;
+
+  std::unique_ptr<media::MediaPlayerUrlParams> media_url_params_;
 
   // NOTE: Weak pointers must be invalidated before all other member variables.
   base::WeakPtrFactory<OHOSCustomMediaPlayerRenderer> weak_factory_{this};

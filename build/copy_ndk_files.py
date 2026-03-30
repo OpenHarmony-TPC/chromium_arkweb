@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -35,11 +35,15 @@ def main():
     base_dest_path = os.path.join(project_root, "ohos_sdk/openharmony/native/sysroot/usr")
 
     if not os.path.isdir(base_src_path):
-        print(f"Error: Source directory not found at '{base_src_path}'", file=sys.stderr)
+        print("Error: Source directory not found at '{0}'".format(base_src_path), file=sys.stderr)
         return 1
 
     copied_count = 0
     print("Applying path transformation rules to copy NDK files...")
+
+    include_pattern = "{0}include{0}".format(os.sep)
+    lib_pattern = "{0}lib{0}".format(os.sep)
+
     for root, _, files in os.walk(base_src_path):
         for filename in files:
             source_file = os.path.join(root, filename)
@@ -48,20 +52,20 @@ def main():
             dest_relative_path = ""
 
             # Rule 1: Handle header files by restructuring the path
-            if os.sep + 'include' + os.sep in source_file:
-                parts = relative_path_to_stub.split(os.sep + 'include' + os.sep, 1)
+            if include_pattern in source_file:
+                parts = relative_path_to_stub.split(include_pattern, 1)
                 module_path = parts[0]
                 header_path = parts[1]
                 dest_relative_path = os.path.join('include', module_path, header_path)
 
             # Rule 2: Handle library files by stripping the module path
-            elif os.sep + 'lib' + os.sep in source_file:
-                parts = relative_path_to_stub.split(os.sep + 'lib' + os.sep, 1)
+            elif lib_pattern in source_file:
+                parts = relative_path_to_stub.split(lib_pattern, 1)
                 lib_path = os.path.join('lib', parts[1])
                 dest_relative_path = lib_path
 
             else:
-                print(f"Warning: No specific rule for '{relative_path_to_stub}'. Skipping.", file=sys.stderr)
+                print("Warning: No specific rule for '{0}'. Skipping.".format(relative_path_to_stub), file=sys.stderr)
                 continue
 
             destination_file = os.path.join(base_dest_path, dest_relative_path)
@@ -70,12 +74,12 @@ def main():
                 dest_dir = os.path.dirname(destination_file)
                 os.makedirs(dest_dir, exist_ok=True)
                 shutil.copy2(source_file, destination_file)
-                copied_count += 1
+                copied_count = copied_count + 1
             except OSError as e:
-                print(f"Error copying {source_file} to {destination_file}: {e}", file=sys.stderr)
+                print("Error copying {0} to {1}: {2}".format(source_file, destination_file, e), file=sys.stderr)
                 return 1
 
-    print(f"\nSuccessfully copied {copied_count} files based on path rules.")
+    print("\nSuccessfully copied {0} files based on path rules.".format(copied_count))
     return 0
 
 

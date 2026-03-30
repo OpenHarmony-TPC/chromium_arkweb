@@ -20,6 +20,7 @@
 #include "base/memory/shared_memory_mapping.h"
 #include "base/memory/unsafe_shared_memory_region.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "gpu/command_buffer/service/gles2_cmd_decoder.h"
 #include "gpu/ipc/service/gpu_channel.h"
@@ -49,7 +50,6 @@ OHOSVideoEncodeAccelerator::~OHOSVideoEncodeAccelerator() {
   LOG(INFO) << "ohos video encode accelerator destroy";
 }
 
-// LCOV_EXCL_START
 VideoEncodeAccelerator::SupportedProfiles
 OHOSVideoEncodeAccelerator::GetSupportedProfiles() {
   SupportedProfiles profiles;
@@ -72,9 +72,8 @@ OHOSVideoEncodeAccelerator::GetSupportedProfiles() {
   }
   return profiles;
 }
-// LCOV_EXCL_STOP
 
-bool OHOSVideoEncodeAccelerator::Initialize(
+EncoderStatus OHOSVideoEncodeAccelerator::Initialize(
     const Config& config,
     Client* client,
     std::unique_ptr<MediaLog> media_log) {
@@ -93,7 +92,7 @@ bool OHOSVideoEncodeAccelerator::Initialize(
     mime_type = "video/avc";
     frame_input_count = 1;
   } else {
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderUnsupportedProfile);
   }
 
   frame_size_ = config.input_visible_size;
@@ -101,7 +100,7 @@ bool OHOSVideoEncodeAccelerator::Initialize(
   media_codec_ = OHOSMediaCodecBridgeImpl::CreateVideoEncoder(mime_type);
   if (!media_codec_) {
     LOG(ERROR) << "fail to create encoder";
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderInitializationError);
   }
 
   CodecConfigPara config_para;
@@ -114,22 +113,22 @@ bool OHOSVideoEncodeAccelerator::Initialize(
                               base::SequencedTaskRunner::GetCurrentDefault()) !=
       CodecCodeAdapter::OK) {
     LOG(ERROR) << "fail to set encoder config";
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderUnsupportedConfig);
   }
 
   if (media_codec_->CreateInputSurface() != CodecCodeAdapter::OK) {
     LOG(ERROR) << "fail to create input surface";
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderInitializationError);
   }
 
   if (media_codec_->Prepare() != CodecCodeAdapter::OK) {
     LOG(ERROR) << "fail to prepare encoder";
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderInitializationError);
   }
 
   if (media_codec_->Start() != CodecCodeAdapter::OK) {
     LOG(ERROR) << "fail to prepare encoder";
-    return false;
+    return EncoderStatus(EncoderStatus::Codes::kEncoderInitializationError);
   }
 
   const size_t output_buffer_capacity = VideoFrame::AllocationSize(
@@ -139,10 +138,9 @@ bool OHOSVideoEncodeAccelerator::Initialize(
       base::BindOnce(&VideoEncodeAccelerator::Client::RequireBitstreamBuffers,
                      client_ptr_factory_->GetWeakPtr(), frame_input_count,
                      config.input_visible_size, output_buffer_capacity));
-  return true;
+  return EncoderStatus::Codes::kOk;
 }
 
-// LCOV_EXCL_START
 void OHOSVideoEncodeAccelerator::MaybeStartIOTimer() {
   if (!io_timer_.IsRunning() &&
       (num_buffers_at_codec_ > 0 || !pending_frames_.empty())) {
@@ -157,7 +155,6 @@ void OHOSVideoEncodeAccelerator::MaybeStopIOTimer() {
     io_timer_.Stop();
   }
 }
-// LCOV_EXCL_STOP
 
 void OHOSVideoEncodeAccelerator::Encode(scoped_refptr<VideoFrame> frame,
                                         bool force_keyframe) {
@@ -196,7 +193,6 @@ void OHOSVideoEncodeAccelerator::RequestEncodingParametersChange(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-// LCOV_EXCL_START
 void OHOSVideoEncodeAccelerator::Destroy() {
   LOG(INFO) << __PRETTY_FUNCTION__;
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -335,7 +331,6 @@ void OHOSVideoEncodeAccelerator::DequeueOutput() {
           client_ptr_factory_->GetWeakPtr(), bitstream_buffer.id(),
           BitstreamBufferMetadata(info.size, key_frame, frame_timestamp)));
 }
-// LCOV_EXCL_STOP
 
 void OHOSVideoEncodeAccelerator::NotifyErrorStatus(EncoderStatus status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

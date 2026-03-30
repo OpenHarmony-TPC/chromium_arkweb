@@ -384,7 +384,7 @@ export class CCMConfig {
     if(idAsString && idAsString !== '' && pg && pg !== '') {
       this.appId = idAsString;
       this.page = pg;
-    } else {
+    } else{
       Log.info('未能获取Appid和page，周期性监听', Tag.ccmConfig);
       return CheckRuleStateResult.initial;
     }

@@ -17,9 +17,11 @@
 #define NWEB_URL_RESOURCE_RESPONSE_IMPL_H
 
 #include "base/memory/raw_ptr.h"
-#include "build/buildflag.h"
-#include "arkweb/build/features/features.h"
 #include "nweb_url_resource_response.h"
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 
 namespace OHOS::NWeb {
 

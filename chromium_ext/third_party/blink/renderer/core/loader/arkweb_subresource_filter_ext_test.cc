@@ -26,6 +26,7 @@
 #include "third_party/blink/renderer/core/testing/sim/sim_request.h"
 #include "third_party/blink/renderer/core/testing/sim/sim_test.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client_impl.h"
+#include "third_party/blink/renderer/core/frame/local_dom_window.h"
 
 using ::testing::NiceMock;
 
@@ -35,7 +36,7 @@ class MockWebDocumentSubresourceFilter : public WebDocumentSubresourceFilter {
   MockWebDocumentSubresourceFilter() = default;
   ~MockWebDocumentSubresourceFilter() override = default;
   MOCK_METHOD(blink::WebDocumentSubresourceFilter::LoadPolicy, GetLoadPolicy,
-              (const blink::WebURL& resource_url, network::mojom::RequestDestination), (override));
+              (const blink::WebURL& resource_url, network::mojom::RequestDestination, subresource_filter::ScopedRule* out_rule), (override));
   MOCK_METHOD(blink::WebDocumentSubresourceFilter::LoadPolicy, GetLoadPolicyForWebSocketConnect,
               (const blink::WebURL&), (override));
   MOCK_METHOD(blink::WebDocumentSubresourceFilter::LoadPolicy, GetLoadPolicyForWebTransportConnect,
@@ -79,12 +80,12 @@ class MockLocalFrameClient : public blink::LocalFrameClient {
       const blink::ResourceRequest&,
       const blink::ResourceResponse&), (override));
   MOCK_METHOD(void, DispatchDidHandleOnloadEvents, (), (override));
-  MOCK_METHOD(void, DispatchDidReceiveTitle, (const WTF::String&), (override));
+  MOCK_METHOD(void, DispatchDidReceiveTitle, (const String&), (override));
   MOCK_METHOD(void, DispatchDidCommitLoad, (
       blink::HistoryItem*,
       blink::WebHistoryCommitType,
       bool,
-      const blink::ParsedPermissionsPolicy&,
+      const network::ParsedPermissionsPolicy&,
       const blink::DocumentPolicyFeatureState&), (override));
   MOCK_METHOD(void, DispatchDidFailLoad, (
       const blink::ResourceError&,
@@ -96,19 +97,20 @@ class MockLocalFrameClient : public blink::LocalFrameClient {
   MOCK_METHOD(void, DidStopLoading, (), (override));
   MOCK_METHOD(bool, NavigateBackForward, (
       int,
+      base::TimeTicks actual_navigation_start,
       std::optional<blink::scheduler::TaskAttributionId>), (const, override));
   MOCK_METHOD(void, DidDispatchPingLoader, (const blink::KURL&), (override));
   MOCK_METHOD(void, SelectorMatchChanged, (
-      const WTF::Vector<WTF::String>&,
-      const WTF::Vector<WTF::String>&), (override));
+      const Vector<String>&,
+      const Vector<String>&), (override));
   MOCK_METHOD(void, DidCreateDocumentLoader, (blink::DocumentLoader*), (override));
-  MOCK_METHOD(WTF::String, UserAgentOverride, (), (override));
-  MOCK_METHOD(WTF::String, UserAgent, (), (override));
+  MOCK_METHOD(String, UserAgentOverride, (), (override));
+  MOCK_METHOD(String, UserAgent, (), (override));
   MOCK_METHOD(std::optional<blink::UserAgentMetadata>, UserAgentMetadata, (), (override));
-  MOCK_METHOD(WTF::String, DoNotTrackValue, (), (override));
+  MOCK_METHOD(String, DoNotTrackValue, (), (override));
   MOCK_METHOD(void, TransitionToCommittedForNewPage, (), (override));
   MOCK_METHOD(blink::LocalFrame*, CreateFrame, (
-      const WTF::AtomicString&,
+      const AtomicString&,
       blink::HTMLFrameOwnerElement*), (override));
   MOCK_METHOD(blink::RemoteFrame*, CreateFencedFrame, (
       blink::HTMLFencedFrameElement*,
@@ -116,9 +118,9 @@ class MockLocalFrameClient : public blink::LocalFrameClient {
   MOCK_METHOD(blink::WebPluginContainerImpl*, CreatePlugin, (
       blink::HTMLPlugInElement&,
       const blink::KURL&,
-      const WTF::Vector<WTF::String>&,
-      const WTF::Vector<WTF::String>&,
-      const WTF::String&,
+      const Vector<String>&,
+      const Vector<String>&,
+      const String&,
       bool), (override));
   MOCK_METHOD(std::unique_ptr<blink::WebMediaPlayer>, CreateWebMediaPlayer, (
       blink::HTMLMediaElement&,
@@ -151,8 +153,8 @@ class MockLocalFrameClient : public blink::LocalFrameClient {
   MOCK_METHOD(blink::ChildURLLoaderFactoryBundle*, GetLoaderFactoryBundle, (), (override));
   MOCK_METHOD(scoped_refptr<blink::WebBackgroundResourceFetchAssets>,
       MaybeGetBackgroundResourceFetchAssets, (), (override));
-  MOCK_METHOD(WTF::String, evaluateInInspectorOverlayForTesting, (const WTF::String&), (override));
-  MOCK_METHOD(blink::Frame*, FindFrame, (const WTF::AtomicString&), (const, override));
+  MOCK_METHOD(String, evaluateInInspectorOverlayForTesting, (const String&), (override));
+  MOCK_METHOD(blink::Frame*, FindFrame, (const AtomicString&), (const, override));
   void BeginNavigation(
       const ResourceRequest&,
       const KURL& requestor_base_url,
@@ -170,13 +172,15 @@ class MockLocalFrameClient : public blink::LocalFrameClient {
       network::mojom::CSPDisposition should_check_main_world_content_security_policy,
       mojo::PendingRemote<mojom::blink::BlobURLToken>,
       base::TimeTicks input_start_time,
+      base::TimeTicks actual_navigation_start,
       const String& href_translate,
       const std::optional<Impression>& impression,
       const LocalFrameToken* initiator_frame_token,
-      std::unique_ptr<SourceLocation> source_location,
+      SourceLocation* source_location,
       mojo::PendingRemote<mojom::blink::NavigationStateKeepAliveHandle> initiator_navigation_state_keep_alive_handle,
       bool is_container_initiated,
-      bool has_rel_opener) {};
+      bool has_rel_opener,
+      bool is_triggered_by_js) {};
 
 #if BUILDFLAG(ARKWEB_ADBLOCK)
   MOCK_METHOD(void, DispatchDidSubresourceFiltered, (), (override));

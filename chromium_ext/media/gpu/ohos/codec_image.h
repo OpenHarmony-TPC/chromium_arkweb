@@ -47,10 +47,10 @@ class MEDIA_GPU_EXPORT CodecImage
   bool IsUsingGpuMemory() const override;
   void UpdateAndBindTexImage(GLuint service_id) override;
   bool HasTextureOwner() const override;
-  gpu::TextureBase* GetTextureBase() const override;
+  gpu::TextureBase* GetTextureBase() const;
   void NotifyOverlayPromotion(bool promotion, const gfx::Rect& bounds) override;
   bool RenderToOverlay() override;
-  bool TextureOwnerBindsTextureOnUpdate() override;
+  bool TextureOwnerBindsTextureOnUpdate();
   std::unique_ptr<gpu::ScopedNativeBufferFenceSync> GetNativeBuffer() override;
 
   bool was_rendered_to_front_buffer() const {

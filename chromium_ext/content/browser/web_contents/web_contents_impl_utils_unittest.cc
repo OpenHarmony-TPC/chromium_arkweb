@@ -227,6 +227,10 @@ TEST_F(WebContentsImplUtilsTest, JudgeIsPdfPageVisibilityChanged_FirstVisiblePdf
   ASSERT_NO_FATAL_FAILURE(utils_->JudgeIsPdfPageVisibilityChanged(Visibility::VISIBLE));
 }
 
+TEST_F(WebContentsImplUtilsTest, EvictFrameBackBuffersWhenNWebWasHidden) {
+  ASSERT_NO_FATAL_FAILURE(utils_->EvictFrameBackBuffersWhenNWebWasHidden());
+}
+
 TEST_F(WebContentsImplUtilsTest, SetIsOfflineWebComponentInactiveVisible) {
   ASSERT_NO_FATAL_FAILURE(utils_->SetIsOfflineWebComponentInactive(Visibility::VISIBLE));
 }

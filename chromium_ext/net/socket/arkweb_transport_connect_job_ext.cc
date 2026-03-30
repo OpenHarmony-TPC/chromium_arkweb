@@ -9,6 +9,9 @@
 #include <utility>
 
 #include "arkweb/chromium_ext/url/ohos/log_utils.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/check_op.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -23,7 +26,6 @@
 #include "net/base/ip_endpoint.h"
 #include "net/base/net_errors.h"
 #include "net/base/trace_constants.h"
-#include "net/base/tracing.h"
 #include "net/dns/public/host_resolver_results.h"
 #include "net/dns/public/secure_dns_policy.h"
 #include "net/log/net_log_event_type.h"
@@ -32,10 +34,6 @@
 #include "third_party/abseil-cpp/absl/types/variant.h"
 #include "url/scheme_host_port.h"
 #include "url/url_constants.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 #if BUILDFLAG(IS_ARKWEB)
 #include "base/ohos/nweb_engine_event_logger.h"
@@ -52,7 +50,7 @@ namespace net {
 constexpr size_t kMinRequiredIpEndpoints = 2;
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
 void ArkWebTransportConnectJobExt::SetConnectTimeout(int timeout_override) {
   timeout_override_ = base::Seconds(timeout_override);
 }

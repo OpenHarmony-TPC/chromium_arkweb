@@ -360,22 +360,22 @@ TEST_F(HeadlessScreenOhosTest, LayoutDisplays_003) {
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest001) {
   auto primary = screen_->GetPrimaryDisplay();
   EXPECT_NE(primary.id(), display::kInvalidDisplayId);
-
+ 
   constexpr OHOS::NWeb::DisplayId test_id = 1;
   screen_->OnDisplayCreate(test_id);
   screen_->OnDisplayDestroy(test_id);
   auto displays = screen_->GetAllDisplays();
   EXPECT_FALSE(displays.empty());
-
+ 
   MockDisplayObserver observer;
   screen_->AddObserver(&observer);
   screen_->RemoveObserver(&observer);
-
+ 
   constexpr OHOS::NWeb::DisplayId test_id2 = 2;
   listener_->OnCreate(test_id2);
   listener_->OnDestroy(test_id2);
   listener_->OnChange(test_id2);
-
+ 
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
   EXPECT_CALL(*display_adapter, GetDisplaySourceMode())
@@ -383,7 +383,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest001) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest002) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -392,7 +392,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest002) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest003) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -401,7 +401,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest003) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_FALSE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest004) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -412,7 +412,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest004) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest005) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -423,7 +423,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest005) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest006) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -434,7 +434,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest006) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest007) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -445,7 +445,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest007) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest008) {
   std::shared_ptr<MockDisplayAdapter> display_adapter =
       std::make_shared<MockDisplayAdapter>();
@@ -456,7 +456,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest008) {
   bool result = screen_->ConvertDisplay(display_adapter, dst_display);
   EXPECT_TRUE(result);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest009) {
   constexpr OHOS::NWeb::DisplayId test_id = 1;
   const std::string& event = "change";
@@ -466,7 +466,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest009) {
   EXPECT_FALSE(result);
   screen_->OnDisplayEvent(event, test_id);
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest010) {
   display::DisplayList displays;
   auto manager = new MockDisplayManagerAdapter();
@@ -484,7 +484,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest010) {
   EXPECT_FALSE(screen_->FetchDisplays(displays));
   EXPECT_TRUE(displays.displays().empty());
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest011) {
   display::Displays displays = {
       display::Display(0, gfx::Rect(0, 0, 0, 0)),
@@ -493,7 +493,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest011) {
   EXPECT_EQ(displays[0].bounds().origin(), gfx::Point(0, 0));
   EXPECT_EQ(displays[1].bounds().origin(), gfx::Point(0, 0));
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest012) {
   display::Displays displays = {
       display::Display(0, gfx::Rect(100, 0, 100, 100)),
@@ -502,7 +502,7 @@ TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest012) {
   EXPECT_EQ(displays[0].bounds().origin(), gfx::Point(100, 0));
   EXPECT_EQ(displays[1].bounds().origin(), gfx::Point(-100, 0));
 }
-
+ 
 TEST_F(HeadlessScreenOhosTest, DisplayHeadlessScreenTest013) {
   display::Displays displays = {
       display::Display(0, gfx::Rect(0, 0, 100, 3000)),

@@ -38,6 +38,13 @@ public:
   void SetEnableLowerFrameRate(bool enabled, const FrameSinkId& frame_sink_id);
   void SetEnableHalfFrameRate(bool enabled, const FrameSinkId& frame_sink_id);
 #endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  void SetIfNeedCleanBuffers(const FrameSinkId& frame_sink_id, bool need_clean_buffers);
+  void UpdateIfNeedCleanBuffers(const FrameSinkId& frame_sink_id);
+  void EraseIfNeedCleanBuffers(const FrameSinkId& frame_sink_id);
+#endif
+
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
   bool is_inactive_ = false;
   void SetRootCompositorFrameSink(const FrameSinkId& frame_sink_id);
@@ -51,6 +58,9 @@ public:
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
   void RestoreRenderFit(const FrameSinkId& frame_sink_id);
 #endif  // ARKWEB_MAXIMIZE_RESIZE
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+  void ModifyRenderFit(int32_t fitType, const FrameSinkId& frame_sink_id);
+#endif  // ARKWEB_ROTATE_RESIZE
 #if BUILDFLAG(ARKWEB_PIP)
 void SetPipActive(bool active, const FrameSinkId& frame_sink_id);
 #endif
@@ -58,6 +68,10 @@ void SetPipActive(bool active, const FrameSinkId& frame_sink_id);
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
   GpuServiceImpl* gpu_service();
   void ClearBlanklessSnapshotInfo(uint64_t blankless_key);
+#endif
+private:
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  base::flat_map<FrameSinkId, bool> need_clean_buffers_map_;
 #endif
 };
 }  // namespace viz

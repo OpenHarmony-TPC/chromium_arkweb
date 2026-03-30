@@ -22,15 +22,18 @@
 #include <huks/native_huks_api.h>
 #include <huks/native_huks_external_crypto_api.h>
 #include <huks/native_huks_param.h>
- 
 #include <certificate_manager/cm_native_api.h>
- 
+
 #include "cert_mgr_adapter_impl.h"
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
 #include "base/files/file_path.h"
- 
+
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/third_party/securec/include/securec.h"
+#else
 #include "third_party/bounds_checking_function/include/securec.h"
+#endif
 #include "third_party/boringssl/src/include/openssl/ssl.h"
 
 #include <network/netstack/net_ssl/net_ssl_c.h>
@@ -44,23 +47,23 @@ namespace cert_mgr_adapter_impl_test {
 #else
 namespace {
 #endif
- 
+
 struct HuksSignatureSpec {
     uint32_t algorithm;
     uint32_t padding;
     uint32_t digest;
 };
- 
+
 using OHCertManagerGetUkeyCertificate = int32_t (*)(const OH_CM_Blob *ukeyCertIndex,
     const OH_CM_UkeyInfo *ukeyInfo, OH_CM_CredentialDetailList *certificateList);
 using OHCertManagerFreeUkeyCertificate = void (*)(OH_CM_CredentialDetailList *certificateList);
- 
+
 using OHHuksInitExternalCryptoParamSet = struct OH_Huks_Result (*)(OH_Huks_ExternalCryptoParamSet **paramSet);
 using OHHuksAddExternalCryptoParams = struct OH_Huks_Result (*)(OH_Huks_ExternalCryptoParamSet *paramSet,
     const OH_Huks_ExternalCryptoParam *params, uint32_t paramCnt);
 using OHHuksBuildExternalCryptoParamSet = struct OH_Huks_Result (*)(OH_Huks_ExternalCryptoParamSet **paramSet);
 using OHHuksFreeExternalCryptoParamSet = void (*)(OH_Huks_ExternalCryptoParamSet **paramSet);
- 
+
 using OHHuksOpenResource = struct OH_Huks_Result (*)(const struct OH_Huks_Blob *resourceId,
                                                          const OH_Huks_ExternalCryptoParamSet *paramSet);
 using OHHuksCloseResource = struct OH_Huks_Result (*)(const struct OH_Huks_Blob *resourceId,
@@ -68,7 +71,6 @@ using OHHuksCloseResource = struct OH_Huks_Result (*)(const struct OH_Huks_Blob 
 using OHHuksGetUkeyPinAuthState = struct OH_Huks_Result (*)(const struct OH_Huks_Blob *resourceId,
                                                             const OH_Huks_ExternalCryptoParamSet *paramSet,
                                                             OH_Huks_ExternalPinAuthState *authState);
- 
  
 OHCertManagerGetUkeyCertificate certManagerGetUkeyCertificate = nullptr;
 OHCertManagerFreeUkeyCertificate certManagerFreeUkeyCertificate = nullptr;
@@ -169,7 +171,7 @@ std::call_once(initFlag, [](){
     certManagerFreeUkeyCertificate = reinterpret_cast<OHCertManagerFreeUkeyCertificate>(dlsym(
                                                         dl, "OH_CertManager_FreeUkeyCertificate"));
   }
- 
+
 #if defined(ARCH_CPU_ARM64)
   base::FilePath huksFile("system/lib64/ndk/libhuks_external_crypto.z.so");
 #else
@@ -194,7 +196,7 @@ std::call_once(initFlag, [](){
   }
 });
 }
- 
+
 OH_Huks_Result InitParamSet(
     struct OH_Huks_ParamSet **paramSet,
     const struct OH_Huks_Param *params,
@@ -216,7 +218,7 @@ OH_Huks_Result InitParamSet(
     }
     return ret;
 }
- 
+
 OH_Huks_Result InitExtParamSet(
     OH_Huks_ExternalCryptoParamSet **paramSet,
     const OH_Huks_ExternalCryptoParam *params,
@@ -228,22 +230,22 @@ OH_Huks_Result InitExtParamSet(
         WVLOG_E("OH_Huks_InitExternalCryptoParamSet does not exist");
         return ret;
     }
- 
+
     if (!huksAddExternalCryptoParams) {
         WVLOG_E("OH_Huks_AddExternalCryptoParams does not exist");
         return ret;
     }
- 
+
     if (!huksBuildExternalCryptoParamSet) {
         WVLOG_E("OH_Huks_BuildExternalCryptoParamSet does not exist");
         return ret;
     }
- 
+
     if (!huksFreeExternalCryptoParamSet) {
         WVLOG_E("OH_Huks_BuildExternalCryptoParamSet does not exist");
         return ret;
     }
- 
+
     ret = huksInitExternalCryptoParamSet(paramSet);
     if (ret.errorCode != OH_HUKS_SUCCESS) {
         return ret;
@@ -260,7 +262,7 @@ OH_Huks_Result InitExtParamSet(
     }
     return ret;
 }
- 
+
 bool GetHuksSignatureSpec(uint16_t algorithm, HuksSignatureSpec& result)
 {
     switch (algorithm) {
@@ -422,11 +424,11 @@ bool CertManagerAdapterImpl::GetPinSetForHostName(
 int32_t CertManagerAdapterImpl::GetUkeyCert(const std::string& identity, uint8_t* certData, uint32_t* certDataLen)
 {
     WVLOG_I("CertManagerAdapterImpl::GetUkeyCert");
- 
+
     OH_CM_Blob key = {identity.length(), (uint8_t*)identity.c_str()};
     OH_CM_UkeyInfo info = {OH_CM_CERT_PURPOSE_SIGN};
     OH_CM_CredentialDetailList credList = {0, nullptr};
- 
+
     if (!certManagerGetUkeyCertificate) {
         WVLOG_E("OH_CertManager_GetUkeyCertificate does not exist");
         return -1;
@@ -435,7 +437,7 @@ int32_t CertManagerAdapterImpl::GetUkeyCert(const std::string& identity, uint8_t
         WVLOG_E("OH_CertManager_FreeUkeyCertificate does not exist");
         return -1;
     }
- 
+
     int32_t ret = certManagerGetUkeyCertificate(&key, &info, &credList);
     if (ret != OH_CM_SUCCESS || credList.credentialCount == 0) {
         WVLOG_E("GetUkeyCert, get ukey cert failed, ret = %{public}d ", ret);
@@ -450,7 +452,7 @@ int32_t CertManagerAdapterImpl::GetUkeyCert(const std::string& identity, uint8_t
         certManagerFreeUkeyCertificate(&credList);
         return ret;
     }
- 
+
     *certDataLen = credList.credential[0].credData.size;
     if (memcpy_s(certData, OH_CM_MAX_LEN_CERTIFICATE_CHAIN, credList.credential[0].credData.data,
             credList.credential[0].credData.size) != OH_CM_SUCCESS) {
@@ -458,11 +460,11 @@ int32_t CertManagerAdapterImpl::GetUkeyCert(const std::string& identity, uint8_t
         certManagerFreeUkeyCertificate(&credList);
         return -1;
     }
- 
+
     certManagerFreeUkeyCertificate(&credList);
     return OH_CM_SUCCESS;
 }
- 
+
 int32_t CertManagerAdapterImpl::OpenUKeyRemoteHandle(const std::string& identity)
 {
     WVLOG_I("CertManagerAdapterImpl::OpenUKeyRemoteHandle");
@@ -490,19 +492,19 @@ int32_t CertManagerAdapterImpl::OpenUKeyRemoteHandle(const std::string& identity
         WVLOG_E("OpenUKeyRemoteHandle, init param set failed, errorCode = %{public}d ", result.errorCode);
         return result.errorCode;
     }
- 
+
     result = huksOpenResource(&index, paramSet);
  
-    if (result.errorCode != OH_HUKS_SUCCESS) {
+    if (result.errorCode != OH_HUKS_SUCCESS && result.errorCode != OH_HUKS_ERR_CODE_KEY_ALREADY_EXIST) {
         WVLOG_E("OpenUKeyRemoteHandle, open remote handle failed, errorCode = %{public}d ", result.errorCode);
         huksFreeExternalCryptoParamSet(&paramSet);
         return result.errorCode;
     }
- 
+
     huksFreeExternalCryptoParamSet(&paramSet);
     return OH_HUKS_SUCCESS;
 }
- 
+
 int32_t CertManagerAdapterImpl::CloseUKeyRemoteHandle(const std::string& identity)
 {
     WVLOG_I("CertManagerAdapterImpl::CloseUKeyRemoteHandle");
@@ -530,7 +532,7 @@ int32_t CertManagerAdapterImpl::CloseUKeyRemoteHandle(const std::string& identit
         WVLOG_E("CloseUKeyRemoteHandle, init param set failed, errorCode = %{public}d ", result.errorCode);
         return result.errorCode;
     }
- 
+
     result = huksCloseResource(&index, paramSet);
  
     if (result.errorCode != OH_HUKS_SUCCESS) {
@@ -538,15 +540,15 @@ int32_t CertManagerAdapterImpl::CloseUKeyRemoteHandle(const std::string& identit
         huksFreeExternalCryptoParamSet(&paramSet);
         return result.errorCode;
     }
- 
+
     huksFreeExternalCryptoParamSet(&paramSet);
     return OH_HUKS_SUCCESS;
 }
- 
+
 int32_t CertManagerAdapterImpl::GetUkeyPinAuthState(const std::string& uri, bool* state)
 {
     WVLOG_I("CertManagerAdapterImpl::GetUkeyPinAuthState");
- 
+
     if (!huksGetUkeyPinAuthState) {
         WVLOG_E("OH_Huks_GetUkeyPinAuthState does not exist");
         return -1;
@@ -558,7 +560,7 @@ int32_t CertManagerAdapterImpl::GetUkeyPinAuthState(const std::string& uri, bool
     }
  
     struct OH_Huks_Blob index = {uri.length(), (uint8_t*)uri.c_str()};
- 
+
     OH_Huks_ExternalCryptoParamSet* paramSet = nullptr;
     OH_Huks_ExternalCryptoParam signParams[] = {
         {
@@ -584,9 +586,9 @@ int32_t CertManagerAdapterImpl::GetUkeyPinAuthState(const std::string& uri, bool
     huksFreeExternalCryptoParamSet(&paramSet);
     return OH_HUKS_SUCCESS;
 }
- 
-int32_t CertManagerAdapterImpl::SignUsingHuks(const std::string& identity, const uint8_t* certData, uint32_t certDataLen,
-        uint8_t* signData, uint32_t* signDataLen, uint16_t algorithm, uint32_t keySize)
+
+int32_t CertManagerAdapterImpl::SignUsingHuks(const std::string& identity, const uint8_t* certData,
+        uint32_t certDataLen, uint8_t* signData, uint32_t* signDataLen, uint16_t algorithm, uint32_t keySize)
 {
     WVLOG_D("CertManagerAdapterImpl::SignHuks");
     struct OH_Huks_Blob keyAlias = {identity.length(), (uint8_t*)identity.c_str()};
@@ -627,7 +629,7 @@ int32_t CertManagerAdapterImpl::SignUsingHuks(const std::string& identity, const
         WVLOG_E("SignHuks, init param set failed, errorCode = %{public}d ", result.errorCode);
         return result.errorCode;
     }
- 
+
     uint64_t handleValue = 0;
     struct OH_Huks_Blob handleSign = {sizeof(uint64_t), (uint8_t *)&handleValue};
     result = OH_Huks_InitSession(&keyAlias, paramSet, &handleSign, nullptr);
@@ -636,7 +638,7 @@ int32_t CertManagerAdapterImpl::SignUsingHuks(const std::string& identity, const
         OH_Huks_FreeParamSet(&paramSet);
         return result.errorCode;
     }
- 
+
     struct OH_Huks_Blob inData = {certDataLen, const_cast<uint8_t *>(certData)};
     struct OH_Huks_Blob outDataSign = { *signDataLen, signData };
     result = OH_Huks_FinishSession(&handleSign, paramSet, &inData, &outDataSign);
@@ -646,7 +648,7 @@ int32_t CertManagerAdapterImpl::SignUsingHuks(const std::string& identity, const
         return result.errorCode;
     }
     *signDataLen = outDataSign.size;
- 
+
     OH_Huks_FreeParamSet(&paramSet);
     return OH_HUKS_SUCCESS;
 }

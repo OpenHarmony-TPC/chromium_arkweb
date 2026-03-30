@@ -20,7 +20,7 @@
 #include "arkweb/build/features/features.h"
 
 #ifdef BUILDFLAG(ARKWEB_SAME_LAYER)
-#include "third_party/blink/renderer/core/layout/geometry/physical_offset.h"
+#include "third_party/blink/renderer/platform/geometry/physical_offset.h"
 #endif
 
 namespace blink {
@@ -29,10 +29,6 @@ namespace blink {
 class NativeLoader;
 class WebNativeBridge;
 class WebNativeClient;
-#endif
-
-#if BUILDFLAG(ARKWEB_NETWORK_DFX)
-class LocalFrame;
 #endif
 
 class LocalFrameClientExt {
@@ -55,9 +51,6 @@ public:
 #endif
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
   virtual void NotifyLcpForBlankless() {}
-#endif
-#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  virtual void DispatchHistoryGoEvent(LocalFrame* frame, int delta){};
 #endif
 };
 }

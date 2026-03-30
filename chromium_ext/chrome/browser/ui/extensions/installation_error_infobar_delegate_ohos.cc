@@ -14,13 +14,14 @@
  */
 
 #include "arkweb/chromium_ext/chrome/browser/ui/extensions/installation_error_infobar_delegate_ohos.h"
-
-#include "components/strings/grit/components_strings.h"
-#include "ui/base/l10n/l10n_util.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+#include "components/strings/grit/components_strings.h"
+#include "ui/base/l10n/l10n_util.h"
+#if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/core/extension/extensions/info_bar/nweb_extension_install_info_bar_dispatcher.h"
-#endif // BUILDFLAG(IS_ARKWEB_EXT)
+#endif // BUILDFLAG(ARKWEB_NWEB_EX)
 
 namespace ohos {
 
@@ -35,9 +36,9 @@ void InstallationErrorInfoBarDelegate::ShowInfoBar(
     const extensions::CrxInstallError& error) {
   std::unique_ptr<ConfirmInfoBarDelegate> info_bar(
       new InstallationErrorInfoBarDelegate(error));
-#if BUILDFLAG(IS_ARKWEB_EXT)
+#if BUILDFLAG(ARKWEB_NWEB_EX)
   ExtensionInstallInfoBarDispatcher::ShowInfoBar(std::move(info_bar));
-#endif // BUILDFLAG(IS_ARKWEB_EXT)
+#endif // BUILDFLAG(ARKWEB_NWEB_EX)
 }
 
 infobars::InfoBarDelegate::InfoBarIdentifier

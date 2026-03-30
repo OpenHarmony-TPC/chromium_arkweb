@@ -24,11 +24,12 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "arkweb/chromium_ext/third_party/blink/public/mojom/input/software_compositor_ohos.mojom.h"
+#include "content/common/content_export.h"
 
 namespace content {
 class RenderWidgetHostImpl;
 
-class SoftwareCompositorHostOhos {
+class CONTENT_EXPORT SoftwareCompositorHostOhos {
  public:
   SoftwareCompositorHostOhos(RenderWidgetHostImpl* view);
   ~SoftwareCompositorHostOhos();

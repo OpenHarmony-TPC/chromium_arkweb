@@ -16,7 +16,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/rand_util.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
@@ -604,7 +603,7 @@ void OHOSMediaDrmBridge::CreateSessionAndGenerateRequest(
             << ", mime_type:" << mime_type;
   if (ohos_drm_adapter_) {
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-    if (base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+    if (std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
       drm_status_ = DRM_STATUS_DEFAULT;
       is_license_ready_ = false;
       if (properties_ == nullptr) {
@@ -642,7 +641,7 @@ void OHOSMediaDrmBridge::LoadSession(
 
   if (ohos_drm_adapter_) {
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-    if (base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+    if (std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
       drm_status_ = DRM_STATUS_DEFAULT;
       is_license_ready_ = false;
       if (properties_ == nullptr) {
@@ -710,7 +709,7 @@ void OHOSMediaDrmBridge::RemoveSession(
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
 void OHOSMediaDrmBridge::SuspendSession() {
   LOG(INFO) << "[DRM]" << __func__ << ", drm_status: " << drm_status_;
-  if (!base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (!std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     return;
   }
   if (!task_runner_->BelongsToCurrentThread()) {
@@ -724,7 +723,7 @@ void OHOSMediaDrmBridge::SuspendSession() {
 
 void OHOSMediaDrmBridge::ResumeSession() {
   LOG(INFO) << "[DRM]" << __func__ << ", drm_status: " << drm_status_;
-  if (!base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (!std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     return;
   }
   if (!task_runner_->BelongsToCurrentThread()) {
@@ -741,7 +740,7 @@ void OHOSMediaDrmBridge::ResumeSession() {
 
 void OHOSMediaDrmBridge::ReleaseInnerResource() {
   LOG(INFO) << "[DRM]" << __func__ << ", drm_status: " << drm_status_;
-  if (!base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (!std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     return;
   }
 
@@ -788,11 +787,11 @@ OHOSMediaCryptoContext* OHOSMediaDrmBridge::GetOHOSMediaCryptoContext() {
 }
 
 bool OHOSMediaDrmBridge::IsSecureCodecRequired() {
-  if (base::ranges::equal(scheme_uuid_, kWidevineUuid)) {
+  if (std::ranges::equal(scheme_uuid_, kWidevineUuid)) {
     return SECURITY_LEVEL_1 == GetSecurityLevel();
   }
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-  if (base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     return SECURITY_LEVEL_1 == GetSecurityLevel();
   }
 #endif
@@ -826,7 +825,6 @@ void OHOSMediaDrmBridge::RejectPromise(uint32_t promise_id,
   std::string errorDesc = "OHOSMediaDrmBridge::reject promise";
   ReportWebMediaPlayErrorInfo(errorType, errorCode, errorDesc);
 #endif
-
   cdm_promise_adapter_.RejectPromise(promise_id, exception_code, 0,
                                      error_message);
 }
@@ -907,7 +905,7 @@ void OHOSMediaDrmBridge::OnOHOSMediaCryptoReady(void* session) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   LOG(INFO) << "[DRM]" << __func__ << ", drm_status_:" << drm_status_;
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-  if (base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     if (drm_status_ == DRM_STATUS_RESUME_CREATE_KEYSYSTEM) {
       drm_status_ = DRM_STATUS_RESUME_MEDIA_KEY_SESSION_READY;
     }
@@ -1219,7 +1217,7 @@ void OHOSMediaDrmBridge::NotifyMediaCryptoReady() {
   LOG(INFO) << "[DRM]" << __func__ << ", drm_status: " << drm_status_;
   DCHECK(task_runner_->BelongsToCurrentThread());
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-  if (base::ranges::equal(scheme_uuid_, kWiseplayUuid) &&
+  if (std::ranges::equal(scheme_uuid_, kWiseplayUuid) &&
       (drm_status_ == DRM_STATUS_RESUME_MEDIA_KEY_SESSION_READY)) {
     ResumeMediaLicense();
     return;
@@ -1245,7 +1243,7 @@ void OHOSMediaDrmBridge::SendProvisioningRequest(
     return;
   }
 #if BUILDFLAG(ARKWEB_ENABLE_WISEPLAY)
-  if (base::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
+  if (std::ranges::equal(scheme_uuid_, kWiseplayUuid)) {
     LOG(INFO) << "[DRM]" << __func__ << ", RetrieveWiseplayLicense.";
     provision_fetcher_->RetrieveWiseplayLicense(
         default_url, request_data,

@@ -154,7 +154,7 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         ->ProcessNotificationOperation(
         NotificationOperation::kSettings, notification_type_,
         notification_.origin_url(), notification_.id(), std::nullopt,
-        std::nullopt, std::nullopt /* by_user */, base::DoNothing());
+        std::nullopt, std::nullopt /* by_user */, std::nullopt /* is_suspicious */, base::DoNothing());
   }
 
   void DisableNotification() override {
@@ -163,7 +163,7 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         NotificationOperation::kDisablePermission, notification_type_,
         notification_.origin_url(), notification_.id(),
         std::nullopt /* action_index */, std::nullopt /* reply */,
-        std::nullopt /* by_user */, base::DoNothing());
+        std::nullopt /* by_user */, std::nullopt /* is_suspicious */, base::DoNothing());
   }
 
   void Close(bool by_user) override {
@@ -172,7 +172,7 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         NotificationOperation::kClose, notification_type_,
         notification_.origin_url(), notification_.id(),
         std::nullopt /* action_index */, std::nullopt /* reply */,
-        by_user, base::DoNothing());
+        by_user, std::nullopt /* is_suspicious */, base::DoNothing());
   }
 
   void Click(const std::optional<int>& button_index,
@@ -181,7 +181,7 @@ class PassThroughDelegate : public message_center::NotificationDelegate {
         ->ProcessNotificationOperation(
         NotificationOperation::kClick, notification_type_,
         notification_.origin_url(), notification_.id(), button_index, reply,
-        std::nullopt /* by_user */, base::DoNothing());
+        std::nullopt /* by_user */, std::nullopt /* is_suspicious */, base::DoNothing());
   }
 
  protected:
@@ -266,7 +266,7 @@ NWebNotificationOptionsItemIcon CreateFromImageSkiaReps(
       actionIcon.bitmaps[scale] =
           new (addr) NWebNotificationOptionsItemIconBitmap(
               CreateIconBitmapFromImage(rep.GetBitmap()));
-      }
+    }
 #endif
   }
   return actionIcon;
@@ -318,10 +318,10 @@ void NotificationPlatformBridgeOhos::Display(
       notification_type == NotificationHandler::Type::TRANSIENT) {
     Add(notification.id(), notification, profile);
   } else {
-    message_center::Notification notification_with_delegate(notification);
-    notification_with_delegate.set_delegate(base::WrapRefCounted(
-        new PassThroughDelegate(profile, notification, notification_type)));
-    Add(notification.id(), notification_with_delegate, profile);
+  message_center::Notification notification_with_delegate(notification);
+  notification_with_delegate.set_delegate(base::WrapRefCounted(
+      new PassThroughDelegate(profile, notification, notification_type)));
+  Add(notification.id(), notification_with_delegate, profile);
   }
 
 #if BUILDFLAG(ARKWEB_NOTIFICATION)
@@ -361,7 +361,7 @@ void NotificationPlatformBridgeOhos::Display(
     DeleteNWebNotificationOptionsItemIcon(options->icon);
   } else {
     options->icon->bitmaps =
-      std::map<double, NWebNotificationOptionsItemIconBitmap*>();
+       std::map<double, NWebNotificationOptionsItemIconBitmap*>();
   }
 #endif // ARKWEB_NOTIFICATION
 }
@@ -418,7 +418,7 @@ void NotificationPlatformBridgeOhos::OnShowed(const std::string id) {
   scoped_refptr<message_center::NotificationDelegate> delegate = notification.delegate();
   if (!delegate) {
     return;
-  }
+  } 
   NotificationHandler* handler = NotificationDisplayServiceImpl::GetForProfile(profile_notification->profile())
       ->GetNotificationHandler(profile_notification->type());
   if (handler) {

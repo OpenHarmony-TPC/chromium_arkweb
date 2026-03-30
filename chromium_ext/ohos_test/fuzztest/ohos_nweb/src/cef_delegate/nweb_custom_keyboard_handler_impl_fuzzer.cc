@@ -61,6 +61,11 @@ class MockCefBrowser : public CefBrowser {
   void GetFrameNames(std::vector<CefString>& names) override {}
   bool NeedToFireBeforeUnloadOrUnloadEvents() override { return false; }
   void DispatchBeforeUnload() override {}
+  int PrerenderPage(const CefString& url,
+                    const CefString& additional_headers) override {
+    return 0;
+  }
+  void CancelAllPrerendering() override {}
 };
 
 void NwebCustomKeyboardHandlerImplFuzzTest(FuzzedDataProvider* fdp) {

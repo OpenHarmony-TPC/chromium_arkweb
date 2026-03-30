@@ -17,10 +17,7 @@
 #define COMPONENTS_VIZ_SERVICE_FRAME_SINKS_COMPOSITOR_FRAME_SINK_IMPL_UTIL_H_
 
 #include "arkweb/build/features/features.h"
-
-#if BUILDFLAG(ARKWEB_VIDEO_LTPO)
 #include "components/viz/service/frame_sinks/compositor_frame_sink_support.h"
-#endif
 #include "base/memory/raw_ptr.h"
 
 namespace viz {
@@ -46,10 +43,6 @@ class CompositorFrameSinkImplUtil {
 
 #if BUILDFLAG(ARKWEB_VSYNC_SCHEDULE)
   void OnSetBypassVsyncCondition(int32_t condition);
-#endif
-
-#if BUILDFLAG(ARKWEB_THROTTLE_FRAME)
-void UpdateThrottleMode(bool is_enable);
 #endif
 };
 

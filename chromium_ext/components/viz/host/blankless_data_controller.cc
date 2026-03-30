@@ -187,10 +187,15 @@ static std::string GetDumpFilePath() {
 
 static bool EncodeSnapShotImage(const SkBitmap& bitmap, SkDynamicMemoryWStream& stream)
 {
+#if !defined(SK_CODEC_ENCODES_PNG_WITH_RUST)
   SkPngEncoder::Options opts;
   opts.fFilterFlags = SkPngEncoder::FilterFlag::kAll;
   opts.fZLibLevel = 6; // 6 is the default compression ratio for PNG
   return SkPngEncoder::Encode(&stream, bitmap.pixmap(), opts);
+#else
+  LOG(ERROR) << "PNG encoding is not supported with Rust PNG encoder (SK_CODEC_ENCODES_PNG_WITH_RUST)";
+  return false;
+#endif
 }
 
 static bool SaveImage(std::string& filename, SkDynamicMemoryWStream& stream) {
@@ -535,14 +540,10 @@ void BlanklessDataController::DumpTask(viz::mojom::BlanklessSendInfoPtr infoPtr,
     return;
   }
 
-  if (similarity < 0) {
-    LOG(DEBUG) << "blankless last snapshot error";
-    OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(infoPtr->blankless_key, snapshotDataItem);
-    return;
-  }
-
+  if (similarity >= 0) {
   snapshotDataItem.historySimilarity = similarity;
   snapshotDataItem.staticPath = newFile;
+  }
   int64_t expirationTime = 0;
   {
     std::lock_guard<std::mutex> expiration_time_info_guard(expiration_time_info_mutex_);
@@ -556,8 +557,8 @@ void BlanklessDataController::DumpTask(viz::mojom::BlanklessSendInfoPtr infoPtr,
     OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(
       infoPtr->blankless_key, snapshotDataItem, expirationTime);
   } else {
-    OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(infoPtr->blankless_key, snapshotDataItem);
-  }
+  OhosWebSnapshotDataBase::GetInstance().InsertSnapshotDataItem(infoPtr->blankless_key, snapshotDataItem);
+}
 }
 
 void BlanklessDataController::RemoveFrame(uint32_t nweb_id, uint64_t blankless_key)
