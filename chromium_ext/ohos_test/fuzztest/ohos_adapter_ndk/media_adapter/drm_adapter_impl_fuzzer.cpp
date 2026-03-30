@@ -21,8 +21,6 @@
 #include <ctime>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "base/logging.h"
-
 using namespace OHOS::NWeb;
 
 namespace OHOS {
@@ -283,8 +281,6 @@ void DrmAdapterImpl__SessionKeyChangeCallBackWithObj(FuzzedDataProvider* fdp)
     }
 
     bool newKeysAvailable = fdp->ConsumeBool();
-
-
     DrmAdapterImpl::SessionKeyChangeCallBackWithObj(mediaKeySession, &keysInfo, newKeysAvailable);
 }
 

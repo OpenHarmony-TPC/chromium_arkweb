@@ -1,0 +1,63 @@
+import("//build/config/clang/clang.gni")
+
+template("clang_plugin") {
+  config(target_name) {
+    forward_variables_from(invoker,
+    [
+        "cflags",
+        "configs",
+    ])
+
+    if (!defined(cflags)) {
+        cflags = []
+    }
+
+    if (defined(invoker.plugin)) {
+      cflags += [
+        "-Xclang",
+        "-add-plugin",
+        "-Xclang",
+        invoker.plugin,
+      ]
+    }
+
+    if (defined(invoker.plugin_arguments)) {
+      foreach(flag, invoker.plugin_arguments) {
+        cflags += [
+        "-Xclang",
+        "-plugin-arg-${invoker.plugin}",
+        "-Xclang",
+        flag,
+        ]
+      }
+    }
+
+    if (defined(invoker.tmp_plugin_arguments)) {
+      foreach(flag, invoker.tmp_plugin_arguments) {
+        cflags += [
+        "-Xclang",
+        "-plugin-arg-${invoker.plugin}",
+        "-Xclang",
+        flag,
+        ]
+      }
+    }
+  }
+}
+
+clang_plugin("raw_ptr_check") {
+  if (clang_use_raw_ptr_plugin) {
+    plugin = "raw-ptr-plugin"
+    # Permanent white list.
+    plugin_arguments = [
+      "raw-ptr-exclude-path=" +
+          rebase_path("//arkweb/ohos_adapter_ndk/", root_build_dir),
+    ]
+
+    # Temporary white list.
+    tmp_plugin_arguments = [
+      "raw-ptr-exclude-path=" +
+          rebase_path("//third_party/xxxx/", root_build_dir),
+    ]
+  }
+}

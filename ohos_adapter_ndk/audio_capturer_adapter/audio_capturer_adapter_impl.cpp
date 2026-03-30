@@ -89,6 +89,9 @@ static AudioCapturerAdapterImpl* FindAudioCapturerAdapter(OH_AudioCapturer* capt
 
 AudioCapturerAdapterImpl::~AudioCapturerAdapterImpl() {
     std::unique_lock<std::shared_mutex> lock(adapterMutex_);
+    if (audio_capturer_ != nullptr) {
+        Release();
+    }
     if (callback_index_ > 0) {
         callback_wrapper_.Clear(callback_index_);
         callback_index_ = 0;
@@ -100,8 +103,8 @@ int32_t AudioCapturerAdapterImpl::OnReadData(OH_AudioCapturer* capturer, void* u
     AudioCapturerAdapterImpl* adapter = FindAudioCapturerAdapter(capturer);
     if (!adapter) {
         WVLOG_E("AudioCapturerAdapterImpl::OnReadData adapter is null");
-        return -1;
-    }
+            return -1;
+        }
     if (userData == nullptr) {
         return -1;
     }
@@ -337,7 +340,7 @@ int32_t AudioCapturerAdapterImpl::GetFrameCount(uint32_t &frameCount)
     }
     int32_t frameCountValue;
     auto ret = OH_AudioCapturer_GetFrameSizeInCallback(audio_capturer_, &frameCountValue);
-    if (ret != AUDIOSTREAM_SUCCESS) {
+    if (ret != AUDIOSTREAM_SUCCESS || frameCountValue < 0) {
         return AUDIO_ERROR;
     }
     frameCount = static_cast<uint32_t>(frameCountValue);

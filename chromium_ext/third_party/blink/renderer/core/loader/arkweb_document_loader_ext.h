@@ -35,7 +35,6 @@
 #include <optional>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
@@ -51,7 +50,7 @@
 #include "third_party/blink/public/common/frame/view_transition_state.h"
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
 #include "third_party/blink/public/common/permissions_policy/document_policy.h"
-#include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
+#include "services/network/public/cpp/permissions_policy/permissions_policy.h"
 #include "third_party/blink/public/common/scheduler/task_attribution_id.h"
 #include "third_party/blink/public/common/subresource_load_metrics.h"
 #include "third_party/blink/public/mojom/fenced_frame/fenced_frame.mojom-blink.h"
@@ -76,7 +75,6 @@
 #include "third_party/blink/public/web/web_navigation_type.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/dom/weak_identifier_map.h"
-#include "third_party/blink/renderer/core/frame/dactyloscoper.h"
 #include "third_party/blink/renderer/core/frame/frame_types.h"
 #include "third_party/blink/renderer/core/frame/policy_container.h"
 #include "third_party/blink/renderer/core/frame/use_counter_impl.h"
@@ -142,7 +140,7 @@ class CORE_EXPORT ArkWebDocumentLoaderExt : public DocumentLoader {
 #endif // BUILDFLAG(ARKWEB_ADBLOCK)
 
 #if BUILDFLAG(ARKWEB_MENU) || BUILDFLAG(IS_ARKWEB_EXT)
-  scoped_refptr<const SharedBuffer> OnGetImageFromCache(const WTF::String& url);
+  scoped_refptr<const SharedBuffer> OnGetImageFromCache(const String& url);
 #endif
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)

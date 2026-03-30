@@ -38,7 +38,7 @@ public:
   void OnPendingSurfacesChanged() {}
   void SetVisible(bool visible) {}
   void ForceImmediateSwapIfPossible() {}
-  void SetNeedsOneBeginFrame(bool needs_draw) {}
+  void SetNeedsOneBeginFrame(const BeginFrameArgs& args, bool needs_draw) {}
   void DidSwapBuffers() {}
   void DidReceiveSwapBuffersAck() {}
   void OutputSurfaceLost() {}
@@ -93,16 +93,12 @@ class DisplayClientMock : public viz::DisplayClient {
       gpu::SurfaceHandle child_window) {}
   void SetWideColorEnabled(bool enabled) {}
   void SetPreferredFrameInterval(base::TimeDelta interval) {}
-  base::TimeDelta GetPreferredFrameIntervalForFrameSinkId(
-      const FrameSinkId& id,
-      mojom::CompositorFrameSinkType* type) {}
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
   void RestoreRenderFit(const FrameSinkId& frame_sink_id) {}
 #endif // ARKWEB_MAXIMIZE_RESIZE
-
-#if BUILDFLAG(ARKWEB_EVICT_UNLOCK_FRAMES)
-  void DisplayDidRealSwapBuffer() override {}
-#endif
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+  void ModifyRenderFit(int32_t fitType, const FrameSinkId& frame_sink_id) {}
+#endif // ARKWEB_ROTATE_RESIZE
 };
 
 class DumpFrameObserverTest : public testing::Test {
@@ -169,8 +165,8 @@ class ArkwebDisplayUtilsTest : public testing::Test {
     auto output_surface = std::make_unique<OutputSurfaceMock>();
     auto scheduler = std::make_unique<DisplaySchedulerMock>();
     return std::make_unique<Display>(
-        nullptr, nullptr, nullptr, nullptr, settings,
-        nullptr, frame_sink_id, nullptr,
+        nullptr, nullptr, settings,
+        nullptr, frame_sink_id, nullptr, 
         std::move(output_surface), nullptr, std::move(scheduler), nullptr);
   }
 

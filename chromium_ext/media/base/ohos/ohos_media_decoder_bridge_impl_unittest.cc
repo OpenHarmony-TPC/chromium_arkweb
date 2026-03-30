@@ -514,7 +514,7 @@ class MediaCodecDecoderBridgeImplTest : public ::testing::Test {
   void SetWindowFromSurface(void* surface) {
     bridge_->window_from_surface_ = surface;
   }
-#endif
+  #endif
 
   std::shared_ptr<CodecBridgeCallback> GetCodecEncodeBridgeCallback() {
     return bridge_->cb_;
@@ -679,7 +679,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest, PrepareForCallback_WhenCbIsNullptr) {
   ASSERT_TRUE(result == DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest,
+TEST_F(MediaCodecDecoderBridgeImplTest, 
        CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenDecoderIsNull) {
   SetVideoDecoder(nullptr);
   mock_adapter_ = std::make_unique<NiceMock<MockMediaCodecDecoderAdapter>>();
@@ -692,7 +692,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
 
 TEST_F(
     MediaCodecDecoderBridgeImplTest,
-    CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenCreateDecoderByMineFails) {
+       CreateVideoBridgeDecoderByMime_ShouldReturnError_WhenCreateDecoderByMineFails) {
   std::string codec_name = "video/h264";
   auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByMime(codec_name))
@@ -706,7 +706,7 @@ TEST_F(
 
 TEST_F(
     MediaCodecDecoderBridgeImplTest,
-    CreateVideoBridgeDecoderByMime_ShouldReturnOk_WhenCreateDecoderByMineSucceeds) {
+       CreateVideoBridgeDecoderByMime_ShouldReturnOk_WhenCreateDecoderByMineSucceeds) {
   std::string codec_name = "video/h264";
   auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByMime(codec_name))
@@ -723,7 +723,7 @@ TEST_F(
 
 TEST_F(
     MediaCodecDecoderBridgeImplTest,
-    CreateVideoBridgeDecoderByName_ShouldReturnError_WhenVideoDecoderIsNull) {
+       CreateVideoBridgeDecoderByName_ShouldReturnError_WhenVideoDecoderIsNull) {
   SetVideoDecoder(nullptr);
   std::string codec_name = "video/h264";
   DecoderAdapterCode result =
@@ -733,7 +733,7 @@ TEST_F(
 
 TEST_F(
     MediaCodecDecoderBridgeImplTest,
-    CreateVideoBridgeDecoderByName_ShouldReturnOk_WhenCreateVideoDecoderByNameSucceeds) {
+       CreateVideoBridgeDecoderByName_ShouldReturnOk_WhenCreateVideoDecoderByNameSucceeds) {
   std::string codec_name = "video/h264";
   auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByName(codec_name))
@@ -750,7 +750,7 @@ TEST_F(
 
 TEST_F(
     MediaCodecDecoderBridgeImplTest,
-    CreateVideoBridgeDecoderByName_ShouldReturnError_WhenCreateVideoDecoderByNameFails) {
+       CreateVideoBridgeDecoderByName_ShouldReturnError_WhenCreateVideoDecoderByNameFails) {
   std::string codec_name = "video/h264";
   auto mock_video_decode = make_unique<MockMediaCodecDecoderAdapter>();
   EXPECT_CALL(*mock_video_decode, CreateVideoDecoderByName(codec_name))
@@ -853,7 +853,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_OK);
 }
 
-TEST_F(MediaCodecDecoderBridgeImplTest,
+TEST_F(MediaCodecDecoderBridgeImplTest, 
        GetOutputFormatBridgeDecoder_ShouldReturnError_WhenVideoDecoderIsNull) {
   DecoderFormat format;
   format.width = 0;
@@ -959,7 +959,7 @@ TEST_F(MediaCodecDecoderBridgeImplTest,
       .WillOnce(Return(DecoderAdapterCode::DECODER_ERROR));
   EXPECT_CALL(*mock_video_decoder, ReleaseDecoder()).Times(1);
   SetVideoDecoder(std::move(mock_video_decoder));
-
+  
   auto result = bridge_->FlushBridgeDecoder();
   ASSERT_EQ(result, DecoderAdapterCode::DECODER_ERROR);
 }
@@ -1589,21 +1589,21 @@ TEST_F(MediaCodecDecoderBridgeImplTest, TestSetAVCencInfo003) {
 
 TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct001) {
   testing::internal::CaptureStderr();
-  std::make_unique<MediaCodecDecoderBridgeImpl>("test", base::DoNothing());
+  (void)std::make_unique<MediaCodecDecoderBridgeImpl>("test", base::DoNothing());
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("create decoder failed"), std::string::npos);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct002) {
   testing::internal::CaptureStderr();
-  std::make_unique<MediaCodecDecoderBridgeImpl>("test");
+  (void)std::make_unique<MediaCodecDecoderBridgeImpl>("test");
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_EQ(log_output.find("create decoder failed"), std::string::npos);
 }
 
 TEST_F(MediaCodecDecoderBridgeImplTest, TestConstruct003) {
   testing::internal::CaptureStderr();
-  std::make_unique<MediaCodecDecoderBridgeImpl>("video/h264");
+  (void)std::make_unique<MediaCodecDecoderBridgeImpl>("video/h264");
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_EQ(log_output.find("create decoder failed"), std::string::npos);
 }

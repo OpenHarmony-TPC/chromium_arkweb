@@ -74,10 +74,8 @@ public:
     MOCK_METHOD(bool, IsUsingGpuMemory, (), (const, override));
     MOCK_METHOD(void, UpdateAndBindTexImage, (GLuint service_id), (override));
     MOCK_METHOD(bool, HasTextureOwner, (), (const, override));
-    MOCK_METHOD(TextureBase*, GetTextureBase, (), (const, override));
     MOCK_METHOD(void, NotifyOverlayPromotion, (bool promotion, const gfx::Rect& bounds), (override));
     MOCK_METHOD(bool, RenderToOverlay, (), (override));
-    MOCK_METHOD(bool, TextureOwnerBindsTextureOnUpdate, (), (override));
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
     MOCK_METHOD(std::unique_ptr<ScopedNativeBufferFenceSync>, GetNativeBuffer, (), (override));
 #endif
@@ -120,8 +118,6 @@ public:
         stream_texture_sii_ = base::MakeRefCounted<NiceMock<MockStreamTextureSharedImageInterface>>();
         // Set up default mock behaviors
         ON_CALL(*stream_texture_sii_, HasTextureOwner()).WillByDefault(Return(true));
-        ON_CALL(*stream_texture_sii_, GetTextureBase()).WillByDefault(Return(&mock_texture_));
-        ON_CALL(*stream_texture_sii_, TextureOwnerBindsTextureOnUpdate()).WillByDefault(Return(true));
         ON_CALL(*stream_texture_sii_, IsUsingGpuMemory()).WillByDefault(Return(true));
         context_state_ = base::MakeRefCounted<SharedContextState>(
             base::MakeRefCounted<gl::GLShareGroup>(),
@@ -130,9 +126,6 @@ public:
             false, /* use_virtualized_gl_contexts */
             base::DoNothing(), /* context_lost_callback */
             gr_context_type_ /* gr_context_type */);
-        // backing_ = std::make_unique<NativeImageImageBacking>(mailbox_,
-        //     size_, color_space_, surface_origin_, alpha_type_, debug_label_,
-        //     stream_texture_sii_, context_state_);
     feature_info_ = base::MakeRefCounted<gles2::FeatureInfo>(
                             gpu_workarounds_, gpu_feature_info_);
     feature_info_->Initialize(ContextType::CONTEXT_TYPE_OPENGLES2,
@@ -147,7 +140,6 @@ public:
         if (gl_context_ && surf_) {
             gl_context_->ReleaseCurrent(surf_.get());
         }
-        // backing_.reset();
     }
 
 protected:
@@ -176,10 +168,6 @@ protected:
 TEST_F(OHOSNativeBufferImageBackingFactoryTest, ConvertToNativeBufferFormat) {
   EXPECT_EQ(NATIVEBUFFER_PIXEL_FMT_RGBA_8888,
     ConvertToNativeBufferFormat(viz::SinglePlaneFormat::kRGBA_8888));
-  EXPECT_EQ(NATIVEBUFFER_PIXEL_FMT_RGB_565,
-    ConvertToNativeBufferFormat(viz::SinglePlaneFormat::kRGB_565));
-  EXPECT_EQ(NATIVEBUFFER_PIXEL_FMT_BGR_565,
-    ConvertToNativeBufferFormat(viz::SinglePlaneFormat::kBGR_565));
   EXPECT_EQ(NATIVEBUFFER_PIXEL_FMT_RGBA16_FLOAT,
     ConvertToNativeBufferFormat(viz::SinglePlaneFormat::kRGBA_F16));
   EXPECT_EQ(NATIVEBUFFER_PIXEL_FMT_RGBX_8888,
@@ -201,8 +189,6 @@ TEST_F(OHOSNativeBufferImageBackingFactoryTest, FormatInfoForSupportedFormat) {
   backing_factory_->FormatInfoForSupportedFormat(viz::SinglePlaneFormat::kBGR_565,
     feature_info_->validators(), GLFormatCaps(feature_info_.get()));
   backing_factory_->FormatInfoForSupportedFormat(viz::SinglePlaneFormat::kRGBX_8888,
-    feature_info_->validators(), GLFormatCaps(feature_info_.get()));
-  backing_factory_->FormatInfoForSupportedFormat(viz::SinglePlaneFormat::kRGB_565,
     feature_info_->validators(), GLFormatCaps(feature_info_.get()));
   backing_factory_->FormatInfoForSupportedFormat(viz::SinglePlaneFormat::kRGBA_F16,
     feature_info_->validators(), GLFormatCaps(feature_info_.get()));
@@ -250,14 +236,8 @@ TEST_F(OHOSNativeBufferImageBackingFactoryTest, IsSupported) {
   base::span<const uint8_t> data(kData);
   EXPECT_FALSE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kRGBA_8888,
     gfx::Size(), false, gfx::NATIVE_PIXMAP, GrContextType::kGL, data));
-  EXPECT_FALSE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kRGBA_8888,
-    gfx::Size(), false, gfx::IO_SURFACE_BUFFER, GrContextType::kGL, data));
-  EXPECT_FALSE(backing_factory_->IsSupported(kSupportedUsage, viz::MultiPlaneFormat::kYV12,
-    gfx::Size(), false, gfx::IO_SURFACE_BUFFER, GrContextType::kGL, data));
   EXPECT_TRUE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kRGBA_8888,
     gfx::Size(), false, gfx::EMPTY_BUFFER, GrContextType::kGL, data));
-  EXPECT_FALSE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kRGBA_8888,
-    gfx::Size(), false, gfx::IO_SURFACE_BUFFER, GrContextType::kGL, data));
   EXPECT_FALSE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kALPHA_8,
     gfx::Size(), false, gfx::OHOS_NATIVE_BUFFER, GrContextType::kGL, data));
   EXPECT_TRUE(backing_factory_->IsSupported(kSupportedUsage, viz::SinglePlaneFormat::kRGBA_8888,

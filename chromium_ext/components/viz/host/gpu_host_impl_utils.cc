@@ -32,7 +32,9 @@ void GpuHostImpl::StopMonitor() {
 
 #if BUILDFLAG(IS_ARKWEB)
 void GpuHostImpl::SetVisible(int32_t nweb_id, bool visible) {
+#if BUILDFLAG(ARKWEB_SLIDE_LTPO)
   gpu_service_remote_->SetVisible(nweb_id, visible);
+#endif
 }
 #endif
 
@@ -53,10 +55,6 @@ void GpuHostImpl::SetLTPOStrategy(int32_t strategy) {
 #if BUILDFLAG(ARKWEB_D_VSYNC)
 void GpuHostImpl::SetIsFling(bool is_fling_enabled) {
   gpu_service_remote_->SetIsFling(is_fling_enabled);
-}
-
-void GpuHostImpl::SetIsScroll(bool is_scroll_enabled) {
-  gpu_service_remote_->SetIsScroll(is_scroll_enabled);
 }
 #endif
 
@@ -105,7 +103,7 @@ void GpuHostImpl::DumpBlanklessSnapshot(mojom::BlanklessSendInfoPtr infoPtr,
                                         mojo::ScopedSharedBufferHandle buffer,
                                         mojom::BlanklessBitmapMetadataPtr metadata) {
   if (!infoPtr) {
-    LOG(WARNING) << "blankless DumpBlanklessSnapshot invalid snapshot infoPtr.";
+    LOG(WARNING) << "blankless DumpBlanklessSnapshot invalid infoPtr.";
     return;
   }
 
@@ -134,4 +132,5 @@ void GpuHostImpl::ClearBlanklessSnapshotInfo(uint64_t blankless_key) {
   databaseAdapter.ClearSnapshot(blankless_key);
 }
 #endif
+
 } // namespace viz

@@ -17,6 +17,9 @@
 #include "base/datashare_uri_utils.h"
 #include "extensions/browser/extension_registry_info_manager.h"
 #include "extensions/common/manifest_handlers/options_page_info.h"
+#include "extensions/common/permissions/api_permission.h"
+#include "extensions/common/permissions/permission_set.h"
+#include "extensions/common/permissions/permissions_info.h"
 #endif // ARKWEB_ARKWEB_EXTENSIONS
 
 #include "ohos_nweb/src/nweb_common.h"
@@ -28,6 +31,40 @@
 namespace extensions {
 
 namespace developer = api::developer_private;
+
+namespace {
+
+void UpdateOptionalPermissions(
+    content::BrowserContext* browser_context,
+    const Extension& extension,
+    const developer::OptionalPermissionUpdate& update) {
+  if (!browser_context) {
+    return;
+  }
+
+  const APIPermissionInfo* permission_info =
+      PermissionsInfo::GetInstance()->GetByName(update.name);
+  if (!permission_info) {
+    LOG(ERROR) << "UpdateOptionalPermissions: Unknown optional permission '"
+               << update.name << "' for extension " << extension.id();
+    return;
+  }
+
+  LOG(INFO) << "UpdateOptionalPermissions: "
+            << (update.enabled ? "Granted" : "Blocked") << " '" << update.name
+            << "' for extension " << extension.id();
+
+  APIPermissionSet apis;
+  apis.insert(permission_info->id());
+  PermissionSet permission_set(std::move(apis), ManifestPermissionSet(),
+                               URLPatternSet(), URLPatternSet());
+
+  PermissionsUpdater(browser_context)
+      .SetOptionalPermissionState(extension, permission_set, update.enabled,
+                                  base::DoNothing());
+}
+
+}  // namespace
 
 namespace api {
 
@@ -65,18 +102,18 @@ ExtensionFunction::ResponseAction DeveloperPrivateShowOptionsFunction::Run() {
       "Extension does not have an options page.";
   const char kCouldNotFindWebContentsError[] =
       "Could not find a valid web contents.";
-
+ 
   const Extension* extension = GetEnabledExtensionById(params->extension_id);
   if (!extension)
     return RespondNow(Error(kNoSuchExtensionError));
-
+ 
   if (OptionsPageInfo::GetOptionsPage(extension).is_empty())
     return RespondNow(Error(kNoOptionsPageForExtensionError));
-
+ 
   content::WebContents* web_contents = GetSenderWebContents();
   if (!web_contents)
     return RespondNow(Error(kCouldNotFindWebContentsError));
-
+ 
   GURL url_to_navigate = OptionsPageInfo::GetOptionsPage(extension);
   if (IsNativeApiEnable()) {
 #if BUILDFLAG(ARKWEB_NWEB_EX)
@@ -87,7 +124,7 @@ ExtensionFunction::ResponseAction DeveloperPrivateShowOptionsFunction::Run() {
     ExtensionRegistryInfoManager::OnExtensionOpenUrlCallBack(
         url_to_navigate.spec());
   }
-
+ 
   return RespondNow(NoArguments());
 }
 #endif // ARKWEB_ARKWEB_EXTENSIONS

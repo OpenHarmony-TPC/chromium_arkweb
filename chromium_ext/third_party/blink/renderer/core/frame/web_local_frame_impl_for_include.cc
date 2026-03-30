@@ -26,7 +26,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_MENU)
 void WebLocalFrameImpl::SelectRangeV2(const gfx::Point& position,
                                       bool is_base) {
@@ -103,7 +102,6 @@ void WebLocalFrameImpl::OnDataDetectorSelectText() {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
 std::unique_ptr<WebAssociatedURLLoader> WebLocalFrameImpl::CreateVideoURLLoader(
@@ -112,5 +110,4 @@ std::unique_ptr<WebAssociatedURLLoader> WebLocalFrameImpl::CreateVideoURLLoader(
                                            GetFrame());
 }
 #endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
-
 }  // namespace blink

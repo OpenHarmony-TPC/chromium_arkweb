@@ -25,6 +25,7 @@
 #include "media/base/audio_parameters.h"
 #include "media/audio/ohos/audio_dump.h"
 #include "media/base/audio_bus.h"
+#include "media/base/audio_sample_types.h"
 #include "media/base/audio_glitch_info.h"
 #include "third_party/webrtc/modules/desktop_capture/ohos/audio_buffer_adapter_impl.h"
 #include "third_party/webrtc/modules/desktop_capture/ohos/audio_capture_info_adapter_impl.h"
@@ -98,7 +99,6 @@ void BaseAudioCapturerSource::Initialize(
   portal_init_failed_ = false;
 }
 
-// LCOV_EXCL_START
 void BaseAudioCapturerSource::Start() {
   LOG(INFO) << "BaseAudioCapturerSource::Start";
   DCHECK(base_callback_);
@@ -145,7 +145,6 @@ void BaseAudioCapturerSource::Stop() {
 
   DumpFileUtil::CloseDumpScopedFile(&dumpFile_);
 }
-// LCOV_EXCL_STOP
 
 void BaseAudioCapturerSource::HandleAudioBuffer(OHOS::NWeb::AudioCaptureSourceTypeAdapter type) {
   int32_t ret = -1;
@@ -180,7 +179,7 @@ void BaseAudioCapturerSource::HandleAudioBuffer(OHOS::NWeb::AudioCaptureSourceTy
   {
     base::AutoLock lock(base_callback_lock_);
     if (base_callback_) {
-      base_callback_->Capture(audio_bus.get(), timeStamp, {}, 1.0, false);
+      base_callback_->Capture(audio_bus.get(), timeStamp, {}, 1.0);
       DumpFileUtil::WriteDumpScopedFile(dumpFile_, audiobuffer->GetBuffer(), audiobuffer->GetLength());
     }
   }

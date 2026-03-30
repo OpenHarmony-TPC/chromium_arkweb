@@ -16,20 +16,19 @@
 #include "base/base_switches.h"
 #include "base/command_line.h"
 #include "base/system/sys_info.h"
+#include "base/time/time.h"
 #include "base/ohos/sys_info_utils_ext.h"
 #include "content/public/common/content_switches.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
-#include "ui/native_theme/native_theme_features.h"
-#include "ui/native_theme/native_theme_utils.h"
-#include "ui/native_theme/overlay_scrollbar_constants_aura.h"
+#include "ui/native_theme/features/native_theme_features.h"
+#include "ui/native_theme/overlay_scrollbar_constants.h"
 
 namespace blink {
 
 extern bool IsSmallScreen(const gfx::Size& size);
 
-// LCOV_EXCL_START
 void AdjustMemoryLimitBasedOnScreenWidth(
     cc::ManagedMemoryPolicy& actual,
     const gfx::Size& initial_screen_size,
@@ -85,26 +84,29 @@ void SetMaxVisibleBytes(cc::ManagedMemoryPolicy& actual)
   Platform* platform = Platform::Current();
   if (platform->GetDrawMode()) {
     actual.bytes_limit_when_visible =
-        std::min(actual.bytes_limit_when_visible,
+        std::max(actual.bytes_limit_when_visible,
                  static_cast<size_t>(2000 * 1024 * 1024));
-#if BUILDFLAG(IS_ARKWEB)
-  } else if (base::SysInfo::AmountOfPhysicalMemoryMB() >= 2000) {
+  } else if (base::SysInfo::AmountOfPhysicalMemory().InMiB() >= 2000) {
     // It needs more tile memory for foldable phone.
     actual.bytes_limit_when_visible =
         std::max(actual.bytes_limit_when_visible,
                  static_cast<size_t>(1024 * 1024 * 1024));
-#endif
   }
 }
 
 void ConfigureOverlayScrollbarSettings(cc::LayerTreeSettings& settings)
 {
-  if (ui::IsOverlayScrollbarEnabled()) {
+  if (ui::IsOverlayScrollbarEnabledByFeatureFlag()) {
     settings.scrollbar_animator = cc::LayerTreeSettings::AURA_OVERLAY;
     settings.scrollbar_fade_delay = ui::kOverlayScrollbarFadeDelay;
     settings.scrollbar_fade_duration = ui::kOverlayScrollbarFadeDuration;
+    settings.enable_fluent_overlay_scrollbar =
+        ui::IsFluentOverlayScrollbarEnabled();
     settings.scrollbar_thinning_duration =
-        ui::kOverlayScrollbarThinningDuration;
+        settings.enable_fluent_overlay_scrollbar
+            ? base::Milliseconds(100)
+            // TODO(crbug.com/40487528): This value is still undetermined.
+            : base::Milliseconds(200);
     settings.scrollbar_flash_after_any_scroll_update = true;
   }
 }
@@ -125,17 +127,19 @@ void AdjustGraphicsSettings(const gfx::Size& screen_size,
     settings.max_memory_for_prepaint_percentage = 50;
   }
 
-  if (ui::IsOverlayScrollbarEnabled()) {
+  if (ui::IsOverlayScrollbarEnabledByFeatureFlag()) {
     settings.scrollbar_animator = cc::LayerTreeSettings::AURA_OVERLAY;
     settings.scrollbar_fade_delay = ui::kOverlayScrollbarFadeDelay;
     settings.scrollbar_fade_duration = ui::kOverlayScrollbarFadeDuration;
+    settings.enable_fluent_overlay_scrollbar =
+        ui::IsFluentOverlayScrollbarEnabled();
     settings.scrollbar_thinning_duration =
-        ui::kOverlayScrollbarThinningDuration;
+        settings.enable_fluent_overlay_scrollbar
+            ? base::Milliseconds(100)
+            // TODO(crbug.com/40487528): This value is still undetermined.
+            : base::Milliseconds(200);
     settings.scrollbar_flash_after_any_scroll_update = false;
   }
-
-  // TODO(danakj): Only do this on low end devices.
-  settings.create_low_res_tiling = true;
 }
 
 void SetEnableDeleteUnusedResourcesDelay(cc::LayerTreeSettings& settings)
@@ -150,5 +154,4 @@ void SetEnableDeleteUnusedResourcesDelay(cc::LayerTreeSettings& settings)
 #endif
   }
 }
-// LCOV_EXCL_STOP
 }  // namespace blink

@@ -58,7 +58,7 @@ MouseEventManagerExt::MouseEventManagerExt(LocalFrame& frame, ScrollManager& scr
 #if BUILDFLAG(ARKWEB_AI)
   create_overlay_timer_.Start(
       FROM_HERE, HOVER_CREATE_OVERLAY_TIME,
-      WTF::BindRepeating(&MouseEventManagerExt::CreateOverlayCallback,
+      BindRepeating(&MouseEventManagerExt::CreateOverlayCallback,
                          WrapPersistent(weak_factory_.GetWeakCell())));
   create_overlay_timer_.Stop();
 #endif
@@ -279,7 +279,7 @@ void MouseEventManagerExt::HandleCreateOverlay(T const& targeted_event) {
   LOG(INFO) << "MouseEventManagerExt::HandleCreateOverlay fold_screen_status_ is "
             << fold_screen_status_;
   gfx::Rect image_rect =
-      frame_->View()->FrameToDocument(hit_test_result.ImageRect());
+      frame_->View()->FrameToDocument(hit_test_result.imp_utils_->ImageRect());
   gfx::Point touch_point = frame_->View()->FrameToDocument(
       gfx::ToRoundedPoint(targeted_event.PositionInRootFrame()));
   gfx::Rect view_rect = frame_->View()->FrameToDocument(
@@ -311,7 +311,7 @@ void MouseEventManagerExt::HandleCreateOverlay(T const& targeted_event) {
         std::min(1.0f, KMaxAnalyzedImageDimension * 1.0f /
                            std::max(image_width, image_height));
     paint_image = Image::ResizeAndOrientImage(
-        paint_image, image->CurrentFrameOrientation(),
+        paint_image, image->Orientation(),
         gfx::Vector2dF(shrink_ratio, shrink_ratio));
     if (!paint_image.GetSwSkImage()) {
       LOG(ERROR) << "MouseEventManagerExt::CreateOverlay, downsampling failed.";
@@ -325,11 +325,11 @@ void MouseEventManagerExt::HandleCreateOverlay(T const& targeted_event) {
         frame_, bm,
         gfx::Point(touch_point.x() - image_rect.x(),
                    touch_point.y() - image_rect.y()),
-        WTF::BindRepeating(&MouseEventManagerExt::GetAbsImageRect,
+        BindRepeating(&MouseEventManagerExt::GetAbsImageRect,
                            WrapPersistent(weak_factory_.GetWeakCell())),
-        WTF::BindRepeating(&MouseEventManagerExt::SetOverlayInProgress,
+        BindRepeating(&MouseEventManagerExt::SetOverlayInProgress,
                            WrapPersistent(weak_factory_.GetWeakCell())),
-        WTF::BindRepeating(&MouseEventManagerExt::OnDestroyImageAnalyzerOverlay,
+        BindRepeating(&MouseEventManagerExt::OnDestroyImageAnalyzerOverlay,
                            WrapPersistent(weak_factory_.GetWeakCell())));
   }
 }
@@ -350,7 +350,6 @@ bool MouseEventManagerExt::IsImageAnalyzerEnabled() {
 
 // LCOV_EXCL_START
 void MouseEventManagerExt::Trace(Visitor* visitor) const {
-  MouseEventManager::Trace(visitor);
   visitor->Trace(frame_);
   visitor->Trace(scroll_manager_);
   visitor->Trace(element_under_mouse_);
@@ -360,7 +359,6 @@ void MouseEventManagerExt::Trace(Visitor* visitor) const {
   visitor->Trace(hit_image_node_);
 #endif
   visitor->Trace(weak_factory_);
-  SynchronousMutationObserver::Trace(visitor);
 }
 // LCOV_EXCL_STOP
 

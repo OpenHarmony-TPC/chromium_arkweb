@@ -19,6 +19,12 @@
 #include "arkweb/build/features/features.h"
 #include "base/memory/raw_ptr.h"
 
+#if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
+#include <vector>
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/gfx/geometry/rect.h"
+#endif
+
 namespace viz {
 class SkiaOutputSurfaceDependencyImpl;
 
@@ -26,11 +32,6 @@ class SkiaOutputSurfaceDependencyImplUtils {
  public:
   raw_ptr<SkiaOutputSurfaceDependencyImpl> skiaOutputSurfaceDependencyImpl = nullptr;
   SkiaOutputSurfaceDependencyImplUtils(SkiaOutputSurfaceDependencyImpl* impl);
-
-#if BUILDFLAG(ARKWEB_D_VSYNC)
-  bool GetIsScroll();
-#endif
-
 };
 
 } // namespace viz

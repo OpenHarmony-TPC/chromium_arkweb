@@ -4,29 +4,25 @@
 
 #include "chrome/browser/ui/views/frame/browser_desktop_window_tree_host_ohos.h"
 
-#include "chrome/browser/ui/views/frame/browser_frame.h"
+#include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/frame/desktop_browser_frame_aura_ohos.h"
+#include "chrome/browser/ui/views/frame/browser_native_widget_aura_ohos.h"
 
 BrowserDesktopWindowTreeHostOhos::BrowserDesktopWindowTreeHostOhos(
     views::internal::NativeWidgetDelegate* native_widget_delegate,
     views::DesktopNativeWidgetAura* desktop_native_widget_aura,
     BrowserView* browser_view,
-    BrowserFrame* browser_frame)
+    BrowserWidget* browser_widget)
     : views::DesktopWindowTreeHostOhos(native_widget_delegate,
                                        desktop_native_widget_aura) {
-  auto* native_frame = static_cast<DesktopBrowserFrameAuraOhos*>(
-      browser_frame->native_browser_frame());
-  native_frame->set_host(this);
+  auto* native_widget = static_cast<BrowserNativeWidgetAuraOhos*>(
+      browser_widget->browser_native_widget());
+  native_widget->set_host(this);
 }
 
 views::DesktopWindowTreeHost*
 BrowserDesktopWindowTreeHostOhos::AsDesktopWindowTreeHost() {
   return this;
-}
-
-int BrowserDesktopWindowTreeHostOhos::GetMinimizeButtonOffset() const {
-  return 0;
 }
 
 bool BrowserDesktopWindowTreeHostOhos::UsesNativeSystemMenu() const {
@@ -39,8 +35,8 @@ BrowserDesktopWindowTreeHost::CreateBrowserDesktopWindowTreeHost(
     views::internal::NativeWidgetDelegate* native_widget_delegate,
     views::DesktopNativeWidgetAura* desktop_native_widget_aura,
     BrowserView* browser_view,
-    BrowserFrame* browser_frame) {
+    BrowserWidget* browser_widget) {
   return new BrowserDesktopWindowTreeHostOhos(native_widget_delegate,
                                               desktop_native_widget_aura,
-                                              browser_view, browser_frame);
+                                              browser_view, browser_widget);
 }

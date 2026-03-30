@@ -445,6 +445,6 @@ TEST_F(TexturePixelReadWriteTest, Category4_ReadWriteConsistency) {
   }
 
   float match_ratio = static_cast<float>(match_count) / (size * size);
-  EXPECT_GT(match_ratio, 0.99f) << "Read/write consistency check failed: only " 
+  EXPECT_GT(match_ratio, 0.99f) << "Read/write consistency check failed: only "
                                 << (match_ratio * 100) << "% pixels match";
 }

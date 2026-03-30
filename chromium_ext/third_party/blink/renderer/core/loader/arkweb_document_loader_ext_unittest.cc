@@ -43,7 +43,8 @@ scoped_refptr<const SharedBuffer> GetShareBufferForImageDocument(
 class FakeWebFilter : public WebDocumentSubresourceFilter {
  public:
   LoadPolicy GetLoadPolicy(const WebURL& resource_url,
-                           network::mojom::RequestDestination) override {
+                           network::mojom::RequestDestination,
+                           subresource_filter::ScopedRule* out_rule) override {
     return kAllow;
   }
 
@@ -138,7 +139,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, GetShareBufferForImageDocument_Success) {
   const char* kImageUrl2 = "https://example.com/img2.png";
   SimRequest req(kImageUrl2, "image/png");
   LoadURL(kImageUrl2);
-  WTF::Vector<char> data2;
+  Vector<char> data2;
   data2.Append(reinterpret_cast<const char*>(kTinyPngData),
                static_cast<wtf_size_t>(sizeof(kTinyPngData)));
   req.Complete(data2);
@@ -155,7 +156,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_ImageDocument_Success) {
   const char* kImageUrl = "https://example.com/img.png";
   SimRequest request(kImageUrl, "image/png");
   LoadURL(kImageUrl);
-  WTF::Vector<char> image_bytes;
+  Vector<char> image_bytes;
   image_bytes.Append(reinterpret_cast<const char*>(kTinyPngData),
                      static_cast<wtf_size_t>(sizeof(kTinyPngData)));
   request.Complete(image_bytes);
@@ -189,7 +190,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_ImageDocument_Success) {
   url_test_helpers::UnregisterAllURLsAndClearMemoryCache();
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_NE(buf, nullptr);
 }
 
@@ -198,7 +199,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_InValid_Kurl) {
   SimRequest request(kImageUrl, "image/png");
   LoadURL(kImageUrl);
 
-  WTF::Vector<char> data;
+  Vector<char> data;
   data.Append(reinterpret_cast<const char*>(kTinyPngData),
               static_cast<wtf_size_t>(sizeof(kTinyPngData)));
   request.Complete(data);
@@ -222,7 +223,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_InValid_Kurl) {
   url_test_helpers::UnregisterAllURLsAndClearMemoryCache();
 
   scoped_refptr<const SharedBuffer> buf =
-      loader->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      loader->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_EQ(buf, nullptr);
 }
 
@@ -232,7 +233,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_Resource_Empty) {
 
   SimRequest request(kImageUrl, "image/png");
   LoadURL(kImageUrl);
-  WTF::Vector<char> data;
+  Vector<char> data;
   data.Append(reinterpret_cast<const char*>(kTinyPng),
               static_cast<wtf_size_t>(sizeof(kTinyPng)));
   request.Complete(data);
@@ -251,7 +252,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_Resource_Empty) {
   url_test_helpers::UnregisterAllURLsAndClearMemoryCache();
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_EQ(buf, nullptr);
 }
 
@@ -267,7 +268,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_ProtocolIs_HTTP_Invalid)
   ASSERT_NE(ext, nullptr);
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_EQ(buf, nullptr);
 }
 
@@ -283,7 +284,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_ProtocolIs_HTTPS_Invalid
   ASSERT_NE(ext, nullptr);
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_EQ(buf, nullptr);
 }
 
@@ -299,7 +300,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_OtherProtocol) {
   ASSERT_NE(ext, nullptr);
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_EQ(buf, nullptr);
 }
 
@@ -327,7 +328,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, OnGetImageFromCache_SingleResource) {
   ASSERT_NE(ext, nullptr);
 
   scoped_refptr<const SharedBuffer> buf =
-      ext->OnGetImageFromCache(WTF::String::FromUTF8(kImageUrl));
+      ext->OnGetImageFromCache(String::FromUTF8(kImageUrl));
   EXPECT_NE(buf, nullptr);
 }
 #endif  // BUILDFLAG(ARKWEB_MENU) || BUILDFLAG(IS_ARKWEB_EXT)
@@ -468,7 +469,7 @@ TEST_F(ArkWebDocumentLoaderExtTest, GetWebUserSubresourceFilter_WithFilter) {
           std::move(nav_params), std::move(policy_container), std::move(extra));
 
   auto* filter = MakeGarbageCollected<SubresourceFilter>(
-      frame->DomWindow(), std::make_unique<FakeWebFilter>());
+      frame->GetDocument()->GetExecutionContext(), std::make_unique<FakeWebFilter>());
   loader->SetUserSubresourceFilter(filter);
 
   WebDocumentSubresourceFilter* web_filter =

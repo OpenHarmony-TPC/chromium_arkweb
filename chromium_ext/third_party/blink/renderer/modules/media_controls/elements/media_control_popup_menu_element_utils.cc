@@ -45,9 +45,11 @@ MediaControlPopupMenuElementUtils::MediaControlPopupMenuElementUtils(
 
 void MediaControlPopupMenuElementUtils::ShouldSetPopupAnchorHM(
     DOMRect* bounding_client_rect, LocalDOMWindow* dom_window) {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (element->GetMediaControls().ShouldShowVideoControlsHM()) {
     SetPopupAnchorHM(bounding_client_rect, dom_window);
   }
+#endif
 }
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
@@ -76,21 +78,21 @@ void MediaControlPopupMenuElementUtils::SetPopupAnchorHM(
 
   if (kPopupMenuBottomSpaceLeft <= dom_window->innerHeight() -
       bounding_client_rect->bottom() + kPopupMenuMarginPxOhos) {
-    WTF::String top_str_value = WTF::String::Number(bounding_client_rect->bottom() - kPopupMenuPaddingPx) + kPx;
+    String top_str_value = String::Number(bounding_client_rect->bottom() - kPopupMenuPaddingPx) + kPx;
     element->style()->setProperty(dom_window, "top", top_str_value, kImportant,
                         ASSERT_NO_EXCEPTION);
   } else {
     if (kPopupMenuBottomSpaceLeft > bounding_client_rect->top() + kPopupMenuPaddingPx) {
       float height = bounding_client_rect->top() - kPopupMenuMarginPxOhos - kPopupMenuPaddingPx;
       height = height > 0 ? height : 0;
-      WTF::String height_str_value = WTF::String::Number(height) + kPx;
+      String height_str_value = String::Number(height) + kPx;
       element->style()->setProperty(dom_window, "max-height", height_str_value, kImportant,
                           ASSERT_NO_EXCEPTION);
-      WTF::String top_str_value = WTF::String::Number(kPopupMenuMarginPxOhos) + kPx;
+      String top_str_value = String::Number(kPopupMenuMarginPxOhos) + kPx;
       element->style()->setProperty(dom_window, "top", top_str_value, kImportant,
                           ASSERT_NO_EXCEPTION);
     } else if (kPopupMenuBottomSpaceLeft <= bounding_client_rect->top() + kPopupMenuPaddingPx) {
-      WTF::String top_str_value = WTF::String::Number(bounding_client_rect->top() + kPopupMenuPaddingPx +
+      String top_str_value = String::Number(bounding_client_rect->top() + kPopupMenuPaddingPx +
                           kPopupMenuMarginPxOhos - kPopupMenuBottomSpaceLeft) + kPx;
       element->style()->setProperty(dom_window, "top", top_str_value, kImportant,
                           ASSERT_NO_EXCEPTION);
@@ -99,18 +101,18 @@ void MediaControlPopupMenuElementUtils::SetPopupAnchorHM(
 
   if (kPopupMenuLeftSpaceLeft <= bounding_client_rect->right() &&
       kPopupMenuLeftSpaceLeft > dom_window->innerWidth() - bounding_client_rect->left()) {
-      WTF::String left_str_value = WTF::String::Number(bounding_client_rect->right() - kPopupMenuLeftSpaceLeft) + kPx;
+      String left_str_value = String::Number(bounding_client_rect->right() - kPopupMenuLeftSpaceLeft) + kPx;
       element->style()->setProperty(dom_window, "left", left_str_value, kImportant, ASSERT_NO_EXCEPTION);
   } else if (kPopupMenuLeftSpaceLeft > bounding_client_rect->right() &&
       kPopupMenuLeftSpaceLeft <= dom_window->innerWidth() - bounding_client_rect->left()) {
-    WTF::String left_str_value = WTF::String::Number(bounding_client_rect->left()) + kPx;
+    String left_str_value = String::Number(bounding_client_rect->left()) + kPx;
     element->style()->setProperty(dom_window, "left", left_str_value, kImportant, ASSERT_NO_EXCEPTION);
   } else {
     if (!element->MediaElement().html_media_element_utils_.IsRTL()) {
-      WTF::String left_str_value = WTF::String::Number(bounding_client_rect->right() - kPopupMenuLeftSpaceLeft) + kPx;
+      String left_str_value = String::Number(bounding_client_rect->right() - kPopupMenuLeftSpaceLeft) + kPx;
       element->style()->setProperty(dom_window, "left", left_str_value, kImportant, ASSERT_NO_EXCEPTION);
     } else {
-      WTF::String left_str_value = WTF::String::Number(bounding_client_rect->left()) + kPx;
+      String left_str_value = String::Number(bounding_client_rect->left()) + kPx;
       element->style()->setProperty(dom_window, "left", left_str_value, kImportant, ASSERT_NO_EXCEPTION);
     }
   }
@@ -118,17 +120,17 @@ void MediaControlPopupMenuElementUtils::SetPopupAnchorHM(
 
 void  MediaControlPopupMenuElementUtils::SetOverflowPopupAnchorHM(
     DOMRect* bounding_client_rect, LocalDOMWindow* dom_window) {
-  if (!bounding_client_rect || !dom_window || !element) {
+  if (!bounding_client_rect || !dom_window || !element || !element->style()) {
     return;
   }
 
-  WTF::String top_str_value =
-      WTF::String::Number(bounding_client_rect->bottom() + kPopupMenuMarginPxOhos) + kPx;
+  String top_str_value =
+      String::Number(bounding_client_rect->bottom() + kPopupMenuMarginPxOhos) + kPx;
   element->style()->setProperty(dom_window, "top", top_str_value, kImportant,
                                 ASSERT_NO_EXCEPTION);
 
   if (element->MediaElement().html_media_element_utils_.IsRTL()) {
-    WTF::String left_str_value = WTF::String::Number(bounding_client_rect->left()) + kPx;
+    String left_str_value = String::Number(bounding_client_rect->left()) + kPx;
     element->style()->setProperty(dom_window, "left", left_str_value, kImportant,
                                   ASSERT_NO_EXCEPTION);
   } else {
@@ -142,11 +144,11 @@ void  MediaControlPopupMenuElementUtils::SetOverflowPopupAnchorHM(
       if (right_value < 0) {
         right_value = 0;
       }
-      WTF::String right_str_value = WTF::String::Number(right_value) + kPx;
+      String right_str_value = String::Number(right_value) + kPx;
       element->style()->setProperty(dom_window, "right", right_str_value, kImportant,
                                     ASSERT_NO_EXCEPTION);
     } else {
-      WTF::String left_str_value = WTF::String::Number(bounding_client_rect->right() -
+      String left_str_value = String::Number(bounding_client_rect->right() -
                                                        kOverflowPopupMenuLeftSpaceLeft) + kPx;
       element->style()->setProperty(dom_window, "left", left_str_value, kImportant,
                                     ASSERT_NO_EXCEPTION);
@@ -164,9 +166,11 @@ bool MediaControlPopupMenuElementUtils::IsOverflowMenuPopup() const {
 #endif
 
 Element* MediaControlPopupMenuElementUtils::ShouldPlaybackSpeedButton() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   if (element->GetMediaControls().ShouldShowVideoControlsHM()) {
     return &element->GetMediaControls().mediaControlsImplUtils_.Playback_Speed_Button();
   }
+#endif
 }
 
 void MediaControlPopupMenuElementUtils::Trace(Visitor* visitor) const {

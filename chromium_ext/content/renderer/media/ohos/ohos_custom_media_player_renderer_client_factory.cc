@@ -39,41 +39,19 @@ OHOSCustomMediaPlayerRendererClientFactory::CreateRenderer(
     media::VideoRendererSink* video_renderer_sink,
     media::RequestOverlayInfoCB request_surface_cb,
     const gfx::ColorSpace& target_color_space) {
-  // Used to send messages from the MPRC (Renderer process), to the MPR (Browser
-  // process). The |renderer_extension_request| will be bound in
-  // MediaPlayerRenderer.
-  mojo::PendingRemote<media::mojom::MediaPlayerRendererExtension>
-      renderer_extension_remote;
-  auto renderer_extension_receiver =
-      renderer_extension_remote.InitWithNewPipeAndPassReceiver();
-
-  // Used to send messages from the MPR (Browser process), to the MPRC (Renderer
-  // process). The |client_extension_request| will be bound in
-  // MediaPlayerRendererClient.
-  mojo::PendingRemote<media::mojom::MediaPlayerRendererClientExtension>
-      client_extension_remote;
-  auto client_extension_receiver =
-      client_extension_remote.InitWithNewPipeAndPassReceiver();
 
   std::unique_ptr<media::MojoRenderer> mojo_renderer =
       mojo_renderer_factory_->CreateMediaPlayerRenderer(
-          std::move(renderer_extension_receiver),
-          std::move(client_extension_remote), media_task_runner,
+          media_task_runner,
           video_renderer_sink);
 
   media::ScopedNativeTextureWrapper native_texture_wrapper =
       get_native_texture_wrapper_cb_.Run();
 
   return std::make_unique<OHOSMediaPlayerRendererClient>(
-      std::move(renderer_extension_remote),
-      std::move(client_extension_receiver), media_task_runner,
+      media_task_runner,
       compositor_task_runner_, std::move(mojo_renderer),
       std::move(native_texture_wrapper), video_renderer_sink);
-}
-
-media::MediaResource::Type
-OHOSCustomMediaPlayerRendererClientFactory::GetRequiredMediaResourceType() {
-  return media::MediaResource::Type::KUrl;
 }
 
 std::unique_ptr<media::Renderer>
@@ -84,15 +62,9 @@ OHOSCustomMediaPlayerRendererClientFactory::CreateCustomRenderer(
     media::VideoRendererSink* video_renderer_sink,
     media::RequestOverlayInfoCB request_surface_cb,
     const gfx::ColorSpace& target_color_space,
-    int player_id) {
-  // Used to send messages from the MPRC (Renderer process), to the MPR (Browser
-  // process). The |renderer_extension_request| will be bound in
-  // MediaPlayerRenderer.
-  mojo::PendingRemote<media::mojom::MediaPlayerRendererExtension>
-      renderer_extension_remote;
-  auto renderer_extension_receiver =
-      renderer_extension_remote.InitWithNewPipeAndPassReceiver();
-
+    int player_id,
+    const media::MediaPlayerUrlParams& params) {
+ 
   // Used to send messages from the MPR (Browser process), to the MPRC (Renderer
   // process). The |client_extension_request| will be bound in
   // MediaPlayerRendererClient.
@@ -103,15 +75,13 @@ OHOSCustomMediaPlayerRendererClientFactory::CreateCustomRenderer(
 
   std::unique_ptr<media::MojoRenderer> mojo_renderer =
       mojo_renderer_factory_->CreateCustomMediaPlayerRenderer(
-          std::move(renderer_extension_receiver),
           std::move(client_extension_remote), media_task_runner,
-          video_renderer_sink, player_id);
+          video_renderer_sink, player_id, params);
 
   media::ScopedNativeTextureWrapper native_texture_wrapper =
       get_native_texture_wrapper_cb_.Run();
 
   return std::make_unique<OHOSCustomMediaPlayerRendererClient>(
-      std::move(renderer_extension_remote),
       std::move(client_extension_receiver), media_task_runner,
       compositor_task_runner_, std::move(mojo_renderer),
       std::move(native_texture_wrapper), video_renderer_sink);

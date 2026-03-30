@@ -17,7 +17,6 @@
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
-
 #include "base/functional/callback.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
@@ -89,11 +88,6 @@ void NewEntrySetExtraHeaders(
                           ErrorPageReloadReason  reason) override;
 #endif
 
- private:
-
-#if BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
-  ErrorPageReloadReason  reload_reason_ = ErrorPageReloadReason ::INVALID;
-#endif
 };
 
 }  // namespace content

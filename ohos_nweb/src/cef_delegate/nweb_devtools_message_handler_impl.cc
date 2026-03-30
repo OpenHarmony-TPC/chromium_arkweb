@@ -127,22 +127,22 @@ void NWebDevToolsMessageHandlerImpl::GetFileSelectorTitle(std::string& title,
                                                           uint32_t mode) {
   if (title.empty()) {
     switch (mode) {
-      case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_MODE:
+       case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_MODE:
         title = "open file";
-        break;
-      case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_MULTIPLE_MODE:
+         break;
+       case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_MULTIPLE_MODE:
         title = "open files";
-        break;
-      case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_FOLDER_MODE:
+         break;
+       case NWebFileSelectorParams::FileSelectorMode::FILE_OPEN_FOLDER_MODE:
         title = "open file folder";
-        break;
-      case NWebFileSelectorParams::FileSelectorMode::FILE_SAVE_MODE:
+         break;
+       case NWebFileSelectorParams::FileSelectorMode::FILE_SAVE_MODE:
         title = "save as";
-        break;
-      default:
-        break;
-    }
-  }
+         break;
+       default:
+         break;
+     }
+   }
 }
 
 bool NWebDevToolsMessageHandlerImpl::ShowFileChooser(

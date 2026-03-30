@@ -82,6 +82,10 @@ class RootCompositorFrameSinkImplExt : public RootCompositorFrameSinkImpl {
   void EvictFrameBackBuffers();
 #endif
 
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  void SetIfNeedCleanBuffers(bool need_clean_buffers);
+#endif
+
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)
   void SetIsOfflineWebComponentInactive(bool is_inactive);
 #endif
@@ -119,6 +123,10 @@ class RootCompositorFrameSinkImplExt : public RootCompositorFrameSinkImpl {
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
   void RestoreRenderFit(const FrameSinkId& frame_sink_id) override;
 #endif  // ARKWEB_MAXIMIZE_RESIZE
+
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+  void ModifyRenderFit(int32_t fitType, const FrameSinkId& frame_sink_id) override;
+#endif  // ARKWEB_ROTATE_RESIZE
 };
 }  // namespace viz
 #endif  // COMPONENTS_VIZ_SERVICE_FRAME_SINKS_ROOT_COMPOSITOR_FRAME_SINK_IMPL_EXT_H_

@@ -18,6 +18,9 @@
 #include <shared_mutex>
 
 #include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/logging.h"
 #include "capi/nweb_permission_status_query.h"
 #include "nweb_access_query_delegate.h"

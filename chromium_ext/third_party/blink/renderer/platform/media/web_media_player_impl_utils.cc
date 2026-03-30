@@ -45,7 +45,6 @@
 #include "media/base/media_log.h"
 #include "media/base/media_player_logging_id.h"
 #include "media/base/media_switches.h"
-#include "media/base/media_url_demuxer.h"
 #include "media/base/memory_dump_provider_proxy.h"
 #include "media/base/remoting_constants.h"
 #include "media/base/renderer.h"
@@ -57,9 +56,6 @@
 #include "media/filters/ffmpeg_demuxer.h"
 #include "media/filters/memory_data_source.h"
 #include "media/filters/pipeline_controller.h"
-#include "media/learning/common/learning_task_controller.h"
-#include "media/learning/common/media_learning_tasks.h"
-#include "media/learning/mojo/public/cpp/mojo_learning_task_controller.h"
 #include "media/media_buildflags.h"
 #include "media/mojo/mojom/media_metrics_provider.mojom-blink.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -68,8 +64,6 @@
 #include "net/http/http_request_headers.h"
 #include "net/url_request/url_request_job.h"
 #include "services/device/public/mojom/battery_monitor.mojom-blink.h"
-#include "third_party/blink/public/common/media/display_type.h"
-#include "third_party/blink/public/common/media/watch_time_reporter.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/web_audio_source_provider_impl.h"
 #include "third_party/blink/public/platform/web_content_decryption_module.h"
@@ -155,6 +149,7 @@ void WebMediaPlayerImplUtils::ExitedFullscreenExt() {
 bool WebMediaPlayerImplUtils::DoLoadExt(WebMediaPlayer::CorsMode cors_mode, bool is_cache_disabled) {
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
   if (impl->demuxer_manager_->LoadedUrl().SchemeIs(media::remoting::kRemotingScheme)) {
+    LOG(INFO) << "disable custom renderer for remote scheme";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO) << "disable custom renderer for remote scheme";
 #endif  // ARKWEB_LOGGER_REPORT
@@ -272,11 +267,12 @@ std::unique_ptr<media::Renderer> WebMediaPlayerImplUtils::CreateRendererExtConfi
             impl->media_task_runner_, impl->worker_task_runner_,
             impl->audio_source_provider_.get(), impl->compositor_.get(),
             std::move(request_overlay_info_cb), impl->client_->TargetColorSpace(),
-            impl->GetDelegateId());
+            impl->GetPlayerId(), impl->custom_media_player_url_params_);
+            
     std::vector<media::Renderer::MediaSourceInfo> media_source_list;
     media::Renderer::MediaSourceInfo media_source_info;
     media_source_info.media_format = impl->client_->GetMediaFormat();
-    media_source_info.media_source = impl->demuxer_manager_->LoadedUrl().spec();
+    media_source_info.media_source = impl->custom_media_player_url_params_.MediaUrl().spec();
     media_source_list.emplace_back(media_source_info);
     for (const auto& source_info : impl->client_->GetRemainSourceInfos()) {
       media_source_list.emplace_back(source_info);
@@ -314,8 +310,30 @@ std::unique_ptr<media::Renderer> WebMediaPlayerImplUtils::CreateRendererExtConfi
   return nullptr;
 }
 
+void WebMediaPlayerImplUtils::GenerateCustomMediaPlayerUrlParams(base::flat_map<std::string, std::string> headers) {
+  // Create MediaPlayerUrlParams for OHOS custom media player.
+  // This encapsulates all necessary information that was previously in MediaUrlParams.
+  if (impl->should_create_custom_renderer_) {
+    if (impl->demuxer_manager_) {
+      GURL url = impl->demuxer_manager_->LoadedUrl();
+      impl->custom_media_player_url_params_.SetMediaUrl(std::move(url));
+    }
+  impl->custom_media_player_url_params_.SetHeaders(headers);
+  impl->custom_media_player_url_params_.SetSiteForCookies(
+    std::move(impl->frame_->GetDocument().SiteForCookies()));
+  impl->custom_media_player_url_params_.SetTopFrameOrigin(
+    std::move(impl->frame_->GetDocument().TopFrameOrigin()));
+  impl->custom_media_player_url_params_.SetStorageAccessApiStatus(
+    std::move(impl->frame_->GetDocument().StorageAccessApiStatus()));
+  impl->custom_media_player_url_params_.SetPreloadType(impl->initial_preload_);
+  impl->custom_media_player_url_params_.SetMediaSourceType(static_cast<uint32_t>(impl->load_type_));
+  impl->custom_media_player_url_params_.SetIsHls(false);
+  }
+}
+
 // LCOV_EXCL_START
 void WebMediaPlayerImplUtils::SetSuspendStateExt() {
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   media::RequestSurfaceCB request_surface_cb =
       base::BindPostTaskToCurrentDefault(
           base::BindOnce(&WebMediaPlayerImplExt::OnSurfaceRequested,
@@ -327,6 +345,7 @@ void WebMediaPlayerImplUtils::SetSuspendStateExt() {
   impl->pipeline_controller_->Resume(
       std::move(request_surface_cb),
       std::move(video_decoder_changed_cb));
+#endif
 }
 
 void WebMediaPlayerImplUtils::OnIdleTimeoutExt() {
@@ -347,8 +366,8 @@ void WebMediaPlayerImplUtils::PauseExt() {
 
 void WebMediaPlayerImplUtils::DoSeekExt(base::TimeDelta time) {
 #if BUILDFLAG(ARKWEB_MEDIA)
-  LOG(WARNING) << "OhMedia::DoSeek(), seconds = " << time.InSecondsF() << "s)"
-               << " delegate_id_:" << impl->delegate_id_;
+  LOG(WARNING) << "OhMedia::DoSeek(hash" << std::hex << base::FastHash(base::byte_span_from_ref(impl.get()))
+               << "), seconds = " << time.InSecondsF() << "s)";
 #endif // BUILDFLAG(ARKWEB_MEDIA)
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(WARNING) << "OhMedia::DoSeek(" << (void*)this
@@ -362,12 +381,13 @@ void WebMediaPlayerImplUtils::DoSeekExt(base::TimeDelta time) {
 
 void WebMediaPlayerImplUtils::SetVolumeExt(double volume) {
 #if BUILDFLAG(ARKWEB_MEDIA)
+  LOG(INFO) << "OhMedia:: " << __func__ << "(hash"
+            << std::hex << base::FastHash(base::byte_span_from_ref(impl.get())) << "), volume =" << volume;
+#endif // BUILDFLAG(ARKWEB_MEDIA)
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO) << "OhMedia:: " << __func__ << "(hash" << std::hex
-                     << base::FastHash(base::byte_span_from_ref(impl))
+  LOG_FEEDBACK(INFO) << "OhMedia:: " << __func__ << "(" << (void*)this
                      << "), volume =" << volume;
 #endif
-#endif  // BUILDFLAG(ARKWEB_MEDIA)
 }
 
 void WebMediaPlayerImplUtils::OnFrameShownExt() {
@@ -382,11 +402,13 @@ void WebMediaPlayerImplUtils::OnFrameShownExt() {
 
 void WebMediaPlayerImplUtils::OnFrameHiddenExt() {
 #if BUILDFLAG(ARKWEB_MEDIA)
+  LOG(INFO) << "WebMediaPlayerImpl::OnFrameHidden()"
+            << " delegate_id_:" << impl->delegate_id_;
+#endif  // BUILDFLAG(ARKWEB_MEDIA)
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "WebMediaPlayerImpl::OnFrameHidden()"
                      << " delegate_id_:" << impl->delegate_id_;
 #endif
-#endif  // BUILDFLAG(ARKWEB_MEDIA)
 
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
   impl->client_->OnPageVisibilityChanged();
@@ -430,7 +452,7 @@ void WebMediaPlayerImplUtils::OnVideoNaturalSizeChangeExt() {
 #if BUILDFLAG(ARKWEB_MEDIA)
   if (!impl->paused_ && impl->IsPageHidden() && impl->ShouldPausePlaybackWhenHidden()) {
     LOG(INFO) << "OhMedia::WebMediaPlayerImpl::OnVideoNaturalSizeChange pause when hidden";
-    impl->Pause();
+    impl->Pause(blink::WebMediaPlayer::PauseReason::kPageHidden);
 
   }
 #endif

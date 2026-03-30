@@ -16,6 +16,10 @@
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "arkweb/ohos_adapter_ndk/mock_ndk_api/include/mock_ndk_api.h"
+#include <BasicServicesKit/oh_commonevent_support.h>
+#include <BasicServicesKit/ohbattery_info.h>
+#include "arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/net_connect_adapter_fuzzer/net_connect_fuzz_mock.h"
+
 #define private public
 #include "arkweb/ohos_adapter_ndk/net_connect_adapter/net_connect_adapter_impl.h"
 #undef private
@@ -24,7 +28,24 @@ using namespace testing;
 using namespace OHOS::NWeb;
 using namespace MockNdkApi;
 
-class NetConnectAdapterImplTest : public ::testing::Test {};
+class NetConnectAdapterImplTest : public ::testing::Test {
+  protected:
+    void SetType(bool type){
+      MockNetCommonEventSupport::bGetParameters = type;
+      MockNetCommonEventSupport::bHasKey = type;
+      MockNetCommonEventSupport::bGetInt = type;
+      MockNetCommonEventSupport::bGetCode = type;
+    }
+    void SetUp() override {
+      adapter_ = std::make_shared<NetConnectAdapterImpl>();
+      SetType(true);
+    }
+    void TearDown() override {
+      SetType(false);
+
+    }
+    std::shared_ptr<NetConnectAdapterImpl> adapter_;
+};
 
 class MockNetConnectAdapterImpl : public NetConnectAdapterImpl {
  public:
@@ -43,6 +64,16 @@ class MockNetConnCallback : public NetConnCallback {
   MOCK_METHOD(int32_t, OnNetConnectionPropertiesChanged,
       (const std::shared_ptr<NetConnectionPropertiesAdapter>), (override));
 };
+class MockVpnListerner : public VpnListener {
+  public:
+  MOCK_METHOD(void, OnAvailable, (), (override));
+  MOCK_METHOD(void, OnLost, (), (override));
+};
+
+const int32_t DEFAULT_VALUE = -1;
+const int32_t BEARER_VPN = 4;
+const int32_t NET_CONN_STATE_CONNECTED = 3;
+const int32_t NET_CONN_STATE_DISCONNECTED = 5;
 
 /**
  * @tc.name: NetConnectAdapterImplTest_NetAvailable_001.
@@ -429,4 +460,189 @@ TEST_F(NetConnectAdapterImplTest, NetConnectAdapterImplTest_GetDnsServersByNetId
   result = net_connect_adapter_impl.GetDnsServersByNetId(netId);
   EXPECT_EQ(result.empty(), true);
   g_mock_OH_NetConn_GetAllNets = nullptr;
+}
+
+/**
+ * @tc.name: NetConnectAdapterImplTest_OnReceiveEvent.
+ * @tc.desc: test of GetDnsServersByNetId in NetConnectAdapterImplTest
+ * @tc.type: FUNC.
+ */
+TEST_F(NetConnectAdapterImplTest, OnReceiveEvent) {
+
+const CommonEvent_Parameters* para = reinterpret_cast<CommonEvent_Parameters*>(0x1234);
+  CommonEvent_RcvData data{
+    .event = "dummy_event",
+    .bundleName = "test.bundle",
+    .code = 0 ,
+    .data = {},
+    .parameters = nullptr
+  };
+
+  g_mock_OH_CommonEvent_GetEventFromRcvData = [](const CommonEvent_RcvData*) {
+    return nullptr;
+  };
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  g_mock_OH_CommonEvent_GetEventFromRcvData = [](const CommonEvent_RcvData*) {
+    return COMMON_EVENT_HTTP_PROXY_CHANGE;
+  };
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  g_mock_OH_CommonEvent_GetEventFromRcvData = [](const CommonEvent_RcvData*) {
+    return COMMON_EVENT_CONNECTIVITY_CHANGE;
+  };
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetParametersFromRcvData(_))
+    .WillOnce(testing::Return(nullptr));
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+  
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetParametersFromRcvData(_))
+    .WillOnce(testing::Return(para));
+  
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_HasKeyInParameters(_,_))
+    .WillOnce(testing::Return(false));
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetParametersFromRcvData(_))
+    .WillOnce(testing::Return(para));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_HasKeyInParameters(_,_))
+    .WillOnce(testing::Return(true));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetIntFromParameters(_,_,_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetParametersFromRcvData(_))
+    .WillOnce(testing::Return(para));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_HasKeyInParameters(_,_))
+    .WillOnce(testing::Return(true));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetIntFromParameters(_,_,_))
+    .WillOnce(testing::Return(DEFAULT_VALUE));
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  g_mock_OH_CommonEvent_GetEventFromRcvData = nullptr;
+}
+
+
+/**
+ * @tc.name: NetConnectAdapterImplTest_OnReceiveEvent002.
+ * @tc.desc: test of GetDnsServersByNetId in NetConnectAdapterImplTest
+ * @tc.type: FUNC.
+ */
+TEST_F(NetConnectAdapterImplTest, NetConnectAdapterImplTest_OnReceiveEvent002) {
+  const CommonEvent_Parameters* para = reinterpret_cast<CommonEvent_Parameters*>(0x1234);
+  CommonEvent_RcvData data{
+    .event = "dummy_event",
+    .bundleName = "test.bundle",
+    .code = 0 ,
+    .data = {},
+    .parameters = nullptr
+  };
+  g_mock_OH_CommonEvent_GetEventFromRcvData = [](const CommonEvent_RcvData*) {
+    return COMMON_EVENT_CONNECTIVITY_CHANGE;
+  };
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetParametersFromRcvData(_))
+    .WillRepeatedly(testing::Return(para));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_HasKeyInParameters(_,_))
+    .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetIntFromParameters(_,_,_))
+    .WillRepeatedly(testing::Return(BEARER_VPN));
+  adapter_->cb_ = nullptr;
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_CONNECTED));
+    std::shared_ptr<MockVpnListerner> mockListener = std::make_shared<MockVpnListerner>();
+  adapter_->cb_ = mockListener;
+  EXPECT_CALL(*mockListener,OnAvailable()).Times(1);
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+
+  EXPECT_CALL(MockNetCommonEventSupport::GetInstance(), OH_CommonEvent_GetCodeFromRcvData(_))
+    .WillOnce(testing::Return(NET_CONN_STATE_DISCONNECTED));
+  EXPECT_CALL(*mockListener,OnLost()).Times(1);
+  ASSERT_NO_FATAL_FAILURE(adapter_->OnReceiveEvent(&data));
+adapter_->cb_ = nullptr;
+  g_mock_OH_CommonEvent_GetEventFromRcvData = nullptr;
+}
+
+/**
+ * @tc.name: NetConnectAdapterImplTest_RegisterVpnListener.
+ * @tc.desc: test of GetDnsServersByNetId in NetConnectAdapterImplTest
+ * @tc.type: FUNC.
+ */
+TEST_F(NetConnectAdapterImplTest, RegisterVpnListener) {
+
+  adapter_->commonEventSubscriber_ = reinterpret_cast<CommonEvent_Subscriber *>(0x1234);
+  adapter_->RegisterVpnListener(nullptr);
+  EXPECT_NE(adapter_->commonEventSubscriber_, nullptr);
+
+  adapter_->commonEventSubscriber_ = nullptr;
+  adapter_->RegisterVpnListener(nullptr);
+  EXPECT_EQ(adapter_->cb_, nullptr);
+
+  std::shared_ptr<MockVpnListerner> mockListener = std::make_shared<MockVpnListerner>();
+  g_mock_OH_CommonEvent_CreateSubscribeInfo = [](const char *[], int32_t) { return nullptr; };
+  adapter_->RegisterVpnListener(mockListener);
+  EXPECT_EQ(adapter_->commonEventSubscribeInfo_, nullptr);
+  adapter_->commonEventSubscribeInfo_ = reinterpret_cast<CommonEvent_SubscribeInfo *>(0x2345);
+
+  g_mock_OH_CommonEvent_CreateSubscribeInfo = [](const char *[], int32_t) {
+      return reinterpret_cast<CommonEvent_SubscribeInfo *>(0x4321);
+  };
+  g_mock_OH_CommonEvent_CreateSubscriber = [](const CommonEvent_SubscribeInfo *info,
+                                               CommonEvent_ReceiveCallback callback) { return nullptr; };
+  g_mock_OH_CommonEvent_DestroySubscribeInfo = [](CommonEvent_SubscribeInfo* info) {};
+  adapter_->RegisterVpnListener(mockListener);
+  EXPECT_EQ(adapter_->commonEventSubscriber_, nullptr);
+
+  g_mock_OH_CommonEvent_CreateSubscriber = [](const CommonEvent_SubscribeInfo *info,
+                                               CommonEvent_ReceiveCallback callback) {
+      return reinterpret_cast<CommonEvent_Subscriber *>(0x3456);
+  };
+  g_mock_OH_CommonEvent_Subscribe = [](const CommonEvent_Subscriber *subscriber) {
+      return COMMONEVENT_ERR_PERMISSION_ERROR;
+  };
+
+  g_mock_OH_CommonEvent_DestroySubscriber = [](CommonEvent_Subscriber* subscriber) {};
+  adapter_->RegisterVpnListener(mockListener);
+  EXPECT_EQ(NetConnectAdapterImpl::commonEventSubscriber_, nullptr);
+
+  g_mock_OH_CommonEvent_CreateSubscribeInfo = nullptr;
+  g_mock_OH_CommonEvent_CreateSubscriber = nullptr;
+  g_mock_OH_CommonEvent_DestroySubscriber = nullptr;
+  g_mock_OH_CommonEvent_DestroySubscribeInfo = nullptr;
+}
+
+/**
+ * @tc.name: NetConnectAdapterImplTest_UnRegisterVpnListener.
+ * @tc.desc: test of GetDnsServersByNetId in NetConnectAdapterImplTest
+ * @tc.type: FUNC.
+ */
+TEST_F(NetConnectAdapterImplTest, UnRegisterVpnListener) {
+  adapter_->commonEventSubscriber_ = nullptr;
+  ASSERT_NO_FATAL_FAILURE(adapter_->UnRegisterVpnListener());
+
+  adapter_->commonEventSubscriber_ = reinterpret_cast<CommonEvent_Subscriber *>(0x1234);
+  g_mock_OH_CommonEvent_UnSubscribe = [](const CommonEvent_Subscriber*) {
+    return COMMONEVENT_ERR_INVALID_PARAMETER;
+  };
+  adapter_->UnRegisterVpnListener();
+  EXPECT_NE(adapter_->commonEventSubscriber_, nullptr);
+
+  g_mock_OH_CommonEvent_UnSubscribe = [](const CommonEvent_Subscriber*) {
+    return COMMONEVENT_ERR_OK;
+  };
+  g_mock_OH_CommonEvent_DestroySubscribeInfo = [](CommonEvent_SubscribeInfo* info) {};
+  g_mock_OH_CommonEvent_DestroySubscriber = [](CommonEvent_Subscriber* subscriber) {};
+  
+  adapter_->UnRegisterVpnListener();
+  EXPECT_EQ(adapter_->commonEventSubscriber_, nullptr);
+  g_mock_OH_CommonEvent_DestroySubscriber = nullptr;
+  g_mock_OH_CommonEvent_DestroySubscribeInfo = nullptr;
 }

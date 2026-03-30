@@ -43,7 +43,7 @@ class DragImage;
   DragImageExt* AsDragImageExt() override { return this; }
 
 #if BUILDFLAG(ARKWEB_DRAG_DROP)
-  static WTF::String filterNonPrintable(const WTF::String& input);
+  static String filterNonPrintable(const String& input);
   bool is_from_clipped_method_ = false;
   gfx::PointF image_origin_position_;
   void SetFromClippedMethod(bool from_clipped_method) {

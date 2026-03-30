@@ -15,10 +15,8 @@
 
 #include "arkweb/chromium_ext/media/gpu/ohos/ohos_heif_image_decoder.h"
 #include "arkweb/chromium_ext/media/gpu/ohos/ohos_image_decoder.h"
-
 #include <cstring>
 #include <fuzzer/FuzzedDataProvider.h>
-
 
 namespace media {
 using namespace OHOS::NWeb;
@@ -32,7 +30,6 @@ bool OHOSHeifImageDecodeFuzzTest(const uint8_t* data, size_t size)
 
     return true;
 }
-
 } // namespace media
 
 /* Fuzzer entry point */

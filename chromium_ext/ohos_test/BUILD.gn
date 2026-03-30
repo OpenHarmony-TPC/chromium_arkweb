@@ -34,6 +34,7 @@ group("ohos_fuzz") {
     testonly = true
     deps = [
       ":nweb_cookie_manager_imp_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/access_token_adapter:access_token_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/date_time_format_adapter_impl_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/graphic_adapter/ashmem_adapter_impl_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/graphic_adapter/window_adapter_impl_fuzzer",
@@ -50,7 +51,7 @@ group("ohos_fuzz") {
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_nweb/src/nweb_imf_cursor_info_adapter_fuzzer:nweb_imf_cursor_info_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_nweb/src/cef_delegate/nweb_access_request_delegate_fuzzer:nweb_access_request_delegate_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_nweb/src/cef_delegate/nweb_extension_content_settings_cef_delegate_fuzzer",
-      "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/inputmethodframework_adapter:nweb_imf_adapter_impl_fuzzer",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/inputmethodframework_adapter:imf_adapter_impl_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/multimodalinputnew_adapter:mmi_new_adapter_impl_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/battery_mgr_adapter:battery_mgr_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/datashare_adapter:datashare_adapter_fuzzer",
@@ -59,7 +60,6 @@ group("ohos_fuzz") {
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/location_adapter:location_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/print_manager_adapter:print_manager_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/sensor_adapter:sensor_adapter_fuzzer",
-      "//arkweb/chromium_ext/ohos_test/fuzztest/content/browser/renderer_host/arkweb_render_process_host_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/cert_mgr_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/net_proxy_adapter_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/net_connect_adapter_fuzzer",
@@ -75,7 +75,13 @@ group("ohos_fuzz") {
       "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/components/download/internal/common/arkweb_download_file_impl_ext_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/ohos_adapter_ndk_ai_fuzzer:ohos_adapter_ndk_api01_fuzzer",
       "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/ohos_adapter_ndk_ai_fuzzer:ohos_adapter_ndk_api02_fuzzer",
-      "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_adapter_ndk/media_avsession_adapter:media_avsession_adapter_impl_fuzzer",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/third_party/blink/renderer/core/frame:frame_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/base/trace_event:trace_event_ohos_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/components/memory_pressure:system_memory_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/content/browser/dfx/:browser_dfx_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/third_party/crashpad/crashpad/handler/linux/:crashpad_handler_linux_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/chromium_ext/third_party/crashpad/crashpad/util/linux/:crashpad_util_linux_fuzzers",
+      "//arkweb/chromium_ext/ohos_test/fuzztest/ohos_nweb/src/sysevent/:sysevent_fuzzers",
     ]
 }
 
@@ -97,7 +103,7 @@ fuzzer_test("nweb_impl_fuzzer") {
   ]
 }
 
-fuzzer_test("nweb_impl_createweb") {
+fuzzer_test("nweb_impl_createweb_fuzzer") {
   sources = [
     "fuzztest/nweb_impl_createweb_fuzzer.cc",
   ]
@@ -118,7 +124,7 @@ fuzzer_test("nweb_impl_createweb") {
   ]
 }
 
-fuzzer_test("nweb_impl_render_main") {
+fuzzer_test("nweb_impl_render_main_fuzzer") {
   sources = [
     "fuzztest/nweb_render_main_fuzzer.cc",
   ]
@@ -148,7 +154,9 @@ fuzzer_test("nweb_resource_handle_fuzzer") {
     "//net",
     "//ui/base",
     "//cef:libcef_static",
-    "//components/embedder_support:browser_util",
+    "//components/embedder_support:content_settings",
+    "//components/embedder_support:permissions",
+    "//components/embedder_support:user_agent",
     "//ohos_nweb_ex/overrides/cef:cef",
     "//third_party/googletest:gtest",
     "//third_party/googletest:gmock",
@@ -202,6 +210,7 @@ fuzzer_test("native_loader_fuzzer") {
     "//ohos_nweb/src",
   ]
   deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
     "//cef:libcef_static",
     "//content/public/common",
     "//ohos_nweb:cef_nweb",
@@ -219,6 +228,7 @@ fuzzer_test("html_plugin_element_fuzzer") {
     "//ohos_nweb/src",
   ]
   deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
     "//cef:libcef_static",
     "//content/public/common",
     "//ohos_nweb:cef_nweb",
@@ -538,21 +548,125 @@ fuzzer_test("nweb_file_selector_params_impl_fuzzer") {
   ]
 }
 
-fuzzer_test("audio_capturer_adapter_impl_fuzzer") {
-  sources = [ "fuzztest/ohos_adapter_ndk/media_adapter/audio_capturer_adapter_impl_fuzzer.cpp" ]
+fuzzer_test("nweb_access_query_delegate_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_access_query_delegate_fuzzer.cc" ]
   include_dirs = [
     "//cef",
-    "//cef/include",
     "//ohos_nweb/include",
-    "//arkweb/ohos_adapter_ndk/audio_capturer_adapter",
-    "//third_party/ohos_ndk/includes/ohos_adapter",
+    "//ohos_nweb/src",
   ]
   deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
     "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
     "//ohos_nweb:nweb_sources",
-    "//third_party/googletest:gtest",
-    "//third_party/googletest:gmock",
-    "//arkweb/ohos_adapter_ndk:adapter_ndk",
+  ]
+}
+
+fuzzer_test("nweb_data_base_delegate_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_data_base_delegate_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+    "//ohos_nweb/src/cef_delegate",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_preference_delegate_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_preference_delegate_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_preference_delegate_secondary_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_preference_delegate_secondary_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_data_storage_delegate_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_data_storage_delegate_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_data_base_impl_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/nweb_data_base_impl_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+    "//ohos_nweb/src/cef_delegate",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_web_storage_impl_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/nweb_web_storage_impl_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+  ]
+}
+
+fuzzer_test("nweb_web_storage_impl_secondary_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/src/nweb_web_storage_impl_secondary_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+  ]
+  deps = [
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
   ]
 }
 
@@ -585,6 +699,24 @@ fuzzer_test("video_encoder_adapter_impl_fuzzer") {
     "//cef/include",
     "//ohos_nweb/include",
     "//arkweb/ohos_adapter_ndk/media_adapter",
+    "//third_party/ohos_ndk/includes/ohos_adapter",
+  ]
+  deps = [
+    "//cef:libcef_static",
+    "//ohos_nweb:nweb_sources",
+    "//third_party/googletest:gtest",
+    "//third_party/googletest:gmock",
+    "//arkweb/ohos_adapter_ndk:adapter_ndk",
+  ]
+}
+
+fuzzer_test("media_avsession_adapter_impl_fuzzer") {
+  sources = [ "fuzztest/ohos_adapter_ndk/media_avsession_adapter/media_avsession_adapter_impl_fuzzer.cpp" ]
+  include_dirs = [
+    "//cef",
+    "//cef/include",
+    "//ohos_nweb/include",
+    "//arkweb/ohos_adapter_ndk/media_avsession_adapter",
     "//third_party/ohos_ndk/includes/ohos_adapter",
   ]
   deps = [
@@ -669,21 +801,6 @@ fuzzer_test("ohos_buffer_adapter_impl_fuzzer") {
   ]
 }
 
-fuzzer_test("nweb_preference_delegate_secondary_fuzzer") {
-  sources = [ "fuzztest/ohos_nweb/src/cef_delegate/nweb_preference_delegate_secondary_fuzzer.cc" ]
-  include_dirs = [
-    "//cef",
-    "//ohos_nweb/include",
-    "//ohos_nweb/src",
-  ]
-  deps = [
-    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
-    "//cef:libcef_static",
-    "//ohos_nweb:cef_nweb",
-    "//ohos_nweb:nweb_sources",
-  ]
-}
-
 fuzzer_test("nweb_first_meaningful_paint_details_fuzzer") {
   sources = [ "fuzztest/ohos_nweb/src/nweb_first_meaningful_paint_details_fuzzer.cpp" ]
   include_dirs = [
@@ -716,21 +833,6 @@ fuzzer_test("nweb_largest_contentful_paint_details_fuzzer") {
 
 fuzzer_test("nweb_output_handler_fuzzer") {
   sources = [ "fuzztest/ohos_nweb/src/nweb_output_handler_fuzzer.cpp" ]
-  include_dirs = [
-    "//cef",
-    "//ohos_nweb/include",
-    "//ohos_nweb/src",
-    "//third_party/ohos_ndk/includes/ohos_adapter",
-  ]
-  deps = [
-    "//cef:libcef_static",
-    "//ohos_nweb:cef_nweb",
-    "//ohos_nweb:nweb_sources",
-  ]
-}
-
-fuzzer_test("event_report_fuzzer") {
-  sources = [ "fuzztest/ohos_nweb/event_report/event_report_fuzzer.cc" ]
   include_dirs = [
     "//cef",
     "//ohos_nweb/include",
@@ -840,6 +942,22 @@ fuzzer_test("alloy_native_embed_first_frame_paint_event_fuzzer") {
   ]
 }
 
+fuzzer_test("event_report_fuzzer") {
+  sources = [ "fuzztest/ohos_nweb/event_report/event_report_fuzzer.cc" ]
+  include_dirs = [
+    "//cef",
+    "//ohos_nweb/include",
+    "//ohos_nweb/src",
+    "//third_party/ohos_ndk/includes/ohos_adapter",
+  ]
+  deps = [
+    "//cef:libcef_static",
+    "//ohos_nweb:cef_nweb",
+    "//ohos_nweb:nweb_sources",
+    "//arkweb/ohos_adapter_ndk:adapter_ndk_stub",
+  ]
+}
+
 fuzzer_test("audio_cenc_info_adapter_impl_fuzzer") {
   sources = [ "fuzztest/ohos_adapter_ndk/media_adapter/audio_cenc_info_adapter_impl_fuzzer.cc" ]
   include_dirs = [
@@ -865,6 +983,24 @@ fuzzer_test("audio_codec_decoder_adapter_impl_fuzzer") {
     "//cef/include",
     "//ohos_nweb/include",
     "//arkweb/ohos_adapter_ndk/media_adapter",
+    "//third_party/ohos_ndk/includes/ohos_adapter",
+  ]
+  deps = [
+    "//cef:libcef_static",
+    "//ohos_nweb:nweb_sources",
+    "//third_party/googletest:gtest",
+    "//third_party/googletest:gmock",
+    "//arkweb/ohos_adapter_ndk:adapter_ndk",
+  ]
+}
+
+fuzzer_test("audio_capturer_adapter_impl_fuzzer") {
+  sources = [ "fuzztest/ohos_adapter_ndk/media_adapter/audio_capturer_adapter_impl_fuzzer.cpp" ]
+  include_dirs = [
+    "//cef",
+    "//cef/include",
+    "//ohos_nweb/include",
+    "//arkweb/ohos_adapter_ndk/audio_capturer_adapter",
     "//third_party/ohos_ndk/includes/ohos_adapter",
   ]
   deps = [

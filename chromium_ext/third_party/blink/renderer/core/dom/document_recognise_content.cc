@@ -179,7 +179,7 @@ MatchFeatureType DocumentRecogniseContent::IsMatchControlTemplates(
   }
 
   StaticElementList* content_control_elements = document.QuerySelectorAll(
-      WTF::AtomicString::FromUTF8(control_template.c_str()));
+      AtomicString::FromUTF8(control_template.c_str()));
   if (!content_control_elements || content_control_elements->length() == 0) {
     return MatchFeatureType::MATCH_NONE_FEATURES;
   }
@@ -207,7 +207,7 @@ bool DocumentRecogniseContent::IsMatchContentTemplates(
     return false;
   }
   Element* content_element = document.QuerySelector(
-      WTF::AtomicString::FromUTF8(content_template.c_str()));
+      AtomicString::FromUTF8(content_template.c_str()));
   if (!content_element) {
     return false;
   }
@@ -219,7 +219,7 @@ bool DocumentRecogniseContent::IsMatchContentTemplates(
               << content_template
               << " content length:" << content_element->innerText().length();
 
-    auto txt_attribute = WTF::AtomicString::FromUTF8("data-txt");
+    auto txt_attribute = AtomicString::FromUTF8("data-txt");
     if (!content_element->hasAttribute(txt_attribute)) {
       return false;
     }
@@ -246,11 +246,11 @@ bool DocumentRecogniseContent::IsMetaTypeNovel(Document& document) {
     return false;
   }
 
-  auto property_attribute = WTF::AtomicString::FromUTF8("property");
-  auto property_value = WTF::AtomicString::FromUTF8("og:type");
-  auto content_attribute = WTF::AtomicString::FromUTF8("content");
-  auto novel_value = WTF::AtomicString::FromUTF8("novel");
-  auto novel_con_value = WTF::AtomicString::FromUTF8("novelcontent");
+  auto property_attribute = AtomicString::FromUTF8("property");
+  auto property_value = AtomicString::FromUTF8("og:type");
+  auto content_attribute = AtomicString::FromUTF8("content");
+  auto novel_value = AtomicString::FromUTF8("novel");
+  auto novel_con_value = AtomicString::FromUTF8("novelcontent");
 
   for (Node* child = head->firstChild(); child; child = child->nextSibling()) {
     if (!child->HasTagName(html_names::kMetaTag)) {

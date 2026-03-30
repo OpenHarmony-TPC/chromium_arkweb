@@ -45,10 +45,10 @@ class MockDelegate : public QuicStreamFrameDetector::Delegate {
 class QuicStreamFrameDetectorTest : public QuicTest {
  public:
   QuicStreamFrameDetectorTest()
-      : alarms_(&connection_alarms_delegate_, alarm_factory_, arena_),
+      : alarms_(&connection_alarms_delegate_, arena_, alarm_factory_),
+        alarm_(&alarms_, QuicAlarmSlot::kStreamFrameDetector),
         detector_(&delegate_, clock_.Now() + QuicTimeDelta::FromSeconds(1),
-                  alarms_.stream_frame_detector_alarm()),
-        alarm_(alarms_.stream_frame_detector_alarm()) {
+                  alarm_) {
     clock_.AdvanceTime(QuicTime::Delta::FromSeconds(1));
     ON_CALL(connection_alarms_delegate_, OnStreamFrameDetectorAlarm())
         .WillByDefault([&] { detector_.OnAlarm(); });
@@ -59,10 +59,10 @@ class QuicStreamFrameDetectorTest : public QuicTest {
   MockConnectionAlarmsDelegate connection_alarms_delegate_;
   QuicConnectionArena arena_;
   MockAlarmFactory alarm_factory_;
-  QuicConnectionAlarms alarms_;
+  QuicAlarmMultiplexer alarms_;
+  QuicTestAlarmProxy alarm_;
   MockClock clock_;
   QuicStreamFrameDetector detector_;
-  QuicTestAlarmProxy alarm_;
 };
  
 TEST_F(QuicStreamFrameDetectorTest, StreamFrameDetected) {
@@ -96,6 +96,6 @@ TEST_F(QuicStreamFrameDetectorTest, NoAlarmAfterStopped) {
 }
  
 }  // namespace
-
+ 
 }  // namespace test
 }  // namespace quic

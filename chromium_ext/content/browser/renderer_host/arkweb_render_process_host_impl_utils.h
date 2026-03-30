@@ -138,6 +138,7 @@ class ArkwebRenderProcessHostImplUtils {
   static std::unique_ptr<ThemeFont> g_theme_font_;
 #endif
   static RenderProcessHost* GetExistingBackgroundProcessHost();
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
   static void ReportKeyThreadEx(int32_t status,
                                 int32_t process_id,
                                 int32_t thread_id,
@@ -148,6 +149,7 @@ class ArkwebRenderProcessHostImplUtils {
                                    int32_t role);
 #if BUILDFLAG(ARKWEB_DFX_TRACING)
   static void ReportHisyevent(int64_t block_time, const std::string& mode);
+#endif
 #endif
 };
 

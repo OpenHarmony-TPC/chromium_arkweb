@@ -30,7 +30,6 @@
 #include "ui/gl/test/gl_surface_test_support.h"
 #include "ui/gl/test/gl_test_support.h"
 
-
 namespace gl {
 namespace {
 
@@ -80,7 +79,7 @@ TEST_F(GlSurfaceEglOhosTest, SwapBuffers) {
   ASSERT_TRUE(surface);
 
   gfx::FrameData frame_data;
-  auto result = surface->SwapBuffers(base::DoNothing(), frame_data);
+  auto result = surface->SwapBuffers(base::internal::DoNothingCallbackTag(), frame_data);
 
   EXPECT_TRUE(result == gfx::SwapResult::SWAP_ACK ||
               result == gfx::SwapResult::SWAP_FAILED);
@@ -146,6 +145,23 @@ TEST_F(GlSurfaceEglOhosTest, SetBypassVsyncConditionHasWindow) {
   surface->SetBypassVsyncCondition(5);
 }
 
+TEST_F(GlSurfaceEglOhosTest, SetBackbufferAllocationWithNullContext) {
+  auto info = std::make_unique<WindowsSurfaceInfo>();
+  info->window = reinterpret_cast<void*>(0x3333);
+  info->display = eglGetCurrentDisplay();
+  info->context = eglGetCurrentContext();
+  info->surface = eglGetCurrentSurface(EGL_DRAW);
+
+  auto res = NWebNativeWindowTracker::GetInstance()->AddNativeWindow(info.get());
+  void* window = NWebNativeWindowTracker::GetInstance()->GetNativeWindow(res);
+  NativeViewGLSurfaceEGLOhos* surface = new NativeViewGLSurfaceEGLOhos(
+    display_->GetAs<gl::GLDisplayEGL>(),
+    reinterpret_cast<EGLNativeWindowType>(window));
+  gl_context_->ReleaseCurrent(surf_.get());
+  surface->SetBackbufferAllocation(false);
+  bool make_current_result = gl_context_->MakeCurrent(surf_.get());
+  ASSERT_TRUE(make_current_result);
+}
 
 }  // namespace
 }  // namespace gl

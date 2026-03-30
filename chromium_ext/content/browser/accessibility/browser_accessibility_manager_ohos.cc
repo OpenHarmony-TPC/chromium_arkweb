@@ -140,9 +140,8 @@ void BrowserAccessibilityManagerOHOS::MoveAccessibilityFocus(
   }
   node->manager()->SetAccessibilityFocus(*node);
 
-  if (node != node->manager()->GetBrowserAccessibilityRoot() &&
-      node->manager()->GetManagerForRootFrame() != nullptr) {
-    node->manager()->GetManagerForRootFrame()->LoadInlineTextBoxes(*node);
+  if (node != node->manager()->GetBrowserAccessibilityRoot()) {
+    node->manager()->LoadInlineTextBoxes(*node);
   }
 }
 
@@ -705,11 +704,11 @@ void BrowserAccessibilityManagerOHOS::InitializeAccessibilityEventDispatcher()
   eventThrottleDelays.insert(std::make_pair(
       static_cast<int32_t>(OHOS::NWeb::AccessibilityEventType::
                                ANNOUNCE_FOR_ACCESSIBILITY_NOT_INTERRUPT),
-      kAccessibilityEventDelayHover));
+      kAccessibilityEventDelayDefault));
   eventThrottleDelays.insert(std::make_pair(
       static_cast<int32_t>(
           OHOS::NWeb::AccessibilityEventType::ANNOUNCE_FOR_ACCESSIBILITY),
-      kAccessibilityEventDelayHover));
+      kAccessibilityEventDelayDefault));
 
   std::unordered_set<int32_t> viewIndependentEvents;
   viewIndependentEvents.insert(
@@ -739,8 +738,23 @@ void AccessibilityEventDispatcher::EnqueueEvent(int64_t accessibilityId,
       std::chrono::system_clock::now());
   auto now = millis.time_since_epoch().count();
   int64_t uuid = Uuid(accessibilityId, eventType);
-  if (eventLastFiredTimes_.find(uuid) != eventLastFiredTimes_.end() &&
+  if (eventLastFiredTimes_.find(uuid) == eventLastFiredTimes_.end() ||
       now - eventLastFiredTimes_[uuid] >= eventThrottleDelays_[eventType]) {
+    if (eventType == static_cast<int32_t>(
+                         OHOS::NWeb::AccessibilityEventType::
+                             ANNOUNCE_FOR_ACCESSIBILITY_NOT_INTERRUPT) ||
+        eventType == static_cast<int32_t>(OHOS::NWeb::AccessibilityEventType::
+                                              ANNOUNCE_FOR_ACCESSIBILITY)) {
+      auto task = content::GetUIThreadTaskRunner({})->PostCancelableDelayedTask(
+          base::subtle::PostDelayedTaskPassKeyForTesting(), FROM_HERE,
+          base::BindOnce(&AccessibilityEventDispatcher::RunTask,
+                         base::Unretained(this), accessibilityId, eventType,
+                         uuid, argument),
+          base::Milliseconds(eventThrottleDelays_[eventType]));
+      pendingEvents_[uuid] = std::move(task);
+      eventLastFiredTimes_[uuid] = now + eventThrottleDelays_[eventType];
+      return;
+    }
     // Attempt to dispatch an event, can fail and return false if node is
     // invalid etc.
     if (manager_->DispatchEvent(accessibilityId, eventType, argument)) {
@@ -762,9 +776,11 @@ void AccessibilityEventDispatcher::EnqueueEvent(int64_t accessibilityId,
     // events in |mPendingEvents| of the same |uuid|, and set a delay equal.
     if (pendingEvents_.find(uuid) != pendingEvents_.end() &&
         pendingEvents_[uuid].IsValid()) {
+      // Cancel previous task by clearing the flag
       pendingEvents_[uuid].CancelTask();
     }
 
+    // Post delayed task using new Chromium 141 API
     auto task = content::GetUIThreadTaskRunner({})->PostCancelableDelayedTask(
         base::subtle::PostDelayedTaskPassKeyForTesting(), FROM_HERE,
         base::BindOnce(&AccessibilityEventDispatcher::RunTask,
@@ -809,7 +825,8 @@ int64_t AccessibilityEventDispatcher::Uuid(int64_t accessibilityId,
     LOG(ERROR) << "AccessibilityEventDispatcher::Uuid input parameter invalid";
     return 0;
   }
-  return ((static_cast<uint64_t>(accessibilityId)) << (static_cast<uint32_t>(kShiftedBitNumber))) |
+  uint64_t uuid = ((static_cast<uint64_t>(accessibilityId)) << (static_cast<uint32_t>(kShiftedBitNumber))) |
     (static_cast<uint32_t>(eventType));
+  return static_cast<int64_t>(uuid);
 }
 }  // namespace ui

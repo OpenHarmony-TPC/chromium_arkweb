@@ -22,12 +22,13 @@
 #include <string>
 
 #include "arkweb/build/features/features.h"
-#include "build/build_config.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#else
+#include "components/download/public/common/download_export.h"
 #endif
 #include "base/functional/callback_forward.h"
-#include "components/download/public/common/download_export.h"
+#include "build/build_config.h"
 
 class GURL;
 
@@ -46,8 +47,6 @@ public:
 
   virtual ~ArkWebDownloadFileExt() = default;
   
-  void test() {}
-
 #if BUILDFLAG(ARKWEB_EXT_DOWNLOAD)
   virtual void ReadAndRunCallbackIfDataReady() = 0;
  

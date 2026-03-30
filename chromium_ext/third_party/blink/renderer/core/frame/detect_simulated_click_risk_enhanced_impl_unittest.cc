@@ -44,7 +44,7 @@ class MockBusinessRiskIntelligentDetection
   MOCK_METHOD5(DetectSimulatedClickRiskEnhanced,
                void(int32_t request_id,
                     int32_t algorithm,
-                    const WTF::Vector<int8_t>& nonce,
+                    const blink::Vector<int8_t>& nonce,
                     int32_t version,
                     device::mojom::blink::BusinessRiskIntelligentDetection
                         ::DetectSimulatedClickRiskEnhancedCallback callback));
@@ -108,12 +108,12 @@ TEST_F(DetectSimulatedClickRiskEnhancedImplTest, DetectSimulatedClickRiskEnhance
   ScriptState::Scope scope(script_state);
 
   int32_t algorithm = 0;
-  WTF::Vector<int32_t> nonce = {1, 2, 3};
+  blink::Vector<int32_t> nonce = {1, 2, 3};
   int32_t version = 1;
 
   EXPECT_CALL(*mock_service_, DetectSimulatedClickRiskEnhanced)
       .WillOnce(testing::Invoke([](
-          int32_t request_id, int32_t, const WTF::Vector<int8_t>&, int32_t,
+          int32_t request_id, int32_t, const blink::Vector<int8_t>&, int32_t,
           device::mojom::blink::BusinessRiskIntelligentDetection
               ::DetectSimulatedClickRiskEnhancedCallback callback) {
         std::move(callback).Run(request_id, 0, R"({"result": "success"})");
@@ -135,7 +135,7 @@ TEST_F(DetectSimulatedClickRiskEnhancedImplTest, InvalidParameter_NonceOutOfInt8
   ScriptState::Scope scope(script_state);
 
   int32_t algorithm = 0;
-  WTF::Vector<int32_t> nonce = {1, 256, 3};
+  blink::Vector<int32_t> nonce = {1, 256, 3};
   int32_t version = 1;
 
   ScriptPromise<IDLString> promise = impl_->DetectSimulatedClickRiskEnhanced(
@@ -171,12 +171,12 @@ TEST_F(DetectSimulatedClickRiskEnhancedImplTest, DetectSimulatedClickRiskEnhance
   ScriptState::Scope scope(script_state);
 
   int32_t algorithm = 0;
-  WTF::Vector<int32_t> nonce = {1, 2, 3};
+  blink::Vector<int32_t> nonce = {1, 2, 3};
   int32_t version = 1;
 
   EXPECT_CALL(*mock_service_, DetectSimulatedClickRiskEnhanced)
       .WillOnce(testing::Invoke([](
-          int32_t request_id, int32_t, const WTF::Vector<int8_t>&, int32_t,
+          int32_t request_id, int32_t, const blink::Vector<int8_t>&, int32_t,
           device::mojom::blink::BusinessRiskIntelligentDetection
               ::DetectSimulatedClickRiskEnhancedCallback callback) {
         std::move(callback).Run(request_id,
@@ -216,7 +216,7 @@ TEST_F(DetectSimulatedClickRiskEnhancedImplTest, ServiceUnbound_AfterDispose) {
   ScriptState::Scope scope(script_state);
 
   int32_t algorithm = 0;
-  WTF::Vector<int32_t> nonce = {1, 2, 3};
+  blink::Vector<int32_t> nonce = {1, 2, 3};
   int32_t version = 1;
 
   ScriptPromise<IDLString> promise = impl_->DetectSimulatedClickRiskEnhanced(
@@ -247,8 +247,8 @@ TEST_F(DetectSimulatedClickRiskEnhancedImplTest, Dispose_CleanupAllPendingPromis
   DummyExceptionStateForTesting exception_state;
   ScriptState::Scope scope(script_state);
 
-  WTF::Vector<int32_t> nonce1 = {1, 1, 1};
-  WTF::Vector<int32_t> nonce2 = {2, 2, 2};
+  blink::Vector<int32_t> nonce1 = {1, 1, 1};
+  blink::Vector<int32_t> nonce2 = {2, 2, 2};
   ScriptPromise<IDLString> promise1
       = impl_->DetectSimulatedClickRiskEnhanced(script_state, 0, nonce1, 1, exception_state);
   ScriptPromise<IDLString> promise2

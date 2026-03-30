@@ -89,9 +89,7 @@ public:
                           float y);
   void SetMouseEventResult(bool result, bool stopPropagation);
   void NativeMouseHitTestResult(bool isNative, int layerId, int32_t button);
-  void AsyncNativeMouseHitTestResult(bool isNative,
-                                     int layerId,
-                                     int32_t button);
+  void AsyncNativeMouseHitTestResult(bool isNative, int layerId, int32_t button);
   void MouseHitTest(const WebMouseEvent& event, int32_t button);
   void SetEnableCustomVideoPlayer(bool flag);
 #endif

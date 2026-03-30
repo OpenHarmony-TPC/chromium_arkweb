@@ -15,7 +15,6 @@
 
 #include "nweb_engine_impl.h"
 
-#include "arkweb/build/features/features.h"
 #include "cef/ohos_cef_ext/libcef/browser/devtools/devtools_manager_delegate.h"
 #include "nweb_adsblock_manager_impl.h"
 #include "nweb_cookie_manager_impl.h"
@@ -36,6 +35,7 @@
 #if BUILDFLAG(ARKWEB_DFX_DUMP)
 #include "arkweb/chromium_ext/base/debug/arkweb_dump_info.h"
 #endif
+
 namespace OHOS::NWeb {
 
 namespace {
@@ -281,14 +281,11 @@ void NWebEngineImpl::SetUserAgentForHosts(
 #endif
 }
 
-// todo: check webview
-#if BUILDFLAG(IS_ARKWEB_EXT)
 void NWebEngineImpl::SetWholeWebDrawing() {
 #if BUILDFLAG(ARKWEB_SOFTWARE_COMPOSITOR)
   NWebImpl::SetWholeWebDrawing();
 #endif
 }
-#endif
 
 std::shared_ptr<NWebAdsBlockManager> NWebEngineImpl::GetAdsBlockManager() {
   return NWebAdsBlockManagerImpl::GetInstance();
@@ -379,7 +376,7 @@ std::string NWebEngineImpl::DumpArkWebInfo(const std::string& param) {
   if (!arkwebDumpInfo.IsDumpEnabled()) {
     return "web.debug.dump.on = false";
   }
-
+ 
   std::string result;
   arkwebDumpInfo.ParseCmdParamAndDump(param, result);
   return result;
@@ -396,3 +393,4 @@ bool NWebEngineImpl::GetUserAgentClientHintsEnabled() {
 }
 #endif
 }  // namespace OHOS::NWeb
+

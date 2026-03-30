@@ -19,12 +19,12 @@
 #include <string>
 
 #include "nweb_extension_reading_list_cef_delegate.h"
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "base/logging.h"
 #include "cef/ohos_cef_ext/libcef/browser/extensions/api/reading_list/reading_list_event_router_ext.h"
 #include "nweb_extension_utils.h"
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_reading_list_dispatcher.h"
 #endif
 

@@ -22,7 +22,6 @@
 
 namespace OHOS::NWeb {
 
-// LCOV_EXCL_START
 NWebResizeHelper& NWebResizeHelper::GetInstance() {
   static NWebResizeHelper instance;
   return instance;
@@ -52,7 +51,6 @@ int64_t NWebResizeHelper::GetResizeTime() {
 void NWebResizeHelper::RefreshStartTimeStamp() {
   resize_start_timestamp_ = 0;
 }
-// LCOV_EXCL_STOP
 
 int64_t NWebResizeHelper::GetResizeAdjustValue(uint32_t target_length,
                                                int64_t resize_pre_length,
@@ -88,7 +86,6 @@ int64_t NWebResizeHelper::GetResizeAdjustValue(uint32_t target_length,
   return result;
 }
 
-// LCOV_EXCL_START
 void NWebResizeHelper::RefreshParam() {
   resize_start_timestamp_ = 0;
   resize_time_ = 0L;
@@ -108,6 +105,5 @@ void NWebResizeHelper::SetResizeHeightAndWidth(int64_t height, int64_t width) {
   resize_last_height_ = height;
   resize_last_width_ = width;
 }
-// LCOV_EXCL_STOP
 
 }  // namespace OHOS::NWeb

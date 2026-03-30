@@ -38,7 +38,7 @@ bool IsSinglePlaneRGBVulkanNBFormat(VkFormat format) {
 }  // namespace
 
 bool VulkanImage::InitializeFromGpuMemoryBufferHandle(
-    // scoped_refptr<gfx::NativePixmap> pixmap,
+    scoped_refptr<gfx::NativePixmap> pixmap,
     VulkanDeviceQueue* device_queue,
     gfx::GpuMemoryBufferHandle gmb_handle,
     const gfx::Size& size,
@@ -104,13 +104,19 @@ bool VulkanImage::InitializeFromGpuMemoryBufferHandle(
     OHOS::NWeb::OhosNativeBufferAdapter& adapter =
         OHOS::NWeb::OhosAdapterHelper::GetInstance()
             .GetOhosNativeBufferAdapter();
+    #if !defined(COMPONENT_BUILD) // FIXME
     std::shared_ptr<OHOS::NWeb::NativeBufferConfigAdapterImpl> nb_desc =
         std::make_shared<OHOS::NWeb::NativeBufferConfigAdapterImpl>();
     adapter.Describe(nb_desc, nb_handle.get());
+    #endif
 
     // Intended usage of the image.
     VkImageUsageFlags usage_flags = 0;
+    #if !defined(COMPONENT_BUILD) // FIXME
     auto res = nb_desc->GetBufferUsage();
+    #else
+    bool res = false;
+    #endif
     // Get Vulkan Image usage flag equivalence of NB usage.
     if ((res & gpu::NATIVEBUFFER_USAGE_HW_TEXTURE) ||
         (res & gpu::NATIVEBUFFER_USAGE_MEM_DMA)) {
@@ -170,6 +176,58 @@ bool VulkanImage::InitializeFromGpuMemoryBufferHandle(
     }
     return true;
   }
+#if BUILDFLAG(ARKWEB_HEIF_SUPPORT)
+  else if (gmb_handle.type == gfx::GpuMemoryBufferType::NATIVE_PIXMAP) {
+    queue_family_index_ = queue_family_index;
+    auto& native_pixmap_handle = gmb_handle.native_pixmap_handle();
+    auto& scoped_fd = native_pixmap_handle.planes[0].fd;
+    if (!scoped_fd.is_valid()) {
+      return false;
+    }
+
+    VkExternalFormatOHOS external_format = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_OHOS,
+        // If externalFormat is zero, the effect is as if the
+        // VkExternalFormatOHOS structure was not present. Otherwise, the image
+        // will have the specified external format.
+        .externalFormat = 0,
+    };
+
+    VkExternalMemoryImageCreateInfo external_memory_image_info = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .pNext = &external_format,
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OHOS_NATIVE_BUFFER_BIT_OHOS,
+    };
+
+    // TODO Get VkImageUsageFlags via NativeBuffer Describe.
+    VkImageUsageFlags usage_flags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                              VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                              VK_IMAGE_USAGE_SAMPLED_BIT |
+                              VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
+    void* native_buffer = nullptr;
+    OHOS::NWeb::OhosNativeBufferAdapter& adapter =
+      OHOS::NWeb::OhosAdapterHelper::GetInstance().GetOhosNativeBufferAdapter();
+    adapter.NativeBufferFromNativeWindowBuffer(pixmap->GetWindowBuffer(), &native_buffer);
+
+    VkImportNativeBufferInfoOHOS nb_import_info = {
+        .sType = VK_STRUCTURE_TYPE_IMPORT_NATIVE_BUFFER_INFO_OHOS,
+        .buffer = static_cast<OH_NativeBuffer*>(native_buffer),
+    };
+
+    // TODO Get VkMemoryRequirements via NativeBuffer Prop using vkGetNativeBufferPropertiesOHOS,
+    // but that fails now.
+    VkMemoryRequirements* req = nullptr;
+    if (!InitializeSingleOrJointPlanes(
+            device_queue, size,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            usage_flags, 0, VK_IMAGE_TILING_OPTIMAL,
+            &external_memory_image_info, &nb_import_info, req)) {
+      return false;
+    }
+    return true;
+  }
+#endif
   return false;
 }
 

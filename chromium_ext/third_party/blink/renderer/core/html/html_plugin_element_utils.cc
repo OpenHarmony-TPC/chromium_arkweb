@@ -23,10 +23,8 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 HTMLPlugInElementUtils::HTMLPlugInElementUtils(HTMLPlugInElement* pluginElement)
     : plugin_(pluginElement) {}
-// LCOV_EXCL_STOP
 
 void HTMLPlugInElementUtils::Trace(Visitor* visitor) const {
   visitor->Trace(plugin_);
@@ -66,7 +64,6 @@ bool HTMLPlugInElementUtils::CheckNativeType(const char* key) const {
   return true;
 }
 
-// LCOV_EXCL_START
 bool HTMLPlugInElementUtils::CheckIntrinsicSizeEnable() const {
   auto settings = plugin_->GetDocument().GetSettings();
   if (!settings || !settings->GetNativeEmbedModeEnabled()) {
@@ -82,7 +79,6 @@ bool HTMLPlugInElementUtils::IsCssDisplayChangeEnabled() const {
   }
   return settings->GetCSSDisplayChangeEnabled();
 }
-// LCOV_EXCL_STOP
 
 void HTMLPlugInElementUtils::SetNativeEmbedOverlay(bool native_embed_overlay) {
   if (native_embed_overlay_ == native_embed_overlay) {
@@ -100,7 +96,7 @@ void HTMLPlugInElementUtils::SetNativeEmbedOverlayInfinity(bool native_embed_ove
   }
   native_embed_overlay_infinity_ = native_embed_overlay_infinity;
   if (auto* native_loader = plugin_->NativeLoader()) {
-    native_loader->SetNativeEmbedOverlayInfinity(native_embed_overlay_infinity_);
+    native_loader->SetNativeEmbedOverlayInfinity(native_embed_overlay_infinity);
   }
 }
 

@@ -46,10 +46,10 @@ TEST(SurfaceLayerImplTest, OnLayerRectUpdate) {
 
   layer->visible_quad_rect_ = gfx::Rect(10, 10, 100, 100);
 
-  layer->set_may_contain_video(false);
+  // layer->set_may_contain_video(false);
   layer->OnLayerRectUpdate(gfx::Rect(20, 20, 200, 200));
 
-  layer->set_may_contain_video(true);
+  // layer->set_may_contain_video(true);
   layer->OnLayerRectUpdate(gfx::Rect(10, 10, 100, 100));
 
   gfx::Rect new_rect(30, 30, 300, 300);

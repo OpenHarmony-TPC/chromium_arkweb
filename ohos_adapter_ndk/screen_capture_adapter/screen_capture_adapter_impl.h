@@ -22,6 +22,9 @@
 #include <native_buffer/native_buffer.h>
 #include <queue>
 #include "arkweb/ohos_adapter_ndk/ndk_callback_wrapper/callback_shared_wrapper.h"
+#include "multimedia/player_framework/native_avscreen_capture_base.h"
+#include "multimedia/player_framework/native_avscreen_capture_errors.h"
+#include "multimedia/player_framework/native_avscreen_capture.h"
 
 namespace OHOS::NWeb {
 void ScreenCaptureCallbackOnError(OH_AVScreenCapture *capture, int32_t errorCode, void* userData);
@@ -131,6 +134,9 @@ public:
     
     static void ScreenCaptureCallbackOnStateChange(struct OH_AVScreenCapture *capture,
         OH_AVScreenCaptureStateCode stateCode, void* userData);
+ 
+    static void ScreenCaptureCallbackOnOnUserSelected(struct OH_AVScreenCapture* capture,
+        OH_AVScreenCapture_UserSelectionInfo* selections, void* userData);
 private:
     void Release();
 

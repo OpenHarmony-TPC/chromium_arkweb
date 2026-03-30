@@ -17,6 +17,7 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/strings/string_number_conversions.h"
 #include "build/build_config.h"
 #include "components/dom_distiller/core/distiller.h"
 #include "components/dom_distiller/core/proto/distilled_article.pb.h"

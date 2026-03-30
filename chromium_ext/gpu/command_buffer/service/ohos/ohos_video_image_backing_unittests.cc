@@ -58,10 +58,8 @@ public:
     MOCK_METHOD(bool, IsUsingGpuMemory, (), (const, override));
     MOCK_METHOD(void, UpdateAndBindTexImage, (GLuint service_id), (override));
     MOCK_METHOD(bool, HasTextureOwner, (), (const, override));
-    MOCK_METHOD(TextureBase*, GetTextureBase, (), (const, override));
     MOCK_METHOD(void, NotifyOverlayPromotion, (bool promotion, const gfx::Rect& bounds), (override));
     MOCK_METHOD(bool, RenderToOverlay, (), (override));
-    MOCK_METHOD(bool, TextureOwnerBindsTextureOnUpdate, (), (override));
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
     MOCK_METHOD(std::unique_ptr<ScopedNativeBufferFenceSync>, GetNativeBuffer, (), (override));
 #endif

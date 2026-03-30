@@ -49,7 +49,6 @@ void NWebPermissionStatusQueryManager::QueryPermissionStatus(
 
   g_permission_status_query_delegate_callback->onPermissionStatusQuery(query);
 }
-
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 NO_SANITIZE("cfi-icall")
 void NWebPermissionStatusQueryManager::QueryPermissionStatus(

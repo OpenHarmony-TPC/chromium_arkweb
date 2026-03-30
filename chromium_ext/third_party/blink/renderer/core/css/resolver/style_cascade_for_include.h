@@ -34,7 +34,7 @@ class StyleCascadeUtil {
   static CSSVariableData* GetEnvironmentVariableExt(
       raw_ptr<const StyleCascade> StyleCascadeObj,
       const AtomicString& name,
-      WTF::Vector<unsigned>& indices,
+      Vector<unsigned>& indices,
       bool is_ua_scope);
 };
 

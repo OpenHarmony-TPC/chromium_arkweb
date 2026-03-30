@@ -87,7 +87,8 @@ std::string GetOhosFullname() {
       LOG(DEBUG) << "compatible device type is: " << g_compatible_device_type();
       device_type_string = g_compatible_device_type();
     } else {
-      LOG(DEBUG) << "unknown compatible device type: " << g_compatible_device_type();
+      LOG(DEBUG) << "unknown compatible device type: "
+                 << g_compatible_device_type();
     }
   }
 

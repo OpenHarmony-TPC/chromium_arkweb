@@ -23,3 +23,4 @@ SubresourceFilter* FrameFetchContext::GetUserSubresourceFilter() const {
 }
 
 }  // namespace blink
+

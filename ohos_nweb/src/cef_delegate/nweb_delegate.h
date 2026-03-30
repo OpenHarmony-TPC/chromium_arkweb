@@ -21,7 +21,10 @@
 #include <string>
 #include <unordered_map>
 
-#include "build/build_config.h"
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "capi/nweb_app_client_extension_callback.h"
 #include "capi/nweb_extension_javascript_item.h"
 #include "cef/include/cef_command_line.h"
@@ -45,20 +48,23 @@
 #include "arkweb/ohos_nweb/src/cef_delegate/nweb_user_agent_metadata_impl.h"
 #endif
 
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
-
 #if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
 #include <memory>
 
 #include "capi/nweb_download_delegate_callback.h"
 #endif  //  ARKWEB_EX_DOWNLOAD
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "build/build_config.h"
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/core/extension/nweb_app_client_extension_dispatcher.h"
 #endif
+
+#if BUILDFLAG(ARKWEB_DEVTOOLS)
+#include "ohos_nweb/src/capi/nweb_context_menus_item.h"
+#endif // ARKWEB_DEVTOOLS
 
 struct FrameInfos;
 struct IsolatedWorld;
@@ -242,11 +248,11 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
                    const std::string& encoding) override;
 #if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   int LoadUrlWithParams(const std::string& url,
-                        const LoadUrlType load_type,
+                        const LoadUrlType& load_type,
                         const std::string& refer,
                         const std::string& headers,
                         const std::string& post_data,
-                        const bool allow_https_upgrade,
+                        const bool& allow_https_upgrade,
                         int32_t transition_type) override;
 #endif
   int ContentHeight() override;
@@ -452,6 +458,10 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
       std::shared_ptr<NWebExtensionCallback> web_extension_listener) override;
   void GetImageFromContextNode() override;
   void GetImageFromCacheEx(const std::string& url) override;
+  void GetImageInfosByUrls(const std::vector<std::string> &imageUrls,
+                           std::shared_ptr<NWebImageInfoCallback> callback) override;
+  void GetImageInfosByXPaths(const std::vector<std::string> &imageXPaths,
+                           std::shared_ptr<NWebImageInfoCallback> callback) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_MEDIA_MUTE_AUDIO)
@@ -484,10 +494,8 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   bool IsSafeBrowsingEnabled() override;
   void EnableSafeBrowsing(bool enable) override;
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override;
-  void OnSafeBrowsingDetectionResult(int code,
-                                     int policy,
-                                     const std::string& mappingType,
-                                     const std::string& url) override;
+  void OnSafeBrowsingDetectionResult(
+      const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override;
 #endif  // BUILDFLAG(ARKWEB_SAFEBROWSING)
 
 #if BUILDFLAG(IS_OHOS)
@@ -504,7 +512,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void SetTransformHint(uint32_t rotation) override;
 #endif
 
-#if BUILDFLAG(ARKWEB_SECURITY_STATE)
+#if BUILDFLAG(ARKWEB_EXT_SECURITY_STATE) || BUILDFLAG(ARKWEB_SECURITY_STATE)
   int GetSecurityLevel() override;
 #endif
 
@@ -561,6 +569,8 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   void GetOverScrollOffset(float* offset_x, float* offset_y) override;
 #endif
+  void SetScrollbarLayoutPolicy(int policy) override;
+  void SetIsSystemRtlEnable(bool enable) override;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
 #if BUILDFLAG(ARKWEB_ADBLOCK)
@@ -859,6 +869,12 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   void WebExtensionContextMenuReloadFocusedFrame() override;
 #endif
 
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  bool SavePage(int32_t type,
+                const std::string& filePath,
+                CefRefPtr<CefSavePageResultCallback> callback) override;
+#endif // ARKWEB_SAVE_PAGE
+
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   void WebExtensionContextMenuGetFocusedFrameInfo(
       int32_t& frame_id,
@@ -893,6 +909,7 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
   std::pair<double, double> GetLastTouchMousePosition() override {
     return last_touch_mouse_position_;
   }
+  bool IsElementExist(std::string& xPath) override;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 #if BUILDFLAG(ARKWEB_PIP)
   void SetPipNativeWindow(int delegate_id,
@@ -905,26 +922,22 @@ class NWebDelegate : public NWebDelegateInterface, public virtual CefRefCount {
                     int event) override;
 #endif
 
-#if BUILDFLAG(ARKWEB_MENU)
-  void UpdateSingleHandleVisible(bool isVisible) override;
-#endif
-
-#if BUILDFLAG(ARKWEB_NWEB_EX)
-  void RunJavaScriptInFrames(RunJavaScriptParam param,
-                             OnReceiveValueCallback callback) override;
-  void GetAllFrameInfos(OnReceiveFrameInfosCallback callback) override;
-  void GetLastJavaScriptProxyCallingFrameInfo(
-      OnLastJavaScriptProxyCallingFrameInfoCallback callback) override;
-#endif
-
 #if BUILDFLAG(ARKWEB_READER_MODE)
-void Distill(const std::string& guid, const DistillOptions& distill_options, DistillCallback callback) override;
+  void Distill(uint64_t request_id, const DistillOptions& distill_options, DistillCallback callback) override;
 void AbortDistill() override;
 #endif // ARKWEB_READER_MODE
 
-#if BUILDFLAG(ARKWEB_ERROR_PAGE)
-  void SetErrorPageEnabled(bool enable) override;
-  bool GetErrorPageEnabled() override;
+#if BUILDFLAG(ARKWEB_BGTASK)
+  void OnBrowserForeground() override;
+  void OnBrowserBackground() override;
+#endif
+
+#if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
+  void SetBlankScreenDetectionConfig(
+      bool enable,
+      const std::vector<double>& detectionTiming,
+      const std::vector<int32_t>& detectionMethods,
+      int32_t contentfulNodesCountThreshold) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
@@ -934,16 +947,22 @@ void AbortDistill() override;
   int32_t GetHeight() override;
   void SetRotationType(RotationType rotation);
 #endif
-#if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
-  void SetBlankScreenDetectionConfig(
-      bool enable,
-      const std::vector<double>& detectionTiming,
-      const std::vector<int32_t>& detectionMethods,
-      int32_t contentfulNodesCountThreshold) override;
+
+#if BUILDFLAG(ARKWEB_MENU)
+  void UpdateSingleHandleVisible(bool isVisible) override;
 #endif
-#if BUILDFLAG(ARKWEB_BGTASK)
-  void OnBrowserForeground() override;
-  void OnBrowserBackground() override;
+
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+  void RunJavaScriptInFrames(RunJavaScriptParam,
+                             OnReceiveValueCallback callback) override;
+  void GetAllFrameInfos(OnReceiveFrameInfosCallback callback) override;
+  void GetLastJavaScriptProxyCallingFrameInfo(
+      OnLastJavaScriptProxyCallingFrameInfoCallback callback) override;
+#endif
+
+#if BUILDFLAG(ARKWEB_ERROR_PAGE)
+  void SetErrorPageEnabled(bool enable) override;
+  bool GetErrorPageEnabled() override;
 #endif
 
 #if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
@@ -970,9 +989,12 @@ void AbortDistill() override;
   void ResourceResponseDelete(int nweb_response_key) override;
   int32_t GetLastCommittedEntryPageTransition() override;
 #endif
+  std::vector<WebExtensionContextMenusItem> GetContextMenuItem() override;
+  void OnContextMenuSelected(int command_id) override;
+  void OnContextMenuClosed() override;
 
 #if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
-void SetFocusWebId(int32_t nweb_id) override;
+  void SetFocusWebId(int32_t nweb_id) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_USERAGENT)
@@ -1116,7 +1138,7 @@ void SetFocusWebId(int32_t nweb_id) override;
       nullptr;
   std::shared_ptr<OHOS::NWeb::DisplayScreenListener> display_listener_ =
       nullptr;
-  int32_t display_listener_id_ = 0;
+  int32_t display_listener_id_;
 #if BUILDFLAG(ARKWEB_AI)
   std::shared_ptr<OHOS::NWeb::FoldStatusScreenListener> foldstatus_listener_ =
       nullptr;
@@ -1168,13 +1190,22 @@ void SetFocusWebId(int32_t nweb_id) override;
   bool data_detector_enable_ = false;
 #endif
 
+#if BUILDFLAG(ARKWEB_SCREEN_OFFSET)
+  double screen_x_ = 0;
+  double screen_y_ = 0;
+  bool screen_offset_inited_ = false;
+#endif
+
 #if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
   int32_t avoid_height_ = 0;
 #endif
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
   int32_t nearest_snapshot_width_ = 0;
   int32_t nearest_snapshot_height_ = 0;
+  RotationType rotation_ = RotationType::ROTATION_0;
 #endif
+  int32_t taskid_ = 0;
+  int32_t taskidbyxpath_ = 0;
   base::WeakPtrFactory<NWebDelegate> weak_factory_{this};
 };
 }  // namespace OHOS::NWeb

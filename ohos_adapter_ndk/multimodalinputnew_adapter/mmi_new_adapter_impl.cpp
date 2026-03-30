@@ -18,6 +18,9 @@
 
 namespace OHOS::NWeb {
 
+MMINewAdapterImpl::MMINewAdapterImpl() = default;
+MMINewAdapterImpl::~MMINewAdapterImpl() = default;
+
 void OnDeviceAdded(int32_t deviceId)
 {
     std::shared_ptr<MMIListenerAdapter> deviceListener = MMINewAdapterImpl::GetInstance().GetDeviceAdapterListener();

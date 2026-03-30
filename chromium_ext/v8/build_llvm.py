@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Copyright (c) 2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,7 +18,7 @@ import sys
 
 USE_PTY = "linux" in sys.platform
 if USE_PTY:
-    import pty 
+    import pty
 
 
 def _call_with_output(cmd:str):
@@ -51,7 +51,7 @@ def _call_with_output(cmd:str):
 def main():
     is_debug = sys.argv[1]
     build_dir = "build_debug" if f'{is_debug}'.lower() == 'true' else "build_release"
-    tools_dir =  "build_tools_debug" if f'{is_debug}'.lower() == 'true' else "build_tools_release"
+    tools_dir = "build_tools_debug" if f'{is_debug}'.lower() == 'true' else "build_tools_release"
     de_or_re = "Debug" if f'{is_debug}'.lower() == 'true' else "Release"
     v8_path = os.path.dirname(os.path.realpath(__file__))
     obs_path = f"{v8_path}/../../../third_party/llvm-for-jsvm/llvm/"
@@ -145,7 +145,7 @@ def main():
     else:
         cmake_tools = f"cmake -S ./ -B {tools_dir} -DCMAKE_BUILD_TYPE={de_or_re} -DLLVM_TARGETS_TO_BUILD=AArch64 -DLLVM_INCLUDE_UTILS=OFF -DLLVM_INCLUDE_TESTS=OFF -DLLVM_INCLUDE_TOOLS=OFF -DLLVM_INCLUDE_RUNTIMES=OFF -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_BENCHMARKS=OFF -DLLVM_ENABLE_OCAMLDOC=OFF -DLLVM_ENABLE_BINDINGS=OFF -DLLVM_INCLUDE_DOCS=OFF -DLLVM_USE_SPLIT_DWARF=ON"
         cmake_targets = (f"cmake -S ./ -B {build_dir} "
-                    f"-DCMAKE_BUILD_TYPE={de_or_re} " 
+                    f"-DCMAKE_BUILD_TYPE={de_or_re} "
                     "-DLLVM_TARGETS_TO_BUILD=AArch64 "
                     "-DLLVM_INCLUDE_UTILS=OFF "
                     "-DLLVM_INCLUDE_TESTS=OFF "

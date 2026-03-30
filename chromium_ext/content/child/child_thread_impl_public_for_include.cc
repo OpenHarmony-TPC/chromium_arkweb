@@ -20,7 +20,9 @@
       std::move(callback).Run("");
       return;
     }
+#if !defined(COMPONENT_BUILD) // FIXME
     AnrDumper::GetInstance()->DumpCurrentJavaScriptStack(std::move(callback));
+#endif
   }
 
   void InvokeRenderCrashDump() override {
@@ -37,8 +39,26 @@
   void GetUid(GetUidCallback callback) override {
     std::move(callback).Run(static_cast<int32_t>(getuid()));
   }
+
+#if defined(OS_OHOS)
+  void ReportHicollie() override {
+    HicollieReporter::SetFreezeMessage("render js freeze");
+    HicollieReporter::ReportFreezeToHicollie();
+  }
+#endif
 #endif
 
 #if BUILDFLAG(ARKWEB_RENDERER_ANR_DUMP)
   bool webkit_inited_ = false;
+#endif
+
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+void SetStrictLogMode(bool is_strict_log_mode) override {
+  main_thread_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](bool is_strict_log_mode) {
+                       blink::WebView::SetStrictLogMode(is_strict_log_mode);
+                     },
+                     is_strict_log_mode));
+}
 #endif

@@ -28,6 +28,11 @@ void MediaRemotingInterstitial::AddMediaCastBackGround() {
   // Create Left Button
   left_button_ = MakeGarbageCollected<HTMLDivElement>(GetDocument());
   left_button_->SetShadowPseudoId(AtomicString("-internal-media-remoting-button-remote"));
+#if !defined(COMPONENT_BUILD)
+  if (GetVideoElement().html_media_element_utils_.IsRTL()) {
+    left_button_->setAttribute(html_names::kDirAttr, AtomicString("rtl"));
+  }
+#endif // COMPONENT_BUILD
   left_button_->setInnerText(GetVideoElement().GetLocale().QueryString(
         IDS_MEDIA_REMOTING_CAST_STOP_CAST));
 
@@ -41,6 +46,11 @@ void MediaRemotingInterstitial::AddMediaCastBackGround() {
   // Create Right Button
   right_button_ = MakeGarbageCollected<HTMLDivElement>(GetDocument());
   right_button_->SetShadowPseudoId(AtomicString("-internal-media-remoting-button-remote"));
+#if !defined(COMPONENT_BUILD)
+  if (GetVideoElement().html_media_element_utils_.IsRTL()) {
+    right_button_->setAttribute(html_names::kDirAttr, AtomicString("rtl"));
+  }
+#endif // COMPONENT_BUILD
   right_button_->setInnerText(GetVideoElement().GetLocale().QueryString(
         IDS_MEDIA_REMOTING_CAST_SWITCH_DEVICE));
 
@@ -350,8 +360,20 @@ void MediaRemotingInterstitial::UpdateProgressUI() {
   }
 }
 
-String MediaRemotingInterstitial::FormatTime(double seconds) {
-  return MediaControlsSharedHelpers::FormatTimeHM(seconds);
+String MediaRemotingInterstitial::FormatTime(double time) {
+  if (!std::isfinite(time))
+    time = 0;
+ 
+  int seconds = static_cast<int>(fabs(time));
+  int minutes = seconds / kTimeBaseRatio;
+  int hours = minutes / kTimeBaseRatio;
+  seconds %= kTimeBaseRatio;
+  minutes %= kTimeBaseRatio;
+  const char* negative_sign = (time < 0 ? "-" : "");
+  if (hours > 0) {
+    return String::Format("%s%d:%02d:%02d", negative_sign, hours, minutes, seconds);
+  }
+  return String::Format("%s%d:%02d", negative_sign, minutes, seconds);
 }
 
 // End screen mirroring button clicked
@@ -608,11 +630,6 @@ void MediaRemotingInterstitial::NotifyRemoteInterstitial(MediaControlsSizingClas
     button_container_->setAttribute(
         html_names::kClassAttr, MediaControls::GetSizingCSSClass(sizing_class));
   }
-
-  // Force a layout since |LayoutMedia::UpdateLayout()| will sometimes miss a
-  // layout otherwise.
-  if (GetLayoutObject())
-    GetLayoutObject()->SetNeedsLayout(layout_invalidation_reason::kSizeChanged);
 }
 
 #if !defined(COMPONENT_BUILD)
@@ -643,6 +660,11 @@ void MediaRemotingInterstitial::InitializeMediaRemotingInterstitial() {
   cast_icon_ = MakeGarbageCollected<HTMLDivElement>(GetDocument());
   cast_icon_->setAttribute(html_names::kClassAttr,
       AtomicString("internal-media-casting-text"));
+#if !defined(COMPONENT_BUILD)
+  if (GetVideoElement().html_media_element_utils_.IsRTL()) {
+    cast_icon_->setAttribute(html_names::kDirAttr, AtomicString("rtl"));
+  }
+#endif // COMPONENT_BUILD
   cast_icon_->setInnerText(GetVideoElement().GetLocale().QueryString(
       IDS_MEDIA_REMOTING_CAST_CASTING)); // casting
   video_casting_->AppendChild(cast_icon_);

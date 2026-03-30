@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,7 +23,7 @@ namespace {
 constexpr int kFirstCallerSlotOffset = 1;
 constexpr int kNoCallerSlotOffset = 0;
 
-inline LinkageLocation regloc(Register reg, MachineType type) 
+inline LinkageLocation regloc(Register reg, MachineType type)
 {
   return LinkageLocation::ForRegister(reg.code(), type);
 }
@@ -35,7 +35,7 @@ bool CallDescriptor::hasContext(size_t& context_idx) const
   for (size_t i = 1; i < InputCount(); i++) {
     LinkageLocation location = GetInputLocation(i);
     if (location.IsRegister() && location == regloc(kContextRegister, MachineType::AnyTagged())) {
-      context_idx = i - 1;
+      context_idx = i -1;
       return true;
     }
   }

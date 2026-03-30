@@ -18,10 +18,11 @@
 
 #include "base/memory/raw_ptr.h"
 #include "pasteboard_client_adapter.h"
+#include "base/component_export.h"
 
 namespace OHOS::NWeb {
 
-class ClipBoardImageDataAdapterImpl : public ClipBoardImageDataAdapter {
+class COMPONENT_EXPORT(UI_BASE_CLIPBOARD) ClipBoardImageDataAdapterImpl : public ClipBoardImageDataAdapter {
  public:
   ClipBoardImageDataAdapterImpl() = default;
 

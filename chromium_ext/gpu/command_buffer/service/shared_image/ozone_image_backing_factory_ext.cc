@@ -11,7 +11,6 @@
 #include "build/chromecast_buildflags.h"
 #include "build/chromeos_buildflags.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
-#include "gpu/command_buffer/common/gpu_memory_buffer_support.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/service/dawn_context_provider.h"
 #include "gpu/command_buffer/service/service_utils.h"
@@ -20,7 +19,6 @@
 #include "gpu/command_buffer/service/shared_memory_region_wrapper.h"
 #include "gpu/config/gpu_finch_features.h"
 #include "ui/gfx/buffer_types.h"
-#include "ui/gfx/gpu_memory_buffer.h"
 #include "ui/gfx/native_pixmap.h"
 #include "ui/gl/buildflags.h"
 #include "ui/gl/gl_bindings.h"
@@ -40,8 +38,7 @@ OzoneImageBackingFactoryExt::OzoneImageBackingFactoryExt(
     const GpuDriverBugWorkarounds& workarounds,
     const GpuPreferences& gpu_preferences)
     : OzoneImageBackingFactory(shared_context_state, workarounds),
-    use_passthrough_(gpu_preferences.use_passthrough_cmd_decoder &&
-                       gles2::PassthroughCommandDecoderSupported()) {
+    use_passthrough_(gpu_preferences.use_passthrough_cmd_decoder) {
 #if BUILDFLAG(USE_DAWN)
   dawn_procs_ = base::MakeRefCounted<base::RefCountedData<DawnProcTable>>(
       dawn::native::GetProcs());
@@ -64,10 +61,12 @@ std::unique_ptr<SharedImageBacking> OzoneImageBackingFactoryExt::CreateSharedIma
   DCHECK_EQ(handle.type, gfx::NATIVE_PIXMAP);
   ui::SurfaceFactoryOzone* surface_factory =
       ui::OzonePlatform::GetInstance()->GetSurfaceFactoryOzone();
+  auto pixmap_format = viz::GetSharedImageFormat(
+      GetPlaneBufferFormat(plane, buffer_format));
   scoped_refptr<gfx::NativePixmap> pixmap =
       surface_factory->CreateNativePixmapFromHandle(
-          kNullSurfaceHandle, size, buffer_format,
-          std::move(handle.native_pixmap_handle), window_buffer);
+          kNullSurfaceHandle, size, pixmap_format,
+          std::move(handle).native_pixmap_handle(), window_buffer);
   if (!pixmap) {
     LOG(ERROR) << "[HeifSupport] OzoneImageBackingFactory::CreateSharedImage "
                   "pixmap is null.";

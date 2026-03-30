@@ -8,6 +8,9 @@
 #include <string>
 #include <utility>
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/functional/callback.h"
@@ -27,10 +30,6 @@
 #include "third_party/blink/public/platform/web_content_settings_client.h"
 #include "url/gurl.h"
 #include "url/origin.h"
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
 
 #if BUILDFLAG(ARKWEB_EXT_EXCEPTION_LIST)
 #include "base/containers/flat_map.h"

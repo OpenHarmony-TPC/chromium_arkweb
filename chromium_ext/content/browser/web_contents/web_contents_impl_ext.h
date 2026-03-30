@@ -24,12 +24,9 @@
 #include "content/public/browser/media_player_listener.h"
 #endif  // ARKWEB_VIDEO_ASSISTANT
 
+#include "content/common/content_export.h"
 #if BUILDFLAG(ARKWEB_USERAGENT)
 #include "libcef/browser/alloy/alloy_browser_ua_config.h"
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-#include "arkweb/ohos_nweb/src/capi/nweb_safe_browsing_detection_result_item.h"
 #endif
 
 namespace content {
@@ -58,7 +55,7 @@ class MediaPlayerListener;
 class VideoAssistant;
 #endif  // ARKWEB_VIDEO_ASSISTANT
 
-class WebContentsImplExt : public WebContentsImpl {
+class CONTENT_EXPORT WebContentsImplExt : public WebContentsImpl {
  public:
   WebContentsImplExt(BrowserContext* browser_context);
   ~WebContentsImplExt() override;
@@ -68,6 +65,7 @@ class WebContentsImplExt : public WebContentsImpl {
   base::WeakPtr<content::WebContentsImplExt> AsWebContentsImplExtWeakThis() override {
     return weak_factory_.GetWeakPtr();
   }
+
   // WebContents ------------------------------------------------------
   void SetDelegate(WebContentsDelegate* delegate) override;
   void MediaDestroyed(const MediaPlayerId& id);
@@ -225,16 +223,11 @@ class WebContentsImplExt : public WebContentsImpl {
 
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
   bool is_safe_browsing_config_ = false;
-  bool is_safe_browsing_enabled_ = true;
-  GURL safe_browsing_check_url_;
-  int safe_browsing_check_code_ = 0;
-  int safe_browsing_check_threat_type_ = 0;
+  bool is_safe_browsing_enabled_ = false;
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override;
   bool IsSafeBrowsingDetectionConfig() override;
   bool IsSafeBrowsingDetectionStrict() override;
   bool IsSafeBrowsingDetectionDisabled() override;
-  void SetSafeBrowsingCheckDetail(int code, int threat_type, const GURL& url);
-  void GetSafeBrowsingCheckDetail(int& code, int& threat_type, GURL& url) const;
 #endif
 
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
@@ -327,7 +320,7 @@ class WebContentsImplExt : public WebContentsImpl {
     cc::BrowserControlsState constraints,
     cc::BrowserControlsState current,
     bool animate,
-    const std::optional<cc::BrowserControlsOffsetTagsInfo>& offset_tags_info)
+    const std::optional<cc::BrowserControlsOffsetTagModifications>& offset_tag_modifications)
     override;
 #if BUILDFLAG(ARKWEB_PIP)
   MediaPlayerId GetMediaPlayerId(int delegate_id,
@@ -366,24 +359,27 @@ class WebContentsImplExt : public WebContentsImpl {
 #endif // ARKWEB_READER_MODE
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
-  std::string OnRewriteUrlForNavigation(const std::string& original_url,
-                                        const std::string& referrer,
-                                        int transition_type,
-                                        bool is_key_request) override;
-  std::string NotifyNavigationRewriteUrl(const std::string& original_url,
-                                         const std::string& referrer,
-                                         int transition_type,
-                                         bool is_key_request) override;
+  std::string OnRewriteUrlForNavigation(
+      const std::string& original_url,
+      const std::string& referrer,
+      int transition_type,
+      bool is_key_request) override;
+  
+  std::string NotifyNavigationRewriteUrl(
+      const std::string& original_url,
+      const std::string& referrer, 
+      int transition_type,
+      bool is_key_request) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_MEDIA_CAST)
-  void OnMediaCastEnter();
+  void OnMediaCastEnter(); 
   void NotifyRemoteExitFullScreen() override;
 #endif // BUILDFLAG(ARKWEB_MEDIA_CAST)
 
-#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 friend class WebContentsImpl;
 friend class WebContentsImplUtils;
+#if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 private:
   std::unique_ptr<VideoAssistant> video_assistant_;
   bool custom_media_player_enabled_ = false;
@@ -418,40 +414,64 @@ private:
   void ReportVideoDecoderName(const std::string& decoder_name);
 #endif  // ARKWEB_VIDEO_ASSISTANT
 
+#if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
+  void OnShowConfirmInfoBar(const std::string& title,
+                            const std::string& infoId,
+                            const std::string& message,
+                            int buttons,
+                            const std::string& buttonLabelOK,
+                            const std::string& buttonLabelCancel);
+  void OnHideConfirmInfoBar(const std::string& title,
+                            const std::string& infoId,
+                            const std::string& message,
+                            int buttons,
+                            const std::string& buttonLabelOK,
+                            const std::string& buttonLabelCancel);
+#endif  // ARKWEB_ARKWEB_EXTENSIONS
+
 #if BUILDFLAG(ARKWEB_FILE_UPLOAD)
   bool IsActiveFileChooser() override {
     return active_file_chooser_ != nullptr;
   }
-  void SetFileChooserInActive() override { active_file_chooser_ = nullptr; }
+  void SetFileChooserInActive() override {
+    active_file_chooser_ = nullptr; 
+  }
 #endif  // BUILDFLAG(ARKWEB_FILE_UPLOAD)
-
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   void OnOverScrollOffsetChanged(float offset_x, float offset_y);
   void GetOverScrollOffset(float* offset_x, float* offset_y) override;
+#endif
+
+#if BUILDFLAG(ARKWEB_BGTASK)
+  void OnBrowserForeground() override;
+  void OnBrowserBackground() override;
 #endif
 #if BUILDFLAG(ARKWEB_PDF)
   void OnPdfScrollAtBottom(const std::string& url) override;
   void OnPdfLoadEvent(int32_t result, const std::string& url) override;
   void ProcessForPdfType(NavigationHandle* navigation_handle);
 #endif  // BUILDFLAG(ARKWEB_PDF)
+
 #if BUILDFLAG(ARKWEB_BFCACHE)
   void SetMediaResumeFromBFCachePage(bool resume) override;
   bool media_resume_from_bfcache_page_ = true;
 #endif // BUILDFLAG(ARKWEB_BFCACHE)
-#if BUILDFLAG(ARKWEB_BGTASK)
-  void OnBrowserForeground() override;
-  void OnBrowserBackground() override;
-#endif
 
 #if BUILDFLAG(ARKWEB_JS_ON_DOCUMENT_END)
   void OnDocumentEndReady(const FrameInfos& frameInfo) override;
 #endif
 
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  bool SavePageEx(const base::FilePath& main_file,
+                  SavePageType save_type,
+                  SavePageExCallback callback) override;
+#endif  // ARKWEB_SAVE_PAGE
+
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
   void OnSafeBrowsingCheckDetail(int code, int policy, int threat) override;
 #endif
 
-private:
+ private:
 #if BUILDFLAG(ARKWEB_TEST)
   friend class WebContentsImplUtilsTest;
 #endif

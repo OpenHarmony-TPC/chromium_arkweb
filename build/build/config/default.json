@@ -62,6 +62,14 @@
     "dependence": "",
     "default": "true"
 },
+{   "name": "OHOS_MEM_USAGE_REPORT",
+    "owner": "",
+    "desc": "",
+    "effect":"main gn blink_core other",
+    "genCommandline": "default",
+    "dependence": "",
+    "default": "true"
+},
 { "name": "OHOS_NOTIFICATION",
 "owner": "lingfeng wangdacheng",
 "desc": "web notification",

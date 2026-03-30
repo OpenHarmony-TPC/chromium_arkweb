@@ -131,6 +131,13 @@ void GpuServiceImpl::SetLTPOStrategy(int32_t strategy) {
 
 #if BUILDFLAG(ARKWEB_DFX_DUMP)
 void GpuServiceImpl::DumpGpuInfo(DumpGpuInfoCallback callback) {
+  if (io_runner_->BelongsToCurrentThread()) {
+    auto wrap_callback = base::BindPostTask(io_runner_, std::move(callback));
+    compositor_gpu_task_runner()->PostTask(
+        FROM_HERE, base::BindOnce(&GpuServiceImpl::DumpGpuInfo,
+                                  weak_ptr_, std::move(wrap_callback)));
+    return;
+  }
   float totalSize = 0;
   if (compositor_gpu_thread_) {
     GrDirectContext* grContext =
@@ -150,14 +157,6 @@ void GpuServiceImpl::DumpGpuInfo(DumpGpuInfoCallback callback) {
 #if BUILDFLAG(ARKWEB_D_VSYNC)
 void GpuServiceImpl::SetIsFling(bool is_fling_enabled) {
   base::ohos::DVsyncController::GetInstance().SetIsFling(is_fling_enabled);
-}
-
-void GpuServiceImpl::SetIsScroll(bool is_scroll_enabled) {
-  is_scroll_enabled_ = is_scroll_enabled;
-}
-
-bool GpuServiceImpl::GetIsScroll() {
-  return is_scroll_enabled_;
 }
 #endif
 
@@ -238,6 +237,9 @@ void GpuServiceImpl::OnFrameSnapshotCopyOutputResult(std::unique_ptr<CopyOutputR
   }
 }
 
+#endif
+ 
+#if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE) || BUILDFLAG(ARKWEB_SAFEBROWSING)
 base::WeakPtr<GpuServiceImpl> GpuServiceImpl::GetWeakPtr() const {
   return weak_ptr_;
 }

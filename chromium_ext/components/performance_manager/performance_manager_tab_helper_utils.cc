@@ -19,9 +19,7 @@ void PerformanceManagerTabHelper::MediaStartedPlaying(
     const content::MediaPlayerId& id) {
   LOG(INFO) << "MediaStartedPlaying video: " << video_type.has_video
             << " audio: " << video_type.has_audio;
-  PerformanceManagerImpl::CallOnGraphImpl(
-      FROM_HERE, base::BindOnce(&PageNodeImpl::SetIsMediaPlaying,
-                                base::Unretained(primary_page_node()), true));
+  primary_page_node()->SetIsMediaPlaying(true);
 }
 
 void PerformanceManagerTabHelper::MediaStoppedPlaying(
@@ -35,37 +33,27 @@ void PerformanceManagerTabHelper::MediaStoppedPlaying(
                   PerformanceManagerTabHelper::MediaStoppedReason::kUnspecified
               ? "kUnspecified"
               : "kReachedEndOfStream");
-  PerformanceManagerImpl::CallOnGraphImpl(
-      FROM_HERE, base::BindOnce(&PageNodeImpl::SetIsMediaPlaying,
-                                base::Unretained(primary_page_node()), false));
+  primary_page_node()->SetIsMediaPlaying(false);
 }
 
 // LCOV_EXCL_START
 void PerformanceManagerTabHelper::OneShotMediaPlayerStopped() {
-  PerformanceManagerImpl::CallOnGraphImpl(
-      FROM_HERE, base::BindOnce(&PageNodeImpl::OneShotMediaPlayerStopped,
-                                base::Unretained(primary_page_node())));
+  primary_page_node()->OneShotMediaPlayerStopped();
 }
 
 void PerformanceManagerTabHelper::AudioContextPlaybackStarted(
       const AudioContextId& audio_context_id) {
   if (audio_context_id.first) {
-    PerformanceManagerImpl::CallOnGraphImpl(
-        FROM_HERE, base::BindOnce(&PageNodeImpl::AudioContextPlaybackStarted,
-                                base::Unretained(primary_page_node()),
-                                audio_context_id.first->GetGlobalId(),
-                                audio_context_id.second));
+    primary_page_node()->AudioContextPlaybackStarted(audio_context_id.first->GetGlobalId(),
+                                                     audio_context_id.second);
   }
 }
 
 void PerformanceManagerTabHelper::AudioContextPlaybackStopped(
       const AudioContextId& audio_context_id) {
   if (audio_context_id.first) {
-    PerformanceManagerImpl::CallOnGraphImpl(
-        FROM_HERE, base::BindOnce(&PageNodeImpl::AudioContextPlaybackStopped,
-                                base::Unretained(primary_page_node()),
-                                audio_context_id.first->GetGlobalId(),
-                                audio_context_id.second));
+    primary_page_node()->AudioContextPlaybackStopped(audio_context_id.first->GetGlobalId(),
+                                                     audio_context_id.second);
   }
 }
 // LCOV_EXCL_STOP

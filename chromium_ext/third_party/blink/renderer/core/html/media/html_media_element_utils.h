@@ -16,6 +16,7 @@
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_MEDIA_ELEMENT_UTILS_H_
 
 #include "third_party/blink/public/platform/web_string.h"
+#include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/heap/member.h"
 
@@ -26,7 +27,7 @@
 namespace blink {
 class HTMLMediaElement;
 
- class HTMLMediaElementUtils {
+ class CORE_EXPORT HTMLMediaElementUtils {
  public:
     enum class PlayState { kPause = 0, kPlay, kWaiting, kPlaying };
     WebString GetTitle() const;

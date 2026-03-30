@@ -59,7 +59,7 @@ class SurfaceLayerImplUtilsTest : public testing::Test {
 };
 
 TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange001) {
-  surface_layer_impl_->set_may_contain_video(true);
+  // surface_layer_impl_->set_may_contain_video(true);
   EXPECT_CALL(mock_tree_utils_, OnLayerRectVisibilityChange(_, _)).Times(0);
   utils_->VisbilityChange();
 }
@@ -71,14 +71,14 @@ TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange002) {
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange003) {
-  surface_layer_impl_->set_may_contain_video(false);
+  // surface_layer_impl_->set_may_contain_video(false);
   surface_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   surface_layer_impl_->draw_properties().visible_layer_rect = gfx::Rect(0, 0);
   utils_->VisbilityChange();
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange004) {
-  surface_layer_impl_->set_may_contain_video(false);
+  // surface_layer_impl_->set_may_contain_video(false);
   surface_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   surface_layer_impl_->draw_properties().visible_layer_rect = gfx::Rect(0, 0);
   utils_->visibility_ = true;
@@ -87,7 +87,7 @@ TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange004) {
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange005) {
-  surface_layer_impl_->set_may_contain_video(false);
+  // surface_layer_impl_->set_may_contain_video(false);
   surface_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   surface_layer_impl_->draw_properties().visible_layer_rect = gfx::Rect(50, 50);
   utils_->visibility_ = true;
@@ -96,7 +96,7 @@ TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange005) {
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange006) {
-  surface_layer_impl_->set_may_contain_video(false);
+  // surface_layer_impl_->set_may_contain_video(false);
   surface_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   surface_layer_impl_->draw_properties().visible_layer_rect = gfx::Rect(50, 50);
   utils_->visibility_ = false;
@@ -105,7 +105,7 @@ TEST_F(SurfaceLayerImplUtilsTest, VisbilityChange006) {
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, LayerRectUpdate001) {
-  surface_layer_impl_->set_may_contain_video(true);
+  // surface_layer_impl_->set_may_contain_video(true);
   EXPECT_CALL(mock_tree_utils_, OnLayerRectUpdate(_, _)).Times(0);
   utils_->LayerRectUpdate();
 }
@@ -117,7 +117,7 @@ TEST_F(SurfaceLayerImplUtilsTest, LayerRectUpdate002) {
 }
 
 TEST_F(SurfaceLayerImplUtilsTest, LayerRectUpdate003) {
-  surface_layer_impl_->set_may_contain_video(false);
+  // surface_layer_impl_->set_may_contain_video(false);
   surface_layer_impl_->layer_impl_utils()->set_may_contain_native(true);
   gfx::Rect new_bounds(50, 50, 200, 200);
   utils_->LayerRectUpdate();

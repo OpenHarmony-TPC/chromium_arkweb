@@ -35,7 +35,7 @@
 using namespace performance_manager::policies;
 using namespace performance_manager;
 using namespace content;
-using MemoryPressureLevel = base::MemoryPressureListener::MemoryPressureLevel;
+using MemoryPressureLevel = base::MemoryPressureLevel;
 
 class GraphMock : public performance_manager::GraphImpl {
 public:
@@ -78,8 +78,6 @@ public:
 
     PageNodeMock() { }
 
-    static const char* ToString(PageNode::EmbeddingType embedding_type) { }
-
     static const char* ToString(performance_manager::PageType type) { }
     static const char* ToString(PageNode::LoadingState loading_state) { }
 
@@ -93,8 +91,6 @@ public:
 
     resource_attribution::PageContext GetResourceContext() const { }
 
-    EmbeddingType GetEmbeddingType() const { }
-
     performance_manager::PageType GetType() const { }
 
     bool IsFocused() const { }
@@ -106,6 +102,8 @@ public:
     bool IsVisible() const { 
         return is_visible;
     }
+
+    base::TimeTicks GetLastVisibilityChangeTime() const { }
 
     base::TimeDelta GetTimeSinceLastVisibilityChange() const { }
 
@@ -121,6 +119,8 @@ public:
         const { }
 
     bool HasPictureInPicture() const { }
+
+    bool HasFreezingOriginTrialOptOut() const { }
 
     bool IsOffTheRecord() const { }
 
@@ -142,6 +142,8 @@ public:
 
     bool IsHoldingWebLock() const { }
 
+    bool IsHoldingBlockingIndexedDBLock() const { }
+
     bool IsHoldingIndexedDBLock() const { }
 
     bool UsesWebRTC() const { }
@@ -162,7 +164,7 @@ public:
 
     const GURL& GetMainFrameUrl() const { }
 
-    uint64_t EstimateMainFramePrivateFootprintSize() const { }
+    base::ByteCount EstimateMainFramePrivateFootprintSize() const { }
 
     bool HadFormInteraction() const { }
 
@@ -170,9 +172,13 @@ public:
 
     base::WeakPtr<content::WebContents> GetWebContents() const { }
 
-    uint64_t EstimateResidentSetSize() const { }
+    base::ByteCount EstimateResidentSetSize() const { }
 
-    uint64_t EstimatePrivateFootprintSize() const { }
+    base::ByteCount EstimatePrivateFootprintSize() const { }
+
+    base::WeakPtr<PageNode> GetWeakPtr() { }
+
+    base::WeakPtr<const PageNode> GetWeakPtr() const { }
 
     const void* GetImpl() const { }
 

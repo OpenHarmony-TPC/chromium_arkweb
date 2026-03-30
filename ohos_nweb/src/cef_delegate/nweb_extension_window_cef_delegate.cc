@@ -21,9 +21,12 @@
 #include "cef/ohos_cef_ext/libcef/browser/extensions/api/windows/cef_windows_event_router.h"
 #include "nweb_extension_utils.h"
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/core/extension/nweb_extension_windows_dispatcher.h"
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
  
 namespace OHOS::NWeb {

@@ -27,15 +27,15 @@ using namespace OHOS::NWeb;
 namespace OHOS::NWeb {
 
 bool NetConfigAdapterImpl::GetIsCleartextPermittedByHostName(
-    const std::string& hostname) {
+    std::string_view hostname) {
   bool is_cleartext_permitted = true;
   int32_t ret = OH_Netstack_IsCleartextPermittedByHostName(
-      hostname.c_str(), &is_cleartext_permitted);
+      std::string(hostname).c_str(), &is_cleartext_permitted);
   if (ret != 0) {
     WVLOG_E(
         "GetIsCleartextPermittedByHostName for hostname:%{private}s failed, "
         "ret:%{public}d",
-        hostname.c_str(), ret);
+        hostname, ret);
     return true;
   }
   return is_cleartext_permitted;
@@ -48,7 +48,7 @@ bool NetConfigAdapterImpl::GetIsCleartextCfgByComponent(
                                                       &is_cleartext_cfg);
   if (ret != 0) {
     WVLOG_E(
-        "GetIsCleartextCfgByComponent for hostname:%{public}s failed, "
+        "GetIsCleartextCfgByComponent for component:%{public}s failed, "
         "ret:%{public}d",
         component.c_str(), ret);
     return false;

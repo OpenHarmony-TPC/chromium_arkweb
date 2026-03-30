@@ -33,9 +33,8 @@ GpuChannelExt::GpuChannelExt(GpuChannelManager* gpu_channel_manager,
                              int32_t client_id,
                              uint64_t client_tracing_id,
                              bool is_gpu_host,
-                             ImageDecodeAcceleratorWorker* image_decode_accelerator_worker,
-                             const gfx::GpuExtraInfo& gpu_extra_info,
-                             GpuMemoryBufferFactory* gpu_memory_buffer_factory)
+                             bool enable_extra_handles_validation,
+                             const gfx::GpuExtraInfo& gpu_extra_info)
     : GpuChannel(gpu_channel_manager,
                  channel_token,
                  scheduler,
@@ -46,9 +45,8 @@ GpuChannelExt::GpuChannelExt(GpuChannelManager* gpu_channel_manager,
                  client_id,
                  client_tracing_id,
                  is_gpu_host,
-                 image_decode_accelerator_worker,
-                 gpu_extra_info,
-                 gpu_memory_buffer_factory) {}
+                 enable_extra_handles_validation,
+                 gpu_extra_info) {}
 
 GpuChannelExt::~GpuChannelExt() {
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
@@ -77,7 +75,7 @@ int32_t GpuChannelExt::CreateNativeTexture(
     return -1;
   }
   scoped_refptr<StreamTexture> native_texture = StreamTexture::Create(
-      this, native_id, texture_owner_mode, std::move(receiver));
+      static_cast<GpuChannel*>(this), native_id, texture_owner_mode, std::move(receiver));
 
   if (!native_texture) {
     return -1;
@@ -127,17 +125,13 @@ bool GpuChannelExt::GetBlanklessDumpInfoAndDisableDump(uint32_t client_id, uint6
   std::lock_guard<std::mutex> lck(dump_info_map_mtx_);
   auto it = blankless_dump_info_map_.find(client_id);
   if (it == blankless_dump_info_map_.end()) {
-    LOG(DEBUG) << "blankless GetBlanklessDumpInfoAndDisableDump client_id[" << client_id << "] not found.";
     return false;
   }
   auto iter = it->second.find(frame_sink_id);
   if (iter == it->second.end()) {
-    LOG(DEBUG) << "blankless GetBlanklessDumpInfoAndDisableDump frame_sink_id[" << frame_sink_id << "] not found";
     return false;
   }
   if (!iter->second.dump_enabled) {
-    LOG(DEBUG) << "blankless GpuChannelExt::GetBlanklessDumpInfoAndDisableDump dump disable, frame_sink_id:"
-               << frame_sink_id << " client_id:" << client_id;
     return false;
   }
   LOG(DEBUG) << "blankless GpuChannelExt::GetBlanklessDumpInfoAndDisableDump got it, frame_sink_id:"

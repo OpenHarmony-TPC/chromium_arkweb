@@ -14,6 +14,7 @@
  */
 
 #include "gpu/config/gpu_finch_features.h"
+#include "gpu/config/gpu_feature_info.h"
 
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
 #include "arkweb/chromium_ext/gpu/config/gpu_finch_features_ext.h"
@@ -32,7 +33,8 @@ class gpufinchfeaturesTest : public ::testing::Test {
 };
 
 TEST_F(gpufinchfeaturesTest, IsDrDcEnabledTest) {
-  auto result = features::IsDrDcEnabled();
+  gpu::GpuFeatureInfo gpu_feature_info;
+  auto result = features::IsDrDcEnabled(gpu_feature_info);
   EXPECT_FALSE(result);
 }
 

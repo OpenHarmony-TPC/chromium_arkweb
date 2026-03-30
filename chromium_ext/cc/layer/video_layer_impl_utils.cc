@@ -21,7 +21,6 @@
 
 namespace cc {
 
-// LCOV_EXCL_START
 VideoLayerImplUtils::VideoLayerImplUtils(VideoLayerImpl* videoLayerImpl) {
   this->impl = videoLayerImpl;
 }
@@ -62,5 +61,4 @@ void VideoLayerImplUtils::LayerRectUpdate() {
   }
 }
 
-// LCOV_EXCL_STOP
 }  // namespace cc

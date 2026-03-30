@@ -84,7 +84,7 @@ class MockSharedContextState : public SharedContextState {
       viz::VulkanContextProvider* vulkan_context_provider = nullptr,
       viz::MetalContextProvider* metal_context_provider = nullptr,
       gpu::DawnContextProvider* dawn_context_provider = nullptr,
-      base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
+      scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr,
       bool created_on_compositor_gpu_thread = false)
       : SharedContextState(share_group,
                            surface,
@@ -96,7 +96,9 @@ class MockSharedContextState : public SharedContextState {
                            metal_context_provider,
                            dawn_context_provider,
                            peak_memory_monitor,
-                           created_on_compositor_gpu_thread) {}
+                           created_on_compositor_gpu_thread,
+                           false,
+                           nullptr) {}
   ~MockSharedContextState() { num++; }
 };
 
@@ -136,7 +138,7 @@ class NativeImageTextureOwnerTest : public testing::Test {
         share_group, surface, context, use_virtualized_gl_contexts,
         std::move(context_lost_callback), gr_context_type,
         vulkan_context_provider, metal_context_provider, dawn_context_provider,
-        peak_memory_monitor, created_on_compositor_gpu_thread);
+        peak_memory_monitor, created_on_compositor_gpu_thread, false, nullptr);
     native_ptr = new MOCKNativeImageTextureOwner(
         binds_texture_on_update, std::move(texture), context_state);
   }
@@ -155,7 +157,7 @@ class NativeImageTextureOwnerTest : public testing::Test {
   viz::VulkanContextProvider* vulkan_context_provider = nullptr;
   viz::MetalContextProvider* metal_context_provider = nullptr;
   gpu::DawnContextProvider* dawn_context_provider = nullptr;
-  base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
+  scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
   gl::GLShareGroup* share_group_1 = new gl::GLShareGroup();
   bool created_on_compositor_gpu_thread = false;
   gl::GLShareGroup* share_group1;

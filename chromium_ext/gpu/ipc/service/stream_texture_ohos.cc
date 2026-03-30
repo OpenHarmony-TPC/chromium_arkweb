@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "base/functional/bind.h"
+#include "base/trace_event/trace_event.h"
 #include "base/task/single_thread_task_runner.h"
 #include "gpu/command_buffer/service/context_state.h"
 // #include "gpu/command_buffer/service/mailbox_manager.h"

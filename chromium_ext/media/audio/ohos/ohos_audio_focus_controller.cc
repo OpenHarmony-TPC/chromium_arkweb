@@ -233,7 +233,8 @@ bool OHOSAudioFocusController::CheckOneShotPlayersWhenSetMetadataOnUIThread(cons
     content::RenderFrameHost *renderFrameHost =
         content::RenderFrameHost::FromID(params.render_process_id(), params.render_frame_id());
     if (!renderFrameHost) {
-        LOG(ERROR) << "CheckOneShotPlayersWhenSetMetadataOnUIThread RenderFrameHost not found for PID: " << params.render_process_id()
+        LOG(ERROR) << "CheckOneShotPlayersWhenSetMetadataOnUIThread RenderFrameHost not found for PID: "
+                   << params.render_process_id()
                    << ", FrameID: " << params.render_frame_id();
         return false;
     }

@@ -69,8 +69,10 @@ public:
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   void WillHandleScrollUpdateForInternalBeginFrame(
       const viz::BeginFrameArgs& args) {
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
     current_internal_begin_frame_args_ = args;
     need_flush_scroll_update_gesture_ = true;
+#endif
   }
   void ScrollBy(float delta_x, float delta_y);
 
@@ -106,10 +108,8 @@ public:
   InputHandlerProxyUtils::NativeEventDisposition DidMouseEmbedEvent(
     const WebInputEvent& event);
   void SetMouseEventResult(bool result, bool stopPropagation);
-  void SendMouseNativeEvent(const WebMouseEvent& mouse_event,
-                            WebInputEvent::Type type,
-                            int32_t button,
-                            bool result = true);
+  void SendMouseNativeEvent(const WebMouseEvent& mouse_event, WebInputEvent::Type type,
+    int32_t button, bool result = true);
   void SendToBlink(std::unique_ptr<EventWithCallback> event_with_callback,
                    bool isDrop = false, bool result = false);
   void FlushNativeTouchQueue(size_t fingerId);
@@ -159,6 +159,8 @@ public:
   viz::BeginFrameArgs current_internal_begin_frame_args_;
 #endif
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
+  void ChangeModifiers(int32_t& modifiers, WebInputEvent::Type type, bool needCache = false);
+
   std::unique_ptr<NativeEmbedEventQueue> native_event_queue_;
   std::unique_ptr<NativeEmbedEventQueue> native_touch_end_queue_;
   std::string embed_id_ = "-1";
@@ -180,6 +182,7 @@ public:
   WebInputEvent::Type gesture_status_[MAX_FINGER_NUMBER];
   bool enable_custom_video_player_ = false;
   gfx::RectF nativeRects_[MAX_FINGER_NUMBER];
+  int32_t cache_modifiers_;
 #endif
 };
 

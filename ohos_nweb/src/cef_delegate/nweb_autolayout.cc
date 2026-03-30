@@ -27,6 +27,7 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "libcef/browser/thread_util.h"
 #include "hilog/log.h"
+#include "ohos_nweb/src/nweb_common.h"
 
 #define PARSE_AND_ASSIGN_CONFIG_OPTIONAL(Dict, key, Limits, Member, DefaultValue) \
   do { \
@@ -53,6 +54,7 @@ void NwebAutolayout::Initialize() {
   mAppBundleName_ = adapter.GetSystemPropertiesInstance().GetBundleName();
 
   std::string ccmConfig = "";
+  ScopedAllowBlockingForNwebInit allow_blocking_for_using_path;
   base::FilePath ccmfile_path = base::FilePath(kCCMConfigPath);
   if (!base::ReadFileToString(ccmfile_path, &ccmConfig)) {
       LOG(WARNING) << "Failed to read Config.json from " << ccmfile_path.MaybeAsASCII();
@@ -61,7 +63,7 @@ void NwebAutolayout::Initialize() {
   }
 
   LOG(DEBUG) << "get ccmConfig:" << (ccmConfig == "" ? "failed":"successful");
-  mJsonRoot = base::JSONReader::Read(ccmConfig);
+  mJsonRoot = base::JSONReader::Read(ccmConfig, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!mJsonRoot.has_value() || !Parse(mJsonRoot.value())) {
     LOG(INFO) << "Failed to get app config. Disabling feature.";
     mEnable_ = false;
@@ -103,6 +105,7 @@ void NwebAutolayout::CheckCCMandApplyRule(CefRefPtr<CefFrame> frame) {
   root_dict.Set(kMinContentAreaRatioThresholdKey, mCCMConfig_.min_content_area_ratio_threshold);
   root_dict.Set(kScaleAnimationDurationKey, mCCMConfig_.scale_animation_duration);
   root_dict.Set(kMinDesScaleKey, mCCMConfig_.minScaleFactor);
+  root_dict.Set(kTargetHeightRatioKey, mCCMConfig_.target_height_ratio);
   root_dict.Set(kNeedCheckIdAndPageKey, base::Value(true));
   std::optional<base::Value::List> list = mWListEntry_->appRuleInfos->Clone();
   root_dict.Set(kAppRuleInfosKey, std::move(*list));
@@ -338,7 +341,7 @@ std::optional<base::Value::List> NwebAutolayout::ParseAppRuleInfo(
       whitelist_dict.FindList(kAppRuleInfosKey);
   if (!app_rules_list) {
     LOG(ERROR) << "Parse Error: Missing, empty or invalid type for '"
-              << kAppRuleInfosKey << "'.";
+               << kAppRuleInfosKey << "'.";
     return std::nullopt;
   }
 

@@ -24,6 +24,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/strings/stringprintf.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
@@ -283,11 +284,6 @@ public:
     provider_ = nullptr;
     loader_client_ = nullptr;
     url_data_ = nullptr;
-  }
-
-  void WriteLoader(int position, int size) {
-    loader_client_->DidReceiveData(
-        base::as_chars(base::span(data_).subspan(position, size)));
   }
 
   void WriteData(int size) {

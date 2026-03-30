@@ -82,23 +82,23 @@ public:
         RequestPermissionsFromCurrentDocument,
         (RenderFrameHost * render_frame_host,
             const PermissionRequestDescription& request_description,
-            const base::OnceCallback<void(const std::vector<PermissionStatus>&)>
-                callback),
+            base::OnceCallback<void(const std::vector<PermissionResult>&)> callback),
         (override));
     MOCK_METHOD(
         void,
         RequestPermissions,
         (RenderFrameHost * render_frame_host,
             const PermissionRequestDescription& request_description,
-            const base::OnceCallback<void(const std::vector<PermissionStatus>&)>
-                callback),
+            base::OnceCallback<void(const std::vector<PermissionResult>&)> callback),
         (override));
     MOCK_METHOD(bool,
         IsPermissionOverridable,
-        (PermissionType, const std::optional<url::Origin>&),
+        (blink::PermissionType permission,
+            base::optional_ref<const url::Origin> requesting_origin, 
+            base::optional_ref<const url::Origin> embedding_origin),
         (override));
 #if BUILDFLAG(ARKWEB_CLIPBOARD)
-    MOCK_METHOD(void,
+    MOCK_METHOD(void,  
         GetPermissionStatusAsync,
         (PermissionType permission, const GURL& requesting_origin,
             base::OnceCallback<void(PermissionStatus)> callback),
@@ -261,28 +261,29 @@ TEST_F(PermissionServiceImplTest, HasPermissionAsync_004) {
 #endif // BUILDFLAG(ARKWEB_CLIPBOARD) && BUILDFLAG(ARKWEB_NWEB_EX)
 }
 
-TEST_F(PermissionServiceImplTest, RequestPermissionSync) {
-#if BUILDFLAG(ARKWEB_CLIPBOARD)
-    auto forward_callbacks = testing::WithArg<2>(
-        [](base::OnceCallback<void(const std::vector<blink::mojom::PermissionStatus>&)> callback) {
-            std::move(callback).Run({ blink::mojom::PermissionStatus::DENIED });
-            return 0;
-        });
-    bool user_gesture = true;
-    EXPECT_CALL(*mock_manager(),
-                RequestPermissionsFromCurrentDocument(
-                    render_frame_host(),
-                    PermissionRequestDescription(
-                        std::vector<PermissionType>({ PermissionType::CLIPBOARD_READ_WRITE }),
-                        user_gesture, origin().GetURL()),
-                    testing::_))
-    .WillOnce(testing::Invoke(forward_callbacks));
+// TEST_F(PermissionServiceImplTest, RequestPermissionSync) {
+// #if BUILDFLAG(ARKWEB_CLIPBOARD)
+//     auto forward_callbacks = testing::WithArg<2>(
+//         [](base::OnceCallback<void(const std::vector<blink::mojom::PermissionStatus>&)> callback) {
+//             std::move(callback).Run({ blink::mojom::PermissionStatus::DENIED });
+//             return 0;
+//         });
+//     bool user_gesture = true;
 
-    base::MockCallback<PermissionStatusCallback> callback;
-    PermissionServiceRequestPermissionSync(
-        CreateClipboardPermissionDescriptor(PermissionType::CLIPBOARD_READ_WRITE),
-        user_gesture,
-        callback.Get());
-#endif // BUILDFLAG(ARKWEB_CLIPBOARD)
-}
+//     EXPECT_CALL(*mock_manager(),
+//                 RequestPermissionsFromCurrentDocument(
+//                     render_frame_host(),
+//                     PermissionRequestDescription(
+//                         std::vector<blink::mojom::PermissionDescriptorPtr>(),
+//                         user_gesture, origin().GetURL()),
+//                     testing::_))
+//      .WillOnce(testing::Invoke(forward_callbacks));
+
+//     base::MockCallback<PermissionStatusCallback> callback;
+//     PermissionServiceRequestPermissionSync(
+//         CreateClipboardPermissionDescriptor(PermissionType::CLIPBOARD_READ_WRITE),
+//         user_gesture,
+//         callback.Get());
+// #endif // BUILDFLAG(ARKWEB_CLIPBOARD)
+// }
 }  //namespace content

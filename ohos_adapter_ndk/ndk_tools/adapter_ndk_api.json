@@ -1,4 +1,13 @@
 {
+    "ohhicollie": {
+        "apiList": {
+            "24": [
+                "int OH_HiCollie_SetFreezeCallback(OH_HiCollie_FreezeCallback callback)",
+                "HiCollie_ErrorCode OH_HiCollie_AssociateProcessReport(bool isFreezeEvent)"
+            ]
+        },
+        "includes": ["hicollie/hicollie.h"]
+    },
     "ohaudio": {
         "apiList": {
             "14": [
@@ -47,9 +56,16 @@
                 "OH_AVSCREEN_CAPTURE_ErrCode OH_AVScreenCapture_SetDataCallback(OH_AVScreenCapture *capture, OH_AVScreenCapture_OnBufferAvailable callback, void *userData)",
                 "OH_AVSCREEN_CAPTURE_ErrCode OH_AVScreenCapture_SetStateCallback(OH_AVScreenCapture *capture, OH_AVScreenCapture_OnStateChange callback, void *userData)",
                 "OH_AVSCREEN_CAPTURE_ErrCode OH_AVScreenCapture_SetCanvasRotation(OH_AVScreenCapture *capture, bool canvasRotation)"
+            ],
+            "20": [
+                "OH_AVSCREEN_CAPTURE_ErrCode OH_AVScreenCapture_SetSelectionCallback(OH_AVScreenCapture *capture, OH_AVScreenCapture_OnUserSelected callback, void *userData)"
             ]
         },
-        "includes": []
+        "includes": [
+            "multimedia/player_framework/native_avscreen_capture_base.h",
+            "multimedia/player_framework/native_avscreen_capture_errors.h",
+            "multimedia/player_framework/native_avscreen_capture.h"            
+        ]
     },
     "native_media_core": {
         "apiList": {
@@ -178,7 +194,10 @@
                 "InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(InputMethod_TextEditorProxy *proxy, OH_TextEditorProxy_SetPreviewTextFunc setPreviewTextFunc)",
                 "InputMethod_ErrorCode OH_InputMethodProxy_NotifyCursorUpdate(InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_CursorInfo *cursorInfo)",
                 "InputMethod_ErrorCode OH_TextConfig_GetCursorInfo(InputMethod_TextConfig *config, InputMethod_CursorInfo **cursorInfo)",
-                "InputMethod_ErrorCode OH_TextConfig_SetSelection(InputMethod_TextConfig *config, int32_t start, int32_t end)"
+                "InputMethod_ErrorCode OH_TextConfig_SetSelection(InputMethod_TextConfig *config, int32_t start, int32_t end)",
+                "void OH_PrivateCommand_Destroy(InputMethod_PrivateCommand *command)",
+                "InputMethod_ErrorCode OH_AttachOptions_Destroy(InputMethod_AttachOptions *options)",
+                "InputMethod_AttachOptions *OH_AttachOptions_CreateWithRequestKeyboardReason(bool showkeyborad, InputMethod_RequestKeyboardReason requestKeyboardReason)"
             ]
         },
         "includes": []
@@ -201,12 +220,12 @@
                 "bool OH_Pasteboard_HasType(OH_Pasteboard* pasteboard, const char* type)"
             ],
             "15": [
-                "Pasteboard_GetDataParams *OH_Pasteboard_GetDataParams_Create()",
-                "void OH_Pasteboard_GetDataParams_Destroy(Pasteboard_GetDataParams* params)",
-                "void OH_Pasteboard_GetDataParams_SetProgressIndicator(Pasteboard_GetDataParams* params, Pasteboard_ProgressIndicator progressIndicator)",
-                "void OH_Pasteboard_GetDataParams_SetDestUri(Pasteboard_GetDataParams* params, const char* destUri, uint32_t destUriLen)",
-                "void OH_Pasteboard_GetDataParams_SetFileConflictOptions(Pasteboard_GetDataParams* params, Pasteboard_FileConflictOptions option)",
-                "OH_UdmfData* OH_Pasteboard_GetDataWithProgress(OH_Pasteboard* pasteboard, Pasteboard_GetDataParams* params, int* status)"
+                "void OH_Pasteboard_GetDataParams_Destroy(void* params)",
+                "void OH_Pasteboard_GetDataParams_SetProgressIndicator(void* params, int progressIndicator)",
+                "void OH_Pasteboard_GetDataParams_SetDestUri(void* params, const char* destUri, int destUriLen)",
+                "void OH_Pasteboard_GetDataParams_SetFileConflictOptions(void* params, int option)",
+                "void* OH_Pasteboard_GetDataParams_Create()",
+                "void* OH_Pasteboard_GetDataWithProgress(void* pasteboard, void* params, int* status)"
             ]
         },
         "includes": []
@@ -234,6 +253,9 @@
                 "const char* OH_UdsHtml_GetContent(OH_UdsHtml* pThis)",
                 "int OH_UdmfRecord_AddHtml(OH_UdmfRecord* pThis, OH_UdsHtml* html)",
                 "int OH_UdmfRecord_AddPlainText(OH_UdmfRecord* pThis, OH_UdsPlainText* plainText)",
+                "OH_UdmfProperty* OH_UdmfProperty_Create(OH_UdmfData* unifiedData)",
+                "int OH_UdmfProperty_SetShareOption(OH_UdmfProperty* pThis, Udmf_ShareOption option)",
+                "void OH_UdmfProperty_Destroy(OH_UdmfProperty* pThis)",
                 "void OH_UdmfData_Destroy(OH_UdmfData* pThis)"
             ],
             "13": [
@@ -936,10 +958,11 @@
                 "Image_ErrorCode OH_ImageSourceInfo_Release(OH_ImageSource_Info *info)"
             ],
             "15": [
-                "Image_ErrorCode OH_ImageSourceNative_CreatePixelmapUsingAllocator(OH_ImageSourceNative *source, OH_DecodingOptions *options, IMAGE_ALLOCATOR_TYPE allocator, OH_PixelmapNative **pixelmap)"
+                "int OH_ImageSourceNative_CreatePixelmapUsingAllocator(void *source, void *options, int allocator, void **pixelmap)"
             ]
         },
-        "includes": []
+        "includes": [
+        ]
     },
     "keystore": {
         "apiList": {
@@ -1130,7 +1153,8 @@
                 "void OH_HiTrace_StartTrace()",
                 "void OH_HiTrace_FinishAsyncTrace()",
                 "void OH_HiTrace_FinishTrace()",
-                "void OH_HiTrace_StartAsyncTrace()"
+                "void OH_HiTrace_StartAsyncTrace()",
+                "void OH_HiTrace_StartTraceEx()"
             ]
         },
         "includes": []
@@ -1175,6 +1199,14 @@
         },
         "includes": []
     },
+    "file_uri": {
+        "apiList": {
+            "12": [
+                "FileManagement_ErrCode OH_FileUri_GetUriFromPath(const char *path, unsigned int length, char **result)"
+            ]
+        },
+        "includes":[]
+    },
     "qos": {
         "apiList": {
             "12": [
@@ -1183,14 +1215,6 @@
             ]
         },
         "includes": []
-    },
-    "file_uri": {
-        "apiList": {
-            "12": [
-                "FileManagement_ErrCode OH_FileUri_GetUriFromPath(const char *path, unsigned int length, char **result)"
-            ]
-        },
-        "includes":[]
     },
     "hiappevent_ndk": {
         "apiList": {

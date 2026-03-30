@@ -83,10 +83,8 @@ class MockInputHandlerUtils : public cc::InputHandlerUtils {
 // mock_layer_impl.h
 class MockLayerImpl : public cc::LayerImpl {
  public:
-  MockLayerImpl(cc::LayerTreeImpl* tree_impl,
-                int id,
-                bool will_always_push_properties)
-      : cc::LayerImpl(tree_impl, id, will_always_push_properties){};
+  MockLayerImpl(cc::LayerTreeImpl* tree_impl, int id)
+      : cc::LayerImpl(tree_impl, id){};
   ~MockLayerImpl(){};
 
   MOCK_METHOD0(layer_impl_utils, cc::LayerImplUtils*());
@@ -117,21 +115,61 @@ class FakeCompositorDelegateForInput : public cc::CompositorDelegateForInput {
   void BindToInputHandler(
       std::unique_ptr<cc::InputDelegateForCompositor> delegate) override {}
   cc::ScrollTree& GetScrollTree() const override { return scroll_tree_; }
+  void ScrollAnimationAbort(cc::ElementId element_id)  const override {}
+  float GetBrowserControlsTopOffset() const override { return 0.0; }
+  void ScrollBegin() const override {}
+  void ScrollEnd() const override {}
+  void StartScrollSequence(
+      cc::FrameSequenceTrackerType type,
+      cc::FrameInfo::SmoothEffectDrivingThread scrolling_thread) override {}
+  void StopSequence(cc::FrameSequenceTrackerType type) override {}
+  void ScrollbarAnimationMouseLeave(cc::ElementId element_id) const override {}
+  void ScrollbarAnimationMouseMove(
+      cc::ElementId element_id,
+      gfx::PointF device_viewport_point) const override {}
+  bool ScrollbarAnimationMouseDown(cc::ElementId element_id) const override { return false; }
+  bool ScrollbarAnimationMouseUp(cc::ElementId element_id) const override { return false; }
+  void PinchBegin() const override {}
+  void PinchEnd() const override {}
+  void SetNeedsAnimateInput() override {}
+  bool ScrollAnimationCreate(const cc::ScrollNode& scroll_node,
+                             const gfx::Vector2dF& scroll_amount,
+                             base::TimeDelta delayed_by) override { return false; }
+  void TickScrollAnimations() const override {}
+  std::unique_ptr<cc::LatencyInfoSwapPromiseMonitor>
+  CreateLatencyInfoSwapPromiseMonitor(ui::LatencyInfo* latency) override { return nullptr; }
+  std::unique_ptr<cc::EventsMetricsManager::ScopedMonitor>
+  GetScopedEventMetricsMonitor(
+      cc::EventsMetricsManager::ScopedMonitor::DoneCallback done_callback) override { return nullptr; }
+  void DidScrollForMetrics() override {}
+  double PredictViewportBoundsDelta(
+      double current_bounds_delta,
+      gfx::Vector2dF scroll_distance) const override { return 0.0; }
+  void NotifyInputEvent(bool is_fling) override {}
+  bool ElementHasImplOnlyScrollAnimation(
+      cc::ElementId element_id) const override { return false; }
+  std::optional<gfx::PointF> UpdateImplAnimationScrollTargetWithDelta(
+      gfx::Vector2dF adjusted_delta,
+      int scroll_node_id,
+      base::TimeDelta delayed_by,
+      cc::ElementId element_id) const override { return std::nullopt; }
   bool HasAnimatedScrollbars() const override { return false; }
   void SetNeedsCommit() override {}
   void SetNeedsFullViewportRedraw() override {}
   void SetDeferBeginMainFrame(bool defer_begin_main_frame) const override {}
   void DidUpdateScrollAnimationCurve() override {}
-  void AccumulateScrollDeltaForTracing(const gfx::Vector2dF& delta) override {}
   void DidStartPinchZoom() override {}
   void DidUpdatePinchZoom() override {}
   void DidEndPinchZoom() override {}
   void DidStartScroll() override {}
   void DidEndScroll() override {}
+  void DidMouseEnterNonViewportScroller(cc::ElementId element_id) override {}
   void DidMouseLeave() override {}
   bool IsInHighLatencyMode() const override { return false; }
   void WillScrollContent(cc::ElementId element_id) override {}
-  void DidScrollContent(cc::ElementId element_id, bool animated) override {}
+  void DidScrollContent(cc::ElementId element_id,
+                        bool animated,
+                        const gfx::Vector2dF& scroll_delta) override {}
   float DeviceScaleFactor() const override { return 0; }
   float PageScaleFactor() const override { return 0; }
   gfx::Size VisualDeviceViewportSize() const override { return gfx::Size(); }
@@ -147,8 +185,8 @@ class FakeCompositorDelegateForInput : public cc::CompositorDelegateForInput {
       cc::BrowserControlsState constraints,
       cc::BrowserControlsState current,
       bool animate,
-      base::optional_ref<const cc::BrowserControlsOffsetTagsInfo>
-          offset_tags_info) override {}
+      base::optional_ref<const cc::BrowserControlsOffsetTagModifications>
+          offset_tag_modifications) override {}
   bool HasScrollLinkedAnimation(cc::ElementId for_scroller) const override {
     return false;
   }
@@ -203,7 +241,7 @@ class MockInputHandler : public cc::InputHandler {
       MouseUp,
       cc::InputHandlerPointerResult(const gfx::PointF& mouse_position));
   MOCK_METHOD1(SetIsHandlingTouchSequence, void(bool));
-  void NotifyInputEvent() override {}
+  void NotifyInputEvent(bool is_fling) override {}
 
   std::unique_ptr<cc::LatencyInfoSwapPromiseMonitor>
   CreateLatencyInfoSwapPromiseMonitor(ui::LatencyInfo* latency) override {
@@ -246,7 +284,7 @@ class MockInputHandler : public cc::InputHandler {
       cc::EventListenerProperties(cc::EventListenerClass event_class));
   MOCK_METHOD2(EventListenerTypeForTouchStartOrMoveAt,
                cc::InputHandler::TouchStartOrMoveEventListenerType(
-                   const gfx::Point& point,
+                   const gfx::Rect& viewport_touch_rect,
                    cc::TouchAction* touch_action));
   MOCK_CONST_METHOD1(HasBlockingWheelEventHandlerAt, bool(const gfx::Point&));
 
@@ -274,8 +312,8 @@ class MockInputHandler : public cc::InputHandler {
                void(cc::BrowserControlsState constraints,
                     cc::BrowserControlsState current,
                     bool animate,
-                    base::optional_ref<const cc::BrowserControlsOffsetTagsInfo>
-                        offset_tags_info));
+                    base::optional_ref<const cc::BrowserControlsOffsetTagModifications>
+                        offset_tag_modifications));
 
   MOCK_METHOD0(handler_utils, cc::InputHandlerUtils*());
 
@@ -513,7 +551,7 @@ void InputHandlerProxyUtilsTest::SetUp(void) {
   mock_layer_tree_impl_ =
       std::make_unique<testing::NiceMock<MockLayerTreeImpl>>(settings);
   mock_layer_impl_ =
-      std::make_unique<testing::NiceMock<MockLayerImpl>>(mock_layer_tree_impl_->host_impl().active_tree(), 1, false);
+      std::make_unique<testing::NiceMock<MockLayerImpl>>(mock_layer_tree_impl_->host_impl().active_tree(), 1);
   mock_layer_utils_ =
       std::make_unique<testing::NiceMock<MockLayerImplUtils>>(mock_layer_impl_.get());
   mock_input_handler_utils_ =

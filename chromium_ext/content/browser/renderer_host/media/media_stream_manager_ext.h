@@ -6,12 +6,13 @@
 #define CONTENT_BROWSER_RENDERER_HOST_MEDIA_MEDIA_STREAM_MANAGER_H_EXT_
 
 #include "content/browser/renderer_host/media/media_stream_manager.h"
+#include "content/common/content_export.h"
 
 namespace content {
 
 class MediaStreamManage;
 
-class MediaStreamManagerExt : public MediaStreamManager {
+class CONTENT_EXPORT MediaStreamManagerExt : public MediaStreamManager {
 public:
   explicit MediaStreamManagerExt(media::AudioSystem* audio_system);
 

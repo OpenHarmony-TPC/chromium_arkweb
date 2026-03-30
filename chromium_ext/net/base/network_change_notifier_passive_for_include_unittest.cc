@@ -87,6 +87,8 @@ class MockNetConnectAdapter : public NetConnectAdapter {
   std::vector<std::string> GetDnsServersForVpn() { return {}; }
   void RegisterVpnListener(std::shared_ptr<VpnListener>) {}
   void UnRegisterVpnListener() {}
+  std::vector<std::string> GetNetAddrListByNetId(int32_t netId) override {}
+  std::vector<std::string> GetNetAddrListForVpn() override {}
 };
 }  // namespace OHOS::NWeb
 
@@ -104,7 +106,7 @@ class TestDnsObserver : public NetworkChangeNotifier::DNSObserver {
 
 class MockIPAddressObserver : public NetworkChangeNotifier::IPAddressObserver {
  public:
-  void OnIPAddressChanged() { changes_++; }
+  void OnIPAddressChanged(NetworkChangeNotifier::IPAddressChangeType change_type) { changes_++; }
   int GetIPChanges() { return changes_; }
 
  private:
@@ -518,27 +520,7 @@ TEST_F(NetworkChangeNotifierPassiveExtTest,
 }
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
-TEST_F(NetworkChangeNotifierPassiveExtTest,
-       NetworkChangeNotifierPassive_BindDnsToNetwork) {
-  // no register
-  const int dns_id = 100;
-  ASSERT_NO_FATAL_FAILURE(GetNotifier()->BindDnsToNetwork(dns_id));
-#if BUILDFLAG(ARKWEB_NETWORK_BASE)
-  *g_net_connect_callback = nullptr;
-  g_callback_id = 0;
-  net::NetworkChangeNotifierPassiveUtils::RegisterOhosNetConnCallback(
-      GetNotifier());
-  EXPECT_NE(*g_net_connect_callback, nullptr);
-#endif
-  ASSERT_NO_FATAL_FAILURE(GetNotifier()->BindDnsToNetwork(dns_id));
-#if BUILDFLAG(ARKWEB_NETWORK_BASE)
-  EXPECT_EQ((*g_net_connect_callback)->network_for_dns_, dns_id);
-#endif
-}
-#endif
-
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 TEST_F(NetworkChangeNotifierPassiveExtTest,
        NetworkChangeNotifierPassiveUtils_SetDnsServers) {
   // no switch kEnableNwebExHttpDnsFallback
@@ -564,6 +546,48 @@ TEST_F(NetworkChangeNotifierPassiveExtTest,
   auto result = GetNotifier()->GetCurrentDnsServers();
   EXPECT_FALSE(result.empty());
   EXPECT_EQ(result[0], dns_servers[0]);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_NETWORK_BASE)
+TEST_F(NetworkChangeNotifierPassiveExtTest, VpnListenerImpl_OnAvailable) {
+  testing::StrictMock<MockIPAddressObserver> ip_observer;
+  NetworkChangeNotifier::AddIPAddressObserver(&ip_observer);
+
+  VpnListenerImpl vpn_listener(GetNotifier());
+  vpn_listener.OnAvailable();
+  FastForwardUntilIdle();
+  EXPECT_EQ(ip_observer.GetIPChanges(), 1);
+  NetworkChangeNotifier::RemoveIPAddressObserver(&ip_observer);
+}
+
+TEST_F(NetworkChangeNotifierPassiveExtTest, VpnListenerImpl_OnVpnLost) {
+  testing::StrictMock<MockIPAddressObserver> ip_observer;
+  NetworkChangeNotifier::AddIPAddressObserver(&ip_observer);
+
+  VpnListenerImpl vpn_listener(GetNotifier());
+  vpn_listener.OnLost();
+  FastForwardUntilIdle();
+  EXPECT_EQ(ip_observer.GetIPChanges(), 1);
+  NetworkChangeNotifier::RemoveIPAddressObserver(&ip_observer);
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
+TEST_F(NetworkChangeNotifierPassiveExtTest, SetNetAddrList) {
+  std::vector<std::string> new_addr_list = {
+    "192.168.1.1",
+    "10.20.20.1"
+  };
+  GetNotifier()->SetNetAddrList(new_addr_list);
+  auto addr_list = GetNotifier()->GetCurrentNetAddrList();
+  EXPECT_EQ(addr_list.size(), 2u);
+  EXPECT_EQ(addr_list[0], "192.168.1.1");
+
+  // clear
+  GetNotifier()->SetNetAddrList({});
+  auto list = GetNotifier()->GetCurrentNetAddrList();
+  EXPECT_TRUE(list.empty());
 }
 #endif
 }  // namespace net

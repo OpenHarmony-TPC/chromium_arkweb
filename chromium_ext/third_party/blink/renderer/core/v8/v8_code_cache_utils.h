@@ -31,10 +31,6 @@
 
 
 #if BUILDFLAG(ARKWEB_PRECOMPILE)
-namespace WTF {
-  class TextEncoding;
-  class TextPosition;
-}  // namespace WTF
 
 namespace blink {
 class CachedMetadata;
@@ -52,13 +48,13 @@ class CORE_EXPORT V8CodeCacheUtils {
   class CacheOptions {
    public:
     explicit CacheOptions(
-        const WTF::HashMap<WTF::String, WTF::String> response_headers,
+        const HashMap<String, String> response_headers,
         const bool is_module,
         const bool is_top_level)
         : response_headers_(response_headers),
           is_module_(is_module),
           is_top_level_(is_top_level) {}
-    WTF::HashMap<WTF::String, WTF::String> response_headers_;
+    HashMap<String, String> response_headers_;
     bool is_module_;
     bool is_top_level_;
   };

@@ -27,7 +27,6 @@ const char kExtensionsMimeHandlerBeforeUnloadControl[] =
 
 namespace blink {
 
-// LCOV_EXCL_START
 bool ArkWebBypassInterfacesExceptPdf(const std::string& name) {
 #if BUILDFLAG(ARKWEB_NETWORK_BASE)
   if (base::EqualsCaseInsensitiveASCII(name.c_str(), kExtensionsKeepAlive) ||
@@ -40,6 +39,5 @@ bool ArkWebBypassInterfacesExceptPdf(const std::string& name) {
 #endif
   return true;
 }
-// LCOV_EXCL_STOP
 
 }  // namespace blink

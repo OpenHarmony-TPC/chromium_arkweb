@@ -15,8 +15,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <stdlib.h>
-
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <vector>
@@ -38,6 +37,7 @@
 #include "openssl/x509_vfy.h"
 #include "third_party/boringssl/src/pki/cert_errors.h"
 #include "url/gurl.h"
+#include "ohos_nweb_ex/third_party/securec/include/securec.h"
 
 #define protected public
 #define private public
@@ -514,11 +514,8 @@ TEST_F(CertVerifyProcOHOSTest, CertChainRootVerify) {
   auto mock_adapter = std::make_unique<MockCertManagerAdapter>();
   ASSERT_TRUE(mock_adapter);
   base::FilePath path = GetTmpCertDir();
-  EXPECT_CALL(*mock_adapter,
-              GetTrustAnchorsForHostName(::testing::_, ::testing::_))
-      .WillRepeatedly(
-          testing::Invoke([=](const std::string& hostname,
-                              std::vector<std::string>& certs) -> bool {
+  EXPECT_CALL(*mock_adapter, GetTrustAnchorsForHostName(::testing::_, ::testing::_))
+            .WillRepeatedly(testing::Invoke([=](const std::string& hostname, std::vector<std::string>& certs) -> bool {
             certs.push_back(path.value());
             certs.push_back("");
             return true;

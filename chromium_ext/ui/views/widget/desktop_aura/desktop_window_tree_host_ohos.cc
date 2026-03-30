@@ -12,7 +12,6 @@
 
 namespace views {
 
-// LCOV_EXCL_START
 DesktopWindowTreeHostOhos::DesktopWindowTreeHostOhos(
     internal::NativeWidgetDelegate* native_widget_delegate,
     DesktopNativeWidgetAura* desktop_native_widget_aura)
@@ -59,7 +58,6 @@ void DesktopWindowTreeHostOhos::AddAdditionalInitProperties(
   properties->background_color =
       widget->GetColorProvider()->GetColor(target_color);
 }
-// LCOV_EXCL_STOP
 
 void DesktopWindowTreeHostOhos::DispatchEvent(ui::Event* event) {
   if (!event) {
@@ -109,7 +107,6 @@ void DesktopWindowTreeHostOhos::DispatchEvent(ui::Event* event) {
   }
 }
 
-// LCOV_EXCL_START
 void DesktopWindowTreeHostOhos::CreateNonClientEventFilter() {
   DCHECK(!non_client_window_event_filter_);
   non_client_window_event_filter_ = std::make_unique<WindowEventFilterOhos>(
@@ -127,6 +124,5 @@ DesktopWindowTreeHost* DesktopWindowTreeHost::Create(
   return new DesktopWindowTreeHostOhos(native_widget_delegate,
                                        desktop_native_widget_aura);
 }
-// LCOV_EXCL_STOP
 
 }  // namespace views

@@ -729,10 +729,9 @@ void NWebCookieManagerDelegate::GetAllCookies(
 CefRefPtr<CefCookieManagerExt>
 NWebCookieManagerDelegate::GetUninitializedCookieManagerExt(
     bool support_incognito) {
-  CefRefPtr cookie_manager =
+  CefRefPtr<CefCookieManagerImplExt> cookie_manager =
       CefCookieManagerImplExt::GetInstance(support_incognito);
   return cookie_manager.get();
 }
 #endif
-
 }  // namespace OHOS::NWeb

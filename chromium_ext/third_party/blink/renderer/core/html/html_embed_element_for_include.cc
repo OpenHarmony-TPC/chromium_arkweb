@@ -46,7 +46,6 @@ void HTMLEmbedElement::NativeEmbedOverlay(
     }
   }
 }
-
 #endif
 
 }  // namespace blink

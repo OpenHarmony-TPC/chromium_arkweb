@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -80,7 +80,7 @@ public:
   {
     init();
   }
-  
+
   bool verifyCallConv(int id, const CallDescriptor* call_descriptor);
 
 private:
@@ -90,7 +90,7 @@ private:
   {
     #define INIT_CC_LIST(CC_ID, INT_REG_LIST, NONINT_REG_LIST, RETURN_REG_LIST) \
       ccId2cc_.emplace(CC_ID, LLVMCallConvDesc(CC_ID, INT_REG_LIST, NONINT_REG_LIST, RETURN_REG_LIST));
-    
+
     CC_DESC_LIST(INIT_CC_LIST);
     #undef INIT_CC_LIST
     }

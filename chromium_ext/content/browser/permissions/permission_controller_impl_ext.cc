@@ -26,12 +26,14 @@ void PermissionControllerImpl::GetPermissionStatusAsync(
     return;
   }
 
-  std::optional<blink::mojom::PermissionStatus> status =
-      permission_overrides_.Get(origin, permission);
-  if (status.has_value()) {
+  url::Origin embedding_origin = url::Origin(); 
+  std::optional<PermissionResult> result =
+      permission_overrides_.Get(origin, embedding_origin, permission);
+  if (result.has_value()) {
+    blink::mojom::PermissionStatus status = result->status;
     LOG(INFO) << "GetPermissionStatusAsync permission_overrides status="
-              << (int)(*status);
-    std::move(callback).Run(*status);
+              << (int)status;
+    std::move(callback).Run(status);
     return;
   }
 
@@ -62,19 +64,22 @@ void PermissionControllerImpl::GetPermissionStatusAsync(
 void PermissionControllerImpl::RequestPermissionsSkipPermissionsPolicy(
     RenderFrameHost* render_frame_host,
     PermissionRequestDescription request_description,
-    base::OnceCallback<void(const std::vector<PermissionStatus>&)> callback) {
+    base::OnceCallback<void(const std::vector<PermissionResult>&)> callback) {
   if (!IsRequestAllowed(request_description.permissions, render_frame_host,
                         callback, false)) {
     return;
   }
 
-  for (PermissionType permission : request_description.permissions) {
-    NotifySchedulerAboutPermissionRequest(render_frame_host, permission);
+  for (const blink::mojom::PermissionDescriptorPtr& permission :
+       request_description.permissions) {
+    NotifySchedulerAboutPermissionRequest(
+      render_frame_host, 
+      blink::PermissionDescriptorToPermissionType(permission));
   }
 
   request_description.requesting_origin =
       render_frame_host->GetLastCommittedOrigin().GetURL();
-  std::vector<std::optional<blink::mojom::PermissionStatus>> override_results =
+  std::vector<std::optional<PermissionResult>> override_results =
       OverridePermissions(request_description, render_frame_host,
                           permission_overrides_);
 
@@ -90,8 +95,8 @@ void PermissionControllerImpl::RequestPermissionsSkipPermissionsPolicy(
   PermissionControllerDelegate* delegate =
       browser_context_->GetPermissionControllerDelegate();
   if (!delegate) {
-    std::move(wrapper).Run(std::vector<PermissionStatus>(
-        request_description.permissions.size(), PermissionStatus::DENIED));
+    std::move(wrapper).Run(std::vector<PermissionResult>(
+        request_description.permissions.size(), PermissionResult(PermissionStatus::DENIED)));
     return;
   }
 

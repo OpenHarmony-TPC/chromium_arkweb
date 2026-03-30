@@ -34,6 +34,12 @@ namespace media {
 class CodecImageGroup;
 class MaybeRenderEarlyManager;
 
+enum class VideoFrameCopyStatus : int {
+  kZeroCopy,
+  kOneCopy,
+  kDefault,
+};
+
 class MEDIA_GPU_EXPORT VideoFrameFactoryImpl
     : public VideoFrameFactory,
       public gpu::RefCountedLockHelperDrDc {
@@ -67,6 +73,7 @@ class MEDIA_GPU_EXPORT VideoFrameFactoryImpl
                         gfx::Size natural_size,
                         OnceOutputCB output_cb) override;
   void RunAfterPendingVideoFrames(base::OnceClosure closure) override;
+  bool GetVideoFrameCopyStatus();
 #if BUILDFLAG(ARKWEB_PIP)
   void PipEnable(bool enable) override;
   bool IsPipEnable();
@@ -100,8 +107,7 @@ class MEDIA_GPU_EXPORT VideoFrameFactoryImpl
 #endif
   scoped_refptr<CodecBufferWaitCoordinator> codec_buffer_wait_coordinator_;
 
-  bool video_frame_copy_required_ = features::IsUsingVulkan() ||
-                                    base::ohos::IsEmulator() ||
+  bool video_frame_copy_required_ = base::ohos::IsEmulator() ||
 #if BUILDFLAG(ARKWEB_PIP)
                                     IsPipEnable() ||
 #endif

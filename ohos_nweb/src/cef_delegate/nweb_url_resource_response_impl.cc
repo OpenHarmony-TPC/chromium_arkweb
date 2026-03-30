@@ -157,7 +157,7 @@ size_t NWebUrlResourceResponseImpl::GetResponseDataBufferSize() {
 void NWebUrlResourceResponseImpl::PutResponseIsFromNetwork(bool is_from_network) {
   is_from_network_ = is_from_network;
 }
- 
+
 bool NWebUrlResourceResponseImpl::ResponseIsFromNetwork() {
   return is_from_network_;
 }

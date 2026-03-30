@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef COMMON_OHOSUTIL_H_
 #define COMMON_OHOSUTIL_H_
 
@@ -325,7 +325,7 @@ enum {
      *   Vulkan: ??
      *   OpenGL ES: ??
      */
-    ANGLE_OHOS_FORMAT_YCBCR_P010   = 35,
+    ANGLE_OHOS_FORMAT_YCBCR_P010    = 35,
 
     /**
      * Corresponding formats:
@@ -333,7 +333,7 @@ enum {
      *   Vulkan: ??
      *   OpenGL ES: ??
      */
-    ANGLE_OHOS_FORMAT_YCRCB_P010   = 36,
+    ANGLE_OHOS_FORMAT_YCRCB_P010    = 36,
 
     /**
      * Corresponding formats:
@@ -341,7 +341,7 @@ enum {
      *   Vulkan: ??
      *   OpenGL ES: ??
      */
-    ANGLE_OHOS_FORMAT_RAW10        = 37,
+    ANGLE_OHOS_FORMAT_RAW10         = 37,
 
     /**
      * Corresponding formats:
@@ -349,7 +349,7 @@ enum {
      *   Vulkan: ??
      *   OpenGL ES: ??
      */
-    ANGLE_OHOS_FORMAT_BLOB        = 38,
+    ANGLE_OHOS_FORMAT_BLOB          = 38,
 
     /**
      * Corresponding formats:
@@ -394,6 +394,4 @@ bool NativePixelFormatIsYUV(int pixelFormat);
 }  // namespace ohos
 }  // namespace angle
 
-#endif // COMMON_OHOSUTIL_H_
-
-
+#endif  // COMMON_OHOSUTIL_H_

@@ -67,13 +67,13 @@ class OHOSAudioInputStream : public AudioInputStream {
   raw_ptr<OHOSAudioManager> const manager_;
   AudioParameters parameters_;
   std::unique_ptr<CaptureCallbackAdapter> callback_adapter_;
-  scoped_refptr<OHOSAudioCapturerSource> capturer_source_;
+  ::scoped_refptr<OHOSAudioCapturerSource> capturer_source_;
   double volume_ = 1.0;
   bool automatic_gain_control_ = false;
   AudioCaptureState audio_capture_state_ = AudioCaptureState::NONE;
 
   std::unique_ptr<CaptureCallbackAdapter> base_callback_adapter_;
-  scoped_refptr<BaseAudioCapturerSource> base_capturer_source_;
+  ::scoped_refptr<BaseAudioCapturerSource> base_capturer_source_;
 };
 
 }  // namespace media

@@ -165,8 +165,6 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
 
   browser_settings.local_storage =
       IsDomStorageEnabled() ? STATE_ENABLED : STATE_DISABLED;
-  browser_settings.databases =
-      IsDataBaseEnabled() ? STATE_ENABLED : STATE_DISABLED;
   browser_settings.universal_access_from_file_urls =
       EnableUniversalAccessFromFileURLs() ? STATE_ENABLED : STATE_DISABLED;
   // browser_settings.file_access_from_file_urls =
@@ -206,6 +204,9 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
 #if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
   browser_settings.is_autofill_enabled = is_autofill_enabled_;
 #endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+#if BUILDFLAG(ARKWEB_DRAG_DROP)
+  browser_settings.is_drag_enabled = is_drag_enabled_;
+#endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
 #if BUILDFLAG(ARKWEB_MENU)
   browser_settings.touch_handle_exist = touch_handle_exist_;
   browser_settings.viewport_scale = viewport_scale_;
@@ -225,6 +226,9 @@ void NWebPreferenceDelegate::ComputeBrowserSettings(
       !IsVerticalScrollBarAccess() ? STATE_ENABLED : STATE_DISABLED;
   browser_settings.scroll_enabled = setting_scroll_enabled_;
   browser_settings.blur_enabled = GetBlurEnable();
+  browser_settings.scrollbar_layout_policy =
+      scrollbar_layout_policy_;
+  browser_settings.is_system_rtl_enabled = is_system_rtl_enabled_;
 #endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
   browser_settings.native_embed_mode_enabled =
@@ -406,12 +410,12 @@ void NWebPreferenceDelegate::SetBorderRadiusFromWeb(
       (border_radius_top_right_ != borderRadiusTopRight) ||
       (border_radius_bottom_left_ != borderRadiusBottomLeft) ||
       (border_radius_bottom_right_ != borderRadiusBottomRight)) {
-    border_radius_top_left_ = borderRadiusTopLeft;
-    border_radius_top_right_ = borderRadiusTopRight;
-    border_radius_bottom_left_ = borderRadiusBottomLeft;
-    border_radius_bottom_right_ = borderRadiusBottomRight;
-    WebPreferencesChanged();
-  }
+  border_radius_top_left_ = borderRadiusTopLeft;
+  border_radius_top_right_ = borderRadiusTopRight;
+  border_radius_bottom_left_ = borderRadiusBottomLeft;
+  border_radius_bottom_right_ = borderRadiusBottomRight;
+  WebPreferencesChanged();
+}
 }
 #endif  // ARKWEB_SCROLLBAR_AVOID_CORNER
 
@@ -421,6 +425,14 @@ void NWebPreferenceDelegate::SetEnableAutoFill(bool enable) {
   WebPreferencesChanged();
 }
 #endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
+
+#if BUILDFLAG(ARKWEB_DRAG_DROP)
+void NWebPreferenceDelegate::SetEnableDrag(bool enable) {
+  is_drag_enabled_ = enable;
+  WebPreferencesChanged();
+  LOG(INFO) << "set DRAG in preference: " << is_drag_enabled_;
+}
+#endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
 
 #if BUILDFLAG(ARKWEB_MENU)
 void NWebPreferenceDelegate::SetTouchHandleExistState(bool touchHandleExist) {
@@ -507,12 +519,12 @@ void NWebPreferenceDelegate::PutStandardFontFamilyName(
 
 void NWebPreferenceDelegate::PutUserAgent(const std::string& ua) {
   std::string old_user_agent = user_agent_;
-  has_set_user_agent_ = true;
   if (ua.empty() || ua.length() == 0) {
     user_agent_ = DefaultUserAgent();
   } else {
     user_agent_ = ua;
   }
+  has_set_user_agent_ = true;
   if (!browser_ || !(browser_->GetHost())) {
     return;
   }
@@ -901,7 +913,7 @@ void NWebPreferenceDelegate::SetScrollable(bool enable) {
 
 void NWebPreferenceDelegate::SetScrollable(bool enable, int32_t scrollType) {
   LOG(INFO) << "SetScrollable enable:" << enable
-            << " scrollType:" << scrollType;
+            << ",scrollType:" << scrollType;
   scroll_enabled_ = enable;
   setting_scroll_enabled_ = enable;
   if (scrollType == static_cast<int32_t>(WebScrollType::UNKNOWN)) {
@@ -920,8 +932,22 @@ void NWebPreferenceDelegate::SetScrollable(bool enable, int32_t scrollType) {
 bool NWebPreferenceDelegate::GetScrollable() {
   return scroll_enabled_;
 }
-#endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 
+void NWebPreferenceDelegate::SetScrollbarLayoutPolicy(int policy) {
+  scrollbar_layout_policy_ = policy;
+  WebPreferencesChanged();
+}
+int NWebPreferenceDelegate::GetScrollbarLayoutPolicy() const {
+  return scrollbar_layout_policy_;
+}
+void NWebPreferenceDelegate::SetIsSystemRtlEnable(bool enable) {
+  is_system_rtl_enabled_ = enable;
+  WebPreferencesChanged();
+}
+bool NWebPreferenceDelegate::GetIsSystemRtlEnabled() const {
+  return is_system_rtl_enabled_;
+}
+#endif  // BUILDFLAG(ARKWEB_INPUT_EVENTS)
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 void NWebPreferenceDelegate::SetNativeEmbedMode(bool flag) {
   // Native Embed is not supported on pc device.
@@ -973,7 +999,6 @@ bool NWebPreferenceDelegate::IsEnableCustomVideoPlayer() {
   return std::get<0>(native_video_player_config_);
 }
 #endif
-
 #if BUILDFLAG(ARKWEB_VIEWPORT)
 void NWebPreferenceDelegate::SetViewportEnable(bool enable) {
   int nweb_id = -1;
@@ -1339,11 +1364,11 @@ void NWebPreferenceDelegate::PutWebMediaAVSessionEnabled(bool enable) {
   browser_->GetHost()->PutWebMediaAVSessionEnabled(enable);
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  if (currentProcess && !currentProcess->HasSwitch(::switches::kEnableMediaAvsession)) {
+  auto current_process = base::CommandLine::ForCurrentProcess();
+  if (current_process && !current_process->HasSwitch(::switches::kEnableMediaAvsession)) {
     cast_enabled_ = true;
   }
-#endif // ARKWEB_NWEB_EX
+#endif  // BUILDFLAG(ARKWEB_NWEB_EX)
   cast_enabled_ = cast_enabled_ && enable;
   LOG(INFO) << "NWebPreferenceDelegate::PutWebMediaAVSessionEnabled cast_enabled_:"
             << cast_enabled_;
@@ -1355,13 +1380,6 @@ void NWebPreferenceDelegate::PutWebMediaAVSessionEnabled(bool enable) {
     return cast_enabled_;
   }
 #endif  // ARKWEB_MEDIA_CAST
-
-#if BUILDFLAG(ARKWEB_ERROR_PAGE)
-void NWebPreferenceDelegate::PutErrorPageEnabled(bool enable) {
-  error_page_enabled_ = enable;
-  WebPreferencesChanged();
-}
-#endif
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 int64_t NWebPreferenceDelegate::GetPreferenceHash()
@@ -1405,6 +1423,7 @@ int64_t NWebPreferenceDelegate::GetPreferenceHash()
   return pref_hash_;
 }
 
+
 bool NWebPreferenceDelegate::SetRotationType(uint32_t type) {
   if (rotationType_ == type) {
     return false;
@@ -1417,6 +1436,13 @@ bool NWebPreferenceDelegate::SetRotationType(uint32_t type) {
 
 uint32_t NWebPreferenceDelegate::GetRotationType() {
   return rotationType_;
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_ERROR_PAGE)
+void NWebPreferenceDelegate::PutErrorPageEnabled(bool enable) {
+  error_page_enabled_ = enable;
+  WebPreferencesChanged();
 }
 #endif
 }  // namespace OHOS::NWeb

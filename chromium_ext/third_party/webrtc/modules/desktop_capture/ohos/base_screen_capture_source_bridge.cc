@@ -110,6 +110,12 @@ class OHOSScreenCaptureCallback
       base::BindOnce(&BaseScreenCaptureSource::SetScreenCaptureState, capturer_, stateCode, nweb_id));
   }
 
+  void OnUserSelected(int nweb_id) override {
+    task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&BaseScreenCaptureSource::OnUserSelected, capturer_, nweb_id));
+  }
+
   void OnAudioBufferAvailable(bool isReady, OHOS::NWeb::AudioCaptureSourceTypeAdapter type) override {}
   void OnVideoBufferAvailable(bool isReadye) override {}
   void OnStateChange(OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode) override {}
@@ -272,16 +278,42 @@ class OHOSScreenCaptureCallback
 
   void BaseScreenCaptureSource::SetScreenCaptureState(const OHOS::NWeb::ScreenCaptureStateCodeAdapter& stateCode,
       int nweb_id) {
-    std::unique_lock<std::shared_mutex> lock(capture_state_map_lock_);
-    auto capture_state_code = capture_state_code_map_.find(nweb_id);
-    if (capture_state_code != capture_state_code_map_.end()) {
-      LOG(INFO) << "[webrtc_logging] Update Capture State Code, code = " << (int32_t)stateCode;
-      capture_state_code_map_[nweb_id] = stateCode;
-    } else {
-      LOG(INFO) << "[webrtc_logging] Init Capture State Code, code = -1";
-      capture_state_code_map_[nweb_id] =
-        OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_INVLID;
+    {
+      std::unique_lock<std::shared_mutex> lock(capture_state_map_lock_);
+      auto capture_state_code = capture_state_code_map_.find(nweb_id);
+      if (capture_state_code != capture_state_code_map_.end()) {
+        LOG(INFO) << "[webrtc_logging] Update Capture State Code, code = " << static_cast<int32_t>(stateCode);
+        capture_state_code_map_[nweb_id] = stateCode;
+      } else {
+        LOG(INFO) << "[webrtc_logging] Init Capture State Code, code = -1";
+        capture_state_code_map_[nweb_id] =
+          OHOS::NWeb::ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_INVLID;
+      }
     }
+
+    std::shared_lock<std::shared_mutex> lock(window_callback_map_lock_);
+    auto window_callback = BaseScreenCaptureSource::GetInstance().window_callback_map_.find(nweb_id);
+    if (window_callback == BaseScreenCaptureSource::GetInstance().window_callback_map_.end() ||
+        window_callback->second == nullptr) {
+      LOG(ERROR) << "BaseScreenCaptureSource window callback is nullptr";
+      return;
+    }
+
+    window_callback->second->OnStateChanged(stateCode);
+  }
+
+  void BaseScreenCaptureSource::OnUserSelected(int nweb_id) {
+    // When user confirms capture in selection dialog
+    std::shared_lock<std::shared_mutex> lock(window_callback_map_lock_);
+    auto window_callback = BaseScreenCaptureSource::GetInstance().window_callback_map_.find(nweb_id);
+    if (window_callback == BaseScreenCaptureSource::GetInstance().window_callback_map_.end() ||
+        window_callback->second == nullptr) {
+      LOG(ERROR) << "BaseScreenCaptureSource window callback is nullptr";
+      return;
+    }
+ 
+    LOG(INFO) << "[webrtc_logging] BaseScreenCaptureSource::OnUserSelected, nweb_id = " << nweb_id;
+    window_callback->second->OnUserSelected();
   }
 
   int32_t BaseScreenCaptureSource::StopCapture(int nweb_id) {
@@ -353,7 +385,6 @@ class OHOSScreenCaptureCallback
       }
       ret = screen_capture->second->StartCapture();
     }
-    SetScreenCaptureState(ScreenCaptureStateCodeAdapter::SCREEN_CAPTURE_STATE_STARTED, nweb_id);
 
     return ret;
   }

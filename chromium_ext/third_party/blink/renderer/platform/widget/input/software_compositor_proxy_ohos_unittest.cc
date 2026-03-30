@@ -62,12 +62,11 @@ class MockAsyncLayerTreeFrameSink
  public:
   MockAsyncLayerTreeFrameSink(
       scoped_refptr<viz::RasterContextProvider> context_provider,
-      scoped_refptr<cc::RasterContextProviderWrapper>
-          worker_context_provider_wrapper,
-      scoped_refptr<gpu::ClientSharedImageInterface> shared_image_interface,
+      scoped_refptr<viz::RasterContextProvider> worker_context_provider,
+      scoped_refptr<gpu::SharedImageInterface> shared_image_interface,
       InitParams* params)
       : AsyncLayerTreeFrameSink(context_provider,
-                                worker_context_provider_wrapper,
+                                worker_context_provider,
                                 shared_image_interface,
                                 params) {}
   MockAsyncLayerTreeFrameSink(const MockAsyncLayerTreeFrameSink&) = delete;
@@ -102,10 +101,10 @@ class WritableSharedMemoryRegionMock : public base::WritableSharedMemoryRegion {
 
 class MockSoftwareCompositorRendererOhos
     : public cc::mojo_embedder::SoftwareCompositorRendererOhos {
-public:
+ public:
   MockSoftwareCompositorRendererOhos(
     cc::mojo_embedder::AsyncLayerTreeFrameSink* sink,
-    cc::mojo_embedder::SoftwareCompositorRegistryOhos* registry)
+                                     cc::mojo_embedder::SoftwareCompositorRegistryOhos* registry)
       : cc::mojo_embedder::SoftwareCompositorRendererOhos(sink, registry) {}
   MockSoftwareCompositorRendererOhos(
       const MockSoftwareCompositorRendererOhos&) = delete;
@@ -171,7 +170,6 @@ TEST_F(SoftwareCompositorProxyOhosTest, DrawRect) {
 TEST_F(SoftwareCompositorProxyOhosTest, DrawRect002) {
   scoped_refptr<viz::TestContextProvider> provider =
       viz::TestContextProvider::CreateRaster();
-  gpu::TestGpuMemoryBufferManager test_gpu_memory_buffer_manager;
 
   mojo::PendingRemote<viz::mojom::CompositorFrameSink> sink_remote;
   mojo::PendingReceiver<viz::mojom::CompositorFrameSink> sink_receiver =
@@ -179,7 +177,6 @@ TEST_F(SoftwareCompositorProxyOhosTest, DrawRect002) {
   mojo::PendingRemote<viz::mojom::CompositorFrameSinkClient> client;
 
   cc::mojo_embedder::AsyncLayerTreeFrameSink::InitParams init_params;
-  init_params.gpu_memory_buffer_manager = &test_gpu_memory_buffer_manager;
   init_params.pipes.compositor_frame_sink_remote = std::move(sink_remote);
   init_params.pipes.client_receiver = client.InitWithNewPipeAndPassReceiver();
 
@@ -215,7 +212,7 @@ TEST_F(SoftwareCompositorProxyOhosTest, DemandDrawSwAsync_InstallPixelsFail) {
   auto params = mojom::blink::SoftwareCompositorDemandDrawSwParams::New();
   params->size = gfx::SizeF(100.0f, 100.0f);
   params->offset = gfx::PointF(0.0f, 0.0f);
-
+  
   bool callback_result = true;
   g_softwareCompositor->DemandDrawSwAsync(
       std::move(params),

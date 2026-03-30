@@ -22,8 +22,6 @@
 #include "third_party/blink/renderer/core/input/mouse_event_manager.h"
 #include "third_party/blink/renderer/core/page/event_with_hit_test_results.h"
 #include "ui/gfx/geometry/point_conversions.h"
-#include "arkweb/build/features/features.h"
-#include "build/build_config.h"
 
 namespace blink {
 GestureManagerUtils::GestureManagerUtils(GestureManager* gesture_manager)
@@ -52,6 +50,7 @@ void GestureManagerUtils::CloseAIOverlay(
 #if BUILDFLAG(ARKWEB_DRAG_DROP)
 WebInputEventResult GestureManagerUtils::HandleGestureDragLongPress(
     const GestureEventWithHitTestResults& targeted_event) {
+  LOG(INFO) << "DragDrop HandleGestureDragLongPress";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "DragDrop HandleGestureDragLongPress";
 #endif
@@ -80,8 +79,10 @@ WebInputEventResult GestureManagerUtils::HandleGestureDragLongPress(
       hit_test_result.AbsoluteLinkURL().IsEmpty()) {
     return WebInputEventResult::kNotHandled;
   }
+
   if (gesture_manager_->mouse_event_manager_->HandleDragDropIfPossible(
-          targeted_event)) {
+          targeted_event, gesture_manager_->GetPointerIdFromWebGestureEvent(targeted_event.Event()))!=
+      DragHandlingResult::kNotHandled) {
     return WebInputEventResult::kHandledSystem;
   }
 
@@ -131,11 +132,9 @@ void GestureManagerUtils::UpdateContextMenuForFreeCopy(
   }
 #endif
   if (gesture_manager_->frame_->GetSettings()) {
-#if BUILDFLAG(ARKWEB_EX_FREE_COPY)
     is_contextmenu_customization_enabled =
         gesture_manager_->frame_->GetSettings()
             ->IsContextMenuCustomizationEnabled();
-#endif
   }
   if (is_contextmenu_customization_enabled) {
     if (hit_test_result.IsContentEditable() ||
@@ -156,7 +155,6 @@ void GestureManagerUtils::UpdateContextMenuForFreeCopy(
         gesture_manager_->mouse_event_manager_->FocusDocumentView();
       }
     }
-#if BUILDFLAG(ARKWEB_EX_FREE_COPY)
     gesture_manager_->selection_controller_->SetLastLongPressHitTestResult(
         hit_test_result);
     // notify webContentImpl reset showing_context_menu_ status, to make sure
@@ -164,7 +162,6 @@ void GestureManagerUtils::UpdateContextMenuForFreeCopy(
     if (!hit_test_result.IsSelected(location)) {
       gesture_manager_->selection_controller_->NotifyContextMenuWillShow();
     }
-#endif
   } else {
     if (inner_node && inner_node->GetLayoutObject() &&
         gesture_manager_->selection_controller_->HandleGestureLongPress(

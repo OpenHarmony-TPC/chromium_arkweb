@@ -762,7 +762,7 @@ TEST_P(HTMLMediaElementTest, DFX_TESTReportVideoExperience001) {
   video->is_logger_export_ = false;
   ASSERT_NO_FATAL_FAILURE(video->ReportVideoExperienceToBI());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TESTReportVideoExperience002) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -771,7 +771,7 @@ TEST_P(HTMLMediaElementTest, DFX_TESTReportVideoExperience002) {
   video->is_logger_export_ = true;
   ASSERT_NO_FATAL_FAILURE(video->ReportVideoExperienceToBI());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TESTReportVideoExperience003) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -792,7 +792,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestGetMediaPlayerType001) {
   test::RunPendingTasks();
   ASSERT_NO_FATAL_FAILURE(video->GetMediaPlayerType());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestGetMediaPlayerType002) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -803,7 +803,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestGetMediaPlayerType002) {
   test::RunPendingTasks();
   ASSERT_NO_FATAL_FAILURE(video->GetMediaPlayerType());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestGetMediaPlayerType003) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -814,7 +814,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestGetMediaPlayerType003) {
   test::RunPendingTasks();
   ASSERT_NO_FATAL_FAILURE(video->GetMediaPlayerType());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestScheduleVideoFreezeEvent) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -824,7 +824,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestScheduleVideoFreezeEvent) {
   auto* video = To<HTMLVideoElement>(Media());
   ASSERT_NO_FATAL_FAILURE(video->ScheduleVideoFreezeEvent());
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestFreezeTime001) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -833,7 +833,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestFreezeTime001) {
   double result = video->freezeTime();
   ASSERT_EQ(result, 0.0);
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestFreezeTime002) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -844,7 +844,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestFreezeTime002) {
   double result = video->freezeTime();
   ASSERT_EQ(result, 0.0);
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestPlayedTime001) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;
@@ -853,7 +853,7 @@ TEST_P(HTMLMediaElementTest, DFX_TestPlayedTime001) {
   double result = video->playedTime();
   ASSERT_EQ(result, 0.0);
 }
-
+ 
 TEST_P(HTMLMediaElementTest, DFX_TestPlayedTime002) {
   if (GetParam() != MediaTestParam::kVideo) {
     return;

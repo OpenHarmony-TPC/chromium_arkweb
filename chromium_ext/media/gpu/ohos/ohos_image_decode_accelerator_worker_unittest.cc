@@ -40,11 +40,12 @@
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/gpu_fence.h"
-#include "ui/gfx/gpu_memory_buffer.h"
+#include "ui/gfx/gpu_memory_buffer_handle.h"
 #include "ui/gfx/linux/native_pixmap_dmabuf.h"
 #include "ui/gfx/native_pixmap_handle.h"
 #define private public
-#include "media/gpu/ohos/ohos_image_decode_accelerator_worker.h"
+// 141彻底删除了image_decode_accelerator_worker相关文件/功能，ohos扩展类无法正常编译，暂时注释
+//#include "media/gpu/ohos/ohos_image_decode_accelerator_worker.h"
 #undef private
 
 namespace media {

@@ -45,7 +45,6 @@
 #include "media/base/media_log.h"
 #include "media/base/media_player_logging_id.h"
 #include "media/base/media_switches.h"
-#include "media/base/media_url_demuxer.h"
 #include "media/base/memory_dump_provider_proxy.h"
 #include "media/base/remoting_constants.h"
 #include "media/base/renderer.h"
@@ -57,9 +56,6 @@
 #include "media/filters/ffmpeg_demuxer.h"
 #include "media/filters/memory_data_source.h"
 #include "media/filters/pipeline_controller.h"
-#include "media/learning/common/learning_task_controller.h"
-#include "media/learning/common/media_learning_tasks.h"
-#include "media/learning/mojo/public/cpp/mojo_learning_task_controller.h"
 #include "media/media_buildflags.h"
 #include "media/mojo/mojom/media_metrics_provider.mojom-blink.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -68,8 +64,6 @@
 #include "net/http/http_request_headers.h"
 #include "net/url_request/url_request_job.h"
 #include "services/device/public/mojom/battery_monitor.mojom-blink.h"
-#include "third_party/blink/public/common/media/display_type.h"
-#include "third_party/blink/public/common/media/watch_time_reporter.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/web_audio_source_provider_impl.h"
 #include "third_party/blink/public/platform/web_content_decryption_module.h"
@@ -129,9 +123,8 @@ WebMediaPlayerImplExt::WebMediaPlayerImplExt(
     WebContentDecryptionModule* initial_cdm,
     media::RequestRoutingTokenCallback request_routing_token_cb,
     base::WeakPtr<media::MediaObserver> media_observer,
-    bool enable_instant_source_buffer_gc,
     bool embedded_media_experience_enabled,
-    mojo::PendingRemote<media::mojom::MediaMetricsProvider> metrics_provider,
+    mojo::PendingRemote<media::mojom::blink::MediaMetricsProvider> metrics_provider,
     CreateSurfaceLayerBridgeCB create_bridge_callback,
     scoped_refptr<viz::RasterContextProvider> raster_context_provider,
     bool use_surface_layer,
@@ -143,7 +136,7 @@ WebMediaPlayerImplExt::WebMediaPlayerImplExt(
     : WebMediaPlayerImpl(frame, client, encrypted_client, delegate, std::move(renderer_factory_selector),
       url_index, std::move(compositor), std::move(media_log), player_id, std::move(defer_load_cb), audio_renderer_sink,
       media_task_runner, worker_task_runner, compositor_task_runner, video_frame_compositor_task_runner,
-      initial_cdm, request_routing_token_cb, media_observer, enable_instant_source_buffer_gc,
+      initial_cdm, request_routing_token_cb, media_observer,
       embedded_media_experience_enabled, std::move(metrics_provider), std::move(create_bridge_callback),
       raster_context_provider, use_surface_layer, is_background_suspend_enabled, is_background_video_play_enabled,
       is_background_video_track_optimization_supported, std::move(demuxer_override),
@@ -206,6 +199,8 @@ void WebMediaPlayerImplExt::DoReloadForPrimitive() {
 
 #if BUILDFLAG(ARKWEB_CUSTOM_VIDEO_PLAYER)
 void WebMediaPlayerImplExt::RestartForPrimitive() {
+  LOG(INFO) << "RestartForPrimitive, primitive_renderer_type_["
+            << GetRendererName(primitive_renderer_type_) << "]";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "RestartForPrimitive, primitive_renderer_type_["
                      << GetRendererName(primitive_renderer_type_) << "]";
@@ -257,7 +252,7 @@ void WebMediaPlayerImplExt::PlayWithReason(media::ActionReason reason) {
 
 void WebMediaPlayerImplExt::PauseWithReason(media::ActionReason reason) {
   base::AutoReset<media::ActionReason> resetter(&action_reason_, reason);
-  Pause();
+  Pause(blink::WebMediaPlayer::PauseReason::kPauseCalled);
 }
 
 bool WebMediaPlayerImplExt::IsMediaPlayerShown() const {
@@ -291,6 +286,12 @@ void WebMediaPlayerImplExt::SetVideoSurface(int32_t widget_id) {
   LOG(INFO) << "SetVideoSurface(" << widget_id
             << "), has_page_hidden_when_paused:"
             << has_page_hidden_when_paused_;
+#if BUILDFLAG(ARKWEB_PIP)
+  if (video_surface_id_ > 0 && widget_id > 0) {
+    skip_surface_recover_ = true;
+  }
+#endif // ARKWEB_PIP
+
   video_surface_id_ = widget_id;
   if (surface_created_cb_) {
     surface_created_cb_.Run(widget_id);
@@ -307,8 +308,8 @@ void WebMediaPlayerImplExt::HandleSurfaceSwitchWhenPaused() {
     pipeline_controller_->SetPreciseSeekTarget(last_frame_timestamp_);
   }
 
-  Seek(CurrentTime());
-}
+    Seek(CurrentTime());
+  }
 
 void WebMediaPlayerImplExt::SaveLastFrameTimeStamp() {
   auto frame = compositor_->GetCurrentFrameOnAnyThread();
@@ -384,11 +385,11 @@ WebString WebMediaPlayerImplExt::GetMimeType() const {
   }
   return WebString();
 }
-
+ 
 bool WebMediaPlayerImplExt::UsingMediaPlayer() const {
-  return using_media_player_renderer_;
+  return GetDemuxerType() == media::DemuxerType::kManifestDemuxer;
 }
-
+ 
 void WebMediaPlayerImplExt::OnHiddenVideoReport(bool storing_in_bfcache) {
   if (IsPageHidden() || (IsHidden() && should_pause_when_frame_is_hidden_)) {
     if (storing_in_bfcache && client_) {
@@ -415,7 +416,15 @@ void WebMediaPlayerImpl::PipEnable(bool enable) {
     LOG(ERROR) << "Pip pipeline_controller_ is null.";
   }
   if (!enable) {
+    if (skip_surface_recover_) {
+      LOG(INFO) << "Intercept Pip surface recover.";
+      skip_surface_recover_ = false;
+      return;
+    }
     video_surface_id_ = -1;
+    if (surface_created_cb_) {
+      surface_created_cb_.Run(video_surface_id_);
+    }
   }
 }
 #endif
@@ -434,8 +443,8 @@ bool WebMediaPlayerImplExt::IsDmaBufferRecycleEnabled() {
     return false;
   }
 
-  LOG(INFO) << "DMABUF::WebMediaPlayerImplExt(), IsDmaBufferRecycleEnabled = true"
-            << " delegate_id_:" << delegate_id_;
+  LOG(INFO) << "DMABUF::WebMediaPlayerImplExt(hash" << std::hex << base::FastHash(base::byte_span_from_ref(this))
+            << "), IsDmaBufferRecycleEnabled = true";
   return dmabuf_recycled.value_or(true);
 }
 
@@ -467,8 +476,8 @@ void WebMediaPlayerImplExt::RecycleDmaBuffer() {
   }
   
   if (dma_state_ == kHaveExist) {
-    LOG(INFO) << "DMABUF::WebMediaPlayerImplExt, RecycleDmaBuffer()"
-              << " delegate_id_:" << delegate_id_;
+    LOG(INFO) << "DMABUF::WebMediaPlayerImplExt, RecycleDmaBuffer(hash"
+              << std::hex << base::FastHash(base::byte_span_from_ref(this)) << ")";
     pipeline_controller_->RecycleDmaBuffer();
     dma_state_ = kHaveRecycled;
   }
@@ -483,8 +492,8 @@ void WebMediaPlayerImplExt::ResumeDmaBuffer() {
   }
 
   if (dma_state_ == kHaveRecycled) {
-    LOG(INFO) << "DMABUF::WebMediaPlayerImplExt, ResumeDmaBuffer()"
-              << " delegate_id_:" << delegate_id_;
+    LOG(INFO) << "DMABUF::WebMediaPlayerImplExt, ResumeDmaBuffer(hash"
+              << std::hex << base::FastHash(base::byte_span_from_ref(this)) << ")";
     pipeline_controller_->ResumeDmaBuffer();
     dma_state_ = kHaveExist;
     if (client_) {

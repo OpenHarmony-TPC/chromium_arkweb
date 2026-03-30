@@ -12,7 +12,7 @@ type MockStateManager = {
   resetState: jest.Mock;
   setState: jest.Mock;
 };
-
+ 
 jest.mock('../src/Debug/Log', () => ({
   __esModule: true,
   default: {

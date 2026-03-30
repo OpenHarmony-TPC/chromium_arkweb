@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <vector>
+#include <string>
 
 namespace OHOS::NWeb {
 
@@ -28,7 +29,7 @@ class NetConfigAdapter {
   virtual ~NetConfigAdapter() = default;
 
   virtual bool GetIsCleartextPermittedByHostName(
-      const std::string& hostname) = 0;
+      std::string_view hostname) = 0;
 
   virtual bool GetIsCleartextCfgByComponent(const std::string& component) = 0;
 };

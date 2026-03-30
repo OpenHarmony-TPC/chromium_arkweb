@@ -22,6 +22,7 @@
 #include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 
 namespace performance_manager::policies {
@@ -42,31 +43,34 @@ bool PageMightHaveFramesInBFCache(const PageNode* page_node) {
   return false;
 }
 
-using MemoryPressureLevel = base::MemoryPressureListener::MemoryPressureLevel;
-
 void MaybeFlushBFCacheOnUIThread(base::WeakPtr<content::WebContents> contents,
-                                 MemoryPressureLevel memory_pressure_level) {
+                                 base::MemoryPressureLevel memory_pressure_level) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   if (!contents) {
     return;
   }
 
   int cache_size = -1;
+  content::BackForwardCache::NotRestoredReason reason;
   switch (memory_pressure_level) {
-    case MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_MODERATE:
+    case base::MEMORY_PRESSURE_LEVEL_MODERATE:
       LOG(DEBUG) << "OHOSBFCache::MaybeFlushBFCacheOnUIThread"
                  << " The value of memory pressure level is: "
                     "MEMORY_PRESSURE_LEVEL_MODERATE";
       cache_size = 1;
+      reason = content::BackForwardCache::NotRestoredReason::
+          kCacheLimitPrunedOnModerateMemoryPressure;
       break;
-    case MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_CRITICAL:
+    case base::MEMORY_PRESSURE_LEVEL_CRITICAL:
       LOG(DEBUG) << "OHOSBFCache::MaybeFlushBFCacheOnUIThread"
                  << " The value of memory pressure level is: "
                     "MEMORY_PRESSURE_LEVEL_CRITICAL";
       cache_size = 0;
+      reason = content::BackForwardCache::NotRestoredReason::
+          kCacheLimitPrunedOnCriticalMemoryPressure;
       break;
     default:
-      NOTREACHED_IN_MIGRATION();
+      NOTREACHED();
   }
   // Do not flush BFCache if cache_size is negative (such as -1).
   if (cache_size < 0) {
@@ -80,7 +84,7 @@ void MaybeFlushBFCacheOnUIThread(base::WeakPtr<content::WebContents> contents,
   if (!navigation_controller.GetPendingEntry()) {
     LOG(DEBUG) << "OHOSBFCache::MaybeFlushBFCacheOnUIThread"
                << " Start to prune cache is: " << cache_size;
-    navigation_controller.GetBackForwardCache().Prune(cache_size);
+    navigation_controller.GetBackForwardCache().Prune(cache_size, reason);
   }
 }
 
@@ -88,7 +92,7 @@ void MaybeFlushBFCacheOnUIThread(base::WeakPtr<content::WebContents> contents,
 
 void OHOSBFCachePolicy::MaybeFlushBFCache(
     const PageNode* page_node,
-    MemoryPressureLevel memory_pressure_level) {
+    base::MemoryPressureLevel memory_pressure_level) {
   DCHECK(page_node);
   content::GetUIThreadTaskRunner({})->PostTask(
       FROM_HERE,
@@ -96,18 +100,13 @@ void OHOSBFCachePolicy::MaybeFlushBFCache(
                      memory_pressure_level));
 }
 
-void OHOSBFCachePolicy::OnPassedToGraph(Graph* graph) {
-  DCHECK(graph->HasOnlySystemNode());
-  graph->AddSystemNodeObserver(this);
-}
+void OHOSBFCachePolicy::OnPassedToGraph(Graph* graph) {}
 
-void OHOSBFCachePolicy::OnTakenFromGraph(Graph* graph) {
-  graph->RemoveSystemNodeObserver(this);
-}
+void OHOSBFCachePolicy::OnTakenFromGraph(Graph* graph) {}
 
-void OHOSBFCachePolicy::OnMemoryPressure(MemoryPressureLevel new_level) {
+void OHOSBFCachePolicy::OnMemoryPressure(base::MemoryPressureLevel new_level) {
   // This shouldn't happen but add the check anyway in case the API changes.
-  if (new_level == MemoryPressureLevel::MEMORY_PRESSURE_LEVEL_NONE) {
+  if (new_level == base::MEMORY_PRESSURE_LEVEL_NONE) {
     return;
   }
 
@@ -124,5 +123,11 @@ void OHOSBFCachePolicy::OnMemoryPressure(MemoryPressureLevel new_level) {
     }
   }
 }
+
+OHOSBFCachePolicy::OHOSBFCachePolicy()
+    : memory_pressure_listener_registration_(
+          FROM_HERE,
+          base::MemoryPressureListenerTag::kBFCachePolicy,
+          this) {}
 
 }  // namespace performance_manager::policies

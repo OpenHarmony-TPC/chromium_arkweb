@@ -27,6 +27,10 @@
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 #include "components/viz/service/gl/gpu_service_impl.h"
 #endif
+#if BUILDFLAG(ARKWEB_SAFEBROWSING)
+#include "arkweb/ohos_nweb/src/capi/nweb_safe_browsing_detection_result_item.h"
+#endif
+
 namespace viz {
 
 #if BUILDFLAG(ARKWEB_DFX_DUMP)
@@ -47,6 +51,7 @@ class ArkwebDisplayUtils {
 #if BUILDFLAG(ARKWEB_SYNC_RENDER)
   void SetDrawRect(const gfx::Rect& new_rect);
   void SetDrawMode(const int32_t mode);
+  int32_t GetDrawMode();
 #endif
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
@@ -65,6 +70,10 @@ class ArkwebDisplayUtils {
   bool ShouldDisableSwap(bool should);
 #endif  // ARKWEB_MAXIMIZE_RESIZE
 
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+  void ModifyRenderFit(int32_t fitType);
+#endif  // ARKWEB_ROTATE_RESIZE
+
 #if BUILDFLAG(ARKWEB_DFX_DUMP)
   void DrawAndSwapDump(AggregatedFrame& frame);
 #endif
@@ -73,7 +82,7 @@ class ArkwebDisplayUtils {
                    gfx::Size current_surface_size,
                    AggregatedFrame& frame);
 
-#if BUILDFLAG(ARKWEB_VULKAN)
+#if BUILDFLAG(ARKWEB_VULKAN_INC_PRESENT)
   void JudgePartialSwap();
 #endif
 
@@ -85,8 +94,18 @@ class ArkwebDisplayUtils {
   void SetGpuServiceImpl(GpuServiceImpl* gpu_service_impl);
 #endif
 
+#if BUILDFLAG(IS_ARKWEB_EXT) &&BUILDFLAG(ARKWEB_SAFEBROWSING)
+  void DumpSnapshotForSBS(AggregatedFrame& frame);
+  void HandleAntiFraudDetection(std::unique_ptr<CopyOutputResult> result);
+  SafeBrowsingDetectionResult safe_browsing_detection_result_;
+#endif
+
 #if BUILDFLAG(ARKWEB_OCCLUDED_OPT)
   void DiscardBackbuffer();
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  void SetIfNeedCleanBuffers(bool need_clean_buffers);
 #endif
 
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)

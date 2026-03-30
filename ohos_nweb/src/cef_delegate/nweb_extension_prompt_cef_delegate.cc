@@ -17,11 +17,13 @@
 
 #include <map>
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/logging.h"
 #include "nweb_icon_utils.h"
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
 #include "ohos_nweb_ex/core/extension/nweb_extension_prompt_dispatcher.h"
 #endif
 

@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "libcef/browser/net_service/net_helpers.h"
+#include "arkweb/chromium_ext/net/base/net_helpers.h"
 
 #include "base/base_paths_ohos.h"
 #include "base/files/file_path.h"
 #include "base/path_service.h"
+#include "base/logging.h"
 #include "base/strings/string_util.h"
-#include "include/base/cef_logging.h"
+#include "base/strings/string_number_conversions.h"
 #include "net/base/load_flags.h"
 #include "url/gurl.h"
 
@@ -40,7 +41,7 @@ constexpr int32_t APPLICATION_API_12 = 12;
 
 #if BUILDFLAG(ARKWEB_EXT_FILE_ACCESS)
 static const char APP_STORAGE_SANDBOX_PATH[] =
-    "/data/storage";
+    "/data/storage/";
 #endif
 
 int UpdateCacheLoadFlags(int load_flags, int cache_control_flags) {
@@ -64,6 +65,9 @@ bool NetHelpers::accept_cookies = true;
 bool NetHelpers::third_party_cookies = false;
 int NetHelpers::cache_mode = 0;
 int NetHelpers::connection_timeout = 30;
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
+  int NetHelpers::network = -1;
+#endif
 #if BUILDFLAG(ARKWEB_NETWORK_SERVICE)
 int32_t NetHelpers::socket_idle_timeout = kDefaultSocketIdleTimeout;
 #endif
@@ -75,17 +79,6 @@ base::NoDestructor<std::mutex> NetHelpers::enable_private_network_check_mutex;
 
 #if BUILDFLAG(ARKWEB_CUSTOM_DNS)
 base::NoDestructor<std::map<std::string, struct CustomDnsEntry>> NetHelpers::custom_dns{};
-#endif
-
-#if BUILDFLAG(ARKWEB_EX_DOWNLOAD)
-CefRefPtr<CefDownloadHandler> NetHelpers::global_download_handler = nullptr;
-void NetHelpers::SetDownloadHandler(
-    CefRefPtr<CefDownloadHandler> download_handler) {
-  NetHelpers::global_download_handler = download_handler;
-}
-CefRefPtr<CefDownloadHandler> NetHelpers::GetDownloadHandler() {
-  return NetHelpers::global_download_handler;
-}
 #endif
 
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
@@ -177,7 +170,11 @@ int32_t GetApplicationApiVersion() {
   if (apiVersion.empty()) {
     return -1;
   }
-  return std::stoi(apiVersion);
+  int32_t apiVersionNumber;
+  if(!base::StringToInt(apiVersion, &apiVersionNumber)) {
+    return -1;
+  }
+  return apiVersionNumber;
 }
 #endif
 
@@ -227,7 +224,7 @@ bool IsAppStorageSandboxUrl(const GURL& url) {
   if (!url.is_valid() || !url.SchemeIsFile() || !url.has_path()) {
     return false;
   }
- 
+
   return base::StartsWith(url.path(), APP_STORAGE_SANDBOX_PATH,
                           base::CompareCase::SENSITIVE);
 }
@@ -390,15 +387,19 @@ void NetHelpers::SetSocketIdleTimeout(int32_t timeout) {
 int32_t NetHelpers::GetSocketIdleTimeout() {
   int32_t timeout = kDefaultSocketIdleTimeout;
   if (socket_idle_timeout != kDefaultSocketIdleTimeout) {
-      timeout = socket_idle_timeout;
+    timeout = socket_idle_timeout;
   } else {
-      const base::CommandLine *command_line = base::CommandLine::ForCurrentProcess();
-      if (command_line && command_line->HasSwitch(::switches::kSocketIdleTimeout)) {
-          int time;
-          if (base::StringToInt(command_line->GetSwitchValueASCII(::switches::kSocketIdleTimeout), &time)) {
-              timeout = static_cast<int32_t>(time);
-          }
+    const base::CommandLine* command_line =
+        base::CommandLine::ForCurrentProcess();
+    if (command_line &&
+        command_line->HasSwitch(::switches::kSocketIdleTimeout)) {
+      int time;
+      if (base::StringToInt(
+              command_line->GetSwitchValueASCII(::switches::kSocketIdleTimeout),
+              &time)) {
+        timeout = static_cast<int32_t>(time);
       }
+    }
   }
   return timeout;
 }

@@ -71,6 +71,10 @@ void PRPPRequestLoaderImpl::InitAndStartUrlRequest(const std::shared_ptr<PRReque
   if (info->type() == PRRequestInfoType::TYPE_PAGE_PREFLIGHT) {
     sub_url_ = info->url().spec().substr(strlen(PRPP_PREFLIGHT_PREFIX));
   }
+  if (!url_request_context_.get()) {
+    LOG(WARNING) << "PRPPreload.PRPPRequestLoaderImpl::InitAndStartUrlRequest, invalid args";
+    return;
+  }
   url_request_ = url_request_context_.get()->CreateRequestForPrpp(GURL(sub_url_),
     net::MEDIUM, this, MISSING_TRAFFIC_ANNOTATION, false);
   url_request_->set_method(info->method());
@@ -102,7 +106,7 @@ void PRPPRequestLoaderImpl::InitAndStartUrlRequest(const std::shared_ptr<PRReque
   url_request_->set_first_party_url_policy(info->first_party_url_policy());
   url_request_->SetLoadFlags(real_load_flags_);
   if (!info->allow_credentials()) {
-    url_request_->set_allow_credentials(false);
+    url_request_->set_disallow_credentials();
   }
   url_request_->set_send_client_certs(info->send_client_certs());
   url_request_->SetRequestHeadersCallback(base::BindRepeating(
@@ -111,7 +115,8 @@ void PRPPRequestLoaderImpl::InitAndStartUrlRequest(const std::shared_ptr<PRReque
       &PRPPRequestLoaderImpl::SetRawResponseHeaders, weak_ptr_factory_.GetWeakPtr()));
   url_request_->SetEarlyResponseHeadersCallback(base::BindRepeating(
       &PRPPRequestLoaderImpl::NotifyEarlyResponse, weak_ptr_factory_.GetWeakPtr()));
-  url_request_->set_storage_access_status(info->storage_access_status());
+  url_request_->set_storage_access_status(
+      net::StorageAccessStatusCache(info->storage_access_status()));
   url_request_->cookie_setting_overrides().PutAll(info->cookie_setting_overrides());
   url_request_->set_ad_tagged(info->ad_tagged());
   url_request_->set_update_res_request_info_callback(

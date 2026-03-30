@@ -18,6 +18,7 @@
 
 #include "arkweb/build/features/features.h"
 #include "ui/touch_selection/touch_selection_controller.h"
+#include "ui/touch_selection/ui_touch_selection_export.h"
 #include <queue>
 
 namespace ui {
@@ -28,7 +29,7 @@ struct PreTouchInfo {
   base::TimeTicks start;
 };
 
-class TouchSelectionControllerExt : public TouchSelectionController {
+class UI_TOUCH_SELECTION_EXPORT TouchSelectionControllerExt : public TouchSelectionController {
  public:
   TouchSelectionControllerExt(TouchSelectionControllerClient* client,
                               const Config& config);

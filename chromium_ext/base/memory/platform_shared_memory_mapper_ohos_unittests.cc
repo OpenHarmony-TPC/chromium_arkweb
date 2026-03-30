@@ -31,9 +31,9 @@ class PlatformSharedMemoryMapperTest : public ::testing::Test {
 
 TEST_F(PlatformSharedMemoryMapperTest, Map_001) {
   subtle::PlatformSharedMemoryHandle myHandle = 0;
-  absl::optional<span<uint8_t>> result =
+  std::optional<span<uint8_t>> result =
       platform_shared_memory_mapper.Map(myHandle, true, 20, 20);
-  EXPECT_EQ(result, absl::nullopt);
+  EXPECT_EQ(result, std::nullopt);
 }
 
 TEST_F(PlatformSharedMemoryMapperTest, Map_002) {

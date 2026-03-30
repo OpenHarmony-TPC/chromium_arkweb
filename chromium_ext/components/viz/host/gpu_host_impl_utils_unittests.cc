@@ -62,9 +62,10 @@ class VizMainMock : public viz::mojom::VizMain {
    VizMainMock() = default;
    ~VizMainMock() = default;
    MOCK_METHOD1(CreateFrameSinkManager, void(FrameSinkManagerParamsPtr params));
-   MOCK_METHOD5(CreateGpuService, void(
+   MOCK_METHOD6(CreateGpuService, void(
      ::mojo::PendingReceiver<::viz::mojom::GpuService> gpu_service,
      ::mojo::PendingRemote<::viz::mojom::GpuHost> gpu_host,
+     ::mojo::PendingRemote<::viz::mojom::GpuLogging> gpu_logging,
      ::mojo::PendingRemote<::discardable_memory::mojom::DiscardableSharedMemoryManager> discardable_memory_manager,
      ::base::UnsafeSharedMemoryRegion use_shader_cache_shm_count,
      mojom::GpuServiceCreationParamsPtr params));
@@ -77,16 +78,18 @@ class GpuServiceMock : public mojom::GpuService {
    GpuServiceMock() = default;
    ~GpuServiceMock() = default;
 
-   MOCK_METHOD7(EstablishGpuChannel, bool(int32_t client_id,
+   MOCK_METHOD8(EstablishGpuChannel, bool(int32_t client_id,
      uint64_t client_tracing_id,
      bool is_gpu_host,
+     bool enable_extra_handles_validation,
      ::mojo::ScopedMessagePipeHandle* out_channel_handle,
      ::gpu::GPUInfo* out_gpu_info,
      ::gpu::GpuFeatureInfo* out_gpu_feature_info,
      ::gpu::SharedImageCapabilities* out_shared_image_capabilities));
-   MOCK_METHOD4(EstablishGpuChannel, void(int32_t client_id,
+   MOCK_METHOD5(EstablishGpuChannel, void(int32_t client_id,
      uint64_t client_tracing_id,
      bool is_gpu_host,
+     bool enable_extra_handles_validation,
      EstablishGpuChannelCallback callback));
    MOCK_METHOD2(SetChannelClientPid, void(int32_t client_id, ::base::ProcessId client_pid));
    MOCK_METHOD2(GetSurfaceId, bool(int32_t native_embed_id, std::string* out_surfaceId));
@@ -95,33 +98,14 @@ class GpuServiceMock : public mojom::GpuService {
    MOCK_METHOD2(SetTransformHint, void(uint32_t rotation, uint32_t window_id));
    MOCK_METHOD1(DestroyNativeWindow, void(uint32_t native_window_id));
    MOCK_METHOD2(SetChannelDiskCacheHandle, void(int32_t client_id, const ::gpu::GpuDiskCacheHandle& cache_handle));
+   MOCK_METHOD3(SetChannelPersistentCachePendingBackend, void(int32_t client_id,
+   const ::gpu::GpuDiskCacheHandle& cache_handle, ::persistent_cache::PendingBackend pending_backend));
    MOCK_METHOD1(OnDiskCacheHandleDestoyed, void(const ::gpu::GpuDiskCacheHandle& cache_handle));
    MOCK_METHOD1(CloseChannel, void(int32_t client_id));
-   MOCK_METHOD2(BindClientGmbInterface, void(::mojo::PendingReceiver<::gpu::mojom::ClientGmbInterface> receiver,
-     int32_t client_id));
    MOCK_METHOD1(CreateVideoEncodeAcceleratorProvider,
      void(::mojo::PendingReceiver<::media::mojom::VideoEncodeAcceleratorProvider> vea_provider));
    MOCK_METHOD2(BindWebNNContextProvider,
      void(::mojo::PendingReceiver<::webnn::mojom::WebNNContextProvider> receiver, int32_t client_id));
-   MOCK_METHOD7(CreateGpuMemoryBuffer, bool(
-     ::gfx::GpuMemoryBufferId id,
-     const ::gfx::Size& size,
-     ::gfx::BufferFormat format,
-     ::gfx::BufferUsage usage,
-     int32_t client_id,
-     ::gpu::SurfaceHandle surface_handle,
-     ::gfx::GpuMemoryBufferHandle* out_buffer_handle));
-   MOCK_METHOD(void, CreateGpuMemoryBuffer, (::gfx::GpuMemoryBufferId id,
-     const ::gfx::Size& size,
-     ::gfx::BufferFormat format,
-     ::gfx::BufferUsage usage,
-     int32_t client_id,
-     ::gpu::SurfaceHandle surface_handle,
-     CreateGpuMemoryBufferCallback callback));
-   MOCK_METHOD2(DestroyGpuMemoryBuffer, void(::gfx::GpuMemoryBufferId id, int32_t client_id));
-   MOCK_METHOD3(CopyGpuMemoryBuffer, void(::gfx::GpuMemoryBufferHandle buffer_handle,
-     ::base::UnsafeSharedMemoryRegion shared_memory,
-     CopyGpuMemoryBufferCallback callback));
    MOCK_METHOD1(GetVideoMemoryUsageStats, void(GetVideoMemoryUsageStatsCallback callback));
    MOCK_METHOD1(StartPeakMemoryMonitor, void(uint32_t sequence_num));
    MOCK_METHOD2(GetPeakMemoryUsage, void(uint32_t sequence_num,
@@ -129,7 +113,7 @@ class GpuServiceMock : public mojom::GpuService {
    MOCK_METHOD3(LoadedBlob, void(const ::gpu::GpuDiskCacheHandle& cache_handle,
      const std::string& key, const std::string& data));
    MOCK_METHOD0(WakeUpGpu, void());
-   MOCK_METHOD1(GpuSwitched, void(::gl::GpuPreference active_gpu_heuristic));
+   MOCK_METHOD0(GpuSwitched, void());
    MOCK_METHOD0(DisplayAdded, void());
    MOCK_METHOD0(DisplayRemoved, void());
    MOCK_METHOD0(DisplayMetricsChanged, void());
@@ -137,7 +121,7 @@ class GpuServiceMock : public mojom::GpuService {
    MOCK_METHOD0(OnBackgroundCleanup, void());
    MOCK_METHOD0(OnBackgrounded, void());
    MOCK_METHOD0(OnForegrounded, void());
-   MOCK_METHOD1(OnMemoryPressure, void(::base::MemoryPressureListener::MemoryPressureLevel level));
+   MOCK_METHOD1(OnMemoryPressure, void(::base::MemoryPressureLevel level));
    MOCK_METHOD2(GetDawnInfo, void(bool collect_metrics, GetDawnInfoCallback callback));
    MOCK_METHOD0(Crash, void());
    MOCK_METHOD0(Hang, void());

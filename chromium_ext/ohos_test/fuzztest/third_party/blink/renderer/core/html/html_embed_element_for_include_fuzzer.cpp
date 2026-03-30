@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include <fuzzer/FuzzedDataProvider.h>
-#include <string.h>
+#include <cstring>
 
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
@@ -34,7 +34,10 @@ AtomicString CreateAlignedAtomicString(const char* str) {
     uintptr_t raw_addr = reinterpret_cast<uintptr_t>(raw_mem);
     uintptr_t aligned_addr = (raw_addr + alignment - 1) & ~(alignment - 1);
     char* aligned_ptr = reinterpret_cast<char*>(aligned_addr);
-    std::memcpy(aligned_ptr, str, len + 1);
+    if (memcpy_s(aligned_ptr, buffer_size, str, len + 1) != 0) {
+        std::free(raw_mem);
+        return AtomicString();
+    }
     AtomicString result(aligned_ptr);
     std::free(raw_mem);
     return result;

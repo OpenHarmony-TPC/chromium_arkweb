@@ -172,21 +172,6 @@ TEST_F(RenderFrameHostImplForIncludeTest, UpdateAdBlockEnabledToRender_SiteAdblo
   ASSERT_NO_FATAL_FAILURE(rfh->UpdateAdBlockEnabledToRender(site_adblock_enabled));
 }
 
-TEST_F(RenderFrameHostImplForIncludeTest, AddNamedObject_WithFrame) {
-  RenderFrameHostImpl* rfh = main_test_rfh();
-  base::Value::List list;
-  ASSERT_NO_FATAL_FAILURE(rfh->AddNamedObject("test", 123, list, true));
-}
-
-TEST_F(RenderFrameHostImplForIncludeTest, AddNamedObject_NoFrame) {
-  RenderFrameHostImpl* rfh = main_test_rfh();
-  base::Value::List list;
-
-  auto frame = mojo::AssociatedRemote<mojom::Frame>();
-  SetFrame(frame, rfh);
-  ASSERT_NO_FATAL_FAILURE(rfh->AddNamedObject("test", 123, list, true));
-}
-
 TEST_F(RenderFrameHostImplForIncludeTest, MouseSelectMenuShow_WithDelegate) {
   RenderFrameHostImpl* rfh = main_test_rfh();
   ASSERT_NO_FATAL_FAILURE(rfh->MouseSelectMenuShow(true));

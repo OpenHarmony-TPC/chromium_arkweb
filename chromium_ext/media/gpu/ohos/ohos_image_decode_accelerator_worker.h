@@ -21,7 +21,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/sequence_checker.h"
 #include "gpu/config/gpu_info.h"
-#include "gpu/ipc/service/image_decode_accelerator_worker.h"
 
 namespace base {
 class SequencedTaskRunner;
@@ -62,13 +61,15 @@ class OhosImageDecodeAcceleratorWorker
   void Decode(std::vector<uint8_t> encoded_data,
               const gfx::Size& output_size,
               CompletedDecodeCB decode_cb) override;
+#if BUILDFLAG(ARKWEB_HEIF_SUPPORT)
   void ReleaseDecodedPixelMap() override;
+#endif
 
  private:
   explicit OhosImageDecodeAcceleratorWorker(OhosImageDecoderVector decoders);
 
   OhosImageDecoder* GetDecoderForImage();
-  bool CheckImageFormatSupport(std::vector<uint8_t> encoded_data);
+  bool CheckImageFormatSupport(const std::vector<uint8_t>& encoded_data);
 
   // We delegate the decoding to the appropriate decoder in |decoders_| which
   // are used and destroyed on |decoder_task_runner_|.

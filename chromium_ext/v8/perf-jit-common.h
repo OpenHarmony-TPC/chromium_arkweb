@@ -50,13 +50,12 @@ struct PerfJitBase {
   uint64_t time_stamp_;
 };
 
-struct PerfJitCodeLoad : PerfJitBase {
-  uint32_t process_id_;
-  uint32_t thread_id_;
-  uint64_t vma_;
+struct PerfJitCodeLoad {
   uint64_t code_address_;
-  uint64_t code_size_;
-  uint64_t code_id_;
+  uint32_t process_id_;
+  uint32_t size_;
+  uint32_t code_size_;
+  uint32_t code_id_;
 };
 
 struct PerfJitDebugEntry {
@@ -81,11 +80,7 @@ struct PerfJitCodeUnwindingInfo : PerfJitBase {
 
 constexpr char kStringTerminator[] = {'\0'};
 constexpr char kJitCodeTerminator[] = "JIT#END";  // JitCodeTerminator
-constexpr std::string kJitSymbolTagHead = "JSVM_JIT_symbol_";
-
-inline std::string JitSymbolMemTagName(int pid) {
-  return kJitSymbolTagHead + std::to_string(pid);
-}
+constexpr char kJitSymbolMapName[] = "JS_JIT_symbol";
 
 }  // namespace internal
 }  // namespace v8

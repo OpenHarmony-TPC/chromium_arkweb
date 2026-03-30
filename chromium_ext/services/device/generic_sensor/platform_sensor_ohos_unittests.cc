@@ -171,13 +171,13 @@ TEST_F(PlatformSensorOHOSTest, StopTest_001)
     sensor->sensor_adapter_ = nullptr;
     sensor->StopSensor();
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, IsSupportedInstanceTest_001)
 {
     auto ret = sensor->IsSupported();
     EXPECT_TRUE(ret);
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, ConstructorTest_001)
 {
     mojom::SensorType type = mojom::SensorType::GYROSCOPE;
@@ -187,7 +187,7 @@ TEST_F(PlatformSensorOHOSTest, ConstructorTest_001)
     auto sensor2 = MakeRefCounted<PlatformSensorOHOS>(type, &reading_buffer, provider);
     EXPECT_NE(sensor2, nullptr);
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, GetReportingModeTest_002)
 {
     mojom::SensorType type = mojom::SensorType::GYROSCOPE;
@@ -198,7 +198,7 @@ TEST_F(PlatformSensorOHOSTest, GetReportingModeTest_002)
     auto ret = gyroSensor->GetReportingMode();
     EXPECT_EQ(ret, mojom::ReportingMode::CONTINUOUS);
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, GetDefaultConfigurationTest_002)
 {
     mojom::SensorType type = mojom::SensorType::GYROSCOPE;
@@ -209,7 +209,7 @@ TEST_F(PlatformSensorOHOSTest, GetDefaultConfigurationTest_002)
     auto configuration = gyroSensor->GetDefaultConfiguration();
     EXPECT_EQ(configuration.frequency(), 5);
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, CheckSensorConfigurationTest_002)
 {
     PlatformSensorConfiguration configuration(10.0);
@@ -225,7 +225,7 @@ TEST_F(PlatformSensorOHOSTest, CheckSensorConfigurationTest_002)
     checkVal = sensor->CheckSensorConfiguration(configuration);
     EXPECT_FALSE(checkVal);
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, StartSensorTest_002)
 {
     PlatformSensorConfiguration configuration(10.0);
@@ -237,7 +237,7 @@ TEST_F(PlatformSensorOHOSTest, StartSensorTest_002)
     EXPECT_TRUE(startVal);
     sensor->StopSensor();
 }
-
+ 
 TEST_F(PlatformSensorOHOSTest, CreateTest_002)
 {
     mojom::SensorType type = mojom::SensorType::GYROSCOPE;
@@ -250,5 +250,5 @@ TEST_F(PlatformSensorOHOSTest, CreateTest_002)
     ret = PlatformSensorOHOS::Create(type, &reading_buffer, provider);
     EXPECT_NE(ret, nullptr);
 }
-
+ 
 } // namespace device

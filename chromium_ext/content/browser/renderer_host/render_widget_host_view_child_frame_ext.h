@@ -44,6 +44,16 @@ class CONTENT_EXPORT RenderWidgetHostViewChildFrameExt
   bool GetScrollable() override;
   bool IsMarkedConsumed(blink::WebInputEvent::Type type);
 #endif
+
+  bool IsTouchSequencePotentiallyActiveOnViz() override;
+  void RequestInputBackForDragAndDrop(
+      blink::mojom::DragDataPtr drag_data,
+      const url::Origin& source_origin,
+      blink::DragOperationsMask drag_operations_mask,
+      SkBitmap bitmap,
+      gfx::Vector2d cursor_offset_in_dip,
+      gfx::Rect drag_obj_rect_in_dip,
+      blink::mojom::DragEventSourceInfoPtr event_info) override;
 };
 }  // namespace content
 #endif  // CONTENT_BROWSER_RENDERER_HOST_RENDER_WIDGET_HOST_VIEW_CHILD_FRAME_EXT_H_

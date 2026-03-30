@@ -55,24 +55,24 @@ class CryptLinuxForIncludeTest : public ::testing::Test {
     base::HexStringToString(keyHex2, &keyString2);
     base::HexStringToString(ivHex, &iv);
     oscryptImpl = std::make_unique<OSCryptImpl>();
-  }
+}
 
-  void TearDown() override {
-    oscryptImpl.reset();
-  }
+void TearDown() override {
+  oscryptImpl.reset();
+}
 
-  std::unique_ptr<crypto::SymmetricKey> CreateTestKey(const std::string& key_data) {
-    return crypto::SymmetricKey::Import(crypto::SymmetricKey::AES, key_data);
-  }
+std::unique_ptr<crypto::SymmetricKey> CreateTestKey(const std::string& key_data) {
+  return crypto::SymmetricKey::Import(crypto::SymmetricKey::AES, key_data);
+}
 
-  bool GetEncryptString(const std::string& encryText, std::string* rawCiphertext,
-                        crypto::SymmetricKey* encrypKey, std::string& encryIv) {
-    crypto::Encryptor encryptor;
-    if (!encryptor.Init(encrypKey, crypto::Encryptor::GCM, encryIv)) {
-        return false;
-    }
-    return encryptor.Encrypt(encryText, rawCiphertext);
+bool GetEncryptString(const std::string& encryText, std::string* rawCiphertext,
+                      crypto::SymmetricKey* encrypKey, std::string& encryIv) {
+  crypto::Encryptor encryptor;
+  if (!encryptor.Init(encrypKey, crypto::Encryptor::GCM, encryIv)) {
+    return false;
   }
+  return encryptor.Encrypt(encryText, rawCiphertext);
+}
 
   std::string keyString1;
   std::string keyString2;
@@ -201,7 +201,7 @@ TEST_F(CryptLinuxForIncludeTest, TestDecryptString16ForMigrate) {
   EXPECT_TRUE(base::PathExists(key_dir));
   ASSERT_NO_FATAL_FAILURE(oscryptImpl->DecryptString16ForMigrate(rawCiphertext, &plaintext));
   base::FilePath key_file = key_dir.Append(
-    FILE_PATH_LITERAL(crypto::ohos::get_asset_handle_file_256(kNewbAssetHandleAlias)));
+  FILE_PATH_LITERAL(crypto::ohos::get_asset_handle_file_256(kNewbAssetHandleAlias)));
   base::CreateDirectory(key_file);
   EXPECT_TRUE(base::PathExists(key_file));
   bool result = oscryptImpl->DecryptString16ForMigrate(rawCiphertext, &plaintext);

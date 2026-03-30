@@ -16,6 +16,7 @@
 #include "vsync_adapter_impl.h"
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
+#include <string>
 #include <unistd.h>
 #include <native_vsync/graphic_error_code.h>
 

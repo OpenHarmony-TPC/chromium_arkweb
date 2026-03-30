@@ -16,6 +16,8 @@
 #ifndef COMPONENTS_DOM_DISTILLER_CORE_TASK_TRACKER_UTILS_H_
 #define COMPONENTS_DOM_DISTILLER_CORE_TASK_TRACKER_UTILS_H_
 
+#include <vector>
+
 #include "base/memory/raw_ptr.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"

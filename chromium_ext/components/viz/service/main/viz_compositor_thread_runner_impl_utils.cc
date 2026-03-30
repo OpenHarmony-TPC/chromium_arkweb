@@ -26,21 +26,23 @@ void ReportThreadForInit(const std::unique_ptr<base::Thread>& thread)
   if (type == switches::kGpuProcess) {
     NWebNativeWindowTracker::Get()->g_browser_client_->ReportThread(
         ResSchedStatusAdapter::THREAD_CREATED, base::GetCurrentRealPid(),
-        thread->GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY);
+        thread->GetThreadRealId().raw(), ResSchedRoleAdapter::IMPORTANT_DISPLAY);
   } else {
     thread->task_runner()->PostTask(
         FROM_HERE,
         base::BindOnce(
             base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
             ResSchedStatusAdapter::THREAD_CREATED, base::GetCurrentRealPid(),
-            thread->GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
+            thread->GetThreadRealId().raw(), ResSchedRoleAdapter::IMPORTANT_DISPLAY));
   }
+#if BUILDFLAG(ARKWEB_REPORT_LOSS_FRAME)
   thread->task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(
           &base::ohos::DynamicFrameRateDecision::Init,
           base::Unretained(
               &base::ohos::DynamicFrameRateDecision::GetInstance())));
+#endif         
 }
 #endif
 
@@ -60,14 +62,14 @@ void VizCompositorThreadRunnerImplUtils::ReportThreadForDestroy(const std::uniqu
   if (type == switches::kGpuProcess) {
     NWebNativeWindowTracker::Get()->g_browser_client_->ReportThread(
         ResSchedStatusAdapter::THREAD_DESTROYED, base::GetCurrentRealPid(),
-        thread->GetThreadRealId(), ResSchedRoleAdapter::IMPORTANT_DISPLAY);
+        thread->GetThreadRealId().raw(), ResSchedRoleAdapter::IMPORTANT_DISPLAY);
   } else {
     thread->task_runner()->PostTask(
         FROM_HERE,
         base::BindOnce(
             base::IgnoreResult(&ResSchedClientAdapter::ReportKeyThread),
             ResSchedStatusAdapter::THREAD_DESTROYED, base::GetCurrentRealPid(),
-            thread->GetThreadRealId(),
+            thread->GetThreadRealId().raw(),
             ResSchedRoleAdapter::IMPORTANT_DISPLAY));
   }
 }

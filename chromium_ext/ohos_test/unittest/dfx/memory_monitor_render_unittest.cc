@@ -50,11 +50,11 @@ TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest002) {
 	bool initFlag = instance->IsInitialized();
 	EXPECT_TRUE(!initFlag);
 	
-	instance->Trigger("www.baidu.com");
+	instance->Trigger("example");
 	initFlag = instance->IsInitialized();
 	EXPECT_TRUE(initFlag);
 
-	instance->Trigger("www.baidu.com");
+	instance->Trigger("example");
 	initFlag = instance->IsInitialized();
 	EXPECT_TRUE(initFlag);
 }
@@ -79,18 +79,43 @@ TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest004) {
 		std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::DEFAULT);
     std::shared_ptr<MemoryMonitorImpl> instance = MemoryMonitorImpl::GetInstance();
 
+    instance->stub_var_ = false;
 	instance->mem_info_.pid = 1;
-	instance->DfxMemSysParamObserve();
-
-	instance->mem_info_.pid = 0;
+    instance->mem_status_.lastTime = "2025Y";
 	bool result = instance->DfxMemSysParamObserve();
-	EXPECT_TRUE(!result);
+    EXPECT_FALSE(result);
+
+    instance->stub_var_ = true;
+	instance->mem_info_.pid = 1;
+    instance->mem_status_.lastTime = "2025Y";
+	result = instance->DfxMemSysParamObserve();
+    EXPECT_FALSE(result);
+
+	instance->stub_var_ = true;
+	instance->mem_info_.pid = 0;
+    instance->mem_status_.lastTime = "2025Y";
+	result = instance->DfxMemSysParamObserve();
+    EXPECT_FALSE(result);
+
+    instance->stub_var_ = true;
+    instance->mem_info_.pid = 1;
+    instance->mem_status_.lastTime = "2024Y";
+	result = instance->DfxMemSysParamObserve();
+	EXPECT_TRUE(result);
 }
 
 TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest005) {
 	std::unique_ptr<base::SingleThreadTaskExecutor> task_executor =
 		std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::DEFAULT);
     std::shared_ptr<MemoryMonitorImpl> instance = MemoryMonitorImpl::GetInstance();
+    instance->mem_info_.pss = 1500 * 1024 + 1;
+    instance->CollectAndReport();
+
+    instance->mem_info_.pss = 800 * 1024 + 1;
+    instance->CollectAndReport();
+
+    instance->mem_info_.pss = 1024;
+    instance->CollectAndReport();
 
 	instance->mem_status_.error_threshold_counter = 60;
 	instance->CollectAndReport();
@@ -101,9 +126,13 @@ TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest005) {
 
 	instance->mem_status_.error_threshold_counter = 0;
 	instance->mem_status_.warning_threshold_counter = 0;
+	instance->mem_status_.error_reported = false;
+	instance->mem_status_.warning_reported = false;
 	instance->CollectAndReport();
-	EXPECT_TRUE(!instance->mem_status_.error_reported);
-	EXPECT_TRUE(!instance->mem_status_.warning_reported);
+    bool error_reported = instance->mem_status_.error_reported;
+    bool warning_reported = instance->mem_status_.warning_reported;
+	EXPECT_FALSE(error_reported);
+	EXPECT_FALSE(warning_reported);
 }
 
 TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest006) {
@@ -132,5 +161,29 @@ TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest007) {
 	instance->mem_status_.upto_error_level = false;
 	instance->MemoryAllocReport();
 	EXPECT_NE(instance->mem_info_.pid, 0);
+}
+
+TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest008) {
+	std::unique_ptr<base::SingleThreadTaskExecutor> task_executor =
+		std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::DEFAULT);
+    std::shared_ptr<MemoryMonitorImpl> instance = MemoryMonitorImpl::GetInstance();
+
+    instance->mem_info_.pid = 0;
+    instance->ReadProcFile("/proc/self/mock", "NSpid:", instance->mem_info_.pid);
+    EXPECT_EQ(instance->mem_info_.pid, 0);
+}
+
+TEST_F(MemoryMonitorRenderTest, MemoryMonitorRenderTest009) {
+	std::unique_ptr<base::SingleThreadTaskExecutor> task_executor =
+		std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::DEFAULT);
+    std::shared_ptr<MemoryMonitorImpl> instance = MemoryMonitorImpl::GetInstance();
+
+	instance->stub_var_ = true;
+	instance->UpdateProcessMemoryInfo(instance->mem_info_);
+    EXPECT_EQ(instance->mem_info_.js_heap_used, 0);
+
+    instance->stub_var_ = false;
+	instance->UpdateProcessMemoryInfo(instance->mem_info_);
+    EXPECT_EQ(instance->mem_info_.js_heap_used, 0);
 }
 }//namespace content

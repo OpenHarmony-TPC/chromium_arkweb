@@ -17,30 +17,12 @@
 
 namespace net {
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 bool ContextHostResolver::CanUseSecureDnsFallback() const {
   if (!manager_) {
     return false;
   }
   return manager_->CanUseSecureDnsFallback(resolve_context_.get());
-}
-
-void ContextHostResolver::GetLocalAddress(IPEndPoint* address) {
-  if (!manager_) {
-    return;
-  }
-
-  manager_->GetLocalAddress(address);
-}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-std::string ContextHostResolver::GetDnsServersString() {
-  if (!manager_) {
-    return std::string();
-  }
-
-  return manager_->GetDnsServersString();
 }
 #endif
 

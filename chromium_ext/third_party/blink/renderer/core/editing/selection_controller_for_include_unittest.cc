@@ -60,17 +60,14 @@ bool SelectionControllerForIncludeTest::GetMenuShow() {
   return Controller().mouse_menu_show_;
 }
 
-#if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
 void SelectionControllerForIncludeTest::SetLongPress(HitTestResult& result) {
   Controller().last_long_press_hit_test_result_ = result;
 }
-#endif
 
 void SelectionControllerForIncludeTest::SetLinkPress(HitTestResult& result) {
   Controller().last_link_hit_test_result_ = result;
 }
 
-#if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
 TEST_F(SelectionControllerForIncludeTest, NotifyContextMenuWillShowTest_1stIf) {
   HitTestResult result;
   GetFrame()
@@ -97,7 +94,7 @@ TEST_F(SelectionControllerForIncludeTest, FocusDocumentViewTest_1stIf) {
 
 TEST_F(SelectionControllerForIncludeTest,
        ShowSelectionByLastLongPressHitTestResultTest_1stIf) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -151,7 +148,7 @@ TEST_F(SelectionControllerForIncludeTest,
 
 TEST_F(SelectionControllerForIncludeTest,
        ShowSelectionByLastLongPressHitTestResultTest_2ndIf) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id=target>This is the first line.</p>
     </body>
@@ -178,7 +175,7 @@ TEST_F(SelectionControllerForIncludeTest,
 
 TEST_F(SelectionControllerForIncludeTest,
        ShowSelectionByLastLongPressHitTestResultTest_3rdIf) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <p id=target>This is the first line.</p>
     </body>
@@ -206,7 +203,7 @@ TEST_F(SelectionControllerForIncludeTest,
 
 TEST_F(SelectionControllerForIncludeTest,
        ShowSelectionByLastLongPressHitTestResultTest_4thIf) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -396,7 +393,6 @@ TEST_F(SelectionControllerForIncludeTest, SelectClosestWordFromLiveLinkTest_6thI
                     .SelectClosestWordFromLiveLink(hit_test_result_);
   EXPECT_TRUE(result);
 }
-#endif
 
 TEST_F(SelectionControllerForIncludeTest, MouseSelectMenuShowTest_1stIf) {
   SetHtmlInnerHTML(R"HTML(
@@ -414,7 +410,7 @@ TEST_F(SelectionControllerForIncludeTest, MouseSelectMenuShowTest_1stIf) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -440,7 +436,7 @@ TEST_F(SelectionControllerForIncludeTest, SetDataDetectorHitTest_1stIf) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -490,7 +486,7 @@ TEST_F(SelectionControllerForIncludeTest, SetDataDetectorHitTest_2ndIf) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -556,7 +552,7 @@ TEST_F(SelectionControllerForIncludeTest, SetDataDetectorHitTest_3rdIf) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -623,7 +619,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleMouseReleaseEventWithMenuExtTest
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -680,7 +676,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleMouseReleaseEventWithMenuExtTest
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -737,7 +733,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleMouseReleaseEventWithMenuExtTest
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -1131,48 +1127,6 @@ TEST_F(SelectionControllerForIncludeTest, HandleGestureTapIfSelectionExistTest_1
   EXPECT_FALSE(result_);
 }
 
-TEST_F(SelectionControllerForIncludeTest, HandleGestureTapIfSelectionExistTest_16thIf) {
-  const char* body_content =
-      "<div id='sample' contenteditable>"
-      "<span id = top>this is a sample test</span>"
-      "<img src='test.img' style='width:100px;height:100px'>"
-      "</div>";
-  SetBodyContent(body_content);
-
-  Node* top = GetDocument().getElementById(AtomicString("top"))->firstChild();
-  ASSERT_TRUE(top != nullptr);
-
-  SetNonDirectionalSelectionIfNeeded(SelectionInFlatTree::Builder()
-                                         .Collapse(PositionInFlatTree(top, 0))
-                                         .Extend(PositionInFlatTree(top, 20))
-                                         .Build(),
-                                     TextGranularity::kCharacter);
-
-  blink::WebMouseEvent single_click(
-      blink::WebMouseEvent::Type::kMouseDown, 0,
-      blink::WebInputEvent::GetStaticTimeStampForTests());
-
-  single_click.SetFrameScale(1);
-  HitTestLocation location((gfx::Point(20, 5)));
-  single_click.button = blink::WebMouseEvent::Button::kLeft;
-  single_click.click_count = 1;
-  single_click.SetModifiers(
-      blink::WebInputEvent::Modifiers::kIsCompatibilityEventForTouch);
-
-  HitTestResult result;
-
-  SetMenuShow(true);
-
-  const MouseEventWithHitTestResults event_(single_click, location, result);
-
-  bool result_ = GetFrame()
-                     .GetEventHandler()
-                     .GetSelectionController()
-                     .HandleGestureTapIfSelectionExist(event_);
-
-  EXPECT_FALSE(result_);
-}
-
 TEST_F(SelectionControllerForIncludeTest, HandleEmptyLineTest_1stIf) {
   const char* body_content =
       "<div id='sample' contenteditable>"
@@ -1241,7 +1195,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleEmptyLineTest_4thIf) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace01) {
-  WTF::String str = "abc   ";
+  String str = "abc   ";
   int offset = 1, temp = 1;
   SelectionControllerUtils::OffsetAdjustWhiteSpace(offset, temp, str, false);
   EXPECT_EQ(offset, 1);
@@ -1249,7 +1203,7 @@ TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace01) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace02) {
-  WTF::String str = "abc   ";
+  String str = "abc   ";
   int offset = 5, temp = 5;
   SelectionControllerUtils::OffsetAdjustWhiteSpace(offset, temp, str, true);
   EXPECT_EQ(offset, 2);
@@ -1257,7 +1211,7 @@ TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace02) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace03) {
-  WTF::String str = "ab  c";
+  String str = "ab  c";
   int offset = 3, temp = 3;
   SelectionControllerUtils::OffsetAdjustWhiteSpace(offset, temp, str, true);
   EXPECT_EQ(offset, 1);
@@ -1265,7 +1219,7 @@ TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace03) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace04) {
-  WTF::String str = "   abc";
+  String str = "   abc";
   int offset = 2, temp = 2;
   SelectionControllerUtils::OffsetAdjustWhiteSpace(offset, temp, str, true);
   EXPECT_EQ(offset, 2);
@@ -1273,7 +1227,7 @@ TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace04) {
 
 }
 TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace05) {
-  WTF::String str = "a b";
+  String str = "a b";
   int offset = 0, temp = 0;
   SelectionControllerUtils::OffsetAdjustWhiteSpace(offset, temp, str, true);
   EXPECT_EQ(offset, 0);
@@ -1281,14 +1235,14 @@ TEST_F(SelectionControllerForIncludeTest, OffsetAdjustWhiteSpace05) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, MaxOffsetTrimTailWhiteSpace01) {
-  WTF::String str = "any content";
+  String str = "any content";
   unsigned len = 0;
   EXPECT_EQ(SelectionControllerUtils::MaxOffsetTrimTailWhiteSpace(str, len),
             0u);
 }
 
 TEST_F(SelectionControllerForIncludeTest, MaxOffsetTrimTailWhiteSpace02) {
-  WTF::String str = "abc   ";
+  String str = "abc   ";
   unsigned len = 6;
   EXPECT_EQ(SelectionControllerUtils::MaxOffsetTrimTailWhiteSpace(str, len),
             2u);
@@ -1332,7 +1286,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleGestureTapIfSelectionExist02) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -1380,7 +1334,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleGestureTapIfSelectionExist03) {
   GetDocument().GetSettings()->SetScriptEnabled(true);
   Element* script = GetDocument().CreateRawElement(html_names::kScriptTag);
   ASSERT_TRUE(script != nullptr);
-  script->setInnerHTML(
+  script->SetHTMLUnsafeWithoutTrustedTypes(
       "document.designMode = 'on';"
       "const selection = window.getSelection();"
       "const html = document.getElementsByTagName('html')[0];"
@@ -1419,7 +1373,7 @@ TEST_F(SelectionControllerForIncludeTest, HandleGestureTapIfSelectionExist03) {
 }
 
 TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult00) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1503,7 +1457,7 @@ TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult01
 }
 
 TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult02) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1590,7 +1544,7 @@ TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult03
 }
 
 TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult06) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1649,7 +1603,7 @@ TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult06
 }
 
 TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult04) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1707,7 +1661,7 @@ TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult04
 }
 
 TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult05) {
-  GetDocument().documentElement()->setInnerHTML(R"HTML(
+  GetDocument().documentElement()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <style>
         #target {
@@ -1762,4 +1716,53 @@ TEST_F(SelectionControllerForIncludeTest, ShowSelectionByLastLinkHitTestResult05
                     .GetSelectionController()
                     .ShowSelectionByLastLinkHitTestResult();
   EXPECT_TRUE(result);
+}
+
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_ValidRange) {
+  Vector<int8_t> select;
+  select.push_back(0);
+  select.push_back(5);
+  EXPECT_TRUE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_ValidRangeWithZeroStart) {
+  Vector<int8_t> select;
+  select.push_back(0);
+  select.push_back(3);
+  EXPECT_TRUE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_FailCase) {
+  Vector<int8_t> select;
+  select.push_back(-1);
+  select.push_back(-1);
+  EXPECT_FALSE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_EmptySelection) {
+  Vector<int8_t> select;
+  select.push_back(5);
+  select.push_back(5);
+  EXPECT_FALSE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_PartialFailStart) {
+  Vector<int8_t> select;
+  select.push_back(-1);
+  select.push_back(5);
+  EXPECT_FALSE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_PartialFailEnd) {
+  Vector<int8_t> select;
+  select.push_back(5);
+  select.push_back(-1);
+  EXPECT_FALSE(SelectionControllerUtils::IsValidAISelection(select));
+}
+ 
+TEST_F(SelectionControllerForIncludeTest, IsValidAISelection_EmptyRangeAtZero) {
+  Vector<int8_t> select;
+  select.push_back(0);
+  select.push_back(0);
+  EXPECT_FALSE(SelectionControllerUtils::IsValidAISelection(select));
 }

@@ -23,17 +23,15 @@
 #include "third_party/blink/renderer/platform/bindings/parkable_string.h"
 
 namespace blink {
-
-// LCOV_EXCL_START
+#if BUILDFLAG(ARKWEB_JAVASCRIPT_BRIDGE)
 ClassicScript* ClassicScriptUtils::CreateUnparkScript(
     const String& source_text,
     ScriptSourceLocationType source_location_type,
     SanitizeScriptErrors sanitize_script_errors)
 {
     return MakeGarbageCollected<ClassicScript>(
-      ParkableString(source_text.Impl()), KURL(), KURL(), ScriptFetchOptions(),
+      ParkableString(source_text.Impl(), false), KURL(), KURL(), ScriptFetchOptions(),
       source_location_type, sanitize_script_errors);
 }
-// LCOV_EXCL_STOP
-
+#endif
 }  // namespace blink

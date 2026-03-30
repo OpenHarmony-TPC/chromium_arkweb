@@ -33,7 +33,7 @@ void NWebAgentManagerImpl::SetAgentEnabled(bool enabled) {
         pref->PutArkwebAgentEnabled(enabled);
     }
     if (content_change_detection_) {
-        content_change_detection_->SetContentChangeDetectionEnable(enabled);
+      content_change_detection_->SetContentChangeDetectionEnable(enabled);
     }
     if (highlight_specified_content_) {
       highlight_specified_content_->SetHighlightSpecifiedContentEnable(enabled);
@@ -48,7 +48,7 @@ bool NWebAgentManagerImpl::IsAgentEnabled() {
 
 void NWebAgentManagerImpl::SetContentChangeDetectionConfig(int32_t min_report_time, float text_content_ratio) {
     if (content_change_detection_) {
-        content_change_detection_->SetContentChangeDetectionConfig(min_report_time, text_content_ratio);
+      content_change_detection_->SetContentChangeDetectionConfig(min_report_time, text_content_ratio);
     }
 }
 
@@ -57,6 +57,12 @@ void NWebAgentManagerImpl::SetAgentNeedHighlight(bool enabled) {
         nweb_delegate_ ? nweb_delegate_->preference_delegate_ : nullptr;
     if (pref) {
         pref->PutAgentNeedHighlight(enabled);
+    }
+}
+
+void NWebAgentManagerImpl::RequestWebDomJsonString(std::shared_ptr<NWebMessageValueCallback> callback) {
+    if (content_change_detection_) {
+      content_change_detection_->RequestWebDomJsonString(callback);
     }
 }
 }  // namespace OHOS::NWeb

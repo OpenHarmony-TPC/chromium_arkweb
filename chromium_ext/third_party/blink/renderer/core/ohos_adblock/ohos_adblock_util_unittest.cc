@@ -23,7 +23,6 @@
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/layout_tree_builder.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/dom/processing_instruction.h"
 #include "third_party/blink/renderer/core/dom/pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/shadow_root.h"
@@ -104,7 +103,6 @@ TEST_F(OhosAdblockUtilTest, IsValidTarget_004) {
   int left = target->OffsetLeft();
   int height = target->OffsetHeight();
   int width = target->OffsetWidth();
-  one->SetParentOrShadowHostNode(nullptr);
   auto result = IsValidTarget(nullptr, top, left, width, height);
   EXPECT_FALSE(result);
   result = IsValidTarget(one, top, left, width, height);
@@ -172,7 +170,7 @@ TEST_F(OhosAdblockUtilTest, PrefixedElementClassNames_003) {
 }
 
 TEST_F(OhosAdblockUtilTest, GetDomPathStep_001) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <body>
       <template shadowrootmode="open">
         <slot id="slot1">
@@ -189,19 +187,23 @@ TEST_F(OhosAdblockUtilTest, GetDomPathStep_001) {
   Element* host = GetDocument().firstElementChild();
   ShadowRoot& shadow_root =
       host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
-  shadow_root.setInnerHTML("<div><slot name=x></slot></div>");
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  ExceptionState exception_state(isolate);
+  shadow_root.SetInnerHTMLWithoutTrustedTypes("<div><slot name=x></slot></div>", exception_state);
   UpdateAllLifecyclePhasesForTest();
   GetDomPathStep(*host, true, true, true);
 }
 
 TEST_F(OhosAdblockUtilTest, GetDomPathStep_002) {
-  GetDocument().body()->setHTMLUnsafe(R"HTML(
+  GetDocument().body()->SetHTMLUnsafeWithoutTrustedTypes(R"HTML(
     <input type="text">"hello"</input>
   )HTML");
   Element* host = GetDocument().firstElementChild();
   ShadowRoot& shadow_root =
       host->AttachShadowRootForTesting(ShadowRootMode::kOpen);
-  shadow_root.setInnerHTML("<div><slot name=x></slot></div>");
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  ExceptionState exception_state(isolate);
+  shadow_root.SetInnerHTMLWithoutTrustedTypes("<div><slot name=x></slot></div>", exception_state);
   UpdateAllLifecyclePhasesForTest();
   GetDomPathStep(*host, false, true, true);
 }

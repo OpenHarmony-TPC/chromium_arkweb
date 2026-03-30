@@ -74,13 +74,11 @@ bool IsValidTarget(Node* context, int top, int left, int width, int height) {
   return false;
 }
 
-// LCOV_EXCL_START
 std::string Escape(const std::string& ident) {
   StringBuilder builder;
-  blink::SerializeIdentifier(WTF::String::FromUTF8(ident), builder);
+  blink::SerializeIdentifier(String::FromUTF8(ident), builder);
   return builder.ToString().Utf8();
 }
-// LCOV_EXCL_STOP
 
 std::vector<std::string> PrefixedElementClassNames(Node& node,
                                                    bool pureDomPath) {
@@ -270,3 +268,4 @@ std::string GetDomPath(Node& node, bool optimized, bool pureDomPath) {
   return result;
 }
 }  // namespace blink
+                     

@@ -33,7 +33,8 @@ public:
   MOCK_METHOD(bool, scanFile, (SkStreamAsset*, int*), (const));
   MOCK_METHOD(bool, scanFace, (SkStreamAsset*, int, int*), (const));
   MOCK_METHOD(bool, scanInstance, (SkStreamAsset*, int, int, SkString*,
-                                   SkFontStyle*, bool*, AxisDefinitions*), (const));
+                                   SkFontStyle*, bool*, AxisDefinitions*,
+                                   VariationPosition*), (const));
   MOCK_METHOD(sk_sp<SkTypeface>, MakeFromStream,
              (std::unique_ptr<SkStreamAsset>, const SkFontArguments&), (const));
   MOCK_METHOD(SkFourByteTag, getFactoryId, (), (const));

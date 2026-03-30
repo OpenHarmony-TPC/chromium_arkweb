@@ -70,7 +70,7 @@ class MockWebMediaPlayer : public EmptyWebMediaPlayer {
   MOCK_METHOD1(SetLatencyHint, void(double));
   MOCK_METHOD1(SetWasPlayedWithUserActivationAndHighMediaEngagement,
                void(bool));
-  MOCK_METHOD1(EnabledAudioTracksChanged, void(const WebVector<TrackId>&));
+  MOCK_METHOD1(EnabledAudioTracksChanged, void(std::optional<TrackId>));
   MOCK_METHOD1(SelectedVideoTrackChanged, void(std::optional<TrackId>));
   MOCK_METHOD4(
       Load,
@@ -135,8 +135,8 @@ class TestMediaPlayerObserver final
   void FullscreenChanged(bool is_fullscreen) override {}
 
 #if BUILDFLAG(ARKWEB_MEDIA_AVSESSION)
-  void OnGetMediaTitle(const WTF::String& data) override {}
-  void OnGetVideoPoster(const WTF::String& data) override {}
+  void OnGetMediaTitle(const String& data) override {}
+  void OnGetVideoPoster(const String& data) override {}
   void OnInitMediaTitle() override {}
   void OnInitVideoPoster() override {}
 #endif
@@ -174,7 +174,7 @@ class TestMediaPlayerObserver final
     run_loop_->Quit();
   }
   void OnPictureInPictureAvailabilityChanged(bool available) override {}
-  void OnAudioOutputSinkChanged(const WTF::String& hashed_device_id) override {}
+  void OnAudioOutputSinkChanged(const String& hashed_device_id) override {}
   void OnUseAudioServiceChanged(bool uses_audio_service) override {
     received_uses_audio_service_ = uses_audio_service;
     run_loop_->Quit();
@@ -205,11 +205,11 @@ class TestMediaPlayerObserver final
   void FullscreenChangedOverlay(bool fullscreen) override {}
   void SeekingOverlay() override {}
   void SeekingFinishedOverlay() override {}
-  void ErrorOverlay(int32_t error_code, const WTF::String& error_msg) override {
+  void ErrorOverlay(int32_t error_code, const String& error_msg) override {
   }
   void VideoSizeChangedOverlay(int32_t width, int32_t height) override {}
   void FullscreenOverlayChanged(bool fullscreen_overlay,
-                                const WTF::String& decoder_name) override {}
+                                const String& decoder_name) override {}
   void OnVolumeChanged(double volume) override {}
 #endif  // ARKWEB_VIDEO_ASSISTANT
   bool received_media_playing() const { return received_media_playing_; }
@@ -233,9 +233,9 @@ class TestMediaPlayerObserver final
     return received_remote_playback_metadata_ == remote_playback_metadata;
   }
 #if defined(ARKWEB_MEDIA_AVSESSION)
-  void OnGetMediaTitle(const WTF::String& data) override {}
+  void OnGetMediaTitle(const String& data) override {}
 
-  void OnGetVideoPoster(const WTF::String& data) override {}
+  void OnGetVideoPoster(const String& data) override {}
 #endif  // ARKWEB_MEDIA_AVSESSION
 #if BUILDFLAG(ARKWEB_PIP)
   void OnPictureInPictureStateChanged(uint32_t state,
@@ -244,7 +244,7 @@ class TestMediaPlayerObserver final
 #endif
 #if BUILDFLAG(ARKWEB_UNITTESTS)
   void OnMediaCastEnter() override {}
-  void OnNotifyMeidaCastUri(const WTF::String& media_uri) override {}
+  void OnNotifyMeidaCastUri(const String& media_uri) override {}
   void HandleStopMediaCast() override {}
   void SetPauseByAvcast(bool pause_avcast) override {}
   void UpdateRemotePlayState(bool is_playing) override {}
@@ -557,7 +557,7 @@ TEST_F(MediaControlPopupMenuElementUtilsTest, SetOverflowPopupAnchorHM2) {
   UpdateLifecyclePhases();
   elem_->style()->removeProperty("left", ASSERT_NO_EXCEPTION);
   ASSERT_NO_FATAL_FAILURE(elem_utils_.SetOverflowPopupAnchorHM(rect, win));
-  WTF::String expected_left = WTF::String::Number(rect->left()) + "px";
+  String expected_left = String::Number(rect->left()) + "px";
   EXPECT_EQ(elem_->style()->getPropertyValue("left"), expected_left);
   base::i18n::SetRTLForTesting(false);
 }

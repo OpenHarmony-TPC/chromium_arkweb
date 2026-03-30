@@ -17,10 +17,10 @@ namespace blink {
 
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
 TEST_F(UrlIndexTest, VideoLoadOpt_FeedsPageTest) {
-  EXPECT_FALSE(url_index_.IsNewsFeedPageFitted());
+  EXPECT_FALSE(url_index_->IsNewsFeedPageFitted());
 
-  url_index_.SetNewsFeedPageFitted(true);
-  EXPECT_TRUE(url_index_.IsNewsFeedPageFitted());
+  url_index_->SetNewsFeedPageFitted(true);
+  EXPECT_TRUE(url_index_->IsNewsFeedPageFitted());
 }
 
 TEST_F(UrlIndexTest, VideoLoadOpt_NeedCallbackTest) {
@@ -37,7 +37,7 @@ TEST_F(UrlIndexTest, VideoLoadOpt_CreateSegmentationTest) {
   scoped_refptr<UrlData> url_data_ = GetByUrl(url, UrlData::CORS_UNSPECIFIED);
   EXPECT_FALSE(url_data_->IsCreateSegmentationProvider());
   
-  url_index_.SetNewsFeedPageFitted(true);
+  url_index_->SetNewsFeedPageFitted(true);
   EXPECT_TRUE(url_data_->IsCreateSegmentationProvider());
 
   url_data_->SetNeedFallback();
@@ -47,7 +47,7 @@ TEST_F(UrlIndexTest, VideoLoadOpt_CreateSegmentationTest) {
 TEST_F(UrlIndexTest, VideoLoadOpt_CreateWriterTest) {
   KURL url("http://foo.bar.com");
   scoped_refptr<UrlData> url_data_ = GetByUrl(url, UrlData::CORS_UNSPECIFIED);
-  url_index_.SetNewsFeedPageFitted(true);
+  url_index_->SetNewsFeedPageFitted(true);
   std::string writerInfo = url_data_->CreateWriterInfo();
   std::string searchTmp = "useLoadOptimization";
   EXPECT_TRUE(writerInfo.find(searchTmp) != std::string::npos);

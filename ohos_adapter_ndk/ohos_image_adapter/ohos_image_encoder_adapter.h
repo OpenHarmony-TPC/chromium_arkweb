@@ -30,12 +30,12 @@ public:
     static OhosImageEncoderAdapter& GetInstance();
     // encode hardware, check if path is valid before calling Encode
     bool Encode(const SkBitmap& bitmap, const std::string& path);
+    std::shared_ptr<OH_PixelmapNative> CreatePixelmap(const SkBitmap& bitmap);
 
 private:
     OhosImageEncoderAdapter() = default;
     ~OhosImageEncoderAdapter() = default;
     std::shared_ptr<OH_PackingOptions> CreatePackingOptions();
-    std::shared_ptr<OH_PixelmapNative> CreatePixelmap(const SkBitmap& bitmap);
 };
 
 }  // namespace NWeb

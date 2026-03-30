@@ -70,15 +70,16 @@ int ArktsSecurityAdapter::RegisterEvent(const std::string& event)
     napi_create_uint32(env, EVENT_ID, &eventId);
     napi_status eventIdStatus = napi_set_named_property(env, obj, "eventId", eventId);
     if (eventIdStatus != napi_ok) {
-        return -1;
-    }
+	    return -1;
+	}
+
 
     napi_value version;
     napi_create_string_utf8(env, VERSION.c_str(), VERSION.size(), &version);
     napi_status versionStatus = napi_set_named_property(env, obj, "version", version);
     if (versionStatus != napi_ok) {
-        return -1;
-    }
+	    return -1;
+	}
 
     // construct JSON
     std::ostringstream oss;
@@ -88,8 +89,8 @@ int ArktsSecurityAdapter::RegisterEvent(const std::string& event)
     napi_create_string_utf8(env, securityInfo.c_str(), securityInfo.size(), &content);
     napi_status contentStatus = napi_set_named_property(env, obj, "content", content);
     if (contentStatus != napi_ok) {
-        return -1;
-    }
+	    return -1;
+	}
 
     napi_value args[ARG_NUM] = {obj};
     status = napi_call_function(env, securityModule, reportFn, ARG_NUM, args, nullptr);

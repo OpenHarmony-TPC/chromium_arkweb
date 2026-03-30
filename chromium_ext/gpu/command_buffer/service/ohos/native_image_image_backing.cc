@@ -12,7 +12,6 @@
 #include <utility>
 
 #include "base/task/single_thread_task_runner.h"
-#include "components/viz/common/resources/resource_sizes.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/service/abstract_texture_ohos.h"
 #include "gpu/command_buffer/service/memory_tracking.h"
@@ -185,9 +184,6 @@ NativeImageImageBacking::ProduceGLTexture(SharedImageManager* manager,
     return nullptr;
   }
 
-  DCHECK(stream_texture_sii_->TextureOwnerBindsTextureOnUpdate());
-  texture->BindToServiceId(stream_texture_sii_->GetTextureBase()->service_id());
-
   return std::make_unique<SharedImageRepresentationGLTextureVideo>(
       manager, this, tracker, std::move(texture));
 }
@@ -206,9 +202,6 @@ NativeImageImageBacking::ProduceGLTexturePassthrough(
   if (!texture) {
     return nullptr;
   }
-
-  DCHECK(stream_texture_sii_->TextureOwnerBindsTextureOnUpdate());
-  texture->BindToServiceId(stream_texture_sii_->GetTextureBase()->service_id());
 
   return std::make_unique<SharedImageRepresentationGLTexturePassthroughVideo>(
       manager, this, tracker, std::move(texture));
@@ -232,18 +225,16 @@ NativeImageImageBacking::ProduceSkiaGanesh(
   }
 
   DCHECK(context_state->GrContextIsGL());
-  auto* texture_base = stream_texture_sii_->GetTextureBase();
-  DCHECK(texture_base);
+
+  // Chromium 144: 从 context_state 获取 passthrough 模式
+  gles2::FeatureInfo* feature_info = context_state->feature_info();
   const bool passthrough =
-      (texture_base->GetType() == gpu::TextureBase::Type::kPassthrough);
+      (feature_info && feature_info->is_passthrough_cmd_decoder());
 
   auto texture = GenAbstractTexture(passthrough);
   if (!texture) {
     return nullptr;
   }
-
-  DCHECK(stream_texture_sii_->TextureOwnerBindsTextureOnUpdate());
-  texture->BindToServiceId(stream_texture_sii_->GetTextureBase()->service_id());
 
   std::unique_ptr<gpu::GLTextureImageRepresentationBase> gl_representation;
   if (passthrough) {

@@ -55,9 +55,9 @@ void OHOSAudioOutputCallback::AudioRendererOnInterruptEvent(OH_AudioInterrupt_Hi
                 audio_output_stream_->OnResume();
                 break;
             default:
-                LOG(ERROR) << "audio renderer interrupt hint not foud, code:" << hint;
+                LOG(ERROR) << "audio renderer interrupt hint not found, code:" << hint;
                 break;
-        }
+        }        
     }
 }
 
@@ -69,7 +69,7 @@ void OHOSAudioOutputCallback::AudioRendererOutputDeviceChangeCallback(OH_AudioSt
             audio_output_stream_->OldDeviceUnavailable();
             break;
         default:
-            LOG(ERROR) << "AudioRendererOutputDeviceChangeCallback reason not foud, reason:" << reason;
+            LOG(ERROR) << "AudioRendererOutputDeviceChangeCallback reason not found, reason:" << reason;
             break;
         }
     }

@@ -19,3 +19,8 @@ ui_base_idle_ext = {
   sources = [ "//arkweb/chromium_ext/ui/base/idle/idle_ohos.cc" ]
   sources_del = [ "idle_linux.cc" ]
 }
+
+if (is_component_build) {
+  ui_base_idle_ext.sources = []
+  ui_base_idle_ext.sources_del = []
+}

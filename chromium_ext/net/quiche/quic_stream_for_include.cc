@@ -12,20 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef QUICHE_QUIC_CORE_QUIC_STREAM_H_
 #error "must be in include form QUICHE_QUIC_CORE_QUIC_STREAM_H_"
 #endif
-
+ 
 #include "net/third_party/quiche/src/quiche/quic/core/quic_stream.h"
-
+ 
 namespace quic {
-
+ 
 uint64_t QuicStream::BufferedBytesInSequence() const {
   if (sequencer()) {
     return sequencer()->NumBytesBuffered();
   }
-
+ 
   return 0;
 }
 

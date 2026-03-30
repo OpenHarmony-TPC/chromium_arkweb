@@ -46,11 +46,11 @@ class SelectionControllerUtils {
                                             const PositionInFlatTree& pos,
                                             int depth);
 
-  static unsigned MaxOffsetTrimTailWhiteSpace(WTF::String& str, unsigned len);
+  static unsigned MaxOffsetTrimTailWhiteSpace(String& str, unsigned len);
 
-  static void OffsetAdjustWhiteSpace(int & offset,
+  static void OffsetAdjustWhiteSpace(int& offset,
                                      int& temp_offset,
-                                     WTF::String& str,
+                                     String& str,
                                      bool permission);
 
   static Node* SameEditablePreviousSibling(Node* inner_node);
@@ -59,6 +59,8 @@ class SelectionControllerUtils {
 
   static Node* UpdateAnchorIfWhiteSpace(Node* inner_node,
                                  const PositionInFlatTree& pos);
+
+  static bool IsValidAISelection(const Vector<int8_t>& select);
 };
 
 }  // namespace blink

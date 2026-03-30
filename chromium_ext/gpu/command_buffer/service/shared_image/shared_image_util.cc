@@ -34,8 +34,8 @@ const char* SharedImageUsageToString(SharedImageUsage usage)
             return "SHARED_IMAGE_USAGE_DISPLAY_WRITE";
         case SHARED_IMAGE_USAGE_SCANOUT:
             return "SHARED_IMAGE_USAGE_SCANOUT";
-        case SHARED_IMAGE_USAGE_OOP_RASTERIZATION:
-            return "SHARED_IMAGE_USAGE_OOP_RASTERIZATION";
+        case SHARED_IMAGE_USAGE_RASTER_WRITE:
+            return "SHARED_IMAGE_USAGE_RASTER_WRITE";
         case SHARED_IMAGE_USAGE_WEBGPU_READ:
             return "SHARED_IMAGE_USAGE_WEBGPU_READ";
         case SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE:
@@ -48,12 +48,10 @@ const char* SharedImageUsageToString(SharedImageUsage usage)
             return "SHARED_IMAGE_USAGE_MACOS_VIDEO_TOOLBOX";
         case SHARED_IMAGE_USAGE_MIPMAP:
             return "SHARED_IMAGE_USAGE_MIPMAP";
-        case SHARED_IMAGE_USAGE_CPU_WRITE:
-            return "SHARED_IMAGE_USAGE_CPU_WRITE";
+        case SHARED_IMAGE_USAGE_CPU_WRITE_ONLY:
+            return "SHARED_IMAGE_USAGE_CPU_WRITE_ONLY";
         case SHARED_IMAGE_USAGE_RAW_DRAW:
             return "SHARED_IMAGE_USAGE_RAW_DRAW";
-        case SHARED_IMAGE_USAGE_RASTER_DELEGATED_COMPOSITING:
-            return "SHARED_IMAGE_USAGE_RASTER_DELEGATED_COMPOSITING";
         case SHARED_IMAGE_USAGE_HIGH_PERFORMANCE_GPU:
             return "SHARED_IMAGE_USAGE_HIGH_PERFORMANCE_GPU";
         case SHARED_IMAGE_USAGE_SCANOUT_DCOMP_SURFACE:
@@ -71,7 +69,7 @@ void PrintSharedImageUsageInfo(SharedImageUsageSet valid_usages)
 {
     uint32_t usage = 1;
     while (usage <= LAST_SHARED_IMAGE_USAGE) {
-        if (valid_usages & usage) {
+        if (static_cast<uint32_t>(valid_usages) & usage) {
             LOG(DEBUG)
                 << __FUNCTION__
                 << " HWIMGDEC - Supported SharedImageBackingFactory with usage: "

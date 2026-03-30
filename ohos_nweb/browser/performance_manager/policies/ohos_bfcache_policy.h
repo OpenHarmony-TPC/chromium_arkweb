@@ -12,26 +12,25 @@
 
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "base/memory/memory_pressure_listener.h"
 #include "components/performance_manager/public/graph/graph.h"
-#include "components/performance_manager/public/graph/system_node.h"
 
 namespace performance_manager::policies {
 
 // Policies that automatically flush the BFCache of pages when the system is
 // under memory pressure.
-class OHOSBFCachePolicy : public GraphOwned,
-                          public SystemNode::ObserverDefaultImpl {
+class OHOSBFCachePolicy : public GraphOwned, public base::MemoryPressureListener {
  public:
-  OHOSBFCachePolicy() = default;
+  OHOSBFCachePolicy();
   OHOSBFCachePolicy(const OHOSBFCachePolicy&) = delete;
   OHOSBFCachePolicy(OHOSBFCachePolicy&&) = delete;
   OHOSBFCachePolicy& operator=(const OHOSBFCachePolicy&) = delete;
   OHOSBFCachePolicy& operator=(OHOSBFCachePolicy&&) = delete;
   ~OHOSBFCachePolicy() override = default;
 
- protected:
-  using MemoryPressureLevel = base::MemoryPressureListener::MemoryPressureLevel;
+  using MemoryPressureLevel = base::MemoryPressureLevel;
 
+ protected:
   // Try to flush the BFCache associated with |page_node|. This will be a no-op
   // if there's a pending navigation.
   virtual void MaybeFlushBFCache(const PageNode* page_node,
@@ -44,6 +43,9 @@ class OHOSBFCachePolicy : public GraphOwned,
 
   // SystemNodeObserver:
   void OnMemoryPressure(MemoryPressureLevel new_level) override;
+
+  // Memory pressure listener registration:
+  base::MemoryPressureListenerRegistration memory_pressure_listener_registration_;
 };
 
 }  // namespace performance_manager::policies

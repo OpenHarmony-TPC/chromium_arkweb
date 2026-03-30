@@ -65,7 +65,8 @@ void ParserXpathAndSetConfig(
     return;
   }
 
-  absl::optional<base::Value> xpath_json = base::JSONReader::Read(xpath_str);
+  absl::optional<base::Value> xpath_json = base::JSONReader::Read(
+      xpath_str, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!xpath_json || !xpath_json.has_value() || !xpath_json->is_dict()) {
     LOG(INFO) << "[Distiller] xpath json illegal.";
     return;
@@ -105,7 +106,7 @@ void SetOptionsXpath(
   if (!gurl.is_valid()) {
     return;
   }
-  std::string url_host = gurl.host();
+  std::string url_host = gurl.GetHost();
   if (url_host.empty()) {
     return;
   }

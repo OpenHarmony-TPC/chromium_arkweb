@@ -33,6 +33,13 @@
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/render_mojom/render_mojom_client.h"
 #include "third_party/blink/renderer/platform/widget/widget_base.h"
+#include "third_party/blink/renderer/core/xml/document_xpath_evaluator.h"
+#include "third_party/blink/renderer/bindings/core/v8/script_value.h"
+#include "third_party/blink/renderer/core/xml/xpath_result.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_file.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_html_document.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_node.h"
+
 #if BUILDFLAG(ARKWEB_SLIDE_LTPO)
 #include "base/ohos/ltpo/include/touch_observer.h"
 #endif
@@ -44,6 +51,7 @@
 
 namespace blink {
 const int WORD_CORNER_NUM = 4;
+constexpr int MAX_SIZE = 65535;
 #if BUILDFLAG(ARKWEB_MEDIA_INTERACTION)
 constexpr int kDisableDelayTime = 300;
 #endif
@@ -51,7 +59,6 @@ constexpr int kDisableDelayTime = 300;
 constexpr int kDragBlankTime = 80;
 #endif
 
-// LCOV_EXCL_START
 WebFrameWidgetImplExt::WebFrameWidgetImplExt(
     base::PassKey<WebLocalFrame> pass_key,
     CrossVariantMojoAssociatedRemote<mojom::blink::FrameWidgetHostInterfaceBase>
@@ -97,8 +104,35 @@ void WebFrameWidgetImplExt::SetOverscrollMode(int mode) {
   }
   widget_base_->utils()->SetOverscrollMode(mode);
 }
+bool WebFrameWidgetImplExt::IsElementExist(std::string xPath)
+{
+  if (!local_root_ || !local_root_->GetFrame()) {
+    LOG(ERROR) << "WebFrameWidgetImplExt::IsElementExist local is null";
+    return false;
+  }
+  Document *document = local_root_->GetFrame()->GetDocument();
+  if (!document) {
+    LOG(ERROR) << "WebFrameWidgetImplExt::IsElementExist document is null";
+    return false;
+  }
+  ExecutionContext *context = document->GetExecutionContext();
+  DummyExceptionStateForTesting exception_state;
+  XPathResult *result = DocumentXPathEvaluator::evaluate(*document,
+    String::FromUTF8(xPath), document, nullptr,
+    XPathResult::kFirstOrderedNodeType, ScriptValue(), exception_state);
+  if (!result) {
+    LOG(INFO) << "WebFrameWidgetImplExt::IsElementExist XPathResult is null";
+    return false;
+  }
+  Node *node = result->singleNodeValue(exception_state);
+  if (node) {
+    LOG(INFO) << "WebFrameWidgetImplExt::IsElementExist node GET";
+    return true;
+  }
+  LOG(INFO) << "WebFrameWidgetImplExt::IsElementExist node not find";
+  return false;
+}
 #endif
-// LCOV_EXCL_STOP
 
 void WebFrameWidgetImplExt::ArkWebHandleTouchEvent(
     const WebInputEvent& input_event) {
@@ -131,14 +165,13 @@ void WebFrameWidgetImplExt::ArkWebHandleTouchEvent(
     rawKeyDownTime_++;
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
-        WTF::BindOnce(&WebFrameWidgetImplExt::DisableBoost,
+        BindOnce(&WebFrameWidgetImplExt::DisableBoost,
                       WrapWeakPersistent(this)),
         base::Milliseconds(kDisableDelayTime));
   }
 #endif
 }
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_MENU)
 void WebFrameWidgetImplExt::SelectRangeV2(const gfx::Point& position,
                                           bool is_base) {
@@ -190,10 +223,8 @@ void WebFrameWidgetImplExt::OnOverScrollOffsetChanged(float offset_x,
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_AI)
-// LCOV_EXCL_START
 void WebFrameWidgetImplExt::CreateOverlay(
     const SkBitmap& image,
     const gfx::Point& touch_point,
@@ -214,10 +245,9 @@ void WebFrameWidgetImplExt::CreateOverlay(
   }
   GetAssociatedFrameWidgetHost()->CreateOverlay(image, image_rect, touch_point);
 }
-// LCOV_EXCL_STOP
 
 void WebFrameWidgetImplExt::OnTextRecognized(
-    WTF::Vector<mojom::blink::TextRecognizeResultPtr> res,
+    Vector<mojom::blink::TextRecognizeResultPtr> res,
     float scale) {
   std::vector<String> text_lines;
   std::vector<gfx::PointF> pointfs;
@@ -237,10 +267,10 @@ void WebFrameWidgetImplExt::OnTextRecognized(
 #endif
 
 #if BUILDFLAG(ARKWEB_AI)
-WTF::Vector<int8_t> WebFrameWidgetImplExt::GetWordSelection(
-    const WTF::String& text,
+Vector<int8_t> WebFrameWidgetImplExt::GetWordSelection(
+    const String& text,
     int8_t offset) {
-  WTF::Vector<int8_t> select;
+  Vector<int8_t> select;
   if (text.IsNull() || !GetAssociatedFrameWidgetHost()->GetWordSelection(
                            text, offset, &select)) {
     select = {-1, -1};
@@ -248,7 +278,6 @@ WTF::Vector<int8_t> WebFrameWidgetImplExt::GetWordSelection(
   return select;
 }
 
-// LCOV_EXCL_START
 void WebFrameWidgetImplExt::OnTextSelected(bool flag) {
   if (on_text_selected_callback_) {
     on_text_selected_callback_.Run(flag);
@@ -311,10 +340,8 @@ gfx::Rect WebFrameWidgetImplExt::GetImageRectInner() {
     return gfx::Rect();
   }
 }
-// LCOV_EXCL_STOP
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_MENU)
 void WebFrameWidgetImplExt::RegisterClippedVisualViewportSelectionBounds(
     gfx::Rect clipped_selection_bounds) {
@@ -374,7 +401,6 @@ void WebFrameWidgetImplExt::SetPinchSmoothMode(bool enable) {
       enable);
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 void WebFrameWidgetImplExt::TouchHitTest(const WebPointerEvent& event,
@@ -407,8 +433,7 @@ void WebFrameWidgetImplExt::TouchHitTest(const WebPointerEvent& event,
                                              layer_id);
 }
 
-void WebFrameWidgetImplExt::MouseHitTest(const WebMouseEvent& event,
-                                         int32_t button) {
+void WebFrameWidgetImplExt::MouseHitTest(const WebMouseEvent& event, int32_t button) {
   auto pointEvent = WebPointerEvent(event.GetType(), event);
 
   WebPointerEvent transformed_event =
@@ -433,12 +458,10 @@ void WebFrameWidgetImplExt::MouseHitTest(const WebMouseEvent& event,
       is_native_type = true;
     }
   }
-  widget_base_->utils()->NativeMouseHitTestResult(is_native_type, layer_id,
-                                                  button);
+  widget_base_->utils()->NativeMouseHitTestResult(is_native_type, layer_id, button);
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
 void WebFrameWidgetImplExt::GetInputElementAttributes(
     HashMap<String, String>& attributes) const {
@@ -452,13 +475,15 @@ void WebFrameWidgetImplExt::GetInputElementAttributes(
 #endif
 
 #if BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
-void WebFrameWidgetImplExt::DeterminePageLanguage() {
+void WebFrameWidgetImplExt::ParseLanguage() {
+  LOG(INFO) << "start to ParseLanguage()!";
   WebLocalFrame* main_frame =
       LocalRootImpl()->ViewImpl()->MainFrame()->ToWebLocalFrame();
-  std::u16string contents =
-      blink::WebFrameContentDumper::DumpFrameTreeAsText(main_frame, 65535)
+  std::u16string contents;
+  if (main_frame) {
+    contents = blink::WebFrameContentDumper::DumpFrameTreeAsText(main_frame, MAX_SIZE)
           .Utf16();
-
+  }
   WebDocument document = LocalRootImpl()->GetFrame()->GetDocument();
   blink::WebLanguageDetectionDetails details =
       blink::WebLanguageDetectionDetails::CollectLanguageDetectionDetails(
@@ -479,28 +504,29 @@ void WebFrameWidgetImplExt::DeterminePageLanguage() {
             << ", is_cld_reliable: " << is_reliable
             << ", language_detected: " << ans
             << ", contents_size: " << contents.size();
+  if (!widget_base_ || !widget_base_->widget_input_handler_manager()) {
+    LOG(WARNING) << "widget_base_ or widget_input_handler_manager is null!";
+    return;
+  }
 
   if (auto host = GetAssociatedFrameWidgetHost(); host) {
     if (is_reliable) {
-      host->SendCurrentLanguage(static_cast<WTF::String>(model_ans));
+      host->SendCurrentLanguage(String(model_ans.c_str()));
     } else {
-      host->SendCurrentLanguage(static_cast<WTF::String>(ans));
+      host->SendCurrentLanguage(String(ans.c_str()));
     }
     
   }
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_DFX_TRACING)
-// LCOV_EXCL_START
 int64_t WebFrameWidgetImplExt::GetCurrentTimestampMS() {
   auto currentTime = std::chrono::system_clock::now().time_since_epoch();
   return std::chrono::duration_cast<std::chrono::microseconds>(currentTime)
               .count() /
           kMicrosecondsPerMillisecond;
 }
-// LCOV_EXCL_STOP
 
 void WebFrameWidgetImplExt::ReportBlank(int64_t startTime, int64_t endTime) {
   int64_t duration = endTime - startTime;
@@ -512,7 +538,7 @@ void WebFrameWidgetImplExt::ReportBlank(int64_t startTime, int64_t endTime) {
 #endif
 
 #if BUILDFLAG(ARKWEB_TEST)
-void WebFrameWidgetImplExt::OnTextRecognizedForTest(WTF::Vector<mojom::blink::TextRecognizeResultPtr> res,
+void WebFrameWidgetImplExt::OnTextRecognizedForTest(Vector<mojom::blink::TextRecognizeResultPtr> res,
     float scale) {
   WebFrameWidgetImplExt::OnTextRecognized(std::move(res), scale);
 }

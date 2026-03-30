@@ -29,6 +29,7 @@
 #include "cef/libcef/browser/net_service/stream_reader_url_loader.h"
 #include "net/disk_cache/simple/simple_util.h"
 #include "third_party/bounds_checking_function/include/securec.h"
+#include "content/common/content_export.h"
 
 #if BUILDFLAG(ARKWEB_UNITTESTS)
 #define private public
@@ -59,7 +60,7 @@ class CacheOptions {
   std::map<std::string, std::string> response_headers_;
 };
 
-class TaskRunner {
+class CONTENT_EXPORT TaskRunner {
  public:
   static scoped_refptr<base::SingleThreadTaskRunner> GetTaskRunner();
 
@@ -88,7 +89,7 @@ class ResponseCacheMetadata {
   std::string file_hash_;
 };
 
-class ResponseCache {
+class CONTENT_EXPORT ResponseCache {
  public:
   ResponseCache(const std::string& url);
   ~ResponseCache() = default;
@@ -133,7 +134,7 @@ class ResponseCache {
   std::shared_ptr<std::fstream> metadata_file_stream_;
 };
 
-class ResourceResponse : public net_service::ResourceResponse {
+class CONTENT_EXPORT ResourceResponse : public net_service::ResourceResponse {
  public:
   ResourceResponse(std::shared_ptr<ResponseCache> cache);
 

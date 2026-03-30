@@ -21,7 +21,6 @@ RenderWidgetHostViewChildFrameExt::RenderWidgetHostViewChildFrameExt(
     const display::ScreenInfos& parent_screen_infos)
     : RenderWidgetHostViewChildFrame(widget_host, parent_screen_infos) {}
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
 bool RenderWidgetHostViewChildFrameExt::GetScrollable() {
   if (!frame_connector_) {
@@ -44,5 +43,19 @@ bool RenderWidgetHostViewChildFrameExt::IsMarkedConsumed(
 }
 
 #endif
-// LCOV_EXCL_STOP
+
+bool RenderWidgetHostViewChildFrameExt::IsTouchSequencePotentiallyActiveOnViz() {
+  return false;
+}
+
+void RenderWidgetHostViewChildFrameExt::RequestInputBackForDragAndDrop(
+    blink::mojom::DragDataPtr drag_data,
+    const url::Origin& source_origin,
+    blink::DragOperationsMask drag_operations_mask,
+    SkBitmap bitmap,
+    gfx::Vector2d cursor_offset_in_dip,
+    gfx::Rect drag_obj_rect_in_dip,
+    blink::mojom::DragEventSourceInfoPtr event_info) {
+}
+
 }  // namespace content

@@ -63,6 +63,17 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
     return nullptr;
   }
 
+  void SetEnableCustomVideoPlayer(bool flag) override {}
+
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
+  
+  void SetMediaResumeFromBFCachePage(bool resume) override {}
+
+  void SetHasComposition(bool has_composition) override {}
+
+  bool GetHasComposition() override { return false; }
+
   CefRefPtr<CefBrowser> GetBrowser() override { return nullptr; }
 
   void CloseBrowser(bool force_close) override {}
@@ -121,7 +132,12 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void Find(const CefString& searchText,
             bool forward,
             bool matchCase,
-            bool findNext) override {}
+            bool findNext
+#if BUILDFLAG(ARKWEB_FIND_IN_PAGE)
+            ,
+            bool newSession
+#endif            
+            ) override {}
 
   MOCK_METHOD(void, StopFinding, (bool), (override));
 
@@ -486,11 +502,8 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
 
   bool GetPrintBackground() override { return false; }
 
-#if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   void SetScrollable(bool enable, int scrollType) override {}
 
-  void SetImeShow(bool visible) override {}
-#endif
   void StartCamera() override {}
 
   void StopCamera() override {}
@@ -719,7 +732,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
   int InsertBackForwardEntry(int index, const CefString& url) override {
     return 0;
   }
@@ -727,7 +739,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
     return 0;
   }
   void ClearForwardList() override {}
-#endif
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
@@ -760,6 +771,8 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void PutWebMediaAVSessionEnabled(bool enable) override {}
   void SetEnableHalfFrameRate(bool enabled) override {}
   bool SetFocusByPosition(float x, float y) override { return false; }
+  bool IsElementExist(CefString& xPath) override { return false; }
+  void SetImeShow(bool visible) override {}
 
   void SetPipNativeWindow(int delegate_id,
                           int child_id,
@@ -780,21 +793,30 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void OnBrowserBackground() override {}
 #endif
 
+#if BUILDFLAG(IS_ARKWEB)
+  void EnableAppLinking(bool enable) override {}
+  bool IsAppLinkingEnabled() const override { return false; }
+#endif
+
   void RunJavaScriptInFrames(
       const std::string& jsString,
       FrameInfos rootFrame,
       bool recursive,
       IsolatedWorld world,
       CefRefPtr<CefJavaScriptResultCallback> callback) override {}
-#if BUILDFLAG(ARKWEB_NWEB_EX)
   void GetAllFrameInfos(CefRefPtr<CefFrameInfosCallback> callback) override {}
   void GetLastJavaScriptProxyCallingFrameInfo(
       CefRefPtr<CefLastJavaScriptProxyCallingFrameInfoCallback> callback) override {}
-#endif
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  bool SavePage(int type,
+                CefString& filePath,
+                CefRefPtr<CefSavePageResultCallback> callback) override {
+    return false;
+  }
+#endif // ARKWEB_SAVE_PAGE
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   void GetFocusedFrameInfo(int32_t& frame_id, CefString& frame_url) override {}
 #endif  // ARKWEB_ARKWEB_EXTENSIONS
-#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   void LoadUrlWithParams(const std::string& url,
                          const LoadUrlType& load_type,
                          const std::string& refer,
@@ -802,27 +824,14 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
                          const std::string& post_data,
                          const bool& allow_https_upgrade,
                          int32_t transition_type) override {}
-  
+
 #if BUILDFLAG(ARKWEB_READER_MODE)
   void Distill(uint64_t request_id, const DistillOptions& distill_options,
     CefRefPtr<CefDistillCallback> callback) override {}
   void AbortDistill() override {}
-#endif
+#endif // ARKWEB_READER_MODE
   void EnableHttpsUpgrades(bool enable) override {}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
   int32_t GetLastCommittedEntryPageTransition() override { return 0; }
-#endif
-
-#if BUILDFLAG(ARKWEB_UNITTESTS)
-  void SetMediaResumeFromBFCachePage(bool resume) override {}
-  void SetHasComposition(bool has_composition) override {}
-  bool GetHasComposition() override { return false; }
-  void SetEnableCustomVideoPlayer(bool flag) override {}
-  void EnableAppLinking(bool enable) override {}
-  bool IsAppLinkingEnabled() const override { return false; }
-#endif // ARKWEB_UNITTESTS
 };
 
 class NWebFindDelegateTest : public ::testing::Test {

@@ -24,31 +24,31 @@
 #include "base/no_destructor.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
+ 
 namespace base {
 namespace debug {
-
+ 
 class ArkWebDumpInfoTest : public ::testing::Test {
 protected:
   void SetUp() override {}
   void TearDown() override {}
 };
-
+ 
 TEST_F(ArkWebDumpInfoTest, GetInstance) {
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
   EXPECT_THAT(arkwebDumpInfo.dump_enable_, ::testing::AnyOf(0, 1));
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, IsDumpEnabled) {
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
   EXPECT_THAT(arkwebDumpInfo.dump_enable_, ::testing::AnyOf(0, 1));
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, GetBufferSize) {
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
   EXPECT_GE(arkwebDumpInfo.GetBufferSize(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, ParseCmdParamAndDump_001) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
@@ -56,7 +56,7 @@ TEST_F(ArkWebDumpInfoTest, ParseCmdParamAndDump_001) {
   arkwebDumpInfo.ParseCmdParamAndDump("", result);
   EXPECT_NE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, ParseCmdParamAndDump_002) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
@@ -74,7 +74,7 @@ TEST_F(ArkWebDumpInfoTest, ParseCmdParamAndDump_002) {
   arkwebDumpInfo.ParseCmdParamAndDump("--xxxx", result);
   EXPECT_GE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, DumpArkWebAllInfo) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
@@ -83,7 +83,7 @@ TEST_F(ArkWebDumpInfoTest, DumpArkWebAllInfo) {
   arkwebDumpInfo.DumpArkWebAllInfo(result);
   EXPECT_GE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, DumpArkWebNWebInfo) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
@@ -92,21 +92,21 @@ TEST_F(ArkWebDumpInfoTest, DumpArkWebNWebInfo) {
   arkwebDumpInfo.DumpArkWebNWebInfo(result);
   EXPECT_GE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, GetCurrentTimeInfo) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
   result = arkwebDumpInfo.GetCurrentTimeInfo();
   EXPECT_GE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, GetProcessAndThreadIdInfo) {
   std::string result;
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
   result = arkwebDumpInfo.GetProcessAndThreadIdInfo();
   EXPECT_GE(result.size(), 0);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, WriteArkWebDumpInfo) {
   std::string info = "test WriteArkWebDumpInfo";
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();
@@ -120,7 +120,7 @@ TEST_F(ArkWebDumpInfoTest, WriteArkWebDumpInfo) {
   r = arkwebDumpInfo.GetBufferSize();
   EXPECT_EQ(r, t);
 }
-
+ 
 TEST_F(ArkWebDumpInfoTest, FormatAndWriteNWebDumpInfo) {
   std::string info = "test FormatAndWriteNWebDumpInfo";
   ArkWebDumpInfo& arkwebDumpInfo = ArkWebDumpInfo::GetInstance();

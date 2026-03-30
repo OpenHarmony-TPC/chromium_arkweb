@@ -169,7 +169,7 @@ public:
 };
 
 class ArkOhosAdapterHelperWrapperTest : public testing::Test {
-protected:
+ protected:
     void SetUp();
     void TearDown();
     ArkOhosAdapterHelperWrapper* wrapper;

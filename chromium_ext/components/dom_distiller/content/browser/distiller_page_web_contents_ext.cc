@@ -14,7 +14,7 @@
  */
 
 #include "arkweb/chromium_ext/components/dom_distiller/content/browser/distiller_page_web_contents_ext.h"
-
+#include "base/strings/stringprintf.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
@@ -115,8 +115,8 @@ bool DistillerPageWebContentsExt::ExecuteJavaScriptExt() {
     // Stop any pending navigation since the intent is to distill the current
     // page.
     if (source_page_handle_ && source_page_handle_->web_contents()) {
-      source_page_handle_->web_contents()->Stop();
-    }
+    source_page_handle_->web_contents()->Stop();
+  }
   }
   LOG(INFO) << __func__ << " [Distiller]";
   DCHECK_EQ(LOADING_PAGE, state_);

@@ -21,6 +21,7 @@ group("oh_base_unittests") {
     "//cc:cc_unittests",
     "//content/test:content_unittests",
     "//components:components_browsertests",
+    "//components:components_unittests",
     "//cef:libcef_static_unittests",
     "//components/viz:viz_unittests",
     "//crypto:crypto_unittests",
@@ -54,7 +55,6 @@ group("oh_core_unittests") {
     "//media/midi:midi_unittests",
     "//media/mojo:media_mojo_unittests",
     "//media/capture:capture_unittests",
-    "//media/learning/mojo:media_learning_mojo_unittests",
     "//mojo:mojo_unittests",
     "//net:net_unittests",
     "//services:services_unittests",
@@ -81,6 +81,12 @@ group("oh_core_unittests") {
     "//storage:storage_unittests",
     "//sql:sql_unittests",
   ]
+
+  if (is_arkweb_ext) {
+    deps += [
+      "//ohos_nweb_ex/test:ohos_nweb_ex_unittests",
+    ]
+  }
 }
 
 

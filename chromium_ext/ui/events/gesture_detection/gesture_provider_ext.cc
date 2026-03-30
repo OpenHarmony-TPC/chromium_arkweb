@@ -30,7 +30,9 @@ GestureProviderExt::~GestureProviderExt() {}
 void GestureProviderExt::ResetDetection(bool is_lost_focus) {
   MotionEventGeneric generic_cancel_event(
       MotionEvent::Action::CANCEL, base::TimeTicks::Now(), PointerProperties());
+#if !defined(COMPONENT_BUILD) // FIXME
   generic_cancel_event.GetUtils()->SetCancelByLostFocus(is_lost_focus);
+#endif
   OnTouchEvent(generic_cancel_event);
 }
 #endif

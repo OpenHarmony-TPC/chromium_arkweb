@@ -15,8 +15,10 @@
 
 #include "media/gpu/ohos/ohos_heif_image_decoder.h"
 
+#include "base/logging.h"
 #include "base/files/scoped_file.h"
 #include "base/posix/eintr_wrapper.h"
+#include "components/viz/common/resources/shared_image_format_utils.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #include "ui/gfx/linux/native_pixmap_dmabuf.h"
 
@@ -72,8 +74,8 @@ OhosHeifImageDecoder::ExportAsNativePixmapDmaBuf(
   exported_pixmap->pixmap = base::MakeRefCounted<gfx::NativePixmapDmaBuf>(
       gfx::Size(GetOhosImageDecoderAdapter()->GetImageWidth(),
                 GetOhosImageDecoderAdapter()->GetImageHeight()),
-      IsYuvFormat() ? gfx::BufferFormat::YUV_420_BIPLANAR
-                    : gfx::BufferFormat::RGBA_8888,
+      viz::GetSharedImageFormat(IsYuvFormat() ? gfx::BufferFormat::YUV_420_BIPLANAR
+                                              : gfx::BufferFormat::RGBA_8888),
       std::move(handle), window_buffer);
 
   *status = OhosImageDecodeStatus::kSuccess;

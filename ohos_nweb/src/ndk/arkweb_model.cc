@@ -30,13 +30,8 @@
 #include "nweb_web_message.h"
 #include "ohos_nweb/include/nweb_engine.h"
 #include "ohos_nweb/include/nweb_errors.h"
+#include "ohos_nweb/src/ndk/common/mem_hook.h"
 #include "third_party/bounds_checking_function/include/securec.h"
-
-#if BUILDFLAG(ARKWEB_COOKIE)
-extern "C" {
-void* __real_malloc(size_t);
-}  // extern "C"
-#endif
 
 #ifdef __cplusplus
 
@@ -83,6 +78,7 @@ CreateProxyCallback(ArkWeb_OnJavaScriptProxyCallbackWithResult callback,
         nwebValue->SetType(OHOS::NWeb::NWebValue::Type::STRING);
         nwebValue->SetString(strVal);
       }
+
       return nwebValue;
     }
     WVLOG_D("native return nullptr");
@@ -409,7 +405,8 @@ bool CreateWebMessagePortsInternal(const char* webTag,
   }
 
   ArkWeb_WebMessagePortPtr* wPorts =
-      new (std::nothrow) ArkWeb_WebMessagePortPtr[ports.size()];
+    new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_WebMessagePortPtr),
+    sizeof(ArkWeb_WebMessagePortPtr) * ports.size())) ArkWeb_WebMessagePortPtr[ports.size()];
   if (!wPorts) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
     *size = 0;
@@ -462,20 +459,21 @@ ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
     return nullptr;
   }
   for (unsigned int i = 0; i < ports.size(); i++) {
-    wPorts[i] = new (std::nothrow) ArkWeb_WebMessagePort();
+    wPorts[i] = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_WebMessagePort),
+      sizeof(ArkWeb_WebMessagePort))) ArkWeb_WebMessagePort();
     if (!wPorts[i]) {
       LOG(ERROR) << "NativeArkWeb CreateWebMessagePorts malloc failed";
       Cleanup(nwebSharedPtr, ports, wPorts, size);
       return nullptr;
     }
 
-    char* tag = new (std::nothrow) char[std::string(webTag).size() + 1];
+    char* tag = OHOS::NWeb::malloc_wrapper(std::string(webTag).size() + 1);
     if (!tag || memcpy_s(tag, std::string(webTag).size() + 1, (char*)webTag,
                          std::string(webTag).size() + 1) != EOK) {
       LOG(ERROR)
           << "NativeArkWeb CreateWebMessagePorts malloc or memcpy failed";
       if (tag) {
-        delete[] tag;
+        free(tag);
       }
       Cleanup(nwebSharedPtr, ports, wPorts, size);
       return nullptr;
@@ -483,14 +481,14 @@ ARKWEB_NDK_EXPORT ArkWeb_WebMessagePortPtr* OH_ArkWeb_CreateWebMessagePorts(
 
     wPorts[i]->webTag = tag;
 
-    char* portHandle = new (std::nothrow) char[ports[i].size() + 1];
+    char* portHandle = OHOS::NWeb::malloc_wrapper(ports[i].size() + 1);
     if (!portHandle ||
         memcpy_s(portHandle, ports[i].size() + 1, (char*)(ports[i].c_str()),
                  ports[i].size() + 1) != EOK) {
       LOG(ERROR)
           << "NativeArkWeb CreateWebMessagePorts malloc or memcpy failed";
       if (portHandle) {
-        delete[] portHandle;
+        free(portHandle);
       }
       Cleanup(nwebSharedPtr, ports, wPorts, size);
       return nullptr;
@@ -716,7 +714,8 @@ ARKWEB_NDK_EXPORT void OH_WebMessage_SetMessageEventHandler(
 }
 
 ARKWEB_NDK_EXPORT ArkWeb_WebMessagePtr OH_WebMessage_CreateWebMessage() {
-  ArkWeb_WebMessagePtr message = new (std::nothrow) ArkWeb_WebMessage();
+  ArkWeb_WebMessagePtr message = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_WebMessage),
+    sizeof(ArkWeb_WebMessage))) ArkWeb_WebMessage();
   if (!message) {
     LOG(ERROR) << "NativeArkWeb CreateWebMessage malloc failed";
     return nullptr;
@@ -774,16 +773,16 @@ ARKWEB_NDK_EXPORT void OH_WebMessage_SetData(ArkWeb_WebMessagePtr message,
     return;
   }
 
-  char* destination = new (std::nothrow) char[dataLength + 1];
+  char* destination = OHOS::NWeb::malloc_wrapper(dataLength);
 
   if (!destination) {
     LOG(ERROR) << "NativeArkWeb SetData malloc failed";
     return;
   }
 
-  if (memcpy_s(destination, dataLength + 1, (char*)data, dataLength + 1) != EOK) {
+  if (memcpy_s(destination, dataLength, (char*)data, dataLength) != EOK) {
     LOG(ERROR) << "NativeArkWeb SetData memcpy failed";
-    delete[] destination;
+    free(destination);
     return;
   }
 
@@ -824,19 +823,13 @@ OH_CookieManager_FetchCookieSync(const char* url,
     return ARKWEB_INVALID_PARAM;
   }
 
-#if BUILDFLAG(ARKWEB_COOKIE)
-#if defined(ADDRESS_SANITIZER) || defined(HWADDRESS_SANITIZER)
-  *cookie_value = new char[cookie_content.length() + 1];
-#else
-  *cookie_value = (char*)__real_malloc(cookie_content.length() + 1);
-#endif // ADDRESS_SANITIZER
-#endif
+  *cookie_value = OHOS::NWeb::malloc_wrapper(cookie_content.length() + 1);
   if (!*cookie_value) {
-    LOG(ERROR) << "cookie value is nullptr";
+    LOG(ERROR) << "Failed to allocate memory for cookie_value.";
     return ARKWEB_ERROR_UNKNOWN;
   }
   int ret = strcpy_s(*cookie_value, cookie_content.length() + 1, cookie_content.c_str());
-  if (ret != 0) {
+  if (ret != EOK) {
     LOG(ERROR) << "OH_CookieManager_FetchCookieSync error, call strcpy_s ret = " << ret;
     free(*cookie_value);
     *cookie_value = nullptr;
@@ -1076,7 +1069,7 @@ OH_JavaScript_CreateJavaScriptValue(ArkWeb_JavaScriptValueType type,
     return nullptr;
   }
 
-  char* destination = new (std::nothrow) char[dataLength];
+  char* destination = OHOS::NWeb::malloc_wrapper(dataLength);
 
   if (!destination) {
     LOG(ERROR) << "NativeArkWeb CreateJavaScriptValue malloc failed";
@@ -1085,14 +1078,14 @@ OH_JavaScript_CreateJavaScriptValue(ArkWeb_JavaScriptValueType type,
 
   if (memcpy_s(destination, dataLength, (char*)data, dataLength) != EOK) {
     LOG(ERROR) << "NativeArkWeb CreateJavaScriptValue memcpy failed";
-    delete[] destination;
+    free(destination);
     return nullptr;
   }
 
   ArkWeb_JavaScriptValuePtr value = new (std::nothrow) ArkWeb_JavaScriptValue();
   if (!value) {
     LOG(ERROR) << "NativeArkWeb CreateJavaScriptValue malloc failed";
-    delete[] destination;
+    free(destination);
     return nullptr;
   }
 

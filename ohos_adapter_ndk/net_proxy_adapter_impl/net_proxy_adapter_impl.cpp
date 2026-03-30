@@ -15,7 +15,9 @@
 
 #include "net_proxy_adapter_impl.h"
 
+#include <algorithm>
 #include <vector>
+#include <array>
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
 

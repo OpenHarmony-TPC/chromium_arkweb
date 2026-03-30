@@ -19,6 +19,7 @@
 #include <mutex>
 #include <pthread.h>
 #include <map>
+#include <unordered_map>
 
 #include "drm_adapter.h"
 #include <multimedia/drm_framework/native_drm_common.h>

@@ -76,32 +76,27 @@ CustomMediaPlayerListenerImpl::CustomMediaPlayerListenerImpl(
 CustomMediaPlayerListenerImpl::~CustomMediaPlayerListenerImpl() = default;
 
 void CustomMediaPlayerListenerImpl::OnStatusChanged(uint32_t status) {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->UpdatePlaybackStatus(status);
   }
 }
 void CustomMediaPlayerListenerImpl::OnVolumeChanged(double volume) {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->UpdateVolume(volume);
   }
 }
 void CustomMediaPlayerListenerImpl::OnMutedChanged(bool muted) {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->UpdateMuted(muted);
   }
 }
 void CustomMediaPlayerListenerImpl::OnPlaybackRateChanged(
     double playback_rate) {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->UpdatePlaybackRate(playback_rate);
   }
 }
 void CustomMediaPlayerListenerImpl::OnDurationChanged(double duration) {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->OnMediaDurationChanged(base::Seconds(duration));
   }
@@ -118,7 +113,6 @@ void CustomMediaPlayerListenerImpl::OnBufferedEndTimeChanged(
   }
 }
 void CustomMediaPlayerListenerImpl::OnEnded() {
-  DVLOG(1) << __func__;
   if (renderer_) {
     renderer_->OnPlaybackComplete();
   }
@@ -193,13 +187,15 @@ GetRestrictedCookieManagerForContext(
           network::mojom::RestrictedCookieManagerRole::NETWORK, request_origin,
           std::move(isolation_info),
           /* is_service_worker = */ false,
-          render_frame_host ? render_frame_host->GetProcess()->GetID() : -1,
-          render_frame_host ? render_frame_host->GetRoutingID()
-                            : MSG_ROUTING_NONE,
+          render_frame_host ? render_frame_host->GetProcess()->GetDeprecatedID() : -1,
+          render_frame_host ? render_frame_host->GetRoutingID() : -1,
+          render_frame_host ? render_frame_host->GetCookieSettingOverrides()
+                            : net::CookieSettingOverrides(),
           render_frame_host ? render_frame_host->GetCookieSettingOverrides()
                             : net::CookieSettingOverrides(),
           pipe.InitWithNewPipeAndPassReceiver(),
-          render_frame_host ? render_frame_host->CreateCookieAccessObserver()
+          render_frame_host ? render_frame_host->CreateCookieAccessObserver(
+            CookieAccessDetails::Source::kNonNavigation)
                             : mojo::NullRemote());
   return pipe;
 }
@@ -242,14 +238,12 @@ OHOSCustomMediaPlayerRenderer::OHOSCustomMediaPlayerRenderer(
     int routing_id,
     int player_id,
     WebContents* web_contents,
-    mojo::PendingReceiver<RendererExtension> renderer_extension_receiver,
-    mojo::PendingRemote<ClientExtension> client_extension_remote)
+    mojo::PendingRemote<ClientExtension> client_extension_remote,
+    const media::MediaPlayerUrlParams& params)
     : WebContentsObserver(web_contents),
       client_extension_(std::move(client_extension_remote)),
       has_error_(false),
       volume_(kDefaultVolume),
-      renderer_extension_receiver_(this,
-                                   std::move(renderer_extension_receiver)),
       global_render_frame_host_id_(process_id, routing_id),
       media_player_id_(GlobalRenderFrameHostId(process_id, routing_id),
                        player_id) {
@@ -260,6 +254,7 @@ OHOSCustomMediaPlayerRenderer::OHOSCustomMediaPlayerRenderer(
   WebContentsImpl* web_contents_impl =
       static_cast<WebContentsImpl*>(WebContentsObserver::web_contents());
   web_contents_muted_ = web_contents_impl && web_contents_impl->IsAudioMuted();
+  media_url_params_ = std::make_unique<media::MediaPlayerUrlParams>(params);
 }
 
 OHOSCustomMediaPlayerRenderer::~OHOSCustomMediaPlayerRenderer() {
@@ -283,20 +278,10 @@ void OHOSCustomMediaPlayerRenderer::Initialize(
 #endif  // ARKWEB_VIDEO_ASSISTANT
     media::PipelineStatusCallback init_cb) {
   DVLOG(1) << __func__;
-
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   renderer_client_ = client;
 
-  if (!media_resource ||
-      media_resource->GetType() != media::MediaResource::Type::KUrl) {
-    DLOG(ERROR) << "MediaResource is not of Type URL";
-    std::move(init_cb).Run(media::PIPELINE_ERROR_INITIALIZATION_FAILED);
-    return;
-  }
-
-  media_url_params_ = std::make_unique<media::MediaUrlParams>(
-      media_resource->GetMediaUrlParams());
   if (!media_url_params_) {
     LOG(ERROR) << "GetMediaUrlParams failed";
     std::move(init_cb).Run(media::PIPELINE_ERROR_INITIALIZATION_FAILED);
@@ -314,12 +299,12 @@ void OHOSCustomMediaPlayerRenderer::GetCookies() {
     return;
   }
 
-  const GURL& url = media_url_params_->media_url;
+  const GURL& url = media_url_params_->media_url_;
   const net::SiteForCookies& site_for_cookies =
-      media_url_params_->site_for_cookies;
-  const url::Origin& top_frame_origin = media_url_params_->top_frame_origin;
+      media_url_params_->site_for_cookies_;
+  const url::Origin& top_frame_origin = media_url_params_->top_frame_origin_;
   net::StorageAccessApiStatus storage_access_api_status =
-      media_url_params_->storage_access_api_status;
+      media_url_params_->storage_access_api_status_;
 
   base::OnceCallback<void(const std::string&)> callback =
       base::BindOnce(&OHOSCustomMediaPlayerRenderer::OnCookiesRetrieved,
@@ -354,7 +339,7 @@ void OHOSCustomMediaPlayerRenderer::GetCookies() {
 
   cookie_manager_ptr->GetCookiesString(
       url, site_for_cookies, top_frame_origin, storage_access_api_status,
-      false, false, false,
+      false, false, false, false,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(
           base::BindOnce(&ReturnResultOnUIThreadAndClosePipe,
               std::move(cookie_manager), std::move(callback)),
@@ -373,7 +358,6 @@ void OHOSCustomMediaPlayerRenderer::OnCookiesRetrieved(
 // LCOV_EXCL_START
 void OHOSCustomMediaPlayerRenderer::TryCreateMediaPlayer() {
   DVLOG(1) << __func__;
-
   bool wait_surface_created = surface_id_ == -1;
   if (wait_surface_created) {
     return;
@@ -388,7 +372,6 @@ void OHOSCustomMediaPlayerRenderer::TryCreateMediaPlayer() {
 
 void OHOSCustomMediaPlayerRenderer::CreateMediaPlayer() {
   DVLOG(1) << __func__;
-
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
   if (!init_cb_) {
@@ -426,7 +409,6 @@ void OHOSCustomMediaPlayerRenderer::CreateMediaPlayer() {
 
   std::string surface_id_string =
       gpu_process_host->gpu_host()->GetSurfaceId(surface_id_);
-
   media_player_ =
       web_contents_impl->AsWebContentsImplExt()->CreateCustomMediaPlayer(
           std::make_unique<CustomMediaPlayerListenerImpl>(
@@ -437,7 +419,6 @@ void OHOSCustomMediaPlayerRenderer::CreateMediaPlayer() {
     std::move(init_cb_).Run(media::PIPELINE_ERROR_INITIALIZATION_FAILED);
     return;
   }
-
   web_contents_impl->AsWebContentsImplExt()->AddCustomMediaPlayer(
       media_player_id_, media_player_.get());
 
@@ -458,7 +439,7 @@ MediaInfo OHOSCustomMediaPlayerRenderer::BuildMediaInfo(
   for (const auto& info : source_infos_) {
     media_info.media_src_list.push_back(
         {static_cast<MediaInfo::SourceType>(
-             media_url_params_->custom_media_url_params.media_source_type),
+             media_url_params_->media_source_type_),
          info.media_source, info.media_format});
   }
   media_info.surface_info.id = surface_id_string;
@@ -471,7 +452,7 @@ MediaInfo OHOSCustomMediaPlayerRenderer::BuildMediaInfo(
   media_info.muted = muted_;
   media_info.poster_url = poster_url_;
   media_info.preload =
-      ConvertTo(media_url_params_->custom_media_url_params.preload_type);
+      ConvertTo(media_url_params_->preload_type_);
   if (!cookies_->empty()) {
     media_info.https_headers.insert(std::make_pair(
         net::HttpRequestHeaders::kCookie, std::move(cookies_.value())));
@@ -493,12 +474,10 @@ void OHOSCustomMediaPlayerRenderer::SetLatencyHint(
     absl::optional<base::TimeDelta> latency_hint) {}
 
 void OHOSCustomMediaPlayerRenderer::Flush(base::OnceClosure flush_cb) {
-  DVLOG(3) << __func__;
   std::move(flush_cb).Run();
 }
 
 void OHOSCustomMediaPlayerRenderer::StartPlayingFrom(base::TimeDelta time) {
-  DVLOG(1) << __func__;
   if (media_player_) {
     media_player_->Seek(time.InSecondsF());
     if (!is_playing_) {
@@ -512,7 +491,6 @@ void OHOSCustomMediaPlayerRenderer::StartPlayingFrom(base::TimeDelta time) {
 }
 
 void OHOSCustomMediaPlayerRenderer::SetPlaybackRate(double playback_rate) {
-  DVLOG(1) << __func__;
   if (media_player_) {
     if (playback_rate == 0) {
       if (is_playing_) {
@@ -526,18 +504,17 @@ void OHOSCustomMediaPlayerRenderer::SetPlaybackRate(double playback_rate) {
     if (!is_playing_) {
       media_player_->Play();
     }
+
     is_playing_ = true;
   }
 }
 
 void OHOSCustomMediaPlayerRenderer::SetVolume(float volume) {
-  DVLOG(1) << __func__;
   volume_ = volume;
   UpdateVolume();
 }
 
 void OHOSCustomMediaPlayerRenderer::UpdateVolume() {
-  DVLOG(1) << __func__;
   float volume = web_contents_muted_ ? 0 : volume_;
   if (media_player_) {
     media_player_->SetVolume(volume);
@@ -619,7 +596,6 @@ void OHOSCustomMediaPlayerRenderer::SetSurfaceId(int surface_id,
 
 void OHOSCustomMediaPlayerRenderer::SetMediaPlayerState(bool is_suspend,
                                                         int suspend_type) {
-  DVLOG(1) << __func__;
   if (!media_player_) {
     return;
   }

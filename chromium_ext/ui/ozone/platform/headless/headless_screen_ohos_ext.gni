@@ -1,3 +1,6 @@
+# Copyright 2014 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 #
 # Extending //headless:headless_unittests target
 #
@@ -6,7 +9,6 @@ headless_unittests_ext = {
   deps = [
     "//base",
     "//base/test:test_support",
-    "//build:chromeos_buildflags",
     "//skia",
     "//testing/gmock",
     "//testing/gtest",
@@ -15,6 +17,7 @@ headless_unittests_ext = {
     "//ui/base/dragdrop:types",
     "//ui/display:test_support",
     "//ui/events:test_support",
+    "//ui/gfx:test_support",
     "//ui/ozone:platform",
     "//ui/ozone:test_support",
   ]

@@ -14,10 +14,11 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "third_party/blink/public/mojom/choosers/date_time_chooser.mojom.h"
 #include "ui/base/ime/text_input_type.h"
-#include "ui/gfx/native_widget_types.h"
+#include "ui/gfx/native_ui_types.h"
+#include "content/common/content_export.h"
 
 namespace content {
-class DateTimeChooserOHOS : public blink::mojom::DateTimeChooser,
+class CONTENT_EXPORT DateTimeChooserOHOS : public blink::mojom::DateTimeChooser,
                             public WebContentsUserData<DateTimeChooserOHOS> {
  public:
   explicit DateTimeChooserOHOS(WebContents* web_contents);

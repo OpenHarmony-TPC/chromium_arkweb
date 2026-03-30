@@ -29,7 +29,7 @@ class ArkWebRenderProcessHostImplExtTest : public RenderViewHostImplTestHarness 
     StoragePartitionImpl* storage_partition = static_cast<StoragePartitionImpl*>(
         browser_context_test->GetDefaultStoragePartition());
     render_process_host_impl_ext_ = std::make_unique<ArkwebRenderProcessHostImplExt>(
-        browser_context_test, storage_partition, true);
+        browser_context_test, storage_partition, 0, true);
   }
 
   void TearDown() override {
@@ -53,8 +53,9 @@ class ArkWebRenderProcessHostImplExtTest : public RenderViewHostImplTestHarness 
 class MockArkwebRenderProcessHostImplExt : public ArkwebRenderProcessHostImplExt {
  public:
   explicit MockArkwebRenderProcessHostImplExt(
-      BrowserContext* browser_context, StoragePartitionImpl* storage_partition_impl, int flags)
-      : ArkwebRenderProcessHostImplExt(browser_context, storage_partition_impl, flags) {}
+      BrowserContext* browser_context, StoragePartitionImpl* storage_partition_impl, int flags,
+          bool is_spare_renderer)
+      : ArkwebRenderProcessHostImplExt(browser_context, storage_partition_impl, flags, is_spare_renderer) {}
 
   bool mock_is_dead_ = false;
   bool mock_is_ready_ = false;
@@ -74,7 +75,7 @@ std::unique_ptr<MockArkwebRenderProcessHostImplExt> CreateMockHost(
   StoragePartitionImpl* storage_partition = static_cast<StoragePartitionImpl*>(
       browser_context_test->GetDefaultStoragePartition());
   return std::make_unique<MockArkwebRenderProcessHostImplExt>(
-      browser_context_test, storage_partition, true);
+      browser_context_test, storage_partition, 0, true);
 }
 
 TEST_F(ArkWebRenderProcessHostImplExtTest, RenderProcessChannelConnectCheck_IsDead) {

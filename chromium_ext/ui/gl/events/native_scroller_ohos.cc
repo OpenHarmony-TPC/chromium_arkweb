@@ -73,9 +73,12 @@ void NativeScrollerOhos::Fling(float start_x,
   LOG(INFO) << "DUMP_FLING_CURVE init_velocity_y_ after scale: "
             << init_velocity_y_ << ", friction_: "
             << friction_ / kFrictionScale;
-
+#if !defined(COMPONENT_BUILD) // FIXME
   float pixel_ratio =
       ui::GestureConfiguration::GetInstance()->virtual_pixel_ratio();
+#else
+  float pixel_ratio = 0;
+#endif
   value_threshold_ = kDefaultThreshold * kDefaultMultiplier;
   velocity_threshold_ = NearZero(pixel_ratio)
                             ? value_threshold_

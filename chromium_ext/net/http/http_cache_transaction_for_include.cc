@@ -39,9 +39,9 @@ int HttpCache::Transaction::RestartNetworkRequestWithFallbackProxy() {
   DCHECK_EQ(STATE_NONE, next_state_);
 
   next_state_ = STATE_SEND_REQUEST_COMPLETE;
-  if (request_ != initial_request_ && custom_request_) {
-    custom_request_->secure_dns_only = false;
-    custom_request_->retry_with_fallback_proxy = true;
+  if (request_ != initial_request_ && mutable_request_) {
+    mutable_request_->secure_dns_only = false;
+    mutable_request_->retry_with_fallback_proxy = true;
     LOG(DEBUG)
         << "RestartNetworkRequestWithFallbackProxy retry_with_fallback_proxy "
         << request_->retry_with_fallback_proxy << ", url "
@@ -76,10 +76,10 @@ int HttpCache::Transaction::RestartNetworkRequestWithDirect() {
   DCHECK_EQ(STATE_NONE, next_state_);
 
   next_state_ = STATE_SEND_REQUEST_COMPLETE;
-  if (request_ != initial_request_ && custom_request_) {
-    custom_request_->secure_dns_only = false;
-    custom_request_->retry_with_fallback_proxy = false;
-    custom_request_->load_flags |= LOAD_BYPASS_PROXY;
+  if (request_ != initial_request_ && mutable_request_) {
+    mutable_request_->secure_dns_only = false;
+    mutable_request_->retry_with_fallback_proxy = false;
+    mutable_request_->load_flags |= LOAD_BYPASS_PROXY;
     LOG(DEBUG)
         << "RestartNetworkRequestWithDirect load_flags with LOAD_BYPASS_PROXY"
         << ", url " << url::LogUtils::ConvertUrlWithMask(request_->url.spec());

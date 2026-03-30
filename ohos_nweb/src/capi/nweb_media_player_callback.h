@@ -16,6 +16,10 @@
 #ifndef OHOS_NWEB_SRC_NWEB_MEDIA_PLAYER_CLIENT_CALLBACK_H_
 #define OHOS_NWEB_SRC_NWEB_MEDIA_PLAYER_CLIENT_CALLBACK_H_
 
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/public/capi/nweb_basic_types.h"
 #endif

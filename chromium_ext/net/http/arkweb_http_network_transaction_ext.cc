@@ -97,7 +97,7 @@
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
 
-#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+#if BUILDFLAG(ARKWEB_EXT_LOG_MESSAGE)
 #include "arkweb/chromium_ext/net/base/log_utils.h"
 #endif
 
@@ -117,7 +117,7 @@ ArkWebHttpNetworkTransactionExt::~ArkWebHttpNetworkTransactionExt() {
 #endif
 }
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 int ArkWebHttpNetworkTransactionExt::RestartWithSecureDnsOnly(
     CompletionOnceCallback callback) {
   DCHECK(!stream_.get());
@@ -154,7 +154,7 @@ int ArkWebHttpNetworkTransactionExt::DoCreateFallbackStreamWithSecureDnsOnly() {
   // IP based pooling is only enabled on a retry after 421 Misdirected Request
   // is received. Alternative Services are also disabled in this case (though
   // they can also be disabled when retrying after a QUIC error).
-  if (!enable_ip_based_pooling_) {
+  if (!enable_ip_based_pooling_for_h2_) {
     DCHECK(!enable_alternative_services_);
   }
   if (ForWebSocketHandshake()) {
@@ -162,11 +162,11 @@ int ArkWebHttpNetworkTransactionExt::DoCreateFallbackStreamWithSecureDnsOnly() {
         session_->http_stream_factory()->RequestWebSocketHandshakeStream(
             *request_, priority_, /*allowed_bad_certs=*/observed_bad_certs_,
             this, websocket_handshake_stream_base_create_helper_,
-            enable_ip_based_pooling_, enable_alternative_services_, net_log_);
+            enable_ip_based_pooling_for_h2_, enable_alternative_services_, net_log_);
   } else {
     stream_request_ = session_->http_stream_factory()->RequestStream(
         *request_, priority_, /*allowed_bad_certs=*/observed_bad_certs_, this,
-        enable_ip_based_pooling_, enable_alternative_services_, net_log_);
+        enable_ip_based_pooling_for_h2_, enable_alternative_services_, net_log_);
   }
   CHECK(stream_request_.get());
   return ERR_IO_PENDING;
@@ -191,7 +191,7 @@ int ArkWebHttpNetworkTransactionExt::DoCreateFallbackStreamWithSecureDnsOnlyComp
   stream_request_.reset();
   return result;
 }
-#endif  // BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#endif  // BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 
 #if BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
 int ArkWebHttpNetworkTransactionExt::RestartWithFallbackProxy(
@@ -226,7 +226,7 @@ int ArkWebHttpNetworkTransactionExt::DoCreateStreamWithFallbackProxy() {
   // IP based pooling is only enabled on a retry after 421 Misdirected Request
   // is received. Alternative Services are also disabled in this case (though
   // they can also be disabled when retrying after a QUIC error).
-  if (!enable_ip_based_pooling_) {
+  if (!enable_ip_based_pooling_for_h2_) {
     DCHECK(!enable_alternative_services_);
   }
 
@@ -241,11 +241,11 @@ int ArkWebHttpNetworkTransactionExt::DoCreateStreamWithFallbackProxy() {
         session_->http_stream_factory()->RequestWebSocketHandshakeStream(
             *request_, priority_, /*allowed_bad_certs=*/observed_bad_certs_,
             this, websocket_handshake_stream_base_create_helper_,
-            enable_ip_based_pooling_, enable_alternative_services_, net_log_);
+            enable_ip_based_pooling_for_h2_, enable_alternative_services_, net_log_);
   } else {
     stream_request_ = session_->http_stream_factory()->RequestStream(
         *request_, priority_, /*allowed_bad_certs=*/observed_bad_certs_, this,
-        enable_ip_based_pooling_, enable_alternative_services_, net_log_);
+        enable_ip_based_pooling_for_h2_, enable_alternative_services_, net_log_);
   }
   CHECK(stream_request_.get());
   return ERR_IO_PENDING;
@@ -322,47 +322,27 @@ void ArkWebHttpNetworkTransactionExt::StopRecording() {
 }
 
 void ArkWebHttpNetworkTransactionExt::ReportTimeout() {
-  std::string response_info_record;
+  base::Value::Dict record;
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   const HttpResponseInfo* response_info = GetResponseInfo();
   if (response_info) {
-    response_info_record = base::StringPrintf(
-        "ip:%s connectionInfo:%s receivedBodyBytes: %ld",
-        net::LogUtils::AnonymizeIpAddress(response_info->remote_endpoint)
-            .c_str(),
-        net::HttpConnectionInfoToString(response_info->connection_info).data(),
-        received_body_bytes_);
+    record.Set("ip", net::LogUtils::AnonymizeIpAddress(response_info->remote_endpoint));
+    record.Set("connection_info", net::HttpConnectionInfoToString(response_info->connection_info));
+    record.Set("received_body_bytes", base::NumberToString(received_body_bytes_));
   }
 #endif
 
-
+  LOG(INFO) << "INFO: request had no reponse within 5 seconds. url: *** " << record;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO, kNetwork)
-      << "NetworkTransactionTimeout " << response_info_record
-      << " url:" << url::LogUtils::ConvertUrlWithMask(url_.spec());
+  LOG_FEEDBACK(INFO) << "INFO: request had no reponse within 5 seconds. url: "
+                     << url::LogUtils::ConvertUrlWithMask(url_.spec())
+                     << " " << record;
   if (!session_->is_strict_log_mode()) {
     LOG(URL) << "request had no reponse within 5 seconds. url: " << url_.spec()
-             << " " << response_info_record;
+             << " " << record;
   }
 #endif
-}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-ConnectionAttempts ArkWebHttpNetworkTransactionExt::GetExtraConnectionAttempts()
-    const {
-  return extra_connection_attempts_;
-}
-
-void ArkWebHttpNetworkTransactionExt::
-    CopyConnectionAttemptsFromStreamRequest() {
-  HttpNetworkTransaction::CopyConnectionAttemptsFromStreamRequest();
-
-  DCHECK(stream_request_);
-  for (const auto& attempt : stream_request_->extra_connection_attempts()) {
-    extra_connection_attempts_.push_back(attempt);
-  }
 }
 #endif
 

@@ -14,12 +14,11 @@
  */
 
 #include "arkweb/chromium_ext/third_party/blink/renderer/core/frame/local_frame_for_include.h"
-
-#include "arkweb/build/features/features.h"
-#include "third_party/blink/renderer/core/page/page_utils.h"
 #if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
 #include "arkweb/chromium_ext/third_party/blink/renderer/core/paint/timing/blank_screen_detector.h"
 #endif
+#include "arkweb/build/features/features.h"
+#include "third_party/blink/renderer/core/page/page_utils.h"
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
 #include "base/memory/safe_ref.h"
 #endif
@@ -27,16 +26,17 @@
 #include "arkweb/chromium_ext/third_party/blink/renderer/core/editing/frame_selection_ext.h"
 #include "base/ohos/sys_info_utils_ext.h"
 #endif
+#if BUILDFLAG(ARKWEB_AI)
+#include "third_party/blink/renderer/core/fragment_directive/fragment_directive.h"
+#endif
 
 namespace blink {
-  
-// LCOV_EXCL_START
+
 #if BUILDFLAG(ARKWEB_EXT_FREE_COPY)
 void LocalFrame::NotifyContextMenuWillShow() {
   GetLocalFrameHostRemote().NotifyContextMenuWillShow();
 }
 #endif
-// LCOV_EXCL_STOP
 
 bool LocalFrameUtil::SetLayoutAndTextZoomFactorsPage(
     LocalFrame* LocalFrameObj,
@@ -108,8 +108,8 @@ void LocalFrame::OnOverScrollOffsetChanged(float offset_x, float offset_y) {
     }
     task_runner->PostTask(
         FROM_HERE,
-        WTF::BindOnce(&LocalFrame::OnOverScrollOffsetChanged,
-                      weak_local_frame_.GetSafeRef(), offset_x, offset_y));
+        ::blink::BindOnce(&LocalFrame::OnOverScrollOffsetChanged,
+                          weak_local_frame_.GetSafeRef(), offset_x, offset_y));
   } else {
     GetLocalFrameHostRemote().OnOverScrollOffsetChanged(offset_x, offset_y);
   }
@@ -117,7 +117,7 @@ void LocalFrame::OnOverScrollOffsetChanged(float offset_x, float offset_y) {
 #endif
 
 #if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
-void LocalFrame::OnDetectedBlankScreen(const WTF::String& url,
+void LocalFrame::OnDetectedBlankScreen(const String& url,
                                        int32_t blankScreenReason,
                                        int32_t detectedContentfulNodesCount) {
   GetLocalFrameHostRemote().OnDetectedBlankScreen(url, blankScreenReason,
@@ -135,7 +135,7 @@ BlankScreenDetector* LocalFrame::GetBlankScreenDetector(
 
 #if BUILDFLAG(ARKWEB_FIRST_SCREEN_PAINT)
 void LocalFrame::OnFirstScreenPaint(
-    const WTF::String& url,
+    const String& url,
     const base::TimeTicks& navigation_start,
     const base::TimeTicks& first_screen_paint) {
   base::Time reference_wall_time = base::Time::Now();
@@ -165,7 +165,6 @@ void LocalFrame::OnFirstScreenPaint(
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_ADBLOCK)
 void LocalFrame::DidSubresourceFiltered() {
   Client()->DispatchDidSubresourceFiltered();
@@ -193,27 +192,6 @@ void LocalFrame::SetHasGenericHideTypeOption(bool has_generichide_type_option) {
   has_generichide_type_option_ = has_generichide_type_option;
 }
 #endif
-
-#if BUILDFLAG(ARKWEB_PDF)
-bool LocalFrame::IsPDF() {
-  if (!Client()) {
-    LOG(ERROR) << "Client() null";
-    return false;
-  }
-  WebLocalFrame* web_frame = Client()->GetWebFrame();
-  if (web_frame) {
-    WebLocalFrameClient* client = web_frame->Client();
-    if (client) {
-      bool is_pdf = client->IsPDF();
-      LOG_IF(INFO, is_pdf) << "current frame is pdf.";
-      return is_pdf;      
-    }
-  }
-  return false;
-}
-#endif
-
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
 bool LocalFrame::IsVideoPrioritySupported() {
@@ -268,6 +246,25 @@ void LocalFrame::NotifyFinished(base::WeakPtr<VideoURLLoaderImpl> loader) {
 }
 #endif // ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION
 
+#if BUILDFLAG(ARKWEB_PDF)
+bool LocalFrame::IsPDF() {
+  if (!Client()) {
+    LOG(ERROR) << "Client() null";
+    return false;
+  }
+  WebLocalFrame* web_frame = Client()->GetWebFrame();
+  if (web_frame) {
+    WebLocalFrameClient* client = web_frame->Client();
+    if (client) {
+      bool is_pdf = client->IsPDF();
+      LOG_IF(INFO, is_pdf) << "current frame is pdf.";
+      return is_pdf;      
+    }
+  }
+  return false;
+}
+#endif
+
 #if BUILDFLAG(ARKWEB_AI)
 void LocalFrame::StartHighlightFadeTimer(base::TimeDelta delay) {
   if (!(GetSettings() && GetSettings()->GetArkwebAgentEnabled())) {
@@ -278,21 +275,36 @@ void LocalFrame::StartHighlightFadeTimer(base::TimeDelta delay) {
       GetTaskRunner(TaskType::kInternalFindInPage));
 
   if (delay.is_zero()) {
-    ClearHighlight();
+    ClearHighlight(true);
   } else {
-    highlight_fade_timer_.Start(FROM_HERE, delay,
-                                WTF::BindOnce(&LocalFrame::ClearHighlight,
-                                              weak_local_frame_.GetWeakPtr()));
+    highlight_fade_timer_.Start(
+        FROM_HERE, delay,
+        ::blink::BindOnce(base::IgnoreResult(&LocalFrame::ClearHighlight),
+                          weak_local_frame_.GetWeakPtr(), true));
   }
 }
 
-void LocalFrame::ClearHighlight() {
-  if (GetTextFragmentHandler() && GetSettings() &&
-      GetSettings()->GetArkwebAgentEnabled()) {
+bool LocalFrame::ClearHighlight(const bool ignoreSetting) {
+  if (GetTextFragmentHandler() &&
+      (ignoreSetting ||
+       (GetSettings() && GetSettings()->GetArkwebAgentEnabled()))) {
     GetTextFragmentHandler()->RemoveFragments();
-    return;
+    return true;
   }
   LOG(ERROR) << "LocalFrame::ClearHighlight failed, no handler.";
+  return false;
+}
+
+bool LocalFrame::ProcessFragment(const KURL& url) {
+  if (View() && GetDocument() && GetSettings() &&
+      GetSettings()->GetArkwebAgentEnabled()) {
+    GetDocument()->fragmentDirective().ConsumeFragmentDirective(url);
+    View()->ProcessUrlFragment(url, true, true);
+    return true;
+  }
+  LOG(ERROR)
+      << "HighlightSpecifiedContent ProcessFragment when using dataUrl failed";
+  return false;
 }
 #endif
 }  // namespace blink

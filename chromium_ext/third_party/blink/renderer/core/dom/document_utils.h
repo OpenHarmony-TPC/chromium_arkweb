@@ -18,14 +18,12 @@
 
 #include "arkweb/build/features/features.h"
 
-#if BUILDFLAG(ARKWEB_SLIDE_LTPO)
 #include "base/command_line.h"
 #include "arkweb/chromium_ext/base/ohos/ltpo/include/touch_observer.h"
 #include "content/public/common/content_switches.h"
 #include "third_party/blink/renderer/core/render_mojom/render_mojom_client.h"
 #include "third_party/blink/renderer/platform/loader/fetch/resource_fetcher.h"
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
-#endif
 
 namespace blink {
 

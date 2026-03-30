@@ -54,6 +54,7 @@ float PageConstraintInitalScale(const Document& document) {
   if (auto* page = document.GetPage()) {
     scale = page->GetPageScaleConstraintsSet().FinalConstraints().initial_scale;
   } else {
+    LOG(INFO) << "using default scale 1.0";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO) << "using default scale 1.0";
 #endif  // ARKWEB_LOGGER_REPORT
@@ -176,6 +177,9 @@ std::string HTMLMediaElement::GetOutgoingReferrerString() {
 }
 
 void HTMLMediaElement::UpdatePlaybackStatus(uint32_t status) {
+  LOG(INFO) << "UpdatePlaybackStatus(" << status << "), paused_[" << paused_
+            << "]";
+
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "UpdatePlaybackStatus(" << status << "), paused_["
                      << paused_ << "]";
@@ -193,7 +197,7 @@ void HTMLMediaElement::UpdatePlaybackStatus(uint32_t status) {
   if (status) {
     PlayInternal();
   } else {
-    PauseInternal(PlayPromiseError::kPaused_PauseCalled);
+    PauseInternal(WebMediaPlayer::PauseReason::kPauseCalled);
   }
 }
 void HTMLMediaElement::UpdateVolume(double volume) {
@@ -220,8 +224,9 @@ gfx::Rect HTMLMediaElement::GetVideoRect() {
   if (GetLayoutObject() && GetLayoutObject()->IsBox()) {
     auto* layout_box = To<LayoutBox>(GetLayoutObject());
     return gfx::Rect(ToFlooredPoint(layout_box->Location()),
-                     ToFlooredSize(layout_box->Size()));
+                     ToFlooredSize(layout_box->StitchedSize()));
   }
+  LOG(INFO) << "using default vidoe size";
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
   LOG_FEEDBACK(INFO) << "using default vidoe size";
@@ -328,61 +333,6 @@ void HTMLMediaElement::NotifyVideoDestroyed() {
   }
 }
 
-#if BUILDFLAG(ARKWEB_MEDIA_CAPABILITIES_ENHANCE)
-std::string HTMLMediaElement::AddErrorCodeToMessage(
-    WebMediaPlayer::NetworkState state,
-    const String& error) {
-  StringBuilder builder;
-  int net_error_code = 0;
-  media::PipelineStatus pipeline_status = media::PIPELINE_OK;
-  if (GetWebMediaPlayer()) {
-    pipeline_status = GetWebMediaPlayer()->GetPipelineStatus();
-    net_error_code = GetWebMediaPlayer()->GetWebURLErrorReason();
-  }
-
-  builder.AppendFormat(
-      "[internal_error:pipeline:%d,blink:%d,net_error_code:%d]",
-      pipeline_status.code(), state, net_error_code);
-  builder.Append(error);
-  return builder.ToString().Utf8();
-}
-
-void HTMLMediaElement::ReportMediaLoadingErrorMessage(
-    const std::string& error_type,
-    WebMediaPlayer::NetworkState error,
-    const String& message,
-    bool is_message_not_clear) {
-  StringBuilder builder;
-  if (!is_message_not_clear) {
-    builder.Append(message);
-  } else {
-    builder.Append((error == WebMediaPlayer::kNetworkStateFormatError
-                       ? "Format error"
-                       : "Network error"));
-  }
-
-  ReportWebMediaPlayErrorInfo(
-      error_type, error, AddErrorCodeToMessage(error, builder.ToString()));
-#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(ERROR) << "Media loadding failed message: "
-                      << AddErrorCodeToMessage(error, builder.ToString());
-#endif // ARKWEB_LOGGER_REPORT
-}
-
-void HTMLMediaElement::SetVideoExperienceMojo() {
-  if (is_logger_export_) {
-    LocalFrame* frame = GetDocument().GetFrame();
-    if (frame) {
-      if (video_experience_reporter_) {
-        video_experience_reporter_.reset();
-      }
-      frame->GetBrowserInterfaceBroker().GetInterface(
-        video_experience_reporter_.BindNewPipeAndPassReceiver(nullptr));
-    }
-  }
-}
-#endif // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
-
 media::mojom::blink::MediaInfoForVASTPtr
 HTMLMediaElement::CollectMediaInfoAttributesForVAST() {
   auto media_player = GetWebMediaPlayer();
@@ -390,8 +340,8 @@ HTMLMediaElement::CollectMediaInfoAttributesForVAST() {
     return nullptr;
   }
   auto mediaInfoAttr = media::mojom::blink::MediaInfoForVAST::New();
-  mediaInfoAttr->id = WTF::String::FromUTF8(GetIdAttribute().Utf8());
-  mediaInfoAttr->title = WTF::String::FromUTF8(html_media_element_utils_.GetTitle().Utf8());
+  mediaInfoAttr->id = String::FromUTF8(GetIdAttribute().Utf8());
+  mediaInfoAttr->title = String::FromUTF8(html_media_element_utils_.GetTitle().Utf8());
   mediaInfoAttr->duration = duration();
   mediaInfoAttr->volume = volume();
   mediaInfoAttr->current_time = media_player->CurrentTime();
@@ -456,7 +406,7 @@ void HTMLMediaElement::OnSupportVideoSurfaceChanged(
     UpdateControlsVisibility();
   }
   for (auto& observer : media_player_observer_remote_set_->Value()) {
-    observer->FullscreenOverlayChanged(support, WTF::String(decoder_name));
+    observer->FullscreenOverlayChanged(support, String(decoder_name));
   }
 }
 
@@ -498,6 +448,64 @@ void HTMLMediaElement::RequestExitFullscreenIfNeeded() {
   }
 }
 #endif  // ARKWEB_VIDEO_ASSISTANT
+
+#if BUILDFLAG(ARKWEB_MEDIA_CAPABILITIES_ENHANCE)
+std::string HTMLMediaElement::AddErrorCodeToMessage(
+    WebMediaPlayer::NetworkState state,
+    const String& error) {
+  StringBuilder builder;
+  int net_error_code = 0;
+  media::PipelineStatus pipeline_status = media::PIPELINE_OK;
+  if (GetWebMediaPlayer()) {
+    pipeline_status = GetWebMediaPlayer()->GetPipelineStatus();
+    net_error_code = GetWebMediaPlayer()->GetWebURLErrorReason();
+  }
+
+  builder.AppendFormat(
+      "[internal_error:pipeline:%d,blink:%d,net_error_code:%d]",
+      pipeline_status.code(), state, net_error_code);
+  builder.Append(error);
+  return builder.ToString().Utf8();
+}
+
+void HTMLMediaElement::ReportMediaLoadingErrorMessage(
+    const std::string& error_type,
+    WebMediaPlayer::NetworkState error,
+    const String& message,
+    bool is_message_not_clear) {
+  StringBuilder builder;
+  if (!is_message_not_clear) {
+    builder.Append(message);
+  } else {
+    builder.Append((error == WebMediaPlayer::kNetworkStateFormatError
+                       ? "Format error"
+                       : "Network error"));
+  }
+
+#if !defined(COMPONENT_BUILD) // Avoid component compilation.
+  ReportWebMediaPlayErrorInfo(
+      error_type, error, AddErrorCodeToMessage(error, builder.ToString()));
+#endif // COMPONENT_BUILD
+
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+  LOG_FEEDBACK(ERROR) << "Media loadding failed message: "
+                      << AddErrorCodeToMessage(error, builder.ToString());
+#endif // ARKWEB_LOGGER_REPORT
+}
+
+void HTMLMediaElement::SetVideoExperienceMojo() {
+  if (is_logger_export_) {
+    LocalFrame* frame = GetDocument().GetFrame();
+    if (frame) {
+      if (video_experience_reporter_) {
+        video_experience_reporter_.reset();
+      }
+      frame->GetBrowserInterfaceBroker().GetInterface(
+        video_experience_reporter_.BindNewPipeAndPassReceiver(nullptr));
+    }
+  }
+}
+#endif // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
 
 #if BUILDFLAG(ARKWEB_PIP)
 void HTMLMediaElement::PipEnable(bool enable) {
@@ -762,7 +770,7 @@ String HTMLMediaElement::GetMediaPlayerType() const {
   }
   return g_empty_string;
 }
-
+ 
 void HTMLMediaElement::ScheduleVideoFreezeEvent() {
   if (html_media_element_utils_.IsFeedsPage()) {
     ScheduleNamedEvent(event_type_names::kVideofreeze);
@@ -782,7 +790,7 @@ double HTMLMediaElement::freezeTime() {
   html_media_element_utils_.freeze_time_recorder_.Reset();
   return total_freeze_time.InMillisecondsF();
 }
-
+ 
 double HTMLMediaElement::playedTime() {
   if (!html_media_element_utils_.IsFeedsPage()) {
     LOG(INFO) << "HTMLMediaElement::playedTime is not feedsPage";

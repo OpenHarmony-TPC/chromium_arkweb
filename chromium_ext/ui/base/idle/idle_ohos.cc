@@ -20,7 +20,7 @@
 #include "ui/base/idle/idle.h"
 #include "ui/base/idle/idle_internal.h"
 
-#include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
+#include "arkweb/ohos_adapter_ndk/interfaces/ohos_adapter_helper.h"
 
 namespace ui {
 

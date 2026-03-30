@@ -55,10 +55,11 @@ scoped_refptr<cc::SurfaceLayer> SurfaceLayerBridge::CreateSurfaceLayer(cc::Surfa
 
   surface_layer_->SetSurfaceId(current_surface_id_,
                                cc::DeadlinePolicy::UseDefaultDeadline());
+
   surface_layer_->SetStretchContentToFillBounds(stretch_content_to_fill_bounds_);
   surface_layer_->SetIsDrawable(true);
   surface_layer_->SetHitTestable(true);
-  surface_layer_->SetMayContainVideo(contains_video_ == ContainsVideo::kYes);
+  surface_layer_->SetOverrideChildPaintFlags(true);
 
   if (observer_) {
     observer_->RegisterContentsLayer(surface_layer_.get());

@@ -126,25 +126,27 @@ TEST_F(NWebResizeHelperTest, GetResizeAdjustValue_003) {
 }
 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest001) {
-  auto& instance = NWebResizeHelper::GetInstance();
+  auto& instance1 = NWebResizeHelper::GetInstance();
+  auto& instance2 = NWebResizeHelper::GetInstance();
+  ASSERT_EQ(&instance1, &instance2);
   
   helper_->SetDragResizeStart(true);
   EXPECT_TRUE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetDragResizeStart(false);
   EXPECT_FALSE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetResizeStartTimeStamp();
   int64_t start_time = helper_->GetResizeStartTimeStamp();
   EXPECT_GT(start_time, 0);
-
+ 
   helper_->CaculateResizeTime();
   EXPECT_GE(helper_->GetResizeTime(), 0);
-
+ 
   helper_->SetResizeHeightAndWidth(100, 200);
   helper_->RefreshParam();
   EXPECT_EQ(helper_->GetResizeAdjustValue(100, 0, true), 100);
-
+ 
   uint32_t target_length = 1000;
   int64_t resize_pre_length = 50;
   bool isHeight = false;
@@ -159,27 +161,27 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest001) {
   result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest002) {
   helper_->GetResizeAdjustValue(200, -50, true);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest003) {
   helper_->GetResizeAdjustValue(200, -20, true);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest004) {
   helper_->GetResizeAdjustValue(300, 0, false);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest005) {
   helper_->GetResizeAdjustValue(300, -50, false);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest006) {
   helper_->GetResizeAdjustValue(100, -10, false);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest007) {
   uint32_t target_length = 200;
   int64_t resize_pre_length = -30;
@@ -188,7 +190,7 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest007) {
   int64_t result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
   EXPECT_EQ(result, 500);
-
+ 
   target_length = 1000;
   resize_pre_length = 50;
   isHeight = true;
@@ -196,7 +198,7 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest007) {
   result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest008) {
   uint32_t target_length = 200;
   int64_t resize_pre_length = -30;
@@ -205,7 +207,7 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest008) {
   int64_t result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
   EXPECT_EQ(result, 500);
-
+ 
   target_length = 500;
   resize_pre_length = 50;
   isHeight = false;
@@ -213,7 +215,7 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest008) {
   result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest009) {
   uint32_t target_length = 200;
   int64_t resize_pre_length = -30;
@@ -222,7 +224,7 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest009) {
   int64_t result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
   EXPECT_EQ(result, 270);
-
+ 
   target_length = 500;
   resize_pre_length = 50;
   isHeight = true;
@@ -231,54 +233,54 @@ TEST_F(NWebResizeHelperTest, DragResizeHelperTest009) {
   result =
       helper_->GetResizeAdjustValue(target_length, resize_pre_length, isHeight);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest010) {
   uint32_t target = 100;
   int64_t pre_length = 80;
   int64_t adjust = helper_->GetResizeAdjustValue(target, pre_length, true);
   helper_->SetResizeHeightAndWidth(200, 300);
   EXPECT_EQ(helper_->GetResizeAdjustValue(200, 150, true), 350);
-
+ 
   target = 200;
   pre_length = 50;
   adjust = helper_->GetResizeAdjustValue(target, pre_length, true);
   helper_->SetResizeHeightAndWidth(300, 400);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest011) {
   helper_->SetDragResizeStart(true);
   EXPECT_TRUE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetDragResizeStart(false);
   EXPECT_FALSE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetResizeHeightAndWidth(100, 200);
   helper_->RefreshParam();
   EXPECT_EQ(helper_->GetResizeAdjustValue(100, 0, true), 100);
 }
-
+ 
 TEST_F(NWebResizeHelperTest, DragResizeHelperTest012) {
   helper_->CaculateResizeTime();
   EXPECT_GE(helper_->GetResizeTime(), 0);
-
+ 
   helper_->SetResizeHeightAndWidth(100, 200);
   helper_->RefreshParam();
   EXPECT_EQ(helper_->GetResizeAdjustValue(100, 0, true), 100);
   helper_->SetDragResizeStart(true);
   EXPECT_TRUE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetDragResizeStart(false);
   EXPECT_FALSE(helper_->IsDragResizeStart());
-
+ 
   helper_->SetResizeStartTimeStamp();
   int64_t start_time = helper_->GetResizeStartTimeStamp();
   EXPECT_GT(start_time, 0);
-
+ 
   helper_->GetResizeAdjustValue(200, -50, true);
   helper_->GetResizeAdjustValue(500, 150, false);
   helper_->GetResizeAdjustValue(500, 150, false);
   helper_->GetResizeAdjustValue(500, -150, true);
-
+ 
   uint32_t target_length = 1000;
   int64_t resize_pre_length = -150;
   bool isHeight = false;

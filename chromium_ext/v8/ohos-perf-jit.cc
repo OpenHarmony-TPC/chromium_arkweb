@@ -56,13 +56,13 @@ base::LazyRecursiveMutex& GetFileMutex() {
 
 // The following static variables are protected by
 // GetFileMutex().
-int LinuxPerfJitLogger::process_id_ = 0;
-uint64_t LinuxPerfJitLogger::reference_count_ = 0;
-uint8_t* LinuxPerfJitLogger::marker_address_ = nullptr;
-uint8_t* LinuxPerfJitLogger::marker_address_base_ = nullptr;
-uint64_t LinuxPerfJitLogger::code_index_ = 0;
+int PerfJitLogger::process_id_ = 0;
+uint64_t PerfJitLogger::reference_count_ = 0;
+uint8_t* PerfJitLogger::marker_address_ = nullptr;
+uint8_t* PerfJitLogger::marker_address_base_ = nullptr;
+uint32_t PerfJitLogger::code_index_ = 0;
 
-bool LinuxPerfJitLogger::HasEnoughMemory(uint64_t size) {
+bool PerfJitLogger::HasEnoughMemory(uint64_t size) {
   if (static_cast<uint64_t>(marker_address_ - marker_address_base_) + size <
       SHM_SIZE) {
     return true;
@@ -72,7 +72,7 @@ bool LinuxPerfJitLogger::HasEnoughMemory(uint64_t size) {
   return false;
 }
 
-void LinuxPerfJitLogger::OpenJitDumpFile() {
+void PerfJitLogger::OpenJitDumpFile() {
   marker_address_base_ =
       reinterpret_cast<uint8_t*>(mmap(nullptr, SHM_SIZE, PROT_READ | PROT_WRITE,
                                       MAP_SHARED | MAP_ANONYMOUS, -1, 0));
@@ -80,8 +80,7 @@ void LinuxPerfJitLogger::OpenJitDumpFile() {
     marker_address_base_ = nullptr;
     HilogPrint(ERROR, "Failed to map shared memory.");
   } else {
-    std::string tagName = JitSymbolMemTagName(process_id_);
-    if (prctl(PR_SET_VMA, 0, marker_address_base_, SHM_SIZE, tagName.c_str()) ==
+    if (prctl(PR_SET_VMA, 0, marker_address_base_, SHM_SIZE, kJitSymbolMapName) ==
         -1) {
       HilogPrint(ERROR, "Failed to set map tag");
     }
@@ -89,7 +88,7 @@ void LinuxPerfJitLogger::OpenJitDumpFile() {
   marker_address_ = marker_address_base_;
 }
 
-LinuxPerfJitLogger::LinuxPerfJitLogger(Isolate* isolate)
+PerfJitLogger::PerfJitLogger(Isolate* isolate)
     : CodeEventLogger(isolate) {
   base::LockGuard<base::RecursiveMutex> guard_file(GetFileMutex().Pointer());
   process_id_ = base::OS::GetCurrentProcessId();
@@ -105,7 +104,7 @@ LinuxPerfJitLogger::LinuxPerfJitLogger(Isolate* isolate)
   }
 }
 
-LinuxPerfJitLogger::~LinuxPerfJitLogger() {
+PerfJitLogger::~PerfJitLogger() {
   base::LockGuard<base::RecursiveMutex> guard_file(GetFileMutex().Pointer());
   reference_count_--;
   if (reference_count_ == 0 && marker_address_base_ != nullptr) {
@@ -114,7 +113,7 @@ LinuxPerfJitLogger::~LinuxPerfJitLogger() {
   }
 }
 
-uint64_t LinuxPerfJitLogger::GetTimestamp() {
+uint64_t PerfJitLogger::GetTimestamp() {
   struct timespec ts;
   int result = clock_gettime(CLOCK_MONOTONIC, &ts);
   DCHECK_EQ(0, result);
@@ -123,12 +122,13 @@ uint64_t LinuxPerfJitLogger::GetTimestamp() {
   return (ts.tv_sec * kNsecPerSec) + ts.tv_nsec;
 }
 
-void LinuxPerfJitLogger::LogRecordedBuffer(
+void PerfJitLogger::LogRecordedBuffer(
     Tagged<AbstractCode> abstract_code,
-    MaybeHandle<SharedFunctionInfo> maybe_sfi,
+    MaybeDirectHandle<SharedFunctionInfo> maybe_sfi,
     const char* name,
-    int length) {
+    size_t length) {
   DisallowGarbageCollection no_gc;
+  PtrComprCageBase cage_base(isolate_);
   if (v8_flags.perf_basic_prof_only_functions) {
     CodeKind code_kind = abstract_code->kind(isolate_);
     if (!CodeKindIsJSFunction(code_kind)) {
@@ -145,19 +145,18 @@ void LinuxPerfJitLogger::LogRecordedBuffer(
   if (!IsCode(abstract_code, isolate_)) {
     return;
   }
-  Tagged<Code> code = Cast<Code>(abstract_code);
 
   const char* code_name = name;
-  uint8_t* code_pointer = reinterpret_cast<uint8_t*>(code->instruction_start());
+  uint8_t* code_pointer = reinterpret_cast<uint8_t*>(abstract_code->InstructionStart(cage_base));
 
-  WriteJitCodeLoadEntry(code_pointer, code->instruction_size(), code_name,
+  WriteJitCodeLoadEntry(code_pointer, abstract_code->InstructionSize(cage_base), code_name,
                         length);
 }
 
 #if V8_ENABLE_WEBASSEMBLY
-void LinuxPerfJitLogger::LogRecordedBuffer(const wasm::WasmCode* code,
+void PerfJitLogger::LogRecordedBuffer(const wasm::WasmCode* code,
                                            const char* name,
-                                           int length) {
+                                           size_t length) {
   base::LockGuard<base::RecursiveMutex> guard_file(GetFileMutex().Pointer());
 
   if (marker_address_base_ == nullptr) {
@@ -169,46 +168,41 @@ void LinuxPerfJitLogger::LogRecordedBuffer(const wasm::WasmCode* code,
 }
 #endif  // V8_ENABLE_WEBASSEMBLY
 
-void LinuxPerfJitLogger::WriteJitCodeLoadEntry(const uint8_t* code_pointer,
+void PerfJitLogger::WriteJitCodeLoadEntry(const uint8_t* code_pointer,
                                                uint32_t code_size,
                                                const char* name,
-                                               int name_length) {
+                                               size_t name_length) {
   PerfJitCodeLoad code_load;
-  code_load.event_ = PerfJitCodeLoad::kLoad;
   code_load.size_ =
-      sizeof(code_load) + name_length + sizeof(kStringTerminator) + code_size;
-  code_load.time_stamp_ = GetTimestamp();
+      sizeof(code_load) + name_length + sizeof(kStringTerminator);
   code_load.process_id_ = static_cast<uint32_t>(process_id_);
-  code_load.thread_id_ = static_cast<uint32_t>(base::OS::GetCurrentThreadId());
-  code_load.vma_ = reinterpret_cast<uint64_t>(code_pointer);
   code_load.code_address_ = reinterpret_cast<uint64_t>(code_pointer);
   code_load.code_size_ = code_size;
   code_load.code_id_ = code_index_;
-
-  code_index_++;
 
   uint64_t codeLoadWithTerminatorSize = code_load.size_ + sizeof(kJitCodeTerminator);
   if (marker_address_base_ != nullptr && HasEnoughMemory(codeLoadWithTerminatorSize)) {
     LogWriteBytes(reinterpret_cast<const char*>(&code_load), sizeof(code_load));
     LogWriteBytes(name, name_length);
     LogWriteBytes(kStringTerminator, sizeof(kStringTerminator));
-    LogWriteBytes(reinterpret_cast<const char*>(code_pointer), code_size);
     // write jit code Terminator
     LogWriteBytes(kJitCodeTerminator, sizeof(kJitCodeTerminator));
     // allow next jit code to overwrite this Terminator
-    marker_address_ -= sizeof(kJitCodeTerminator);
     // the last jit code will keep the Terminator
+    marker_address_ -= sizeof(kJitCodeTerminator);
+    // increase after write code block
+    code_index_++;
   }
 }
 
-void LinuxPerfJitLogger::LogWriteBytes(const char* bytes, uint64_t size) {
+void PerfJitLogger::LogWriteBytes(const char* bytes, uint64_t size) {
   if (marker_address_base_ != nullptr && HasEnoughMemory(size)) {
     std::memcpy(marker_address_, bytes, size);
     marker_address_ += size;
   }
 }
 
-void LinuxPerfJitLogger::LogWriteHeader() {
+void PerfJitLogger::LogWriteHeader() {
   PerfJitHeader header;
 
   header.magic_ = PerfJitHeader::kMagic;

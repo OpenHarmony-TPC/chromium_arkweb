@@ -272,7 +272,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
 
   void SetWebPreferences(const CefBrowserSettings& browser_settings) override {}
 
-  void PutUserAgent(const CefString& ua) override {}
+  void PutUserAgent(const CefString& ua, bool from_app) override {}
 
   CefString DefaultUserAgent() override { return CefString(); }
 
@@ -677,7 +677,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   }
   void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
-  int ExtensionGetTabId() const override { return 0; }
+  int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) override { return 0; }
   void SetAdBlockEnabledForSite(bool is_adblock_enabled,
                                 int main_frame_tree_node_id) override {}
@@ -710,6 +710,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void PutWebMediaAVSessionEnabled(bool enable) override {}
   void SetEnableHalfFrameRate(bool enabled) override {}
   bool SetFocusByPosition(float x, float y) override { return false; }
+  bool IsElementExist(CefString& xPath) override { return false; }
 #if BUILDFLAG(ARKWEB_PIP)
   void SetPipNativeWindow(int delegate_id,
                           int child_id,
@@ -745,30 +746,30 @@ void GetLastJavaScriptProxyCallingFrameInfo(
                                        void** adapter) override {}
   void OnBrowserForeground() override {}
   void OnBrowserBackground() override {}
-#if BUILDFLAG(ARKWEB_READER_MODE)
-  void Distill(const std::string& guid, const DistillOptions& distill_options,
-    CefRefPtr<CefDistillCallback> callback) override {}
-  void AbortDistill() override {}
-#endif // ARKWEB_READER_MODE
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  bool SavePage(int type,
+                CefString& filePath,
+                CefRefPtr<CefSavePageResultCallback> callback) override {
+    return false;
+  }
+#endif // ARKWEB_SAVE_PAGE
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   void GetFocusedFrameInfo(int32_t& frame_id, CefString& frame_url) override {}
 #endif  // ARKWEB_ARKWEB_EXTENSIONS
-#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
-  int LoadUrlWithParams(const std::string& url,
-                        const LoadUrlType load_type,
+  void LoadUrlWithParams(const std::string& url,
+                         const LoadUrlType& load_type,
                         const std::string& refer,
                         const std::string& headers,
                         const std::string& post_data,
-                        const bool allow_https_upgrade,
-                        int32_t transition_type) override {
-    return 0;
-  }
+                         const bool& allow_https_upgrade,
+                         int32_t transition_type) override {}
+#if BUILDFLAG(ARKWEB_READER_MODE)
+  void Distill(uint64_t request_id, const DistillOptions& distill_options,
+    CefRefPtr<CefDistillCallback> callback) override {}
+  void AbortDistill() override {}
+#endif // ARKWEB_READER_MODE
   void EnableHttpsUpgrades(bool enable) override {}
-#endif
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
   int32_t GetLastCommittedEntryPageTransition() override { return 0; }
-#endif
-
 };
 
 class MockCefBrowser : public CefBrowser {

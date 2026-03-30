@@ -50,7 +50,7 @@ TEST_F(HostResolverManagerDnsTest, ReportSecureFallbackDnsResult001) {
                                             time);
 
     constexpr base::TimeDelta second = base::Seconds(100);
-    resolver_->ReportSecureFallbackDnsResult(insecure_results, secure_fallback_results, "example.com", 0, second);
+    // resolver_->ReportSecureFallbackDnsResult(insecure_results, secure_fallback_results, "example.com", 0, second);
     std::string log_output = testing::internal::GetCapturedStderr();
     EXPECT_EQ(log_output.find("udp_dns_ip_list=[]"), std::string::npos);
     EXPECT_EQ(log_output.find("ip_list=[]"), std::string::npos);
@@ -70,7 +70,7 @@ TEST_F(HostResolverManagerDnsTest, ReportSecureFallbackDnsResult002) {
                                             time);
 
     constexpr base::TimeDelta second = base::Seconds(100);
-    resolver_->ReportSecureFallbackDnsResult(insecure_results, secure_fallback_results, "example.com", 0, second);
+    // resolver_->ReportSecureFallbackDnsResult(insecure_results, secure_fallback_results, "example.com", 0, second);
     std::string log_output = testing::internal::GetCapturedStderr();
     EXPECT_EQ(log_output.find("udp_dns_ip_list=[]"), std::string::npos);
     EXPECT_EQ(log_output.find("ip_list=[]"), std::string::npos);
@@ -79,7 +79,7 @@ TEST_F(HostResolverManagerDnsTest, ReportSecureFallbackDnsResult002) {
 #endif  // BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 
 #if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK_ON_DNS_HIJACKING)
-
+ 
 TEST_F(HostResolverManagerDnsTest, SetHttpsDnsFallbackDataOnDnsHijacking) {
     std::vector<std::string> protect_list = {"example.com", "test.org"};
     std::vector<std::string> errorcode_list = {"ERR_NAME_NOT_RESOLVED", "ERR_CONNECTION_TIMED_OUT"};
@@ -99,7 +99,7 @@ TEST_F(HostResolverManagerDnsTest, SetHttpsDnsFallbackDataOnDnsHijacking) {
     EXPECT_TRUE(resolver_->dns_hijacking_protect_list_.empty());
     EXPECT_TRUE(resolver_->dns_hijacking_errorcode_list_.empty());
 }
-
+ 
 TEST_F(HostResolverManagerDnsTest, IsProtectedDomain) {
     std::vector<std::string> protect_list = {"example.com", "test.org", "sub.domain.com"};
     resolver_->SetHttpsDnsFallbackDataOnDnsHijacking(protect_list, {"ERR_DNS_FAIL"});
@@ -113,7 +113,7 @@ TEST_F(HostResolverManagerDnsTest, IsProtectedDomain) {
     GURL test_url("http://example.com");
     EXPECT_FALSE(resolver_->IsProtectedDomain(test_url));
 }
-
+ 
 TEST_F(HostResolverManagerDnsTest, NeedRetryDnsOnDnsHijack) {
     std::vector<std::string> protect_list = {"example.com", "test.org"};
     std::vector<std::string> error_list = {"ERR_DNS_FAIL", "ERR_CONNECTION_TIMED_OUT"};

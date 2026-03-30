@@ -24,16 +24,4 @@ SkiaOutputSurfaceDependencyImplUtils::SkiaOutputSurfaceDependencyImplUtils(SkiaO
   this->skiaOutputSurfaceDependencyImpl = impl;
 }
 
-#if BUILDFLAG(ARKWEB_D_VSYNC)
-bool SkiaOutputSurfaceDependencyImplUtils::GetIsScroll() {
-    if (!skiaOutputSurfaceDependencyImpl) {
-      return false;
-    }
-    if (!skiaOutputSurfaceDependencyImpl->gpu_service_impl_) {
-      return false;
-    }
-    return skiaOutputSurfaceDependencyImpl->gpu_service_impl_->GetIsScroll();
-}
-#endif
-
 } // namespace viz

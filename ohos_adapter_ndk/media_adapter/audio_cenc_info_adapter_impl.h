@@ -18,6 +18,7 @@
 
 #include "audio_cenc_info_adapter.h"
 
+#include <memory>
 #include <vector>
 #include <cstdint>
 

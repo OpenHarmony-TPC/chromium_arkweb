@@ -24,14 +24,14 @@
 #include "ui/gfx/display_color_spaces.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/vector2d.h"
-#include "ui/gfx/gpu_memory_buffer.h"
-#include "ui/gfx/native_widget_types.h"
+#include "ui/gfx/native_ui_types.h"
 #include "ui/gfx/overlay_transform.h"
+#include "ui/compositor/compositor_export.h"
 
 namespace ui {
 class Compositor;
 
-class CompositorUtils {
+class COMPOSITOR_EXPORT CompositorUtils {
  public:
   CompositorUtils(Compositor* compositor);
 
@@ -63,6 +63,10 @@ class CompositorUtils {
   void SetEnableLowerFrameRate(bool enabled);
   void SetEnableHalfFrameRate(bool enabled);
   void EvictFrameBackBuffers();
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  void SetIfNeedCleanBuffers(bool need_clean_buffers);
 #endif
 
 #if BUILDFLAG(ARKWEB_OFFLINE_WEB_EVICT_BACK_BUFFERS)

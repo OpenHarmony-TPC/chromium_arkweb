@@ -52,7 +52,7 @@ void BlankScreenDetector::GenerateTaskDelays(
 }
 
 void BlankScreenDetector::DetectBlankScreen(
-    const WTF::String& url,
+    const String& url,
     const std::vector<double>& detection_timing,
     const std::vector<int32_t>& detection_methods,
     int32_t contentful_nodes_count_threshold) {
@@ -93,7 +93,7 @@ void BlankScreenDetector::ScheduleNextTask() {
     if (current_delay_ms > 0) {
       detection_task_.Start(
           FROM_HERE, base::Milliseconds(current_delay_ms),
-          WTF::BindOnce(&BlankScreenDetector::RunDetectionTask,
+          BindOnce(&BlankScreenDetector::RunDetectionTask,
                         WrapWeakPersistent(this)));
     } else {
       ScheduleNextTask();
@@ -189,6 +189,7 @@ bool BlankScreenDetector::GenerateTestPoints() {
       height /= viewport_description.zoom;
     }
   }
+
   test_points_ = {};
   for (auto method : detection_methods_) {
     switch (method) {

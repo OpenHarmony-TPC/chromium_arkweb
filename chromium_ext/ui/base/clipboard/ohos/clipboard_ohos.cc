@@ -43,6 +43,7 @@
 #include "ui/base/data_transfer_policy/data_transfer_policy_controller.h"
 #include "ui/gfx/color_space.h"
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
+#include "third_party/skia/include/core/SkColorSpace.h"
 
 #if BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 #include "ohos_nweb/include/nweb_vault_plain_text_callback.h"
@@ -234,6 +235,7 @@ class ClipboardOHOSInternal {
   }
 
   void SetClipboardState(ClipboardState state) {
+    #if !defined(COMPONENT_BUILD) // FIXME
     if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
       content::GetUIThreadTaskRunner({})->PostTask(
           FROM_HERE, base::BindOnce(&ClipboardOHOSInternal::SetClipboardState,
@@ -241,6 +243,9 @@ class ClipboardOHOSInternal {
     } else {
       state_ = state;
     }
+    #else
+      state_ = state;
+    #endif
   }
 
   void SetOutOfDateAfterRead() {
@@ -260,7 +265,9 @@ class ClipboardOHOSInternal {
   }
 
   void UpdateClipboardDataFromRecords(PasteRecordVector record_vector) {
+#if !defined(COMPONENT_BUILD) // FIXME
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+#endif
     read_data_ = nullptr;
     if (!record_vector.empty()) {
       // Notice: Because pasteboard observer dont notify cross device.
@@ -279,7 +286,9 @@ class ClipboardOHOSInternal {
   }
 
   void UpdateClipboardData(Clipboard::UpdateClipboardDataCallback callback) {
+#if !defined(COMPONENT_BUILD) // FIXME
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+#endif
     LOG(INFO) << "Update clipboard data start";
     bool should_update = (state_ == ClipboardState::kOutOfDate);
     base::ThreadPool::PostTaskAndReplyWithResult(
@@ -292,6 +301,8 @@ class ClipboardOHOSInternal {
   }
 
   static PasteRecordVector GetPasteDataFromSystemIfNeeded(bool should_update) {
+    LOG(INFO) << "Update clipboard data from system async, should_update: "
+              << should_update;
     if (!should_update) {
       return PasteRecordVector();
     }
@@ -307,7 +318,9 @@ class ClipboardOHOSInternal {
   void OnUpdateClipboardData(bool should_update,
                             Clipboard::UpdateClipboardDataCallback callback,
                             PasteRecordVector record_vector) {
+#if !defined(COMPONENT_BUILD) // FIXME
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+#endif
     if (should_update && state_ == ClipboardState::kOutOfDate) {
       UpdateClipboardDataFromRecords(std::move(record_vector));
     }
@@ -319,7 +332,9 @@ class ClipboardOHOSInternal {
   }
 
   void UpdateClipboardData() {
+#if !defined(COMPONENT_BUILD) // FIXME
     DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
+#endif
     if (state_ != ClipboardState::kOutOfDate) {
       LOG(DEBUG) << "No need to update Clipboard";
       return;
@@ -898,11 +913,11 @@ std::vector<std::u16string> ClipboardOHOS::GetStandardFormats(
         base::UTF8ToUTF16(ClipboardFormatType::RtfType().GetName()));
   }
   if (IsFormatAvailable(ClipboardFormatType::BitmapType(), buffer, data_dst)) {
-    types.push_back(base::UTF8ToUTF16(kMimeTypePNG));
+    types.push_back(base::UTF8ToUTF16(std::string_view(kMimeTypePng)));
   }
   if (IsFormatAvailable(ClipboardFormatType::FilenamesType(), buffer,
                         data_dst)) {
-    types.push_back(base::UTF8ToUTF16(kMimeTypeURIList));
+    types.push_back(base::UTF8ToUTF16(std::string_view(kMimeTypeUriList)));
   }
   if (types.size() == 0) {
     clipboard_internal_->SetOutOfDateAfterRead();
@@ -1112,6 +1127,7 @@ bool ClipboardOHOS::IsSelectionBufferAvailable() const {
 void ClipboardOHOS::WritePortableAndPlatformRepresentations(
     ClipboardBuffer buffer,
     const ObjectMap& objects,
+    const std::vector<RawData>& raw_objects,
     std::vector<Clipboard::PlatformRepresentation> platform_representations,
     std::unique_ptr<DataTransferEndpoint> data_src,
     uint32_t privacy_types) {
@@ -1121,6 +1137,9 @@ void ClipboardOHOS::WritePortableAndPlatformRepresentations(
   DispatchPlatformRepresentations(std::move(platform_representations));
   for (const auto& object : objects) {
     DispatchPortableRepresentation(object.second);
+  }
+  for (const auto& raw_object : raw_objects) {
+    DispatchPortableRepresentation(raw_object);
   }
 
   ClipboardDataBuilder::CommitToClipboard(
@@ -1164,18 +1183,6 @@ void ClipboardOHOS::WriteBitmap(const SkBitmap& bitmap) {
 void ClipboardOHOS::WriteData(const ClipboardFormatType& format,
                               base::span<const uint8_t> data) {
   ClipboardDataBuilder::WriteData(format, data);
-}
-
-void ClipboardOHOS::WriteClipboardHistory() {
-  // TODO(crbug.com/40945200): Add support for this.
-}
-
-void ClipboardOHOS::WriteUploadCloudClipboard() {
-  // TODO(crbug.com/40945200): Add support for this.
-}
-
-void ClipboardOHOS::WriteConfidentialDataForPassword() {
-  // TODO(crbug.com/40945200): Add support for this.
 }
 
 bool ClipboardOHOS::HasPasteData() const {

@@ -25,6 +25,7 @@
 #include "net/http/http_cache_transaction.h"
 #undef private
 
+#include "content/public/common/content_switches.h"
 namespace net {
 class MockHttpTransaction : public HttpTransaction {
  public:
@@ -60,10 +61,6 @@ class MockHttpTransaction : public HttpTransaction {
   }
 #endif
 
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-  MOCK_CONST_METHOD0(GetExtraConnectionAttempts, ConnectionAttempts());
-#endif
-
   MOCK_METHOD3(Start,
                int(const HttpRequestInfo* request_info,
                    CompletionOnceCallback callback,
@@ -94,8 +91,6 @@ class MockHttpTransaction : public HttpTransaction {
   MOCK_METHOD1(SetPriority, void(RequestPriority priority));
   MOCK_METHOD1(SetWebSocketHandshakeStreamCreateHelper,
                void(WebSocketHandshakeStreamBase::CreateHelper* create_helper));
-  MOCK_METHOD1(SetBeforeNetworkStartCallback,
-               void(BeforeNetworkStartCallback callback));
   MOCK_METHOD1(SetConnectedCallback, void(const ConnectedCallback& callback));
   MOCK_METHOD1(SetRequestHeadersCallback,
                void(RequestHeadersCallback callback));
@@ -112,7 +107,8 @@ class MockHttpTransaction : public HttpTransaction {
   MOCK_CONST_METHOD0(GetConnectionAttempts, ConnectionAttempts());
   MOCK_METHOD0(CloseConnectionOnDestruction, void());
   MOCK_CONST_METHOD0(IsMdlMatchForMetrics, bool());
-
+  MOCK_CONST_METHOD1(PopulateLoadTimingInternalInfo,
+                void(LoadTimingInternalInfo* load_timing_internal_info));
   bool restart_secure_dns_called_ = false;
   int restart_result_ = OK;
   CompletionOnceCallback callback_;
@@ -317,33 +313,6 @@ TEST_F(HttpTransactionUtilsTest, RestartWithSecureDnsOnly_Cache_IsNotNull) {
   EXPECT_FALSE(mock_transaction_->callback_.is_null());
 }
 
-TEST_F(HttpTransactionUtilsTest, RestartWithSecureDnsOnly_Normal) {
-  auto request = std::make_unique<HttpRequestInfo>();
-  request->load_flags = LOAD_NORMAL;
-  mock_transaction_->request_ = request.get();
-
-  auto initial_request = std::make_unique<HttpRequestInfo>();
-  initial_request->load_flags = LOAD_NORMAL;
-  mock_transaction_->initial_request_ = initial_request.get();
-
-  auto custom_request = std::make_unique<HttpRequestInfo>();
-  custom_request->load_flags = LOAD_NORMAL;
-  custom_request->secure_dns_only = false;
-  mock_transaction_->custom_request_ = std::move(custom_request);
-  mock_transaction_->request_ = mock_transaction_->custom_request_.get();
-  mock_transaction_->io_callback_ = base::DoNothing();
-
-  auto mock_network_trans = std::make_unique<MockHttpTransaction>();
-  mock_network_trans->restart_result_ = OK;
-  mock_transaction_->network_trans_ = std::move(mock_network_trans);
-
-  CompletionOnceCallback callback = base::DoNothing();
-  int result = utils_->RestartWithSecureDnsOnly(callback);
-  EXPECT_EQ(result, OK);
-  EXPECT_TRUE(mock_transaction_->custom_request_->secure_dns_only);
-  EXPECT_TRUE(mock_transaction_->callback_.is_null());
-}
-
 TEST_F(HttpTransactionUtilsTest, RestartNetworkRequestWithSecureDnsOnly_Async) {
   auto request = std::make_unique<HttpRequestInfo>();
   mock_transaction_->request_ = request.get();
@@ -359,52 +328,6 @@ TEST_F(HttpTransactionUtilsTest, RestartNetworkRequestWithSecureDnsOnly_Async) {
   int result = utils_->RestartNetworkRequestWithSecureDnsOnly();
   EXPECT_EQ(result, ERR_IO_PENDING);
   EXPECT_FALSE(mock_transaction_->do_loop_called_);
-}
-
-TEST_F(HttpTransactionUtilsTest,
-       RestartNetworkRequestWithSecureDnsOnly_Request_Equals_InitialRequest) {
-  auto request = std::make_unique<HttpRequestInfo>();
-  mock_transaction_->request_ = request.get();
-  mock_transaction_->initial_request_ = request.get();
-  mock_transaction_->io_callback_ = base::DoNothing();
-
-  mock_transaction_->next_state_ =
-      HttpCache::Transaction::State::STATE_FINISH_HEADERS;
-
-  auto custom_request = std::make_unique<HttpRequestInfo>();
-  custom_request->secure_dns_only = false;
-  mock_transaction_->custom_request_ = std::move(custom_request);
-
-  auto mock_network_trans = std::make_unique<MockHttpTransaction>();
-  mock_network_trans->restart_result_ = OK;
-  mock_transaction_->network_trans_ = std::move(mock_network_trans);
-
-  int result = utils_->RestartNetworkRequestWithSecureDnsOnly();
-  EXPECT_EQ(result, OK);
-  EXPECT_FALSE(mock_transaction_->custom_request_->secure_dns_only);
-}
-
-TEST_F(HttpTransactionUtilsTest,
-       RestartNetworkRequestWithSecureDnsOnly_CustomRequest_IsSet) {
-  auto request = std::make_unique<HttpRequestInfo>();
-  mock_transaction_->request_ = request.get();
-  mock_transaction_->initial_request_ = nullptr;
-
-  auto custom_request = std::make_unique<HttpRequestInfo>();
-  custom_request->secure_dns_only = false;
-  mock_transaction_->custom_request_ = std::move(custom_request);
-  mock_transaction_->request_ = mock_transaction_->custom_request_.get();
-  mock_transaction_->initial_request_ = nullptr;
-
-  mock_transaction_->io_callback_ = base::DoNothing();
-
-  auto mock_network_trans = std::make_unique<MockHttpTransaction>();
-  mock_network_trans->restart_result_ = ERR_IO_PENDING;
-  mock_transaction_->network_trans_ = std::move(mock_network_trans);
-
-  int result = utils_->RestartNetworkRequestWithSecureDnsOnly();
-  EXPECT_EQ(result, ERR_IO_PENDING);
-  EXPECT_TRUE(mock_transaction_->custom_request_->secure_dns_only);
 }
 
 #endif  // ARKWEB_EXT_HTTP_DNS_FALLBACK

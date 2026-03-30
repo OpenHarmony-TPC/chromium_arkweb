@@ -46,7 +46,7 @@ class ArkWebDownloadItemImplExtTest : public ::testing::Test {
     DownloadJob::CancelRequestCallback callback = base::BindOnce(
         [](bool cancel_value, std::optional<std::string> optional_str) {});
     download_item_ = std::make_unique<ArkWebDownloadItemImplExt>(
-        delegate_.get(), 0, base::FilePath(), GURL(), "", std::move(callback));
+        delegate_.get(), 0, base::FilePath(), base::FilePath(), GURL(), "", std::move(callback));
     base::CommandLine::Init(0, nullptr);
     original_command_line_ =
         base::CommandLine::ForCurrentProcess()->GetCommandLineString();

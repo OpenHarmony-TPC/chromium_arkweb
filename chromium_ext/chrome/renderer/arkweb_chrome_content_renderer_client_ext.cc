@@ -41,11 +41,8 @@
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/crash_keys.h"
-#include "chrome/common/pepper_permission_util.h"
-#include "chrome/common/ppapi_utils.h"
 #include "chrome/common/profiler/chrome_thread_profiler_client.h"
 #include "chrome/common/profiler/thread_profiler_configuration.h"
-#include "chrome/common/profiler/unwind_util.h"
 #include "chrome/common/secure_origin_allowlist.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
@@ -93,9 +90,6 @@
 #include "components/error_page/common/error.h"
 #include "components/error_page/common/localized_error.h"
 #include "components/feed/feed_feature_list.h"
-#include "components/fingerprinting_protection_filter/common/fingerprinting_protection_filter_features.h"
-#include "components/fingerprinting_protection_filter/renderer/renderer_agent.h"
-#include "components/fingerprinting_protection_filter/renderer/unverified_ruleset_dealer.h"
 #include "components/grit/components_scaled_resources.h"
 #include "components/guest_view/buildflags/buildflags.h"
 #include "components/heap_profiling/in_process/heap_profiler_controller.h"
@@ -149,7 +143,6 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "net/base/net_errors.h"
 #include "pdf/buildflags.h"
-#include "ppapi/buildflags/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "services/service_manager/public/cpp/interface_provider.h"
@@ -210,11 +203,6 @@
 #include "chrome/renderer/render_frame_font_family_accessor.h"
 #endif
 
-#if BUILDFLAG(ENABLE_NACL)
-#include "components/nacl/common/nacl_constants.h"
-#include "components/nacl/renderer/nacl_helper.h"
-#endif
-
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/common/initialize_extensions_client.h"
 #include "chrome/renderer/extensions/chrome_extensions_renderer_client.h"
@@ -240,18 +228,8 @@
 #endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
 #if BUILDFLAG(ENABLE_PDF)
-#include "chrome/renderer/pdf/chrome_pdf_internal_plugin_delegate.h"
 #include "components/pdf/renderer/internal_plugin_renderer_helpers.h"
 #endif  // BUILDFLAG(ENABLE_PDF)
-
-#if BUILDFLAG(ENABLE_PLUGINS)
-#include "chrome/renderer/plugins/chrome_plugin_placeholder.h"
-#endif  // BUILDFLAG(ENABLE_PLUGINS)
-
-#if BUILDFLAG(ENABLE_PPAPI)
-#include "chrome/renderer/pepper/pepper_helper.h"
-#include "ppapi/shared_impl/ppapi_switches.h"  // nogncheck crbug.com/1125897
-#endif
 
 #if BUILDFLAG(ENABLE_PRINTING)
 #include "chrome/renderer/printing/chrome_print_render_frame_helper_delegate.h"
@@ -313,6 +291,8 @@ void ArkWebChromeContentRendererClientExt::RenderFrameCreatedContentSettings(
 }
 #endif
 
+// chromium141原生代码已删除FromRoutingID，相关功能请另外实现
+
 #if BUILDFLAG(ARKWEB_ADBLOCK)
 void ArkWebChromeContentRendererClientExt::
     RenderFrameCreateSubresourceFilterAgent(
@@ -329,21 +309,20 @@ void ArkWebChromeContentRendererClientExt::
 void ArkWebChromeContentRendererClientExt::
     RenderFrameCreateSubresourceFilterAgentTriggerHide(
         content::RenderFrame* render_frame) {
-  auto routing_id = render_frame->GetRoutingID();
+  auto weak_ptr = render_frame->GetRenderFrameWeakPtr();
   render_frame->GetTaskRunner(blink::TaskType::kDOMManipulation)
       ->PostTask(FROM_HERE,
                  base::BindOnce(&ArkWebChromeContentRendererClientExt::
                                     TriggerElementHidingInFrame,
-                                base::Unretained(this), routing_id));
+                                base::Unretained(this), weak_ptr));
   render_frame->GetTaskRunner(blink::TaskType::kDOMManipulation)
       ->PostTask(FROM_HERE,
                  base::BindOnce(&ArkWebChromeContentRendererClientExt::
                                     TriggerUserElementHidingInFrame,
-                                base::Unretained(this), routing_id));
+                                base::Unretained(this), weak_ptr));
 }
 
-bool ArkWebChromeContentRendererClientExt::GetAdBlockEnabledByFrame(
-    content::RenderFrame* render_frame) {
+bool ArkWebChromeContentRendererClientExt::GetAdBlockEnabledByFrame(base::WeakPtr<content::RenderFrame> render_frame) {
   if (!render_frame) {
     return false;
   }
@@ -370,10 +349,9 @@ bool ArkWebChromeContentRendererClientExt::GetAdBlockEnabledByFrame(
   return false;
 }
 
-void ArkWebChromeContentRendererClientExt::TriggerElementHidingInFrame(
-    int routing_id) {
+void ArkWebChromeContentRendererClientExt::TriggerElementHidingInFrame(base::WeakPtr<content::RenderFrame> render_frame)
+{
   // |render_frame| might be dead by now.
-  auto* render_frame = content::RenderFrame::FromRoutingID(routing_id);
   if (!render_frame) {
     LOG(ERROR) << "[AdBlock] TriggerElementHidingInFrame render_frame null";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
@@ -473,9 +451,9 @@ void ArkWebChromeContentRendererClientExt::TriggerElementHidingInFrame(
 }
 
 void ArkWebChromeContentRendererClientExt::TriggerUserElementHidingInFrame(
-    int routing_id) {
+    base::WeakPtr<content::RenderFrame> render_frame)
+{
   // |render_frame| might be dead by now.
-  auto* render_frame = content::RenderFrame::FromRoutingID(routing_id);
   if (!render_frame) {
     LOG(ERROR) << "[AdBlock] TriggerUserElementHidingInFrame render_frame null";
 
@@ -543,3 +521,20 @@ void ArkWebChromeContentRendererClientExt::PostIOThreadCreated(
   ChromeContentRendererClient::PostIOThreadCreated(io_thread_task_runner);
 }
 #endif // ARKWEB_NOTIFICATION
+
+
+// Force symbol exports to ensure linking works
+#if BUILDFLAG(ARKWEB_ADBLOCK)
+namespace {
+  struct ForceSymbolExport {
+    ForceSymbolExport() {
+      // These references force the symbols to be exported
+      (void)&ArkWebChromeContentRendererClientExt::RenderFrameCreateSubresourceFilterAgent;
+      (void)&ArkWebChromeContentRendererClientExt::RenderFrameCreateSubresourceFilterAgentTriggerHide;
+      (void)&ArkWebChromeContentRendererClientExt::TriggerElementHidingInFrame;
+      (void)&ArkWebChromeContentRendererClientExt::TriggerUserElementHidingInFrame;
+      (void)&ArkWebChromeContentRendererClientExt::GetAdBlockEnabledByFrame;
+    }
+  } force_symbol_export;
+}
+#endif

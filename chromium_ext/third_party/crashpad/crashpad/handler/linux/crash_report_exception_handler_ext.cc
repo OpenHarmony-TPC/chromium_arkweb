@@ -56,17 +56,17 @@ OhosDfxDataSource::OhosDfxDataSource(uint32_t stream_type,
 {
   data_.resize(data_size);
   if (data_size) {
-    if (memcpy_s(data_.data(), data_size, data, data_size)) {
-        LOG(ERROR) << "[OhosDfxDataSource] memcpy failed";
-    }
+	if (memcpy_s(data_.data(), data_size, data, data_size)) {
+		LOG(ERROR) << "[OhosDfxDataSource] memcpy failed";
+	}
   }
 }
-
+ 
 size_t OhosDfxDataSource::StreamDataSize()
 {
   return data_.size();
 }
-
+ 
 bool OhosDfxDataSource::ReadStreamData(Delegate* delegate)
 {
   if (delegate == nullptr) {
@@ -79,6 +79,9 @@ bool OhosDfxDataSource::ReadStreamData(Delegate* delegate)
 std::unique_ptr<MinidumpUserExtensionStreamDataSource>
 OhosUserStreamDataSource::ProduceStreamData(ProcessSnapshot* process_snapshot)
 {
+#if BUILDFLAG(ARKWEB_CRASHPAD)
+  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
+#endif
   std::string contents;
   char path[32];
   sprintf_s(path, sizeof(path), "/proc/%d/maps", connection_->GetProcessID());
@@ -89,3 +92,4 @@ OhosUserStreamDataSource::ProduceStreamData(ProcessSnapshot* process_snapshot)
       KMinidumpStreamTypeOhosDfxInfo, contents.c_str(), contents.size());
 }
 #endif
+

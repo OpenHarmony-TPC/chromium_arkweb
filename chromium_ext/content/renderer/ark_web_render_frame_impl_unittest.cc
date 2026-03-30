@@ -302,16 +302,6 @@ TEST_F(ArkWebRenderFrameImplTest, OnUpdateAdBlockEnabledToRender_WithoutView) {
   TestSetDocumentLoader(document_loader);
 }
 
-TEST_F(ArkWebRenderFrameImplTest, AddNamedObject) {
-  auto observers = TestGetObservers();
-  TestObserversClear();
-  GetMainRenderFrame()->AddNamedObject("test_name", 1, {}, true);
-  for (auto& observer : observers) {
-    TestAddObserver(observer);
-  }
-  GetMainRenderFrame()->AddNamedObject("test_name", 1, {}, true);
-}
-
 TEST_F(ArkWebRenderFrameImplTest, NotifyLcpForBlankless_BlanklessKey) {
   uint64_t blankless_key = base::ohos::BlanklessController::INVALID_BLANKLESS_KEY;
   GetMainRenderFrame()->SendBlanklessKeyToRenderFrame(1, blankless_key, 3, 4);
@@ -325,7 +315,7 @@ TEST_F(ArkWebRenderFrameImplTest, NotifyLcpForBlankless_NoBlanklessKey) {
   EXPECT_EQ(TestGetNWebId(), 1);
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_False) {
+TEST_F(ArkWebRenderFrameImplTest, PageLoadStartLoggerReport_False) {
   blink::WebDocumentLoader* document_loader = TestGetDocumentLoader();
   EXPECT_NE(document_loader, nullptr);
   GetMainRenderFrame()->GetWebView()->SetStrictLogMode(false);
@@ -333,12 +323,11 @@ TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_False) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidCommitNavigation(
-      document_loader, blink::WebHistoryCommitType::kWebStandardCommit);
-  GetMainRenderFrame()->OnDidHandleOnloadEvents();
+  GetMainRenderFrame()->PageLoadStartLoggerReport(document_loader);
+  GetMainRenderFrame()->PageLoadFinishedLoggerReport();
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_True) {
+TEST_F(ArkWebRenderFrameImplTest, PageLoadStartLoggerReport_True) {
   blink::WebDocumentLoader* document_loader = TestGetDocumentLoader();
   EXPECT_NE(document_loader, nullptr);
   GetMainRenderFrame()->GetWebView()->SetStrictLogMode(true);
@@ -346,12 +335,11 @@ TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_True) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidCommitNavigation(
-      document_loader, blink::WebHistoryCommitType::kWebStandardCommit);
-  GetMainRenderFrame()->OnDidHandleOnloadEvents();
+  GetMainRenderFrame()->PageLoadStartLoggerReport(document_loader);
+  GetMainRenderFrame()->PageLoadFinishedLoggerReport();
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_WithoutView) {
+TEST_F(ArkWebRenderFrameImplTest, PageLoadStartLoggerReport_WithoutView) {
   auto* web_view = GetMainRenderFrame()->GetWebView();
   blink::WebDocumentLoader* document_loader = TestGetDocumentLoader();
   EXPECT_NE(document_loader, nullptr);
@@ -360,50 +348,48 @@ TEST_F(ArkWebRenderFrameImplTest, OnDidCommitNavigation_WithoutView) {
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidCommitNavigation(
-      document_loader, blink::WebHistoryCommitType::kWebStandardCommit);
-  GetMainRenderFrame()->OnDidHandleOnloadEvents();
+  GetMainRenderFrame()->PageLoadStartLoggerReport(document_loader);
+  GetMainRenderFrame()->PageLoadFinishedLoggerReport();
   GetMainRenderFrame()->SetWebViewForTest(web_view);
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidHandleOnloadEvents_WithoutView) {
+TEST_F(ArkWebRenderFrameImplTest, PageLoadFinishedLoggerReport_WithoutView) {
   auto* web_view = GetMainRenderFrame()->GetWebView();
   GetMainRenderFrame()->SetWebViewForTest(nullptr);
   base::CommandLine::Init(0, nullptr);
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidHandleOnloadEvents();
+  GetMainRenderFrame()->PageLoadFinishedLoggerReport();
   GetMainRenderFrame()->SetWebViewForTest(web_view);
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidDispatchDOMContentLoadedEvent_False) {
+TEST_F(ArkWebRenderFrameImplTest, ContentLoadFailedLoggerReport_False) {
   GetMainRenderFrame()->GetWebView()->SetStrictLogMode(false);
   base::CommandLine::Init(0, nullptr);
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidDispatchDOMContentLoadedEvent();
+  GetMainRenderFrame()->ContentLoadFailedLoggerReport();
 }
 
-TEST_F(ArkWebRenderFrameImplTest, OnDidDispatchDOMContentLoadedEvent_True) {
+TEST_F(ArkWebRenderFrameImplTest, ContentLoadFailedLoggerReport_True) {
   GetMainRenderFrame()->GetWebView()->SetStrictLogMode(true);
   base::CommandLine::Init(0, nullptr);
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidDispatchDOMContentLoadedEvent();
+  GetMainRenderFrame()->ContentLoadFailedLoggerReport();
 }
 
-TEST_F(ArkWebRenderFrameImplTest,
-       OnDidDispatchDOMContentLoadedEvent_WithoutView) {
+TEST_F(ArkWebRenderFrameImplTest, ContentLoadFailedLoggerReport_WithoutView) {
   auto* web_view = GetMainRenderFrame()->GetWebView();
   GetMainRenderFrame()->SetWebViewForTest(nullptr);
   base::CommandLine::Init(0, nullptr);
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   EXPECT_FALSE(base::CommandLine::Init(0, nullptr));
   command_line->AppendSwitch("enable-nweb-logger-report");
-  GetMainRenderFrame()->OnDidDispatchDOMContentLoadedEvent();
+  GetMainRenderFrame()->ContentLoadFailedLoggerReport();
   GetMainRenderFrame()->SetWebViewForTest(web_view);
 }
 

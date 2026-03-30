@@ -78,5 +78,4 @@ int64_t BufferRequestConfigAdapterImpl::GetTimestamp() {
 void BufferRequestConfigAdapterImpl::SetTimestamp(int64_t timestamp) {
   timestamp_ = timestamp;
 }
-
 }  // namespace OHOS::NWeb

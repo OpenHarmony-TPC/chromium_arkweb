@@ -169,7 +169,7 @@ void OHOSAudioManager::GetAudioInputDeviceNames(
 }
 #endif  // BUILDFLAG(ARKWEB_WEBRTC)
 
-const char* OHOSAudioManager::GetName() {
+const std::string_view OHOSAudioManager::GetName() {
   return AUDIO_MANAGER_NAME;
 }
 
@@ -200,7 +200,11 @@ AudioOutputStream* OHOSAudioManager::MakeLowLatencyOutputStream(
                  << ret;
     }
   }
+#if !defined(COMPONENT_BUILD) // FIXME
   return new OHOSAudioOutputStream(this, params, isCommunication_);
+#else
+  return nullptr;
+#endif
 }
 
 AudioInputStream* OHOSAudioManager::MakeLinearInputStream(
@@ -217,7 +221,11 @@ AudioInputStream* OHOSAudioManager::MakeLowLatencyInputStream(
   LOG(INFO) << "OHOSAudioManager::MakeLowLatencyInputStream";
   isCommunication_ = true;
   SelectAudioDevice(device_id, true);
+#if !defined(COMPONENT_BUILD) // FIXME
   return new OHOSAudioInputStream(this, params);
+#else
+  return nullptr;
+#endif
 }
 
 AudioParameters OHOSAudioManager::GetPreferredOutputStreamParameters(

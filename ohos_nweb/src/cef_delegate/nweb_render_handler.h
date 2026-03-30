@@ -199,8 +199,7 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
       CefRefPtr<CefBrowser> browser,
       const CefEmbedTouchEvent& event,
       CefRefPtr<CefGestureEventCallback> callback) override;
-  void OnNativeEmbedMouseEvent(
-      CefRefPtr<CefBrowser> browser,
+  void OnNativeEmbedMouseEvent(CefRefPtr<CefBrowser> browser,
       const CefEmbedMouseEvent& event,
       CefRefPtr<CefMouseEventCallback> callback) override;
   void OnNativeEmbedLifecycleChange(CefRefPtr<CefBrowser> browser,  
@@ -263,6 +262,10 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
 #if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
   void RestoreRenderFit() override;
 #endif  // ARKWEB_MAXIMIZE_RESIZE
+
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+  void ModifyRenderFit(int32_t fitType) override;
+#endif  // ARKWEB_ROTATE_RESIZE
   /* CefRenderHandler method end */
 
   bool IsCustomKeyboard() const { return !isSystemKeyboard_; }
@@ -371,6 +374,7 @@ class NWebRenderHandler : public ArkWebRenderHandlerExt {
   std::shared_ptr<NWebDragData> nweb_drag_data_ = nullptr;
   bool is_irregular_drag_background_ = true;
   bool select_all_ = false;
+  static std::map<int64_t, std::string> image_sandbox_files_;
 #endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
 #if BUILDFLAG(ARKWEB_AI)
   std::weak_ptr<NWebAgentHandler> nweb_agent_handler_;

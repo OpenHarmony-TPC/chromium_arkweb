@@ -82,6 +82,11 @@ constexpr char CODEC_FORMAT[] = "CODEC_FORMAT";
 constexpr char PICTURE_DECODE[] = "PICTURE_DECODE";
 constexpr char PICTURE_TYPE[] = "PICTURE_TYPE";
 
+// For GetImageInfos
+constexpr char GET_IMAGES_BY_IDS[] = "WEB_MSDP_SCENE_ERROR";
+constexpr char GET_IMAGES_BY_IDS_EVENT_TYPE[] = "EVENT_TYPE";
+constexpr char GET_IMAGES_BY_IDS_ERROR_INFO[] = "ERROR_INFO";
+
 // For audio/video error info
 constexpr char AUDIO_PLAY_ERROR[] = "AUDIO_PLAY_ERROR";
 constexpr char VIDEO_PLAY_ERROR[] = "VIDEO_PLAY_ERROR";
@@ -93,7 +98,7 @@ constexpr char VIDEO_FRAME_DROP_STATISTICS[] = "VIDEO_FRAME_DROP_STATISTICS";
 constexpr char VIDEO_FRAME_DROPPED_COUNT[] = "VIDEO_FRAME_DROPPED_COUNT";
 constexpr char VIDEO_FRAME_DROPPED_DURATION[] = "VIDEO_FRAME_DROPPED_DURATION";
 
-// For dumplicate file upload statistics
+// For duplicate file upload statistics
 constexpr char DUPLICATE_FILE_UPLOAD[] = "DUPLICATE_FILE_UPLOAD";
 
 constexpr char NWEB_ID[] = "NWEB_ID";
@@ -123,9 +128,8 @@ constexpr char JS_HEAP_USED[] = "JS_HEAP_USED";
 constexpr char GPU_MEM[] = "GPU_MEM";
 constexpr char URL[] = "URL";
 
-constexpr char PAGE_DRAG_BLANK[] = "PAGE_DRAG_BLANK";
-constexpr char PAGE_BLANK_TIME[] = "PAGE_BLANK_TIME";
-
+constexpr char CHILD_PROCESS_INIT_FAIL[] = "CHILD_PROCESS_INIT_FAIL";
+constexpr char PROCESS_TYPE[] = "PROCESS_TYPE";
 constexpr char RENDER_JS_FREEZE[] = "RENDER_JS_FREEZE";
 
 // For web play error info,such as pip/drm
@@ -135,8 +139,8 @@ constexpr char WEB_MEDIA_PLAY_ERROR[] = "WEB_MEDIA_PLAY_ERROR";
 constexpr char WEB_AV_SESSION_DISABLE[] = "WEB_AV_SESSION_DISABLE";
 constexpr char DISABLE_WEB_AV_SESSION_STATUS[] = "DISABLE_WEB_AV_SESSION_STATUS";
 
-constexpr char RENDER_INIT_BLOCK[] = "RENDER_INIT_BLOCK";
-constexpr char BLOCK_TIME[] = "BLOCK_TIME";
+constexpr char PAGE_DRAG_BLANK[] = "PAGE_DRAG_BLANK";
+constexpr char PAGE_BLANK_TIME[] = "PAGE_BLANK_TIME";
 
 const char GPU_DISPLAY_ERROR[] = "GPU_DISPLAY_ERROR";
 const char EVENT_TYPE[] = "EVENT_TYPE";
@@ -145,11 +149,26 @@ const char EVENT_CONTENT[] = "EVENT_CONTENT";
 constexpr char TIMEOUT[] = "TIMEOUT";
 constexpr char MAILBOX_NONEXISTENT[] = "MAILBOX_NONEXISTENT";
 
+constexpr char RENDER_INIT_BLOCK[] = "RENDER_INIT_BLOCK";
+constexpr char BLOCK_TIME[] = "BLOCK_TIME";
+
 // For render freeze monitoring
 constexpr char PROCESS_FREEZE_WARNING[] = "PROCESS_FREEZE_WARNING";
+// For skia out of memory error
+constexpr char SKIA_OOM_ERROR[] = "SKIA_OOM_ERROR";
 
 constexpr char RENDER_PROCESS_TERMINATE[] = "RENDER_PROCESS_TERMINATE";
+constexpr char RENDER_PROCESS_NOTRESPONDING[] = "RENDER_PROCESS_NOTRESPONDING";
+constexpr char RENDER_PROCESS_RESPONDING[] = "RENDER_PROCESS_RESPONDING";
+
 }  // namespace
+
+void ReportChildProcessInitFail(bool is_gpu, int err) {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      CHILD_PROCESS_INIT_FAIL, HiSysEventAdapter::EventType::FAULT,
+      {PROCESS_TYPE, is_gpu ? std::string("gpu") : std::string("render"),
+      ERROR_CODE, std::to_string(err)});
+}
 
 void ReportRenderJsFreeze(int32_t pid, const std::string& packageName, const std::string& processName,
                           const std::string& freezeMsg, int32_t uid) {
@@ -162,7 +181,7 @@ void ReportRenderJsFreeze(int32_t pid, const std::string& packageName, const std
         "MSG", freezeMsg,
         "UID", uid
       });
-}                         
+}
 
 void ReportRenderProcessTerminate(bool is_gpu, int32_t pid, const std::string& reason, int32_t error) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
@@ -213,8 +232,8 @@ void ReportPageLoadErrorInfo(int instanceId,
   }
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
       PAGE_LOAD_ERROR, HiSysEventAdapter::EventType::FAULT,
-      {CURRENT_INSTANCE_ID, std::to_string(instanceId), ERROR_TYPE, error_type,
-       ERROR_CODE, std::to_string(error_code), ERROR_COUNT, std::to_string(errorCount), ERROR_DESC, error_desc});
+      {CURRENT_INSTANCE_ID, std::to_string(instanceId), ERROR_TYPE, error_type, ERROR_CODE, std::to_string(error_code),
+       ERROR_COUNT, std::to_string(errorCount), ERROR_DESC, error_desc});
 }
 
 void ReportJankStats(int64_t startTime,
@@ -227,7 +246,6 @@ void ReportJankStats(int64_t startTime,
        JANK_STATS_VER, jankStatsVer});
 }
 
-// LOVC_EXCL_START
 void ReportLockdownModeStatus(void) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
       RENDER_JIT_LOCKDOWN, HiSysEventAdapter::EventType::BEHAVIOR,
@@ -245,7 +263,6 @@ void ReportOpenPrivateMode(void) {
       OPEN_PRIVATE_MODE, HiSysEventAdapter::EventType::BEHAVIOR,
       {OPEN_PRIVATE_STATUS, "true"});
 }
-// LOVC_EXCL_STOP
 
 void ReportPageDownLoadErrorInfo(long downloadId, int errorCode) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
@@ -332,6 +349,11 @@ void ReportVideoFrameDropStats(uint32_t frameCount, uint64_t frameDuration) {
       {VIDEO_FRAME_DROPPED_COUNT, frameCount, VIDEO_FRAME_DROPPED_DURATION,
        frameDuration});
 }
+void ReportDragDropStatus(const std::string& eventName, int32_t id) {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      eventName, HiSysEventAdapter::EventType::BEHAVIOR,
+      {NWEB_ID, std::to_string(id)});
+}
 
 void ReportDuplicateFileUpload(const std::string errorDesc) {
   std::string error_desc = "";
@@ -341,12 +363,6 @@ void ReportDuplicateFileUpload(const std::string errorDesc) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
       DUPLICATE_FILE_UPLOAD, HiSysEventAdapter::EventType::STATISTIC,
       {ERROR_DESC, error_desc});
-}
-
-void ReportDragDropStatus(const std::string& eventName, int32_t id) {
-  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
-      eventName, HiSysEventAdapter::EventType::BEHAVIOR,
-      {NWEB_ID, std::to_string(id)});
 }
 
 void ReportDragDropInfo(const std::string& eventName,
@@ -414,22 +430,14 @@ void ReportPictureDecode(const std::string& pictureType) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
       PICTURE_DECODE, HiSysEventAdapter::EventType::BEHAVIOR,
       {PICTURE_TYPE, pictureType});
-}
-
-void ReportRendererMem(const std::string& type,
-                       const std::string& pid,
-                       const std::string& rss,
-                       const std::string& pss,
-                       const std::string& js_heap_total,
-                       const std::string& js_heap_used,
-                       const std::string& gpu_mem,
-                       const std::string& url)
-{
-  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
-      PAGE_MEM_LEAK, HiSysEventAdapter::EventType::STATISTIC,
-      {TYPE, type, PID, pid, RSS, rss, PSS, pss, JS_HEAP_TOTAL, js_heap_total,
-       JS_HEAP_USED, js_heap_used, GPU_MEM, gpu_mem, URL, url});
 }  
+
+void ReportGetAllImage(const std::string& error_code) {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      GET_IMAGES_BY_IDS, HiSysEventAdapter::EventType::FAULT,
+      {GET_IMAGES_BY_IDS_EVENT_TYPE, "GET_IMAGES_BY_IDS_EVENT",
+       GET_IMAGES_BY_IDS_ERROR_INFO, error_code});
+}
 
 void ReportWebMediaPlayErrorInfo(const std::string& errorType,
                               int errorCode,
@@ -455,6 +463,21 @@ void ReportAvSessionStatus(const std::string& disable_web_av_session_status) {
       {DISABLE_WEB_AV_SESSION_STATUS, disable_web_av_session_status});
 }
 
+void ReportRendererMem(const std::string& type,
+                       const std::string& pid,
+                       const std::string& rss,
+                       const std::string& pss,
+                       const std::string& js_heap_total,
+                       const std::string& js_heap_used,
+                       const std::string& gpu_mem,
+                       const std::string& url)
+{
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      PAGE_MEM_LEAK, HiSysEventAdapter::EventType::STATISTIC,
+      {TYPE, type, PID, pid, RSS, rss, PSS, pss, JS_HEAP_TOTAL, js_heap_total,
+       JS_HEAP_USED, js_heap_used, GPU_MEM, gpu_mem, URL, url});
+}
+
 void ReportDragBlank(int64_t duration) {
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
       PAGE_DRAG_BLANK, HiSysEventAdapter::EventType::STATISTIC,
@@ -475,6 +498,19 @@ void ReportFirstMeaningfulPaintDone(OhWebPerformanceTiming loadPageTime) {
       "FIRST_MEANINGFUL_PAINT_DONE", HiSysEventAdapter::EventType::STATISTIC,{input, ""});
 }
 
+void ReportAppfreeze(int32_t pid, const std::string& packageName, const std::string& processName,
+                     const std::string& freezeMsg, int32_t uid) {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      PROCESS_FREEZE_WARNING, HiSysEventAdapter::EventType::FAULT,
+      {
+        "PID", pid,
+        "PACKAGE_NAME", packageName,
+        "PROCESS_NAME", processName,
+        "MSG", freezeMsg,
+        "UID", uid
+      });
+}
+
 void ReportGpuProcessEvent(CrashType type, std::string eventcontent) {
   switch(type) {
     case CrashType::TIMEOUT:
@@ -489,17 +525,30 @@ void ReportGpuProcessEvent(CrashType type, std::string eventcontent) {
       break;
   }
 }
-// LOVC_EXCL_START
-void ReportAppfreeze(int32_t pid, const std::string& packageName, const std::string& processName,
-                     const std::string& freezeMsg, int32_t uid) {
+
+void ReportSkiaOOMError(const std::string errorDesc) {
+  std::string error_desc = "";
+  if (!errorDesc.empty()) {
+    error_desc = errorDesc;
+  }
   OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
-      PROCESS_FREEZE_WARNING, HiSysEventAdapter::EventType::FAULT,
+      SKIA_OOM_ERROR, HiSysEventAdapter::EventType::FAULT,
+      {ERROR_DESC, error_desc});
+}
+
+void ReportRenderProcessNotResponding(const std::string&pid, const std::string&reason) {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      RENDER_PROCESS_NOTRESPONDING, HiSysEventAdapter::EventType::FAULT,
       {
         "PID", pid,
-        "PACKAGE_NAME", packageName,
-        "PROCESS_NAME", processName,
-        "MSG", freezeMsg,
-        "UID", uid
+        "REASON", reason
       });
 }
-// LOVC_EXCL_STOP
+
+void ReportRenderProcessResponding() {
+  OhosAdapterHelper::GetInstance().GetHiSysEventAdapterInstance().Write(
+      RENDER_PROCESS_RESPONDING, HiSysEventAdapter::EventType::BEHAVIOR,
+      {
+        "RESPONDING_STATUS", "true"
+      });
+}

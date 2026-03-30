@@ -1,9 +1,9 @@
 /**
- * 统一的日志 TAG 管理类
- * 所有模块的 TAG 定义都应该在这里集中管理
+ * ͳһ־ TAG 
+ * ģ TAG 嶼ӦＯй
  */
 export default class Tag {
-    // Framework 相关
+    // Framework 
     static framework = 'Framework';
     static intelligentLayout = 'IntelligentLayout';
     static observerHandler = 'ObserverHandler';
@@ -12,22 +12,22 @@ export default class Tag {
     static pageContentObserver = 'PageContentObserver';
     static throttle = 'Throttle';
     
-    // Popup 相关
+    // Popup 
     static popupDecisionTree = 'PopupDecisionTree';
     static popupRecog = 'PopupRecog';
     static popupDetector = 'PopupDetector';
     static popupRelayout = 'PopupRelayout';
     static popupStateManager = 'PopupStateManager';
     
-    // Layout 相关
+    // Layout 
     static layoutConstraintDetector = 'LayoutConstraintDetector';
     static layoutUtils = 'LayoutUtils';
     
-    // Common 相关
+    // Common 
     static util = 'Utils';
     static ccmConfig = 'CCMConfig';
     
-    // Style 相关
+    // Style 
     static styleSetter = 'StyleSetter';
     static styleGetter = 'StyleGetter';
     static styleCleaner = 'StyleCleaner';
@@ -35,15 +35,15 @@ export default class Tag {
     static domReader = 'DomReader';
     static originStyleCache = 'OriginStyleCache';
     
-    // Data 相关
+    // Data 
     static store = 'Store';
     static record = 'Record';
     static diffRecorder = 'DiffRecorder';
     
-    // Font 相关
+    // Font 
     static zoomFont = 'ZoomFont';
     
-    // Debug 辅助 TAG
+    // Debug  TAG
     static performance = 'Performance';
     static visual = 'Visual';
     static state = 'State';

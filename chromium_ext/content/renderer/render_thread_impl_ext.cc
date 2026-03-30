@@ -161,7 +161,6 @@ void InitializeWebKitExt(scoped_refptr<base::SingleThreadTaskRunner> compositor_
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 scoped_refptr<NativeTextureFactory> RenderThreadImpl::GetNativeTexureFactory() {
   DCHECK(IsMainThread());
@@ -194,17 +193,16 @@ void RenderThreadImpl::UpdateThemeFontFile(const std::vector<base::File> theme_f
   blink::FontCache::Get().InvalidateSystemFontFamily();
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_I18N)
 void RenderThreadImpl::NotifyLocaleChanged(const std::string& locale) {
   if (!ui::ResourceBundle::HasSharedInstance() ||
-      !ui::ResourceBundle::LocaleDataPakExists(locale)) {
+      !ui::ResourceBundle::LocaleDataPakExists(locale, ui::ResourceBundle::Gender::kDefault)) {
     LOG(ERROR) << "render thread update locale failed";
     return;
   }
   std::string origin_locale =
-      ui::ResourceBundle::GetSharedInstance().GetLoadedLocaleForTesting();
+      ui::ResourceBundle::GetSharedInstance().GetLoadedLocale();
   if (origin_locale == locale) {
     LOG(WARNING) << "render thread no need to update locale";
     return;
@@ -217,7 +215,6 @@ void RenderThreadImpl::NotifyLocaleChanged(const std::string& locale) {
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 void RenderThreadImpl::SetBlanklessDumpInfo(uint32_t nweb_id, uint64_t blankless_key,
                                             uint64_t frame_sink_id, int32_t lcp_time, int64_t pref_hash) {
@@ -232,25 +229,14 @@ void RenderThreadImpl::SetBlanklessDumpInfo(uint32_t nweb_id, uint64_t blankless
 #endif
 
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-void RenderThreadImpl::OnChannelListenError() {
-  if ((*base::CommandLine::ForCurrentProcess())
-          .HasSwitch(switches::kEnableLoggerReport)) {
-    if (logging::GetLogMessageHandler()) {
-      logging::SetLogMessageHandler(nullptr);
-      LOG_FEEDBACK(INFO) << "remove log message handler for "
-                         << base::GetCurrentProcId();
-    }
-  }
-
-  ChildThreadImpl::OnChannelListenError();
-}
-
 void RenderThreadImpl::OnChannelConnected(int32_t peer_pid) {
   if ((*base::CommandLine::ForCurrentProcess())
           .HasSwitch(switches::kEnableLoggerReport)) {
     if (!logging::GetLogMessageHandler()) {
       logging::SetLogMessageHandler(RenderProcessLogMessageHandler);
     } else {
+      LOG(INFO) << "maybe you runs in single process mode, log message handler "
+                   "had been setted by other";
       LOG_FEEDBACK(INFO)
           << "maybe you runs in single process mode, log message handler "
              "had been setted by other";
@@ -260,7 +246,6 @@ void RenderThreadImpl::OnChannelConnected(int32_t peer_pid) {
   ChildThreadImpl::OnChannelConnected(peer_pid);
 }
 #endif
-// LCOV_EXCL_STOP
 
 
 #if BUILDFLAG(ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION)
@@ -277,7 +262,8 @@ void RenderThreadImpl::UpdateVideoLoadOptimizationConfigData(
             << ", min_cache_time:" << min_cache_time
             << ", max_cache_time:" << max_cache_time
             << ", moov_size:" << moov_size
-            << ", bit_rate:" << bit_rate;
+            << ", bit_rate:" << bit_rate
+            << ", support_domains size:" << support_domains.size();
   std::lock_guard<std::mutex> cloudConfigMutexLock(cloud_control_config_mutex);
   video_load_opt_enable_ = enable;
   preload_video_time_ = preload_video_time;
@@ -329,10 +315,10 @@ bool RenderThreadImpl::IsVideoLoadOptSupportDomainMatch(const std::string& url) 
     return true;
   }
 
-  WTF::String url_string(url.c_str());
+  blink::String url_string(url.c_str());
   const blink::KURL kurl(url_string);
   for (auto& domain : support_domains_) {
-    WTF::String url_domain_string(domain.c_str());
+    blink::String url_domain_string(domain.c_str());
     const blink::KURL domain_kurl(url_domain_string);
     if (blink::SecurityOrigin::AreSameOrigin(kurl, domain_kurl)) {
       LOG(INFO) << "VideoOpt: IsVideoLoadOptSupportDomain regular expression match url";

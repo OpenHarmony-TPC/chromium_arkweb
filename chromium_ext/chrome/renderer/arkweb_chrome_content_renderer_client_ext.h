@@ -24,7 +24,6 @@
 #include "build/build_config.h"
 #include "chrome/common/media/webrtc_logging.mojom.h"
 #include "chrome/services/speech/buildflags/buildflags.h"
-#include "components/nacl/common/buildflags.h"
 #include "components/safe_browsing/content/renderer/phishing_classifier/phishing_model_setter_impl.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
 #include "content/public/renderer/content_renderer_client.h"
@@ -36,7 +35,6 @@
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/generic_pending_receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "ppapi/buildflags/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "services/service_manager/public/cpp/local_interface_provider.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
@@ -87,11 +85,11 @@ class ArkWebChromeContentRendererClientExt
   void RenderFrameCreateSubresourceFilterAgentTriggerHide(
       content::RenderFrame* render_frame);
 
-  bool GetAdBlockEnabledByFrame(content::RenderFrame* render_frame);
+  bool GetAdBlockEnabledByFrame(base::WeakPtr<content::RenderFrame> render_frame);
 
-  void TriggerElementHidingInFrame(int routing_id) override;
+  void TriggerElementHidingInFrame(base::WeakPtr<content::RenderFrame> render_frame) override;
 
-  void TriggerUserElementHidingInFrame(int routing_id) override;
+  void TriggerUserElementHidingInFrame(base::WeakPtr<content::RenderFrame> render_frame) override;
 #endif
 
 #if BUILDFLAG(ARKWEB_NOTIFICATION)

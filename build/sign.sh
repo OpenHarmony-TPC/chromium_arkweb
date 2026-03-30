@@ -17,10 +17,13 @@ set -x
 build_type="$1"
 root_path="."
 sdk_path="${root_path}/src/ohos_sdk"
-sign_tool_path="${sdk_path}/18/toolchains/lib"
+sign_tool_path="${sdk_path}/23/toolchains/lib"
 nosign_hap_path="${root_path}/src/out/${build_type}/ohos_nweb.hap"
 sign_hap_path="${root_path}/src/out/${build_type}/NWeb-${build_type}.hap"
 profile_path="${root_path}/src/third_party/ohos_nweb_hap/signature"
 
+if [ -d $HW_HARMONY_ENGINE_ROOT ]; then
+  cd $HW_HARMONY_ENGINE_ROOT
+fi
 java -jar ${sign_tool_path}/hap-sign-tool.jar sign-profile -keyAlias "openharmony application profile release" -signAlg "SHA256withECDSA" -mode "localSign" -profileCertFile "${sign_tool_path}/OpenHarmonyProfileRelease.pem" -inFile "${profile_path}/UnsgnedReleasedProfileTemplate.json" -keystoreFile "${sign_tool_path}/OpenHarmony.p12" -outFile "openharmony_nweb.p7b" -keyPwd "123456" -keystorePwd "123456"
 java -jar ${sign_tool_path}/hap-sign-tool.jar sign-app -keyAlias "openharmony application release" -signAlg "SHA256withECDSA" -mode "localSign" -appCertFile "${sdk_path}/OpenHarmonyApplication.pem" -profileFile "openharmony_nweb.p7b" -inFile "${nosign_hap_path}" -keystoreFile "${sign_tool_path}/OpenHarmony.p12" -outFile "${sign_hap_path}" -keyPwd "123456" -keystorePwd "123456"

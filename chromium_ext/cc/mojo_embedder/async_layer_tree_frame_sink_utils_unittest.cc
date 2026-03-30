@@ -17,7 +17,7 @@
 #include "base/threading/thread.h"
 #include "cc/mojo_embedder/async_layer_tree_frame_sink.h"
 #include "components/viz/test/test_context_provider.h"
-#include "gpu/command_buffer/client/test_gpu_memory_buffer_manager.h"
+// #include "gpu/command_buffer/client/test_gpu_memory_buffer_manager.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "services/viz/public/mojom/compositing/compositor_frame_sink.mojom.h"
@@ -67,7 +67,7 @@ class AsyncLayerTreeFrameSinkUtilsTest : public testing::Test {
     bg_thread.Start();
     scoped_refptr<viz::TestContextProvider> provider =
       viz::TestContextProvider::CreateRaster();
-    gpu::TestGpuMemoryBufferManager test_gpu_memory_buffer_manager;
+    // gpu::TestGpuMemoryBufferManager test_gpu_memory_buffer_manager;
 
     mojo::PendingRemote<viz::mojom::CompositorFrameSink> sink_remote;
     mojo::PendingReceiver<viz::mojom::CompositorFrameSink> sink_receiver =
@@ -76,7 +76,7 @@ class AsyncLayerTreeFrameSinkUtilsTest : public testing::Test {
 
     AsyncLayerTreeFrameSink::InitParams init_params;
     init_params.compositor_task_runner = bg_thread.task_runner();
-    init_params.gpu_memory_buffer_manager = &test_gpu_memory_buffer_manager;
+    // init_params.gpu_memory_buffer_manager = &test_gpu_memory_buffer_manager;
     init_params.pipes.compositor_frame_sink_remote = std::move(sink_remote);
     init_params.pipes.client_receiver = client.InitWithNewPipeAndPassReceiver();
     auto layer_tree_frame_sink = std::make_unique<AsyncLayerTreeFrameSink>(
@@ -148,68 +148,6 @@ TEST_F(AsyncLayerTreeFrameSinkUtilsTest, SubmitCompositorFrameArkWebSwapBuTr) {
 }
 
 TEST_F(AsyncLayerTreeFrameSinkUtilsTest, SubmitCompositorFrameDfxDumpTrace) {
-  int64_t id = 1;
-  utils_->SubmitCompositorFrameDfxDumpTrace(id);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, BindToClientWithAndWithoutRenderer1) {
-  utils_->BindToClientArkWebSoftCom(nullptr, nullptr);
-  auto mock_renderer = new NiceMock<MockSoftwareCompositorRendererOhos>(
-      utils_->asyncLayerTreeFrameSink, mock_registry_.get());
-  utils_->InitSoftComRenderArkWebSoftCom(mock_registry_.get());
-  EXPECT_CALL(*mock_renderer, BindToClient(_, _)).Times(1);
-  utils_->BindToClientArkWebSoftCom(nullptr, nullptr);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, DetachFromClientWithAndWithoutRenderer1) {
-  utils_->DetachFromClientArkWebSoftCom();
-
-  auto mock_renderer = new NiceMock<MockSoftwareCompositorRendererOhos>(
-      utils_->asyncLayerTreeFrameSink, mock_registry_.get());
-  utils_->InitSoftComRenderArkWebSoftCom(mock_registry_.get());
-  
-  EXPECT_CALL(*mock_renderer, DetachFromClient()).Times(1);
-  utils_->DetachFromClientArkWebSoftCom();
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, SubmitCompositorFrameConditions1) {
-  viz::CompositorFrame frame;
-
-  EXPECT_FALSE(utils_->SubmitCompositorFrameArkWebSoftCom(frame));
-
-  auto mock_renderer = new NiceMock<MockSoftwareCompositorRendererOhos>(
-      utils_->asyncLayerTreeFrameSink, mock_registry_.get());
-  utils_->InitSoftComRenderArkWebSoftCom(mock_registry_.get());
-
-  ON_CALL(*mock_renderer, InSoftwareDraw()).WillByDefault(testing::Return(false));
-  EXPECT_FALSE(utils_->SubmitCompositorFrameArkWebSoftCom(frame));
-
-  ON_CALL(*mock_renderer, InSoftwareDraw()).WillByDefault(testing::Return(true));
-  utils_->SubmitCompositorFrameArkWebSoftCom(frame);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, DfxDumpLogFirstAndSubsequentCalls1) {
-  viz::LocalSurfaceId id;
-  utils_->SubmitCompositorFrameDfxDumpLog(id);
-  utils_->SubmitCompositorFrameDfxDumpLog(id);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, OnBeginFrameArkWebDfxTrace1) {
-  int64_t id = 1;
-  utils_->OnBeginFrameArkWebDfxTrace(id);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, OnBeginFrameArkWebSwBuTr1) {
-  int64_t id = 1;
-  utils_->OnBeginFrameArkWebSwBuTr(id);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, SubmitCompositorFrameArkWebSwapBuTr1) {
-  int64_t id = 1;
-  utils_->SubmitCompositorFrameArkWebSwapBuTr(id, FrameSkippedReason::kRecoverLatency);
-}
-
-TEST_F(AsyncLayerTreeFrameSinkUtilsTest, SubmitCompositorFrameDfxDumpTrace1) {
   int64_t id = 1;
   utils_->SubmitCompositorFrameDfxDumpTrace(id);
 }

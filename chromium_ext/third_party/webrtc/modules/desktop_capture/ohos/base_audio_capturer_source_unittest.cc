@@ -47,8 +47,7 @@ class OHOSScreenCaptureCallbackMock : public ScreenCaptureCallbackAdapter {
 class MockCaptureCallback : public media::AudioCapturerSource::CaptureCallback {
  public:
   MOCK_METHOD(void, Capture, (const media::AudioBus* audio_bus, base::TimeTicks audio_capture_time,
-              const media::AudioGlitchInfo& audio_glitch_info, double volume,
-              bool key_pressed), (override));
+              const media::AudioGlitchInfo& audio_glitch_info, double volume), (override));
   MOCK_METHOD(void, OnCaptureError, (media::AudioCapturerSource::ErrorCode code,
               const std::string& message), (override));
   MOCK_METHOD(void, OnCaptureMuted, (bool is_muted), (override));

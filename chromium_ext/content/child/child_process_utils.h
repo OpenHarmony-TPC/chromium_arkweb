@@ -30,9 +30,10 @@ public:
 #if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
   void ReportIoThreadStatus(bool is_created, bool is_in_browser_process);
   void ReportCompositorKeyThread(bool is_created, bool is_in_browser_process);
-#endif
+
 #if BUILDFLAG(ARKWEB_DFX_TRACING)
   void ReportHisyevent(int64_t block_time, const std::string& mode, bool is_in_browser_process);
+#endif
 #endif
 };
 }

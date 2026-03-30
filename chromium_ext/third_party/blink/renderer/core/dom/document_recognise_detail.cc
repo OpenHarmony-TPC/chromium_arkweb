@@ -41,7 +41,7 @@ bool IsChapterElementHasValidChildren(Element* chapter_element) {
 
 Element* QueryElement(
     Document& document,
-    const WTF::AtomicString& details_template) {
+    const AtomicString& details_template) {
   return document.QuerySelector(details_template);
 }
 }  // namespace
@@ -68,7 +68,7 @@ bool DocumentRecogniseDetail::IsMatchDetailsTemplates(
     const std::vector<std::string>& page_template) {
   if (!QueryElement(
           document,
-          WTF::AtomicString::FromUTF8(
+          AtomicString::FromUTF8(
               page_template[static_cast<int32_t>(
                                 blink::mojom::DetailTemplateIndex::INFO)]
                   .c_str()))) {
@@ -76,7 +76,7 @@ bool DocumentRecogniseDetail::IsMatchDetailsTemplates(
   }
   if (!QueryElement(
           document,
-          WTF::AtomicString::FromUTF8(
+          AtomicString::FromUTF8(
               page_template[static_cast<int32_t>(
                                 blink::mojom::DetailTemplateIndex::INTRO)]
                   .c_str()))) {
@@ -84,7 +84,7 @@ bool DocumentRecogniseDetail::IsMatchDetailsTemplates(
   }
   Element* chapter_element = QueryElement(
       document,
-      WTF::AtomicString::FromUTF8(
+      AtomicString::FromUTF8(
           page_template[static_cast<int32_t>(
                             blink::mojom::DetailTemplateIndex::CHAPTERS)]
               .c_str()));

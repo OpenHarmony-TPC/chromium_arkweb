@@ -15,6 +15,7 @@
 
 #include "system_properties_adapter_impl.h"
 
+#include <locale>
 #include <sstream>
 
 #include <native_interface_bundle.h>
@@ -32,6 +33,8 @@ const std::string FACTORY_LEVEL_PC = "8";
 const std::string FACTORY_LEVEL_TABLET = "4";
 const std::string FACTORY_LEVEL_PHONE = "2";
 const std::string FACTORY_LEVEL_DEFAULT = "1";
+constexpr int DEFAULT_INITIAL_CONGESTION_WINDOW_SIZE = -1;
+constexpr size_t INT_MAX_LEN = 10;
 
 const std::string PROP_RENDER_DUMP = "web.render.dump";
 const std::string PROP_DEBUG_TRACE = "web.debug.trace";
@@ -293,6 +296,23 @@ int32_t SystemPropertiesAdapterImpl::GetFlowBufMaxFd()
     return GetIntParameter("web.flowbuffer.maxfd", -1);
 }
 
+int32_t SystemPropertiesAdapterImpl::GetInitialCongestionWindowSize() {
+    std::string init_cwnd_str = NWebConfigHelper::Instance()
+        .ParsePerfConfig("TCPConnectedSocketConfig", "initialCongestionWindowSize");
+    if (init_cwnd_str.size() > 0 && init_cwnd_str.size() < INT_MAX_LEN ) {
+        for (char character : init_cwnd_str) {
+            if (!std::isdigit(character, std::locale::classic())) {
+                WVLOG_E("parse initialCongestionWindowSize failed: invalid argument");
+                return DEFAULT_INITIAL_CONGESTION_WINDOW_SIZE;
+            }
+        }
+ 
+        return std::stoi(init_cwnd_str);
+    }
+ 
+    return DEFAULT_INITIAL_CONGESTION_WINDOW_SIZE;
+}
+
 bool SystemPropertiesAdapterImpl::GetOOPGPUEnable()
 {
     if (GetDeviceInfoProductModel() == "emulator") {
@@ -393,6 +413,7 @@ void SystemPropertiesAdapterImpl::DispatchAllWatcherInfo(const char* key, const 
     }
 
     PropertiesKey propkey = propKeyIt->second;
+    std::shared_lock lock(sysPropMutex_[propkey]);
     auto& keyObservers = sysPropObserver_[propkey];
 
     if (keyObservers.size() == 0) {
@@ -400,7 +421,6 @@ void SystemPropertiesAdapterImpl::DispatchAllWatcherInfo(const char* key, const 
         return;
     }
 
-    std::shared_lock lock(sysPropMutex_[propkey]);
     for (auto &item : keyObservers) {
         item->PropertiesUpdate(value);
     }
@@ -419,8 +439,8 @@ void SystemPropertiesAdapterImpl::AttachSysPropObserver(PropertiesKey key, Syste
         return;
     }
 
-    std::vector<SystemPropertiesObserver*>& observerVec = observerIt->second;
     std::unique_lock lock(sysPropMutex_[key]);
+    std::vector<SystemPropertiesObserver*>& observerVec = observerIt->second;
     observerVec.push_back(observer);
 }
 
@@ -437,8 +457,8 @@ void SystemPropertiesAdapterImpl::DetachSysPropObserver(PropertiesKey key, Syste
         return;
     }
 
-    std::vector<SystemPropertiesObserver*>& observerVec = observerIt->second;
     std::unique_lock lock(sysPropMutex_[key]);
+    std::vector<SystemPropertiesObserver*>& observerVec = observerIt->second;
 
     auto it = std::find(observerVec.begin(), observerVec.end(), observer);
     if (it != observerVec.end()) {

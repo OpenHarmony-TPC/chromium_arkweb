@@ -42,7 +42,8 @@ class CONTENT_EXPORT ArkwebRenderProcessHostImplExt : public RenderProcessHostIm
  public:
   ArkwebRenderProcessHostImplExt(BrowserContext* browser_context,
                                  StoragePartitionImpl* storage_partition_impl,
-                                 int flags);
+                                 int flags,
+                                 bool is_spare_renderer);
 
   ArkwebRenderProcessHostImplExt* AsArkwebRenderProcessHostImplExt() override {
     return this;
@@ -79,6 +80,9 @@ class CONTENT_EXPORT ArkwebRenderProcessHostImplExt : public RenderProcessHostIm
                          const std::string& error_code,
                          const std::string& error_msg) override;
 #endif
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+  void ReportRendererLog(int policy, const std::string& msg) override;
+#endif  // ARKWEB_LOGGER_REPORT
 
 #if BUILDFLAG(ARKWEB_READER_MODE)
   static void UpdateCloudControlReaderModeConfigData(

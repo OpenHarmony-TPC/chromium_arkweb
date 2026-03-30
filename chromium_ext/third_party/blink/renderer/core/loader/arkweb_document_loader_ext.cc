@@ -34,6 +34,9 @@
 #include <optional>
 #include <utility>
 
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/auto_reset.h"
 #include "base/containers/flat_map.h"
 #include "base/debug/dump_without_crashing.h"
@@ -59,8 +62,6 @@
 #include "third_party/blink/public/common/loader/javascript_framework_detection.h"
 #include "third_party/blink/public/common/loader/loading_behavior_flag.h"
 #include "third_party/blink/public/common/metrics/accept_language_and_content_language_usage.h"
-#include "third_party/blink/public/common/page/browsing_context_group_info.h"
-#include "third_party/blink/public/common/permissions_policy/permissions_policy.h"
 #include "third_party/blink/public/common/scheme_registry.h"
 #include "third_party/blink/public/mojom/commit_result/commit_result.mojom-blink.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_request.mojom-blink.h"
@@ -189,10 +190,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
-#if BUILDFLAG(IS_ARKWEB_EXT)
-#include "arkweb/ohos_nweb_ex/build/features/features.h"
-#endif
-
 #if BUILDFLAG(ARKWEB_MENU)
 #include "base/logging.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
@@ -284,7 +281,7 @@ scoped_refptr<const SharedBuffer> GetShareBufferForImageDocument(
 }
 
 scoped_refptr<const SharedBuffer> ArkWebDocumentLoaderExt::OnGetImageFromCache(
-    const WTF::String& url) {
+    const String& url) {
   KURL kurl(url);
   Resource* resource = nullptr;
   if (kurl.IsValid() && frame_ &&
@@ -343,5 +340,4 @@ void ArkWebDocumentLoaderExt::NotifyLcpForBlankless() {
   }
 }
 #endif
-
 }  // namespace blink

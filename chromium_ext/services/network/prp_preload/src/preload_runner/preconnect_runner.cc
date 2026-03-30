@@ -50,7 +50,7 @@ void PreconnectRunner::PreconnectSocket(
   net::HttpNetworkSession* session = factory->GetSession();
   net::HttpStreamFactory* http_stream_factory = session->http_stream_factory();
   LOG(DEBUG) << "PRPPreload.PreconnectRunner::PreconnectSocket start";
-  http_stream_factory->PreconnectStreams(1, request_info, true);
+  http_stream_factory->PreconnectStreams(1, request_info, base::OnceClosure(), true);
 }
 
 GURL PreconnectRunner::GetHSTSRedirect(
@@ -59,7 +59,7 @@ GURL PreconnectRunner::GetHSTSRedirect(
   if (!url_request_context->transport_security_state() ||
       !original_url.SchemeIs("http") ||
       !url_request_context->transport_security_state()->ShouldUpgradeToSSL(
-          original_url.host())) {
+          original_url.host(), false /* is_top_level_nav */)) {
     return original_url;
   }
 

@@ -19,7 +19,6 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
@@ -33,6 +32,7 @@
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/size.h"
+#include "third_party/blink/renderer/core/css/style_engine.h"
 
 namespace gfx {
 class RectF;
@@ -107,7 +107,7 @@ void ArkClampedImageScale(gfx::Vector2dF& image_scale, gfx::Size& image_size,
 gfx::Rect GetImageRectFromImageNode(LocalFrame* frame,
                                     const HitTestResult& hit_test_result) {
   if (!frame || !frame->GetSettings()) {
-    return hit_test_result.ImageRect();
+    return hit_test_result.imp_utils_->ImageRect();
   }
   return hit_test_result.imp_utils_->GetReplacedContentRect();
 }
@@ -127,6 +127,8 @@ static std::unique_ptr<DragImage> ClippedDragImageForImage(
 
   gfx::Size image_size = image->Size(respect_orientation);
   if (image_size.IsEmpty()) {
+    LOG(INFO)
+        << "DragDrop Try to get clipped drag image failed, the size is empty";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO)
         << "DragDrop Try to get clipped drag image failed, the size is empty";

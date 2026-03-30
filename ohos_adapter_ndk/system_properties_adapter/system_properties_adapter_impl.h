@@ -66,6 +66,8 @@ public:
 
     int32_t GetFlowBufMaxFd() override;
 
+    int32_t GetInitialCongestionWindowSize() override;
+
     bool GetOOPGPUEnable() override;
 
     void SetOOPGPUDisable() override;

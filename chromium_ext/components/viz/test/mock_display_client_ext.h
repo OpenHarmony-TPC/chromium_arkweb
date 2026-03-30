@@ -15,7 +15,6 @@
 
 #define ARKWEB_UNITTESTS_MOCK_DISPLAY_CLIENT() \
   MOCK_METHOD1(DidCompleteSwapWithNewSizeOHOS, void(const gfx::Size&)); \
-  MOCK_METHOD1(UseProxyOutputDevice, void(UseProxyOutputDeviceCallback)); \
   MOCK_METHOD1( \
       CreateLayeredWindowUpdater, \
       void(::mojo::PendingReceiver<::viz::mojom::LayeredWindowUpdater>));

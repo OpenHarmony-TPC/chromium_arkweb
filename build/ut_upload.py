@@ -59,8 +59,59 @@ def main():
             break
 
     deps_list = []
-    for h in range(deps_end - deps_start - 1):
-        deps_list.append(lines[deps_start + h + 1])
+    if args.ut == 'coverage':
+        deps_list = [
+            '    "//base:base_unittests",\n',
+            '    "//components:components_unittests",\n',
+            '    "//cef:libcef_static_unittests",\n',
+            '    "//components/viz:viz_unittests",\n',
+            '    "//crypto:crypto_unittests",\n',  
+            '    "//gin:gin_unittests",\n',
+            '    "//gpu:gpu_unittests",\n',
+            '    "//media:media_unittests",\n',
+            '    "//ohos_nweb/test:ohos_nweb_unittests",\n',
+            '    "//skia:skia_unittests",\n',
+            '    "//third_party/blink/common:blink_common_unittests",\n',
+            '    "//third_party/blink/renderer/platform:blink_platform_unittests",\n',
+            '    "//ui/accessibility:accessibility_unittests",\n',
+            '    "//ui/base:ui_base_unittests",\n',
+            '    "//ui/compositor:compositor_unittests",\n',
+            '    "//ui/gl:gl_unittests",\n',
+            '    "//components/gwp_asan:gwp_asan_unittests",\n',
+            '    "//components/services/filesystem:filesystem_service_unittests",\n',
+            '    "//device:device_unittests",\n',
+            '    "//media:audio_unittests",\n',
+            '    "//media/cast:cast_unittests",\n',
+            '    "//media/midi:midi_unittests",\n',
+            '    "//media/mojo:media_mojo_unittests",\n',
+            '    "//media/capture:capture_unittests",\n',
+            '    "//media/learning/mojo:media_learning_mojo_unittests",\n',
+            '    "//mojo:mojo_unittests",\n',
+            '    "//third_party/blink/renderer/platform/heap:blink_heap_unittests",\n',
+            '    "//third_party/catapult/tracing/tracing:histogram_unittests",\n',
+            '    "//third_party/ced:ced_unittests",\n',
+            '    "//third_party/liburlpattern:liburlpattern_unittests",\n',
+            '    "//third_party/libjingle_xmpp:libjingle_xmpp_unittests",\n',
+            '    "//third_party/libjpeg_turbo:libjpeg_turbo_unittests",\n',
+            '    "//third_party/perfetto:perfetto_unittests",\n',
+            '    "//third_party/zlib:zlib_unittests",\n',
+            '    "//ui/color:color_unittests",\n',
+            '    "//ui/display:display_unittests",\n',
+            '    "//ui/gfx:gfx_unittests",\n',
+            '    "//ui/latency:latency_unittests",\n',
+            '    "//ui/native_theme:native_theme_unittests",\n',
+            '    "//ui/shell_dialogs:shell_dialogs_unittests",\n',
+            '    "//ui/touch_selection:ui_touch_selection_unittests",\n',
+            '    "//url:url_unittests",\n',
+            '    "//printing:printing_unittests",\n',
+            '    "//services/service_manager/tests:service_manager_unittests",\n',
+            '    "//storage:storage_unittests",\n',
+            '    "//sql:sql_unittests",\n',
+            '    "//cc:cc_unittests",\n',
+            '    "//third_party/blink/renderer/controller:blink_unittests",\n']
+    else:
+        for h in range(deps_end - deps_start - 1):
+            deps_list.append(lines[deps_start + h + 1])
 
     out_dir = "out/musl_64/"
     saved_dir = out_dir + "ut/"
@@ -75,21 +126,26 @@ def main():
         dep_path = utpath + ".runtime_deps"
         copy_file(out_dir + utpath, saved_dir + out_dir + utpath)
         if "GERRIT_CHANGE_URL" not in os.environ:
-            copy_file(unstripped + utpath, saved_dir + unstripped + utpath)
-        with open(out_dir + dep_path, 'r', encoding='utf-8') as out_file:
-            for file_path in out_file.readlines():
-                file_path = file_path.replace("\n", "").replace("lib.unstripped/", "").replace("exe.unstripped/", "")
-                if file_path not in file_array:
-                    file_array.append(file_path)
-                    if file_path.startswith("../../"):
-                        file_path = file_path.replace("../../", "")
-                        try:
-                            copy_file(file_path, saved_dir + file_path)
-                        except Exception as e:
-                            print("permission denied")
-                    else:
-                        file_path = file_path.replace("./", "")
-                        copy_file(out_dir + file_path, saved_dir + out_dir + file_path)
+            copy_file(unstripped + "libarkweb_engine.so", saved_dir + unstripped + "libarkweb_engine.so")
+            copy_file(unstripped + "libarkweb_render.so", saved_dir + unstripped + "libarkweb_render.so")
+            copy_file(unstripped + "libarkweb_crashpad_handler.so", saved_dir + unstripped + "libarkweb_crashpad_handler.so")
+        try:
+            with open(out_dir + dep_path, 'r', encoding='utf-8') as out_file:
+                for file_path in out_file.readlines():
+                    file_path = file_path.replace("\n", "").replace("lib.unstripped/", "").replace("exe.unstripped/", "")
+                    if file_path not in file_array:
+                        file_array.append(file_path)
+                        if file_path.startswith("../../"):
+                            file_path = file_path.replace("../../", "")
+                            try:
+                                copy_file(file_path, saved_dir + file_path)
+                            except Exception as e:
+                                print("permission denied")
+                        else:
+                            file_path = file_path.replace("./", "")
+                            copy_file(out_dir + file_path, saved_dir + out_dir + file_path)
+        except Exception as e:
+            print("file not found")
     global count
     print("Path：" + saved_dir + "，Quantity：" + str(count))
 

@@ -74,5 +74,5 @@
     ],
     "src/cef":[
         "include/cef_api_hash.h"
-    ]
+        ]
 }

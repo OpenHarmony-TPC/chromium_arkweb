@@ -55,7 +55,7 @@ class OHOSMockImage : public Image {
     return gfx::Size(0, 0);
   }
 
-  bool CurrentFrameKnownToBeOpaque() override { return false; }
+  bool IsOpaque() override {}
 
   void DestroyDecodedData() override {
     // Image pure virtual stub.

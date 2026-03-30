@@ -8,6 +8,7 @@
 #include <locale>
 
 #include "base/check_deref.h"
+#include "base/no_destructor.h"
 #include "browser_accessibility_manager_ohos.h"
 #include "content/public/common/content_client.h"
 #include "ohos_nweb/src/cef_delegate/nweb_accessibility_utils.h"
@@ -33,14 +34,9 @@ constexpr int32_t CHECKBOX_GROUP_STATUS_FALSE = 2;
 constexpr int32_t CHECKBOX_GROUP_STATUS_DEFAULT = -1;
 }
 
-base::LazyInstance<AccessibilityIdMap>::Leaky g_accessibility_id_map =
-    LAZY_INSTANCE_INITIALIZER;
-
-base::LazyInstance<std::unordered_map<std::string, int64_t>>::Leaky
-    g_html_element_id_map = LAZY_INSTANCE_INITIALIZER;
-
-base::LazyInstance<std::map<const BrowserAccessibilityOHOS*, bool>>::Leaky
-    g_leaf_map = LAZY_INSTANCE_INITIALIZER;
+base::NoDestructor<AccessibilityIdMap> g_accessibility_id_map;
+base::NoDestructor<std::unordered_map<std::string, int64_t>> g_html_element_id_map;
+base::NoDestructor<std::map<const BrowserAccessibilityOHOS*, bool>> g_leaf_map;
 
 std::unique_ptr<BrowserAccessibility> BrowserAccessibility::Create(
     BrowserAccessibilityManager* manager,
@@ -54,25 +50,24 @@ BrowserAccessibilityOHOS::BrowserAccessibilityOHOS(
     AXNode* node)
     : BrowserAccessibility(manager, node) {
   accessibility_id_ = static_cast<int64_t>(GetUniqueId()) + 1;
-  g_accessibility_id_map.Get()[accessibility_id_] = this;
+  (*g_accessibility_id_map)[accessibility_id_] = this;
   if (node && node->GetRole() == ax::mojom::Role::kEmbeddedObject) {
     const base::StringPairs& htmlAttributes = node->GetHtmlAttributes();
     for (const auto& pair : htmlAttributes) {
       if (base::EqualsCaseInsensitiveASCII(pair.first, "id")) {
         html_element_id_ = pair.second;
-        LOG(DEBUG) << "html element id map with accessibility id: "
-                   << html_element_id_ << ": " << accessibility_id_;
-        g_html_element_id_map.Get()[html_element_id_] = accessibility_id_;
+              LOG(DEBUG) << "html element id map with accessibility id: " << html_element_id_ << ": "
+                         << accessibility_id_;
+        (*g_html_element_id_map)[html_element_id_] = accessibility_id_;
         break;
       }
     }
   }
 }
 
-int64_t BrowserAccessibilityOHOS::GetAccessibilityIdByHtmlElementId(
-    const std::string& htmlElementId) {
-  auto it = g_html_element_id_map.Get().find(htmlElementId);
-  if (it != g_html_element_id_map.Get().end()) {
+int64_t BrowserAccessibilityOHOS::GetAccessibilityIdByHtmlElementId(const std::string &htmlElementId) {
+  auto it = g_html_element_id_map->find(htmlElementId);
+  if (it != g_html_element_id_map->end()) {
     return it->second;
   } else {
     return -1;
@@ -80,12 +75,12 @@ int64_t BrowserAccessibilityOHOS::GetAccessibilityIdByHtmlElementId(
 }
 
 BrowserAccessibilityOHOS::~BrowserAccessibilityOHOS() {
-  g_accessibility_id_map.Get().erase(accessibility_id_);
+  g_accessibility_id_map->erase(accessibility_id_);
   if (!html_element_id_.empty()) {
-    g_html_element_id_map.Get().erase(html_element_id_);
+    g_html_element_id_map->erase(html_element_id_);
   }
-  if (g_leaf_map.Get().find(this) != g_leaf_map.Get().end()) {
-    g_leaf_map.Get().erase(this);
+  if (g_leaf_map->find(this) != g_leaf_map->end()) {
+    g_leaf_map->erase(this);
   }
 }
 
@@ -95,7 +90,7 @@ int64_t BrowserAccessibilityOHOS::GetAccessibilityId() const {
 
 BrowserAccessibilityOHOS* BrowserAccessibilityOHOS::GetFromAccessibilityId(
     int64_t accessibility_id) {
-  AccessibilityIdMap* unique_ids = g_accessibility_id_map.Pointer();
+  AccessibilityIdMap* unique_ids = g_accessibility_id_map.get();
   auto iter = unique_ids->find(accessibility_id);
   if (iter != unique_ids->end()) {
     return iter->second;
@@ -1267,7 +1262,6 @@ bool BrowserAccessibilityOHOS::IsInterestingOnOHOS() const
       parent->PlatformChildCount() == 1 && PlatformChildCount() == 0) {
     return false;
   }
-
   if (GetRole() == ax::mojom::Role::kEmbeddedObject) {
     return true;
   }
@@ -1290,8 +1284,8 @@ bool BrowserAccessibilityOHOS::IsChildOfLeaf() const
 }
 
 bool BrowserAccessibilityOHOS::IsLeaf() const {
-  if (g_leaf_map.Get().find(this) != g_leaf_map.Get().end()) {
-    return g_leaf_map.Get()[this];
+  if (g_leaf_map->find(this) != g_leaf_map->end()) {
+    return (*g_leaf_map)[this];
   }
 
   if (BrowserAccessibility::IsLeaf()) {
@@ -1321,6 +1315,11 @@ bool BrowserAccessibilityOHOS::IsLeaf() const {
     return false;
   }
 
+  if (GetRole() == ax::mojom::Role::kTabPanel ||
+      GetRole() == ax::mojom::Role::kTabList) {
+    return false;
+  }
+
   // For some nodes, we will consider children before determining if the node
   // is a leaf. For nodes with relevant children, we will return false here
   // and allow the child nodes to be set as a leaf.
@@ -1329,32 +1328,32 @@ bool BrowserAccessibilityOHOS::IsLeaf() const {
   std::u16string name = GetSubstringTextContentUTF16(NonEmptyPredicate());
   if (GetRole() == ax::mojom::Role::kHeading && !name.empty()) {
     bool ret = IsLeafConsideringChildren();
-    g_leaf_map.Get()[this] = ret;
+    (*g_leaf_map)[this] = ret;
     return ret;
   }
 
   // Focusable nodes with text can drop their children (with exceptions).
   if (HasState(ax::mojom::State::kFocusable) && !name.empty()) {
     bool ret = IsLeafConsideringChildren();
-    g_leaf_map.Get()[this] = ret;
+    (*g_leaf_map)[this] = ret;
     return ret;
   }
 
   // Nodes with only static text can drop their children, with the exception
   // that list markers have a different role and should not be dropped.
   if (HasOnlyTextChildren() && !HasListMarkerChild()) {
-    g_leaf_map.Get()[this] = true;
+    (*g_leaf_map)[this] = true;
     return true;
   }
 
-  g_leaf_map.Get()[this] = false;
+  (*g_leaf_map)[this] = false;
   return false;
 }
 
 // static
 void BrowserAccessibilityOHOS::ResetLeafCache()
 {
-  g_leaf_map.Get().clear();
+  g_leaf_map->clear();
 }
 
 bool BrowserAccessibilityOHOS::IsLeafConsideringChildren() const

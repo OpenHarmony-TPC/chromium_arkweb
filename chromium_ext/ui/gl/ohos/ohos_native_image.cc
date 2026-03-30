@@ -11,6 +11,7 @@
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/debug/crash_logging.h"
+#include "base/no_destructor.h"
 #include "gpu/ipc/common/nweb_native_window_tracker.h"
 #include "ui/gl/gl_bindings.h"
 #include "base/logging.h"
@@ -27,7 +28,10 @@ constexpr char kGpuProcess[] = "gpu-process";
 
 namespace gl {
 
-std::mutex g_mutex_native_image;
+std::mutex& GetNativeImageMutex() {
+  static base::NoDestructor<std::mutex> native_image_mutex;
+  return *native_image_mutex;
+}
 
 scoped_refptr<OhosNativeImage> OhosNativeImage::Create(int texture_id) {
   int native_id = texture_id;
@@ -66,7 +70,7 @@ OhosNativeImage::~OhosNativeImage() {
 void OhosNativeImage::SetFrameAvailableCallback(
     base::RepeatingClosure callback) {
   DCHECK(!frame_available_cb_);
-  std::lock_guard<std::mutex> lock(g_mutex_native_image);
+  std::lock_guard<std::mutex> lock(GetNativeImageMutex());
   frame_available_cb_ = std::move(callback);
   if (native_image_adapter_ != nullptr && listener_ == nullptr) {
     listener_ = std::make_shared<OHOS::NWeb::FrameAvailableListenerImpl>(this);
@@ -85,7 +89,7 @@ void OhosNativeImage::UpdateNativeImage() {
     return;
   }
   native_image_adapter_->UpdateSurfaceImage();
-
+  
   if (gl::g_current_gl_driver->ext.b_GL_ANGLE_texture_external_update) {
     glInvalidateTextureANGLE(GL_TEXTURE_EXTERNAL_OES);
   }
@@ -126,9 +130,10 @@ void OhosNativeImage::AttachToGLContext() {
   } else {
     glGetIntegerv(GL_TEXTURE_BINDING_EXTERNAL_OES, &texture_id);
   }
-
+  
   DCHECK(texture_id);
   native_image_adapter_->AttachContext(texture_id);
+  
   if (gl::g_current_gl_driver->ext.b_GL_ANGLE_texture_external_update) {
     glInvalidateTextureANGLE(GL_TEXTURE_EXTERNAL_OES);
   }

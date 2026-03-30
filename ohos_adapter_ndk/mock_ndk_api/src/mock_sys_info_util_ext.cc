@@ -12,11 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #include "arkweb/ohos_adapter_ndk/mock_ndk_api/include/mock_sys_info_util_ext.h"
-
+ 
 namespace base::ohos {
-
+ 
 bool SysInfoUtilsMock::mockOsVersion = false;
 bool SysInfoUtilsMock::mockCompatibleDeviceType = false;
 bool SysInfoUtilsMock::mockIsMobileDevice = false;
@@ -29,7 +29,6 @@ bool SysInfoUtilsMock::mockSeniorVersion = false;
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 std::string __wrap_OsVersion() {
   if (SysInfoUtilsMock::mockOsVersion == true) {
     return SysInfoUtilsMock::GetInstance().OsVersion();
@@ -37,7 +36,6 @@ std::string __wrap_OsVersion() {
     return __real_OsVersion();
   }
 }
-
 std::string __wrap_CompatibleDeviceType() {
   if (SysInfoUtilsMock::mockCompatibleDeviceType == true) {
     return SysInfoUtilsMock::GetInstance().CompatibleDeviceType();
@@ -45,7 +43,6 @@ std::string __wrap_CompatibleDeviceType() {
     return __real_CompatibleDeviceType();
   }
 }
-
 bool __wrap_IsMobileDevice() {
   if (SysInfoUtilsMock::mockIsMobileDevice == true) {
     return SysInfoUtilsMock::GetInstance().IsMobileDevice();
@@ -53,7 +50,6 @@ bool __wrap_IsMobileDevice() {
     return __real_IsMobileDevice();
   }
 }
-
 bool __wrap_IsTabletDevice() {
   if (SysInfoUtilsMock::mockIsTabletDevice == true) {
     return SysInfoUtilsMock::GetInstance().IsTabletDevice();
@@ -61,7 +57,6 @@ bool __wrap_IsTabletDevice() {
     return __real_IsTabletDevice();
   }
 }
-
 bool __wrap_IsPcDevice() {
   if (SysInfoUtilsMock::mockIsPcDevice == true) {
     return SysInfoUtilsMock::GetInstance().IsPcDevice();
@@ -69,7 +64,6 @@ bool __wrap_IsPcDevice() {
     return __real_IsPcDevice();
   }
 }
-
 std::string __wrap_BaseOsName() {
   if (SysInfoUtilsMock::mockBaseOsName == true) {
     return SysInfoUtilsMock::GetInstance().BaseOsName();
@@ -77,7 +71,6 @@ std::string __wrap_BaseOsName() {
     return __real_BaseOsName();
   }
 }
-
 int32_t __wrap_MajorVersion() {
   if (SysInfoUtilsMock::mockMajorVersion == true) {
     return SysInfoUtilsMock::GetInstance().MajorVersion();
@@ -85,7 +78,6 @@ int32_t __wrap_MajorVersion() {
     return __real_MajorVersion();
   }
 }
-
 int32_t __wrap_SeniorVersion() {
   if (SysInfoUtilsMock::mockSeniorVersion == true) {
     return SysInfoUtilsMock::GetInstance().SeniorVersion();
@@ -96,4 +88,4 @@ int32_t __wrap_SeniorVersion() {
 #ifdef __cplusplus
 }
 #endif
-}  // namespace base::ohos
+} // namespace base::ohos

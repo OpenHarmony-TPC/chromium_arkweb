@@ -17,13 +17,15 @@
 
 #include <memory>
 
+#include "third_party/blink/public/web/web_settings.h"
 #include "third_party/blink/renderer/core/clipboard/data_transfer.h"
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/node.h"
-#include "third_party/blink/renderer/core/dom/node_computed_style.h"
+#include "third_party/blink/renderer/core/editing/editing_utilities.h"
 #include "third_party/blink/renderer/core/editing/frame_selection.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/frame/settings.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_image.h"
@@ -134,7 +136,7 @@ void DragControllerExt::UpdateLinkStyle(Node* node) {
   }
 
   unsigned len = list->length();
-  const WTF::String grayStyle(kDragLinkGrayStyle);
+  const String grayStyle(kDragLinkGrayStyle);
   for (unsigned i = 0; i < len; i++) {
     Node* tempNode = list->item(i);
     if (!tempNode) {
@@ -174,7 +176,7 @@ NO_SANITIZE("cfi") void DragControllerExt::StartDragLinkEffects() {
   }
 
   StringBuilder tmpStyle;
-  const WTF::String grayStyle(kDragLinkGrayStyle);
+  const String grayStyle(kDragLinkGrayStyle);
   tmpStyle.Append(
       String(AtomicString(element->getAttribute(html_names::kStyleAttr))));
   tmpStyle.Append(grayStyle);
@@ -212,13 +214,13 @@ void DragControllerExt::RestoreLinkStyle(Node* node) {
 }
 
 void DragControllerExt::FindAndRemoveGrayStyle(Element* tempEle) {
-  const WTF::String grayStyle(kDragLinkGrayStyle);
-  const WTF::String grayStyle1(kDragLinkGrayStyleRemoveType1);
-  const WTF::String grayStyle2(kDragLinkGrayStyleRemoveType2);
+  const String grayStyle(kDragLinkGrayStyle);
+  const String grayStyle1(kDragLinkGrayStyleRemoveType1);
+  const String grayStyle2(kDragLinkGrayStyleRemoveType2);
   String styleAttr =
       String(AtomicString(tempEle->getAttribute(html_names::kStyleAttr)));
   size_t pos = styleAttr.Find(grayStyle);
-  if (pos != WTF::kNotFound) {
+  if (pos != kNotFound) {
     if (pos + grayStyle.length() == styleAttr.length()) {
       String oriStyle =
           styleAttr.replace((unsigned)pos, grayStyle.length(), "");
@@ -232,14 +234,14 @@ void DragControllerExt::FindAndRemoveGrayStyle(Element* tempEle) {
   }
 
   pos = styleAttr.Find(grayStyle1);
-  if (pos != WTF::kNotFound) {
+  if (pos != kNotFound) {
     String oriStyle = styleAttr.replace((unsigned)pos, grayStyle1.length(), "");
     tempEle->setAttribute(html_names::kStyleAttr, AtomicString(oriStyle));
     return;
   }
 
   pos = styleAttr.Find(grayStyle2);
-  if (pos != WTF::kNotFound) {
+  if (pos != kNotFound) {
     String oriStyle = styleAttr.replace((unsigned)pos, grayStyle2.length(), "");
     tempEle->setAttribute(html_names::kStyleAttr, AtomicString(oriStyle));
     return;
@@ -375,7 +377,7 @@ NO_SANITIZE("cfi") void DragControllerExt::StartDragImageEffects() {
     return;
   }
 
-  const ComputedStyle* style = node->GetComputedStyleForElementOrLayoutObject();
+  const ComputedStyle* style = GetComputedStyleForElementOrLayoutObject(*node);
   // no effects if the image already have an opacity style
   if (!style || style->HasOpacity()) {
     return;
@@ -416,7 +418,7 @@ NO_SANITIZE("cfi") void DragControllerExt::RestoreDragImageEffects() {
     return;
   }
 
-  const ComputedStyle* style = node->GetComputedStyleForElementOrLayoutObject();
+  const ComputedStyle* style = GetComputedStyleForElementOrLayoutObject(*node);
   if (!style) {
     return;
   }
@@ -458,6 +460,31 @@ gfx::RectF DragControllerExt::GetVisibleRectToUIInRootFrame(LocalFrame* frame) {
             << ", scroll_offset : " << scroll_offset.ToString();
   return visible_rect_in_root_frame;
 }
+
+bool DragControllerExt::IsDragEnabled() const {
+   Node* node = drag_state_->drag_src_.Get();
+  if (!node) {
+    LOG(DEBUG) << "DragDrop node null, drag nothing";
+    return false;
+  }
+  if (!drag_state_) {
+    LOG(DEBUG) << "DragDrop state null, drag nothing";
+    return false;
+  }
+  if (!drag_state_->drag_src_) {
+    LOG(WARNING) << "DragDrop node src null, drag nothing";
+    return false;
+  }
+  auto* element = DynamicTo<Element>(node);
+  if(element) {
+    bool drag_enabled = element->GetDocument().GetSettings()->GetEnableDrag();
+    LOG(INFO) << "drag is :" << drag_enabled;
+    return drag_enabled;
+  }
+  LOG(DEBUG) << "fialed set drag";
+  return true;
+}
+
 
 #endif  // BUILDFLAG(ARKWEB_DRAG_DROP)
 }  // namespace blink

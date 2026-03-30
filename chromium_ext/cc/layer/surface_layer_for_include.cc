@@ -17,7 +17,6 @@
 
 namespace cc {
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 scoped_refptr<SurfaceLayer> SurfaceLayer::Create(UpdateSubmissionStateCB update_submission_state_callback,
     RectChangeCallback callback,
@@ -38,7 +37,6 @@ void SurfaceLayer::SetVideoRectChangeCallback(RectChangeCallback callback) {
 void SurfaceLayer::OnLayerRectUpdate(const gfx::Rect& rect) {
   if (video_rect_change_callback_) {
     video_rect_change_callback_.Run(rect);
-    return;
   }
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
   if (!rect_change_callback_.is_null()) {
@@ -67,7 +65,6 @@ SurfaceLayer::SurfaceLayer(UpdateSubmissionStateCB update_submission_state_callb
     LayerRemovedVisibilityCallback layerRemovedCallback)
     : update_submission_state_callback_(
       std::move(update_submission_state_callback)),
-      may_contain_video_(false),
       deadline_in_frames_(0u),
       stretch_content_to_fill_bounds_(false),
       surface_hit_testable_(false),
@@ -106,5 +103,4 @@ void SurfaceLayer::CleanupVisibilityForRemovedLayer(bool visibility) {
   }
 }
 #endif
-// LCOV_EXCL_STOP
 }  // namespace cc

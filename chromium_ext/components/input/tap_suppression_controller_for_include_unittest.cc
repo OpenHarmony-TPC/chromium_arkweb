@@ -12,9 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "third_party/googletest/src/googletest/include/gtest/gtest.h"
- 
+
 namespace input {
 void NoSuppressionIfDisabledCommonCase(
     MockTapSuppressionController* tap_suppression_controller) {
@@ -24,14 +24,14 @@ void NoSuppressionIfDisabledCommonCase(
             tap_suppression_controller->last_actions());
   EXPECT_EQ(MockTapSuppressionController::DISABLED,
             tap_suppression_controller->state());
- 
+
   // Send TapDown. This TapDown should not be suppressed.
   tap_suppression_controller->SendTapDown();
   EXPECT_EQ(MockTapSuppressionController::TAP_DOWN_FORWARDED,
             tap_suppression_controller->last_actions());
   EXPECT_EQ(MockTapSuppressionController::DISABLED,
             tap_suppression_controller->state());
- 
+
   // Send TapUp. This TapUp should not be suppressed.
   tap_suppression_controller->SendTapUp();
   EXPECT_EQ(MockTapSuppressionController::TAP_UP_FORWARDED,
@@ -39,7 +39,7 @@ void NoSuppressionIfDisabledCommonCase(
   EXPECT_EQ(MockTapSuppressionController::DISABLED,
             tap_suppression_controller->state());
 }
- 
+
 TEST_F(TapSuppressionControllerTest,
        SetScrollableTrueAndNoSuppressionIfDisabled) {
   TapSuppressionController::Config disabled_config;
@@ -49,7 +49,7 @@ TEST_F(TapSuppressionControllerTest,
   tap_suppression_controller_->SetScrollable(true);
   NoSuppressionIfDisabledCommonCase(tap_suppression_controller_.get());
 }
- 
+
 TEST_F(TapSuppressionControllerTest,
        SetScrollableFalseAndNoSuppressionIfDisabled) {
   TapSuppressionController::Config disabled_config;
@@ -59,7 +59,7 @@ TEST_F(TapSuppressionControllerTest,
   tap_suppression_controller_->SetScrollable(false);
   NoSuppressionIfDisabledCommonCase(tap_suppression_controller_.get());
 }
- 
+
 TEST_F(TapSuppressionControllerTest,
        SetScrollableFlaseAndSuppressionIfEnabled) {
   TapSuppressionController::Config enabled_config;
@@ -69,7 +69,7 @@ TEST_F(TapSuppressionControllerTest,
   tap_suppression_controller_->SetScrollable(false);
   NoSuppressionIfDisabledCommonCase(tap_suppression_controller_.get());
 }
- 
+
 TEST_F(TapSuppressionControllerTest, SetScrollableTrueAndSuppressionIfEnabled) {
   tap_suppression_controller_->SetScrollable(true);
   // Notify the controller that the GFC has stooped an active fling.
@@ -78,7 +78,7 @@ TEST_F(TapSuppressionControllerTest, SetScrollableTrueAndSuppressionIfEnabled) {
             tap_suppression_controller_->last_actions());
   EXPECT_EQ(MockTapSuppressionController::LAST_CANCEL_STOPPED_FLING,
             tap_suppression_controller_->state());
- 
+
   // Wait less than allowed delay between GestureFlingCancel and TapDown, so the
   // TapDown is still considered associated with the GestureFlingCancel.
   tap_suppression_controller_->AdvanceTime(base::Milliseconds(7));
@@ -86,14 +86,14 @@ TEST_F(TapSuppressionControllerTest, SetScrollableTrueAndSuppressionIfEnabled) {
             tap_suppression_controller_->last_actions());
   EXPECT_EQ(MockTapSuppressionController::LAST_CANCEL_STOPPED_FLING,
             tap_suppression_controller_->state());
- 
+
   // Send TapDown. This TapDown should be suppressed.
   tap_suppression_controller_->SendTapDown();
   EXPECT_EQ(MockTapSuppressionController::TAP_DOWN_SUPPRESSED,
             tap_suppression_controller_->last_actions());
   EXPECT_EQ(MockTapSuppressionController::SUPPRESSING_TAPS,
             tap_suppression_controller_->state());
- 
+
   // Send TapUp. This TapUp should be suppressed.
   tap_suppression_controller_->SendTapUp();
   EXPECT_EQ(MockTapSuppressionController::TAP_UP_SUPPRESSED,
@@ -101,5 +101,5 @@ TEST_F(TapSuppressionControllerTest, SetScrollableTrueAndSuppressionIfEnabled) {
   EXPECT_EQ(MockTapSuppressionController::SUPPRESSING_TAPS,
             tap_suppression_controller_->state());
 }
- 
+
 }  // namespace input

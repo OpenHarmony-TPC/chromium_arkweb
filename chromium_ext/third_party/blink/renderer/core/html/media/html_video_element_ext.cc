@@ -40,7 +40,7 @@ const uint16_t kVideoBitrateDefault = 2000;    // bitRate default 2000kb/s
 void HTMLVideoElement::RequestEnterFullscreen() {
   if (!IsFullscreen()) {
     FullscreenOptions* options = FullscreenOptions::Create();
-    options->setNavigationUI("hide");
+    options->setNavigationUI(V8FullscreenNavigationUI::Enum::kHide);
     Fullscreen::RequestFullscreen(*this, options,
                                   FullscreenRequestType::kForCustomMediaPlayer);
   }
@@ -94,8 +94,10 @@ void HTMLVideoElement::OnPictureInPictureStateChanged(
   }
 
   for (auto& observer : GetMediaPlayerObserverRemoteSet()) {
+    if (observer) {
     observer->OnPictureInPictureStateChanged(state, width, height);
   }
+}
 }
 
 void HTMLVideoElement::PipDown(bool state) {

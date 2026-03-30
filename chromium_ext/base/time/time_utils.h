@@ -16,9 +16,10 @@
 #define SRC_ARKWEB_CHROMIUM_EXT_BASE_TIME_TIME_UTILS_H
 
 #include "base/time/time.h"
+#include "base/base_export.h"
 
 namespace base {
-class TimeUtils {
+class BASE_EXPORT TimeUtils {
  public:
 #if BUILDFLAG(ARKWEB_PRECOMPILE)
   // Returns the UTC time string parsed from base::Time

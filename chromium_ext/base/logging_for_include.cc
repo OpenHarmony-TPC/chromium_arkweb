@@ -10,10 +10,9 @@ void SetLoggerCallbackToBase(LoggerCallbackFunction loggerCallback) {
   g_logger_callback = loggerCallback;
 }
 
-const char kNetwork[] = "[WebNetwork]";
-const char kNavigation[] = "[WebNavigation]";
-const char kLoadTracker[] = "[WebLoadTracker]";
-const char kHttpsUpgrades[] = "[WebHttpsUpgrades]";
+BASE_EXPORT bool SupportFeedback() {
+  return g_logger_callback != nullptr || g_log_message_handler != nullptr;
+}
 
 bool IsEnableLoggerReport() {
   static bool is_enable = false;

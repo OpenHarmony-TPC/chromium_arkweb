@@ -24,7 +24,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 LayoutNative::LayoutNative(Element* native) : LayoutImage(native) {
   SetImageResource(MakeGarbageCollected<LayoutImageResource>());
 }
@@ -46,12 +45,32 @@ HTMLPlugInElement* LayoutNative::PluginElement() const {
   return To<HTMLPlugInElement>(GetNode());
 }
 
+PhysicalNaturalSizingInfo LayoutNative::GetNaturalDimensions() const {
+  NOT_DESTROYED();
+  if (PluginElement() && PluginElement()->Utils()->CheckIntrinsicSizeEnable()) {
+    PhysicalNaturalSizingInfo sizing_info;
+    LayoutUnit scaled_width =
+        LayoutUnit(static_cast<int>(LayoutReplaced::kDefaultWidth * StyleRef().EffectiveZoom()));
+    LayoutUnit scaled_height =
+        LayoutUnit(static_cast<int>(LayoutReplaced::kDefaultHeight * StyleRef().EffectiveZoom()));
+    sizing_info.size = PhysicalSize(scaled_width, scaled_height);
+    sizing_info.has_width = true;
+    sizing_info.has_height = true;
+    sizing_info.aspect_ratio = PhysicalSize();
+    LOG(INFO) << "[NativeEmbed] LayoutNative::GetNaturalDimensions(Enable=true), calculate size: "
+              << sizing_info.size.ToString().Utf8();
+    return sizing_info;
+  }
+  return LayoutImage::GetNaturalDimensions();
+}
+
 PhysicalRect LayoutNative::ReplacedContentRectFrom(
     const PhysicalRect& base_content_rect) const {
   NOT_DESTROYED();
 
+  PhysicalNaturalSizingInfo sizing_info = GetNaturalDimensions();
   return PreSnappedRectForPersistentSizing(
-      ComputeReplacedContentRect(base_content_rect));
+      ComputeReplacedContentRect(base_content_rect, sizing_info));
 }
 
 bool LayoutNative::SupportsAcceleratedRendering() const {
@@ -66,7 +85,6 @@ CompositingReasons LayoutNative::AdditionalCompositingReasons() const {
   NOT_DESTROYED();
   return CompositingReason::kVideo;
 }
-// LCOV_EXCL_STOP
 
 }  // namespace blink
                      

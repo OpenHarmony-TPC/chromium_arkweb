@@ -80,7 +80,6 @@
 #include "content/browser/renderer_host/page_delegate.h"
 #include "content/browser/renderer_host/render_frame_host_delegate.h"
 #include "content/browser/renderer_host/render_view_host_impl.h"
-#include "content/browser/renderer_host/system_entropy_utils.h"
 #include "content/browser/site_info.h"
 #include "content/browser/site_instance_impl.h"
 #include "content/common/content_constants_internal.h"
@@ -176,10 +175,13 @@ const std::string& ArkWebNavigationControllerImplExt::GetOriginalUrl() {
 #if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
 NavigationController::NavigationEntryUpdateError
 ArkWebNavigationControllerImplExt::InsertBackForwardEntry(int index, const GURL& url) {
+  DLOG(INFO) << "InsertNavigationEntryAtFront url: "
+             << url::LogUtils::ConvertUrlWithMask(url.spec()) << "[index]"
+             << index;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO, kNavigation)
-      << "InsertBackForwardEntry url:"
-      << url::LogUtils::ConvertUrlWithMask(url.spec()) << " index:" << index;
+  LOG_FEEDBACK(INFO) << "InsertBackForwardEntry url: "
+                     << url::LogUtils::ConvertUrlWithMask(url.spec())
+                     << "[index]" << index;
 #endif
   if (index < 0 || static_cast<size_t>(index) > entries_.size()) {
     return NavigationEntryUpdateError::ERR_WRONG_OFFSET;
@@ -219,15 +221,21 @@ ArkWebNavigationControllerImplExt::InsertBackForwardEntry(int index, const GURL&
 
 NavigationController::NavigationEntryUpdateError
 ArkWebNavigationControllerImplExt::UpdateNavigationEntryUrl(int index, const GURL& url) {
+  DLOG(INFO) << "UpdateNavigationEntryUrl url: "
+             << url::LogUtils::ConvertUrlWithMask(url.spec()) << "[index]" << index;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-  LOG_FEEDBACK(INFO, kNavigation)
-      << "UpdateNavigationEntryUrl index:" << index
-      << " url:" << url::LogUtils::ConvertUrlWithMask(url.spec());
+  LOG_FEEDBACK(INFO) << "UpdateNavigationEntryUrl url: "
+                     << url::LogUtils::ConvertUrlWithMask(url.spec())
+                     << "[index]" << index;
 #endif
   if (frame_tree_->IsLoadingIncludingInnerFrameTrees()) {
+    LOG(ERROR)
+        << "If the url of the entry is modified during the loading process,"
+        << " it will cause some unpredictable effects!";
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
-    LOG_FEEDBACK(ERROR, kNavigation)
-        << "UpdateNavigationEntryUrl message:failedDueLoading";
+    LOG_FEEDBACK(ERROR)
+        << "If the url of the entry is modified during the loading process,"
+        << " it will cause some unpredictable effects!";
 #endif
     return NavigationEntryUpdateError::ERR_OTHER;
   }

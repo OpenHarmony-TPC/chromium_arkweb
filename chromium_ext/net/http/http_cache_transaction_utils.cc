@@ -14,13 +14,11 @@
  */
 #include "arkweb/chromium_ext/net/http/http_cache_transaction_utils.h"
 
-#include "base/logging.h"
-#include "net/http/http_cache.h"
-
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
-
+#include "base/logging.h"
+#include "net/http/http_cache.h"
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
 #include "arkweb/chromium_ext/net/base/page_res_request_info.h"
 #endif
@@ -32,7 +30,7 @@ HttpTransactionUtils::HttpTransactionUtils(HttpCache::Transaction* http_cache_tr
   this->http_cache_transaction_ = http_cache_transaction;
 }
 
-#if BUILDFLAG(ARKWEB_PRP_PRELOAD)
+#if BUILDFLAG(ARKWEB_PRP_PRELOAD) && BUILDFLAG(IS_OHOS)
 void HttpTransactionUtils::UpdateCacheInfo(const HttpResponseInfo& response)
 {
   if (http_cache_transaction_->preload_info_ == nullptr || response.headers == nullptr) {
@@ -67,7 +65,7 @@ void HttpTransactionUtils::UpdateCacheInfo(const HttpResponseInfo& response)
 }
 #endif
 
-#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
 int HttpTransactionUtils::RestartWithSecureDnsOnly(
     CompletionOnceCallback& callback)
 {
@@ -99,8 +97,8 @@ int HttpTransactionUtils::RestartNetworkRequestWithSecureDnsOnly()
       HttpCache::Transaction::State::STATE_SEND_REQUEST_COMPLETE;
   if (http_cache_transaction_->request_ !=
           http_cache_transaction_->initial_request_ &&
-      http_cache_transaction_->custom_request_) {
-    http_cache_transaction_->custom_request_->secure_dns_only = true;
+      http_cache_transaction_->mutable_request_) {
+    http_cache_transaction_->mutable_request_->secure_dns_only = true;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
     LOG_FEEDBACK(INFO)
         << "RestartNetworkRequestWithSecureDnsOnly secure_dns_only "

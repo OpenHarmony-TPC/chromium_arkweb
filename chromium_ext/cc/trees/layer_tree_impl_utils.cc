@@ -20,7 +20,6 @@ namespace cc {
 
 LayerTreeImplUtils::LayerTreeImplUtils(LayerTreeImpl* layer_tree_impl) : layer_tree_impl_(layer_tree_impl) {}
 
-// LCOV_EXCL_START
 LayerTreeImplUtils::~LayerTreeImplUtils() {}
 
 #if BUILDFLAG(ARKWEB_MENU)
@@ -41,14 +40,17 @@ gfx::Rect LayerTreeImplUtils::GetClippedVisualViewportSelectionBounds() const {
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 void LayerTreeImplUtils::OnLayerRectUpdate(int id, const gfx::Rect& rect) {
+#if BUILDFLAG(ARKWEB_FLING) && BUILDFLAG(ARKWEB_SLIDE)
   layer_tree_impl_->host_impl_->OnLayerRectUpdate(id, rect);
+#endif
 }
 
 void LayerTreeImplUtils::OnLayerRectVisibilityChange(int id, bool visibility) {
+#if BUILDFLAG(ARKWEB_FLING) && BUILDFLAG(ARKWEB_SLIDE)
   layer_tree_impl_->host_impl_->OnLayerRectVisibilityChange(id, visibility);
+#endif
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_SYNC_RENDER)
 gfx::Rect LayerTreeImplUtils::ViewportRectForTilePriority(const gfx::Rect& viewport_rect_for_tile_priority) {
@@ -63,11 +65,11 @@ gfx::Rect LayerTreeImplUtils::ViewportRectForTilePriority(const gfx::Rect& viewp
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 void LayerTreeImplUtils::OnLayerBoundsUpdate(int id, const gfx::Rect& bounds) {
+#if BUILDFLAG(ARKWEB_FLING) && BUILDFLAG(ARKWEB_SLIDE)
   layer_tree_impl_->host_impl_->OnLayerBoundsUpdate(id, bounds);
+#endif
 }
 #endif  // ARKWEB_VIDEO_ASSISTANT
-// LCOV_EXCL_STOP
 }

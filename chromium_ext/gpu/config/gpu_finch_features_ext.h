@@ -24,6 +24,7 @@
 #include "third_party/ohos_ndk/includes/ohos_adapter/ohos_adapter_helper.h"
 #endif
 #include "gpu/config/gpu_finch_features.h"
+#include "gpu/gpu_export.h"
 
 namespace features {
 #if BUILDFLAG(ARKWEB_VULKAN)
@@ -32,6 +33,8 @@ bool IsEnableVulkan();
 
 #if BUILDFLAG(ARKWEB_VULKAN)
 GPU_EXPORT BASE_DECLARE_FEATURE(kInsertVKEndSemaphore);
+
+GPU_EXPORT BASE_DECLARE_FEATURE(kVulkanVideoZeroCopy);
 #endif
 
 #if BUILDFLAG(ARKWEB_DRDC)
@@ -44,6 +47,10 @@ GPU_EXPORT BASE_DECLARE_FEATURE(kPreferDrawToCopy);
 
 #if BUILDFLAG(ARKWEB_ANGLE)
 GPU_EXPORT BASE_DECLARE_FEATURE(kDefaultANGLE);
+#endif
+
+#if BUILDFLAG(ARKWEB_PARTIAL_DRAW)
+GPU_EXPORT BASE_DECLARE_FEATURE(kDefaultPartialDraw);
 #endif
 }
 

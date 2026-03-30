@@ -16,6 +16,7 @@
 #include "color_picker_adapter_impl.h"
 
 #include <dlfcn.h>
+#include <string>
 
 #include "arkweb/ohos_nweb/src/nweb_hilog.h"
 

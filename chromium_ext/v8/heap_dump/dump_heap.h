@@ -19,11 +19,12 @@
 #if defined(OH_ENABLE_HEAP_DUMP) && \
     (defined(USING_OHOS) || defined(USING_OHOS_WEB))
 
-#include "binary_writer_base.h"
-#include "dump_format.h"
-#include "dump_objects.h"
-#include "dump_roots.h"
-#include "dump_string_tables.h"
+#include "arkweb/chromium_ext/v8/heap_dump/binary_writer_base.h"
+#include "arkweb/chromium_ext/v8/heap_dump/dump_format.h"
+#include "arkweb/chromium_ext/v8/heap_dump/dump_objects.h"
+#include "arkweb/chromium_ext/v8/heap_dump/dump_roots.h"
+#include "arkweb/chromium_ext/v8/heap_dump/dump_string_tables.h"
+#include "arkweb/chromium_ext/v8/v8_ohlog.h"
 #include "src/base/platform/elapsed-timer.h"
 #include "src/codegen/assembler-inl.h"
 #include "src/heap/combined-heap.h"
@@ -31,37 +32,33 @@
 #include "src/heap/heap-visitor.h"
 #include "src/heap/heap.h"
 #include "src/heap/visit-object.h"
-#include "v8_ohlog.h"
 
 namespace dfx {
 
 class HeapDumper {
-public:
+ public:
   HeapDumper(v8::internal::Heap* heap, BinaryWriterBase* writer);
   ~HeapDumper() = default;
 
   void DumpHeap();
-  void DumpRoots();
-  void DumpStringTable();
-  void DumpObjects();
 
-private:
+ private:
   DISALLOW_GARBAGE_COLLECTION(no_heap_allocation_)
 
   void PreVisit();
   void DumpHeader();
 
   // v8 related
-  v8::internal::Heap* heap_{ nullptr };
+  v8::internal::Heap* heap_{nullptr};
   std::unique_ptr<v8::internal::SafepointScope> safepoint_scope_;
 
   // dump related
-  BinaryWriterBase* writer_{ nullptr };
+  BinaryWriterBase* writer_{nullptr};
   RawHeapHeader header_;
   RootDumper root_dumper_;
   StringTableDumper string_table_dumper_;
   ObjectDumper object_dumper_;
 };
-} // namespace dfx
+}  // namespace dfx
 #endif
 #endif  // DUMP_HEAP_H

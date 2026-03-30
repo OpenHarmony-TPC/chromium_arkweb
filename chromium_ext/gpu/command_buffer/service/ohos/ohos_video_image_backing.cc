@@ -6,7 +6,6 @@
 
 #include "base/ohos/scoped_native_buffer_handle.h"
 #include "components/viz/common/gpu/vulkan_context_provider.h"
-#include "components/viz/common/resources/resource_sizes.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/service/abstract_texture_ohos.h"
 #include "gpu/command_buffer/service/ohos/hw_video_native_buffer_image_backing.h"
@@ -37,7 +36,7 @@ OhosVideoImageBacking::OhosVideoImageBacking(const Mailbox& mailbox,
           color_space,
           surface_origin,
           alpha_type,
-          (SHARED_IMAGE_USAGE_DISPLAY_READ | SHARED_IMAGE_USAGE_GLES2_READ),
+          (SHARED_IMAGE_USAGE_DISPLAY_READ | SHARED_IMAGE_USAGE_GLES2_READ | SHARED_IMAGE_USAGE_RASTER_COPY_SOURCE),
           std::move(debug_label),
           viz::SinglePlaneFormat::kRGBA_8888.EstimatedSizeInBytes(size),
           is_thread_safe,

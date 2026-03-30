@@ -702,7 +702,6 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebSchemeHandler_SetFromEts_002) {
   EXPECT_EQ(ret, ARKWEB_NET_OK);
 }
 
-
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebRequestHeaderList_Create_Test) {
   OH_ArkWebRequestHeaderList_Create(request_, &list_);
   testing::internal::CaptureStderr();
@@ -715,7 +714,7 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebRequestHeaderList_Create_Test) {
   log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("scheme_handler request header list is nullptr"), std::string::npos);
 }
-
+ 
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResourceRequest_GetFrameUrl_Test) {
   char* frame_url = nullptr;
   OH_ArkWebResourceRequest_GetFrameUrl(request_, &frame_url);
@@ -723,13 +722,13 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResourceRequest_GetFrameUrl_Test) {
   OH_ArkWebResourceRequest_GetFrameUrl(nullptr, nullptr);
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("scheme_handler resource request is nullptr"), std::string::npos);
-
+ 
   testing::internal::CaptureStderr();
   OH_ArkWebResourceRequest_GetFrameUrl(request_, nullptr);
   log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("scheme_handler frame_url is nullptr"), std::string::npos);
 }
-
+ 
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebHttpBodyStream_GetUserData_Test) {
   OH_ArkWebHttpBodyStream_GetUserData(stream_);
   testing::internal::CaptureStderr();
@@ -737,22 +736,22 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebHttpBodyStream_GetUserData_Test) {
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("scheme_handler http body stream is nullptr"), std::string::npos);
 }
-
+ 
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWeb_SetSchemeHandler_Test) {
   ArkWeb_SchemeHandler scheme_handler = {};
   bool ret = OH_ArkWeb_SetSchemeHandler(nullptr, nullptr, nullptr);
   EXPECT_FALSE(ret);
-
+ 
   ret = OH_ArkWeb_SetSchemeHandler("http", nullptr, nullptr);
   EXPECT_FALSE(ret);
-
+ 
   ret = OH_ArkWeb_SetSchemeHandler("http", "test_tag", nullptr);
   EXPECT_FALSE(ret);
-
+ 
   ret = OH_ArkWeb_SetSchemeHandler("http", "test_tag", &scheme_handler);
   EXPECT_TRUE(ret);
 }
-
+ 
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResponse_SetMimeType_Test) {
   OH_ArkWeb_DestroyResponse(nullptr);
   int ret = OH_ArkWebResponse_SetMimeType(nullptr, "type");
@@ -762,7 +761,7 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResponse_SetMimeType_Test) {
   ret = OH_ArkWebResponse_SetMimeType(response_, "type");
   EXPECT_EQ(ret, ARKWEB_NET_OK);
 }
-
+ 
 TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResponse_GetMimeType_Test) {
   char* mime_type = nullptr;
   OH_ArkWebResponse_GetMimeType(response_, &mime_type);
@@ -770,7 +769,7 @@ TEST_F(ArkWeb_SchemeHandler_Test, OH_ArkWebResponse_GetMimeType_Test) {
   OH_ArkWebResponse_GetMimeType(nullptr, nullptr);
   std::string log_output = testing::internal::GetCapturedStderr();
   EXPECT_NE(log_output.find("scheme_handler response is nullptr"), std::string::npos);
-
+ 
   testing::internal::CaptureStderr();
   OH_ArkWebResponse_GetMimeType(response_, nullptr);
   log_output = testing::internal::GetCapturedStderr();

@@ -14,7 +14,6 @@
  */
 
 #include "arkweb/chromium_ext/components/viz/service/frame_sinks/root_compositor_frame_sink_impl_ext.h"
-#include "components/viz/service/display_embedder/server_shared_bitmap_manager.h"
 #include "components/viz/test/test_output_surface_provider.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "components/viz/test/mock_display_client.h"
@@ -67,10 +66,8 @@ struct RootCompositorFrameSinkData {
 };
 
 TEST_F(RootCompositorFrameSinkImplExtTest, RootCompositorFrameSinkImplExtTest01) {
-  ServerSharedBitmapManager shared_bitmap_manager_;
   TestOutputSurfaceProvider output_surface_provider_;
-  FrameSinkManagerImpl managerImpl(FrameSinkManagerImpl::
-    InitParams(&shared_bitmap_manager_, &output_surface_provider_));
+  FrameSinkManagerImpl managerImpl((FrameSinkManagerImpl::InitParams(&output_surface_provider_)));
 
   RootCompositorFrameSinkData root_data;
   managerImpl.CreateRootCompositorFrameSink(root_data.BuildParams(frameSinkId));
@@ -85,6 +82,9 @@ TEST_F(RootCompositorFrameSinkImplExtTest, RootCompositorFrameSinkImplExtTest01)
     EXPECT_EQ(dealed, true);
 
     ASSERT_NO_FATAL_FAILURE(sinkImplExt->EvictFrameBackBuffers());
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+    ASSERT_NO_FATAL_FAILURE(sinkImplExt->SetIfNeedCleanBuffers(false));
+#endif
     ASSERT_NO_FATAL_FAILURE(sinkImplExt->SetIsOfflineWebComponentInactive(false));
     ASSERT_NO_FATAL_FAILURE(sinkImplExt->SetIsOfflineWebComponentInactive(true));
     ASSERT_NO_FATAL_FAILURE(sinkImplExt->DisableSwapUntilMaximized());

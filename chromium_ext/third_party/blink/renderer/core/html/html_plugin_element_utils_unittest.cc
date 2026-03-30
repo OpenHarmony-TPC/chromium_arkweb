@@ -46,8 +46,7 @@ class HTMLPlugInElementUtilsTest : public PageTestBase {
   void SetUp() override {
     PageTestBase::SetUp();
     GetFrame().GetSettings()->SetNativeEmbedModeEnabled(true);
-
-    GetDocument().body()->setInnerHTML("<embed id='test-plugin' type='test/native'>");
+    GetDocument().body()->SetHTMLUnsafeWithoutTrustedTypes("<embed id='test-plugin' type='test/native'>");
     plugin_ = To<HTMLEmbedElement>(GetDocument().getElementById(AtomicString("test-plugin")));
     utils_ = MakeGarbageCollected<HTMLPlugInElementUtils>(plugin_.Get());
 

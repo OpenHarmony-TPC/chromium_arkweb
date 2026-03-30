@@ -51,11 +51,11 @@ class OHOSMockImage : public Image {
     return gfx::Size(0, 0);
   }
 
-  bool CurrentFrameKnownToBeOpaque() override { return false; }
-
   void DestroyDecodedData() override {
     // Image pure virtual stub.
   }
+
+  bool IsOpaque() override {}
 
   void Draw(cc::PaintCanvas*,
             const cc::PaintFlags&,
@@ -127,8 +127,8 @@ TEST_F(DragImageExtTest, HwClampedImageScale) {
  * @tc.type: FUNC
  */
 TEST_F(DragImageExtTest, filterNonPrintable) {
-  const WTF::String input = WTF::String("asdfas\0\x01");
-  WTF::String printable = DragImageExt::filterNonPrintable(input);
+  const String input = String("asdfas\0\x01");
+  String printable = DragImageExt::filterNonPrintable(input);
   EXPECT_EQ(6, printable.length());
 }
 /**

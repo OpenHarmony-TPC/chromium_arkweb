@@ -12,11 +12,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 module blink.mojom;
-
+ 
 import "url/mojom/url.mojom";
-
+ 
 struct VideoExpParams {
   int64 start_used_time;
   int64 total_freeze_time;
@@ -34,7 +34,7 @@ struct VideoExpParams {
   int32 video_height;
   string video_player;
 };
-
+ 
 interface VideoExperienceReporter {
   ReportVideoExperienceToBI(VideoExpParams params);
 };

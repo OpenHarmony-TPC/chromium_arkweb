@@ -24,7 +24,7 @@ class NetConfigAdapterImpl final : public NetConfigAdapter {
   NetConfigAdapterImpl() = default;
   ~NetConfigAdapterImpl() override = default;
 
-  bool GetIsCleartextPermittedByHostName(const std::string& hostname) override;
+  bool GetIsCleartextPermittedByHostName(std::string_view hostname) override;
 
   bool GetIsCleartextCfgByComponent(const std::string& component) override;
 };

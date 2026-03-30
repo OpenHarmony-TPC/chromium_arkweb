@@ -7,6 +7,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. 
 
+#include <GLES/gl.h>
+
 #include "ui/gl/ohos/native_buffer_utils.h"
 
 #include "ui/gl/gl_context.h"
@@ -21,12 +23,13 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include <GLES/gl.h>
 #include <GLES/glext.h>
 #include <sys/poll.h>
 
 namespace gl {
 namespace ohos {
+
+const uint32_t timeout_fence = 2000;
 
 //LCOV_EXCL_START
 gl::ScopedEGLImage CreateEGLImage(EGLClientBuffer egl_client_buffer) {
@@ -116,7 +119,7 @@ bool SyncFenceWait(base::ScopedFD acquire_fence_fd) {
 
   int ret = -1;
   do {
-    ret = poll(&poll_fds, 1, -1);
+    ret = poll(&poll_fds, 1, timeout_fence);
   } while (ret == -1 && (errno == EINTR || errno == EAGAIN));
 
   if (ret == 0) {
@@ -131,7 +134,7 @@ bool SyncFenceWait(base::ScopedFD acquire_fence_fd) {
   }
 
   if (ret < 0) {
-    LOG(ERROR) << "Failed to do SyncFenceWait errno " << errno;
+    LOG(ERROR) << "Failed to do SyncFenceWait errno " << errno << ", invalid fd: " << fence_fd;
     return false;
   }
 

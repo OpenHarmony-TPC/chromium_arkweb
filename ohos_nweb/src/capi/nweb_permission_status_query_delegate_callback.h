@@ -17,6 +17,9 @@
 #define OHOS_NWEB_SRC_NWEB_PERMISSION_STATUS_QUERY_DELEGATE_CALLBACK_H
 
 #include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 #include "ohos_nweb_ex/public/capi/arkweb_permission_status_query.h"
 #endif

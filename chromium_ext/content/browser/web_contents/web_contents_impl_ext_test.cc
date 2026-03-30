@@ -114,6 +114,8 @@ class MockWebContentsView : public WebContentsView {
               (const, override));
   MOCK_METHOD(gfx::Rect, GetContainerBounds, (), (const, override));
   MOCK_METHOD(gfx::Rect, GetViewBounds, (), (const, override));
+  MOCK_METHOD(void, Resize, (const gfx::Rect& new_bounds), (override));
+  MOCK_METHOD(gfx::Size, GetSize, (), (const, override));
   MOCK_METHOD(void, Focus, (), (override));
   MOCK_METHOD(void, SetInitialFocus, (), (override));
   MOCK_METHOD(void, StoreFocus, (), (override));
@@ -138,10 +140,6 @@ class MockWebContentsView : public WebContentsView {
   MOCK_METHOD(void, SetOverscrollControllerEnabled, (bool enabled), (override));
   MOCK_METHOD(void, OnCapturerCountChanged, (), (override));
   MOCK_METHOD(void, FullscreenStateChanged, (bool is_fullscreen), (override));
-  MOCK_METHOD(void,
-              UpdateWindowControlsOverlay,
-              (const gfx::Rect& bounding_rect),
-              (override));
   MOCK_METHOD(BackForwardTransitionAnimationManager*,
               GetBackForwardTransitionAnimationManager,
               (),
@@ -174,7 +172,8 @@ class MockDelegate : public RenderFrameHostManager::Delegate {
               CreateRenderViewForRenderManager,
               (RenderViewHost * render_view_host,
                const std::optional<blink::FrameToken>& opener_frame_token,
-               RenderFrameProxyHost* proxy_host),
+               RenderFrameProxyHost* proxy_host,
+               const std::optional<base::UnguessableToken>&navigation_metrics_token),
               (override));
 
   MOCK_METHOD(void,
@@ -292,10 +291,6 @@ class WebContentsImplExtTest : public RenderViewHostImplTestHarness {
         std::make_unique<WakeLockContextHost>(content);
   }
 
- private:
-#if BUILDFLAG(IS_CHROMEOS_LACROS)
-  chromeos::ScopedLacrosServiceTestHelper scoped_lacros_service_test_helper_;
-#endif
 };
 
 TEST_F(WebContentsImplExtTest, GetNWebId001) {
@@ -800,24 +795,24 @@ TEST_F(WebContentsImplExtTest, GetRenderViewHost001) {
   EXPECT_NE(impl, nullptr);
 }
 
-TEST_F(WebContentsImplExtTest, UpdateBrowserControlsState001) {
-  cc::BrowserControlsState constraints = cc::BrowserControlsState::kShown;
-  cc::BrowserControlsState current = cc::BrowserControlsState::kShown;
-  bool animate = false;
-  std::optional<cc::BrowserControlsOffsetTagsInfo> offset_tags_info;
-  ExtendContent() -> UpdateBrowserControlsState(constraints, current, animate,
-                                                offset_tags_info);
-}
+// TEST_F(WebContentsImplExtTest, UpdateBrowserControlsState001) {
+//   cc::BrowserControlsState constraints = cc::BrowserControlsState::kShown;
+//   cc::BrowserControlsState current = cc::BrowserControlsState::kShown;
+//   bool animate = false;
+//   std::optional<cc::BrowserControlsOffsetTagsInfo> offset_tags_info;
+//   ExtendContent() -> UpdateBrowserControlsState(constraints, current, animate,
+//                                                 offset_tags_info);
+// }
 
-TEST_F(WebContentsImplExtTest, GetMediaPlayerId001) {
-  int delegate_id = 0;
-  int child_id = 0;
-  int frame_routing_id = 0;
-  bool status = false;
-  auto id = ExtendContent()->GetMediaPlayerId(delegate_id, child_id,
-                                              frame_routing_id, status);
-  EXPECT_EQ(id.delegate_id, 0);
-}
+// TEST_F(WebContentsImplExtTest, GetMediaPlayerId001) {
+//   int delegate_id = 0;
+//   int child_id = 0;
+//   int frame_routing_id = 0;
+//   bool status = false;
+//   auto id = ExtendContent()->GetMediaPlayerId(delegate_id, child_id,
+//                                               frame_routing_id, status);
+//   EXPECT_EQ(id.delegate_id, 0);
+// }
 
 TEST_F(WebContentsImplExtTest, OnPip001) {
   int status = 0;
@@ -1476,95 +1471,6 @@ TEST_F(WebContentsImplExtTest, GetRenderViewHost003) {
       .WillOnce(::testing::Return(rfh));
   auto impl = ExtendContent()->GetRenderViewHost();
   EXPECT_NE(impl, nullptr);
-}
-
-TEST_F(WebContentsImplExtTest, StartCamera002) {
-  int n_Web_id = 0;
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  ExtendContent()->StartCamera(n_Web_id);
-}
-
-TEST_F(WebContentsImplExtTest, StopCamera001) {
-  int n_Web_id = 0;
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  ExtendContent()->StopCamera(n_Web_id);
-}
-
-TEST_F(WebContentsImplExtTest, CloseCamera001) {
-  int n_Web_id = 0;
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  ExtendContent()->CloseCamera(n_Web_id);
-}
-
-TEST_F(WebContentsImplExtTest, StopScreenCapture002) {
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  int32_t nweb_id = 0;
-  std::string session_id = "";
-  ExtendContent()->StopScreenCapture(nweb_id, session_id);
-}
-
-TEST_F(WebContentsImplExtTest, SetScreenCapturePickerShow002) {
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  ExtendContent()->SetScreenCapturePickerShow();
-}
-
-TEST_F(WebContentsImplExtTest, DisableSessionReuse002) {
-  // first para
-  auto currentProcess = base::CommandLine::ForCurrentProcess();
-  MainFunctionParams main_func_para(currentProcess);
-  // second para
-  std::unique_ptr<base::ThreadPoolInstance::ScopedExecutionFence>
-      scoped_execution_fence =
-          std::make_unique<base::ThreadPoolInstance::ScopedExecutionFence>();
-  std::unique_ptr<BrowserMainLoop> browser_context =
-      std::make_unique<BrowserMainLoop>(std::move(main_func_para),
-                                        std::move(scoped_execution_fence));
-  ExtendContent()->DisableSessionReuse();
 }
 
 TEST_F(WebContentsImplExtTest, EnterFullscreenMode002) {

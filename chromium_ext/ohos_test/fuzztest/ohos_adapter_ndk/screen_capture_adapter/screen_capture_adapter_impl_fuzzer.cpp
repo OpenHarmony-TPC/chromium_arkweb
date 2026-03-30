@@ -619,7 +619,7 @@ bool ScreenCaptureAdapterImplNullFuzzTest(FuzzedDataProvider* fdp)
         std::make_shared<ScreenCaptureConfigAdapterMock>();
     config->SetCaptureMode(OHOS::NWeb::CaptureModeAdapter::CAPTURE_HOME_SCREEN);
     if (kFuzzMaxOriginalStream <= kFuzzMaxOriginalStreamNums) {
-        config->SetDataType(OHOS::NWeb::DataTypeAdapter::ORIGINAL_STREAM_DATA_TYPE);
+    config->SetDataType(OHOS::NWeb::DataTypeAdapter::ORIGINAL_STREAM_DATA_TYPE);
         kFuzzMaxOriginalStream++;
     } else {
         config->SetDataType(OHOS::NWeb::DataTypeAdapter::CAPTURE_FILE_DATA_TYPE);

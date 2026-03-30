@@ -15,6 +15,8 @@
 
 #include "arkweb_input_router_impl_utils.h"
 
+#include "base/time/time.h"
+#include "base/trace_event/trace_event.h"
 #include "components/input/input_router_impl.h"
 
 namespace input {
@@ -51,7 +53,9 @@ void ArkwebInputRouterImplUtils::SendGestureEventEx(
   } else if (gesture_event.event.GetType() ==
              WebInputEvent::Type::kGestureScrollEnd) {
     LOG(INFO) << "InputRouterImpl::SendGestureEvent type=kGestureScrollEnd";
+#if BUILDFLAG(ARKWEB_PERFORMANCE_INC_FREQ)
     input_router_impl_->client_->GetWidgetInputHandler()->TryFinishFling();
+#endif
     if (base::ohos::IsMobileDevice()) {
       OHOS::NWeb::OhosAdapterHelper::GetInstance()
           .CreateSocPerfClientAdapter()

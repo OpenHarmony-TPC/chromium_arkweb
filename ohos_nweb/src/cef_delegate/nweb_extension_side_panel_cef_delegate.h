@@ -20,7 +20,12 @@
 #include <mutex>
 #include <memory>
  
+#include "arkweb/build/features/features.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 #include "base/functional/callback.h"
+#include "build/build_config.h"
 #include "ohos_nweb/src/capi/nweb_extension_api_callback.h"
 #include "ohos_nweb/src/capi/web_extension_side_panel_items.h"
 

@@ -46,8 +46,8 @@ class ChromeClientImplExt : public ChromeClientImpl {
       OnTextSelectedCallback callback,
       OnDestroyImageAnalyzerOverlayCallback destroy_callback) override;
   uint32_t GetFoldStatus(LocalFrame* frame) override;
-  WTF::Vector<int8_t> GetWordSelection(LocalFrame* frame,
-                                       const WTF::String& text,
+  Vector<int8_t> GetWordSelection(LocalFrame* frame,
+                                       const String& text,
                                        int8_t offset) override;
 #endif  // ARKWEB_AI
 

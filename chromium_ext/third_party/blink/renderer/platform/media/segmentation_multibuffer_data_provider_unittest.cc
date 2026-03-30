@@ -370,7 +370,7 @@ TEST_F(SegmentationMultiBufferDataProviderTest, VideoOpt_Read001) {
   segment_provider_->range_vector_.push_back(std::make_pair(start, end));
 
   scoped_refptr<media::DataBuffer> data_buffer = segment_provider_->Read();
-  EXPECT_TRUE(data_buffer->data_size() == block_size);
+  EXPECT_TRUE(data_buffer->capacity() == block_size);
   EXPECT_FALSE(data_buffer->end_of_stream());
 }
 

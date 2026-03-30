@@ -41,7 +41,7 @@ TEST_F(MojoDecoderServiceIncludeTest, TestPipEnable) {
   MojoCdmServiceContext cdm_service_context_;
   auto mojo_void_service_ = std::make_unique<media::MojoVideoDecoderService>(
             &mojo_media_client_, &cdm_service_context_,
-            mojo::PendingRemote<media::stable::mojom::StableVideoDecoder>());
+            mojo::PendingRemote<mojom::VideoDecoder>());
 
   ASSERT_NO_FATAL_FAILURE(mojo_void_service_->PipEnable(true));
   mojo_void_service_->decoder_ = nullptr;
@@ -55,7 +55,7 @@ TEST_F(MojoDecoderServiceIncludeTest, TestRecycleDmaBuffer) {
   MojoCdmServiceContext cdm_service_context_;
   auto mojo_void_service_ = std::make_unique<media::MojoVideoDecoderService>(
             &mojo_media_client_, &cdm_service_context_,
-            mojo::PendingRemote<media::stable::mojom::StableVideoDecoder>());
+            mojo::PendingRemote<mojom::VideoDecoder>());
 
   ASSERT_NO_FATAL_FAILURE(mojo_void_service_->RecycleDmaBuffer());
   mojo_void_service_->decoder_ = nullptr;
@@ -67,7 +67,7 @@ TEST_F(MojoDecoderServiceIncludeTest, TestResumeDmaBuffer) {
   MojoCdmServiceContext cdm_service_context_;
   auto mojo_void_service_ = std::make_unique<media::MojoVideoDecoderService>(
             &mojo_media_client_, &cdm_service_context_,
-            mojo::PendingRemote<media::stable::mojom::StableVideoDecoder>());
+            mojo::PendingRemote<mojom::VideoDecoder>());
   ASSERT_NO_FATAL_FAILURE(mojo_void_service_->ResumeDmaBuffer());
   mojo_void_service_->decoder_ = nullptr;
   ASSERT_NO_FATAL_FAILURE(mojo_void_service_->ResumeDmaBuffer());

@@ -189,12 +189,12 @@ public:
         viz::VulkanContextProvider* vulkan_context_provider = new MockVulkanContextProvider();
         viz::MetalContextProvider* metal_context_provider = nullptr;
         gpu::DawnContextProvider* dawn_context_provider = nullptr;
-        base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
+        scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
         context_state_ = new SharedContextState(
             share_group, surf, context, false,
             std::move(context_lost_callback), gr_context_type,
             vulkan_context_provider, metal_context_provider, dawn_context_provider,
-            peak_memory_monitor, false);
+            peak_memory_monitor, false, false, nullptr);
         SharedImageUsageSet usage = {
             SHARED_IMAGE_USAGE_GLES2_READ,   SHARED_IMAGE_USAGE_GLES2_WRITE,
             SHARED_IMAGE_USAGE_RASTER_READ,  SHARED_IMAGE_USAGE_RASTER_WRITE,
@@ -275,12 +275,12 @@ public:
         viz::VulkanContextProvider* vulkan_context_provider = new MockVulkanContextProvider();
         viz::MetalContextProvider* metal_context_provider = nullptr;
         gpu::DawnContextProvider* dawn_context_provider = nullptr;
-        base::WeakPtr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
+        scoped_refptr<gpu::MemoryTracker::Observer> peak_memory_monitor = nullptr;
         context_state_ = new SharedContextState(
             share_group, surf, context, false,
             std::move(context_lost_callback), gr_context_type,
             vulkan_context_provider, metal_context_provider, dawn_context_provider,
-            peak_memory_monitor, false);
+            peak_memory_monitor, false, false, nullptr);
         SharedImageUsageSet usage = {
             SHARED_IMAGE_USAGE_GLES2_READ,   SHARED_IMAGE_USAGE_GLES2_WRITE,
             SHARED_IMAGE_USAGE_RASTER_READ,  SHARED_IMAGE_USAGE_RASTER_WRITE,

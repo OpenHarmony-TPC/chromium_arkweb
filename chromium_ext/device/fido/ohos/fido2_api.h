@@ -732,3 +732,4 @@ void HMS_FIDO2_PublicKeyAssertionCredential_Destroy(FIDO2_PublicKeyAssertionCred
 
 #endif // FIDO2_H
 /** @} */
+

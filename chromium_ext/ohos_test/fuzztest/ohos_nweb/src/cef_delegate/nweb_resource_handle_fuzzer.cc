@@ -1,6 +1,6 @@
-/*
- * Copyright (c) Huawei Technologies Co., Ltd. 2024-2024. All rights reserved.
- */
+// Copyright 2024 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
 #include <cstring>
 #include <string>
@@ -49,7 +49,7 @@ bool DoSomethingInterestingWithMyAPI(const uint8_t* data, size_t size) {
   int bytes_read = 0;
   nweb_resource_handler.Read(buffer, sizeof(buffer), bytes_read, nullptr);
 
-  int64 response_length = 0;
+  int64_t response_length = 0;
   CefString cef_string = "";
   nweb_resource_handler.GetResponseHeaders(CefResponse::Create(),
                                            response_length, cef_string);

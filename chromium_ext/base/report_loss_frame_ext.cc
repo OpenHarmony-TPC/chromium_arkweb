@@ -55,10 +55,12 @@ void ReportLossFrame::Report() {
 #if defined(REPORT_SYS_EVENT)
   int64_t now = GetCurrentTimestampMS();
   int64_t duration = now - start_time_for_scroll_;
+#if !defined(COMPONENT_BUILD) // FIXME
   base::ThreadPool::PostTask(
       FROM_HERE, {base::TaskPriority::LOWEST},
       base::BindOnce(&ReportJankStats, start_time_for_scroll_, duration,
                      jank_stats_, JANK_STATS_VER));
+#endif
 #endif
   Reset();
 }

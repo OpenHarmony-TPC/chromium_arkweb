@@ -39,6 +39,8 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/gl/init/gl_factory.h"
 
+#include "media/base/audio_bus.h"
+
 using namespace testing;
 using namespace content;
 
@@ -103,7 +105,7 @@ class OHOSAudioOutputStreamTest : public content::RenderViewHostTestHarness {
       return nullptr;
     }
     stream_->parameters_.set_render_process_id(
-        frameHost->GetProcess()->GetID());
+        static_cast<int>(frameHost->GetProcess()->GetID()));
     stream_->parameters_.set_render_frame_id(frameHost->GetRoutingID());
     content::RenderFrameHost* renderFrameHost =
         content::RenderFrameHost::FromID(

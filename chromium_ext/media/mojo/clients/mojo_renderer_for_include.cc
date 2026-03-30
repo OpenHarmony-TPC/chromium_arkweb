@@ -21,8 +21,8 @@ void MojoRenderer::InitializeRendererFromUrlExt() {
 #endif // ARKWEB_CUSTOM_VIDEO_PLAYER
 }
 
-void MojoRenderer::OnInitializedExt() {
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
+void MojoRenderer::OnInitializedExt() {
     if (!request_surface_cb_.is_null()) {
       LOG(INFO) << "component, surface_create_CB created";
       SurfaceCreatedCB surface_create_CB = base::BindPostTaskToCurrentDefault(
@@ -31,8 +31,8 @@ void MojoRenderer::OnInitializedExt() {
       std::move(request_surface_cb_).Run(
           std::move(surface_create_CB), true, "MojoRenderer");
     }
-#endif  // ARKWEB_VIDEO_ASSISTANT
 }
+#endif  // ARKWEB_VIDEO_ASSISTANT
 // LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_MEDIA)

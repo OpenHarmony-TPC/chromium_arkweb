@@ -66,7 +66,7 @@ class CORE_EXPORT DetectSimulatedClickRiskEnhancedImpl final
 
   void OnRequestComplete(int32_t request_id,
                          int32_t ans_code,
-                         const WTF::String& json_result);
+                         const String& json_result);
 
   void HandleBusinessError(int32_t code,
                            Member<ScriptPromiseResolver<IDLString>> resolver);

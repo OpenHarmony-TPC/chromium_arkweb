@@ -16,6 +16,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_BASE_UTILS_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WIDGET_BASE_UTILS_H_
 
+#include "base/sequence_checker.h"
 #include "third_party/blink/renderer/platform/widget/compositing/layer_tree_view_delegate.h"
 #include "third_party/blink/renderer/platform/widget/compositing/render_frame_metadata_observer_impl.h"
 #include "third_party/blink/renderer/platform/widget/input/widget_base_input_handler.h"
@@ -29,7 +30,7 @@ class BLINK_PLATFORM_EXPORT WidgetBaseUtils {
  public:
   WidgetBaseUtils(WidgetBase* widget_base);
 
-#if BUILDFLAG(IS_ARKWEB)
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING) && !BUILDFLAG(ARKWEB_TEST)
   void ReportForegroundThreadPool();
   bool GetCmdValue();
 #endif
@@ -38,6 +39,7 @@ class BLINK_PLATFORM_EXPORT WidgetBaseUtils {
   void SetOverscrollMode(int mode);
   void SetRequestKeyboardReason(int32_t requestKeyboardReason);
   int32_t GetRequestKeyboardReason() const { return requestKeyboardReason_; }
+  bool IsElementExist(std::string xPath);
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   gfx::Vector2dF GetOverScrollOffset();
   void OnOverScrollOffsetChanged(float offset_x, float offset_y);
@@ -66,9 +68,10 @@ class BLINK_PLATFORM_EXPORT WidgetBaseUtils {
 #if BUILDFLAG(ARKWEB_INPUT_EVENTS)
   int32_t requestKeyboardReason_ = 0;
 #endif
-#if BUILDFLAG(IS_ARKWEB)
-  bool cmd_value_ = false;
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING) && !BUILDFLAG(ARKWEB_TEST)
+  bool cmd_enable_report_thread_pool_ = false;
 #endif
+  SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<WidgetBaseUtils> weak_ptr_factory_{this};
 };
 

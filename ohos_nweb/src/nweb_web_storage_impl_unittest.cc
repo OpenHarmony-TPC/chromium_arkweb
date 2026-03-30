@@ -14,8 +14,8 @@
  */
 
 #include <gmock/gmock.h>
-#include "arkweb/build/features/features.h"	
-#include "build/build_config.h"
+
+#include "arkweb/build/features/features.h"
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif

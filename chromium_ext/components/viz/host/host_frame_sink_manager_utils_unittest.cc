@@ -28,7 +28,7 @@ class MockFrameSinkManager : public mojom::FrameSinkManager {
 
   void RegisterFrameSinkId(const ::viz::FrameSinkId& frame_sink_id,
                            bool report_activation) override {}
-  void InvalidateFrameSinkId(const ::viz::FrameSinkId& frame_sink_id) override {
+  void InvalidateFrameSinkId(const ::viz::FrameSinkId& frame_sink_id, InvalidateFrameSinkIdCallback callback) override {
   }
   void SetFrameSinkDebugLabel(const ::viz::FrameSinkId& frame_sink_id,
                               const std::string& debug_label) override {}
@@ -60,7 +60,8 @@ class MockFrameSinkManager : public mojom::FrameSinkManager {
       ::mojo::PendingRemote<::viz::mojom::VideoDetectorObserver> observer)
       override {}
   void CreateVideoCapturer(
-      ::mojo::PendingReceiver<::viz::mojom::FrameSinkVideoCapturer> receiver)
+      ::mojo::PendingReceiver<::viz::mojom::FrameSinkVideoCapturer> receiver,
+      uint32_t capture_version_source)
       override {}
   void EvictSurfaces(
       const std::vector<::viz::SurfaceId>& surface_ids) override {}
@@ -81,10 +82,6 @@ class MockFrameSinkManager : public mojom::FrameSinkManager {
   void EnableFrameSinkManagerTestApi(
       ::mojo::PendingReceiver<::viz::mojom::FrameSinkManagerTestApi> receiver)
       override {}
-  void SetupRenderInputRouterDelegateConnection(
-      uint32_t grouping_id,
-      ::mojo::PendingRemote<::input::mojom::RenderInputRouterDelegateClient>
-          rir_delegate_client_remote) override {}
   MOCK_METHOD(void,
               SetEnableLowerFrameRate,
               (bool enabled, const ::viz::FrameSinkId& frame_sink_id),
@@ -109,6 +106,12 @@ class MockFrameSinkManager : public mojom::FrameSinkManager {
               EvictFrameBackBuffers,
               (const ::viz::FrameSinkId& frame_sink_id),
               (override));
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+  MOCK_METHOD(void,
+              SetIfNeedCleanBuffers,
+              (const ::viz::FrameSinkId& frame_sink_id, bool need_clean_buffers),
+              (override));
+#endif
   MOCK_METHOD(void,
               SetIsOfflineWebComponentInactive,
               (bool is_inactive, const ::viz::FrameSinkId& frame_sink_id),
@@ -117,6 +120,15 @@ class MockFrameSinkManager : public mojom::FrameSinkManager {
               SetPipActive,
               (bool active, const ::viz::FrameSinkId& frame_sink_id),
               (override));
+  MOCK_METHOD(void,
+              SetupRendererInputRouterDelegateRegistry,
+              (::mojo::PendingReceiver<viz::mojom::RendererInputRouterDelegateRegistry> receiver),
+              (override));
+  MOCK_METHOD(void,
+              NotifyRendererBlockStateChanged,
+              (bool blocked, const std::vector<::viz::FrameSinkId>& render_input_routers),
+              (override));
+  MOCK_METHOD(void, RequestInputBack, (), (override));
   MOCK_METHOD(void,
               ClearBlanklessSnapshotInfo,
               (uint64_t blankless_key),
@@ -133,6 +145,8 @@ class MockHostFrameSinkClient : public HostFrameSinkClient {
                                    base::TimeTicks activation_time) override {}
 
   MOCK_METHOD(void, RestoreRenderFit, (), (override));
+
+  MOCK_METHOD(void, ModifyRenderFit, (int32_t fitType), (override));
 };
 
 class HostFrameSinkManagerUtilsTest : public testing::Test {

@@ -18,3 +18,4 @@ ChromeBrowserMainExtraPartsViewsOHOS::~ChromeBrowserMainExtraPartsViewsOHOS() =
 void ChromeBrowserMainExtraPartsViewsOHOS::ToolkitInitialized() {
   ChromeBrowserMainExtraPartsViews::ToolkitInitialized();
 }
+ 

@@ -1,0 +1,185 @@
+[
+    {
+        "is_file": true,
+        "need_chmod": false,
+        "is_need_tar": false,
+        "names": [
+            "icudtl.dat",
+            "chrome_100_percent.pak",
+            "chrome_200_percent.pak",
+            "resources.pak"
+        ],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": "."
+    },
+    {
+        "is_file": true,
+        "need_chmod": false,
+        "is_need_tar": false,
+        "names": [
+            "af.pak",
+            "am.pak",
+            "ar.pak",
+            "be.pak",
+            "bg.pak",
+            "bn.pak",
+            "ca.pak",
+            "cs.pak",
+            "da.pak",
+            "de.pak",
+            "el.pak",
+            "en-GB.pak",
+            "en-US.pak",
+            "es.pak",
+            "es-419.pak",
+            "et.pak",
+            "fa.pak",
+            "fi.pak",
+            "fil.pak",
+            "fr.pak",
+            "gu.pak",
+            "he.pak",
+            "hi.pak",
+            "hr.pak",
+            "hu.pak",
+            "id.pak",
+            "it.pak",
+            "ja.pak",
+            "ka.pak",
+            "kk.pak",
+            "km.pak",
+            "kn.pak",
+            "ko.pak",
+            "lt.pak",
+            "lv.pak",
+            "mk.pak",
+            "ml.pak",
+            "mr.pak",
+            "ms.pak",
+            "my.pak",
+            "nb.pak",
+            "nl.pak",
+            "pl.pak",
+            "pt-BR.pak",
+            "pt-PT.pak",
+            "ro.pak",
+            "ru.pak",
+            "sk.pak",
+            "sl.pak",
+            "sr.pak",
+            "sv.pak",
+            "sw.pak",
+            "ta.pak",
+            "te.pak",
+            "th.pak",
+            "tr.pak",
+            "uk.pak",
+            "ur.pak",
+            "uz.pak",
+            "vi.pak",
+            "zh-CN.pak",
+            "zh-TW.pak",
+            "zh-HK.pak",
+            "bo-CN.pak",
+            "ug.pak"
+        ],
+        "src_paths": [
+            "out",
+            "$project_name",
+            "locales"
+        ],
+        "dst_path": "."
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libffmpeg.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libEGL.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libGLESv2.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libvulkan.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libvk_swiftshader.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["libarkweb_engine.so"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["snapshot_blob.bin"],
+        "src_paths": [
+            "out",
+            "$project_name"
+        ],
+        "dst_path": ""
+    },
+    {
+        "is_file": true,
+        "need_chmod": true,
+        "is_need_tar":false,
+        "names": ["run_ohos_nweb_ex_unittests"],
+        "src_paths": [
+            "out",
+            "$project_name",
+            "bin"
+        ],
+        "dst_path": ""
+    }
+]

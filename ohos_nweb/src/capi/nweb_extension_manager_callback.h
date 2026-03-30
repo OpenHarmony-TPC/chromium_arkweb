@@ -143,7 +143,7 @@ struct WebExtensionInfoV2 {
   bool buffers_needs_free;
   WebExtensionInfo info;
   WebExtensionManifestInfo manifest_info;
-  bool is_incognito_enabled = false;
+  std::optional<bool> is_incognito_enabled;
   std::vector<NWebContextMenusItemV2> contextMenusV2;
   WebExtensionActionInfoV2 action_v2;
   std::optional<double> install_time;

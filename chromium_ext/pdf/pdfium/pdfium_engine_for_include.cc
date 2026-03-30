@@ -33,9 +33,9 @@ constexpr float kPointRatio = 72.0f;
 std::atomic<uint64_t> g_bookmark_id_{0};
 
 void PDFiumEngine::UpdateSelectionBoundsAndPositions(gfx::Rect& left,
-                                                     gfx::Rect& right,
-                                                     gfx::Rect& clipped_selection_bounds,
-                                                     const std::vector<PDFiumRange>& selections) {
+                                                    gfx::Rect& right,
+                                                    gfx::Rect& clipped_selection_bounds,
+                                                    const std::vector<PDFiumRange>& selections) {
   if (!selections.empty()) {
     int32_t rect_left = std::numeric_limits<int32_t>::max();
     int32_t rect_top = std::numeric_limits<int32_t>::max();
@@ -117,7 +117,6 @@ void PDFiumEngine::OnClickBookmark(const std::string& bookmark_id) {
       // So we try to notify front-end to do navigation and scrolling.
 
       // Apply zoom and orientation.
-      // like front-end does: this.viewport.convertPageToScreen(e.detail.page, e.detail);
       gfx::PointF point;
       if (x && y) {
         point = ConverPageToScreen(page_index, gfx::PointF(x.value_or(0.0), y.value_or(0.0)));
@@ -203,6 +202,12 @@ void PDFiumEngine::CheckSelectionVisibility(const gfx::Rect& left,
         client_->SetIsRightHandleVisible(false);
   } else {
     client_->SetIsRightHandleVisible(true);
+  }
+
+  // Hide menu when no selection exists
+  if (clipped_selection_bounds.width() == 0 && clipped_selection_bounds.height() == 0){
+    client_->SetIsSelectionVisible(false);
+    return;       
   }
 
   // Check if selections are unvisible.

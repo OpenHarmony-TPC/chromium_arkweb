@@ -30,11 +30,10 @@
 #include "gpu/command_buffer/service/shared_image/shared_memory_image_backing_factory.h"
 #include "gpu/command_buffer/service/shared_image/wrapped_sk_image_backing_factory.h"
 #include "gpu/config/gpu_preferences.h"
-#include "gpu/ipc/common/gpu_memory_buffer_impl_shared_memory.h"
 #include "ui/base/ozone_buildflags.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/buffer_format_util.h"
-#include "ui/gfx/gpu_memory_buffer.h"
+#include "ui/gfx/gpu_memory_buffer_handle.h"
 #include "ui/gl/gl_display.h"
 #include "ui/gl/gl_implementation.h"
 #include "ui/gl/gl_switches.h"
@@ -53,10 +52,7 @@ const char* GmbTypeToString(gfx::GpuMemoryBufferType type) {
       return "empty";
     case gfx::SHARED_MEMORY_BUFFER:
       return "shared_memory";
-    case gfx::IO_SURFACE_BUFFER:
     case gfx::NATIVE_PIXMAP:
-    case gfx::DXGI_SHARED_HANDLE:
-    case gfx::ANDROID_HARDWARE_BUFFER:
     case gfx::OHOS_NATIVE_BUFFER:
       return "platform";
   }
@@ -96,7 +92,7 @@ bool SharedImageFactoryExt::CreateSharedImage(const Mailbox& mailbox,
   auto* factory = GetFactoryByUsage(usage_set, si_format, size,
                                     /*pixel_data=*/{}, gmb_type);
   if (!factory) {
-    LogGetFactoryFailed(usage_set, si_format, gmb_type, "ArkwebHeifSupport");
+    LogGetFactoryFailed(usage_set, si_format, gmb_type, size, "ArkwebHeifSupport");
     return false;
   }
 
@@ -110,7 +106,6 @@ bool SharedImageFactoryExt::CreateSharedImage(const Mailbox& mailbox,
                << " usage=" << CreateLabelForSharedImageUsage(usage_set)
                << " buffer_format=" << gfx::BufferFormatToString(format)
                << " gmb_type=" << GmbTypeToString(gmb_type);
-    backing->OnWriteSucceeded();
   }
 
   return RegisterBacking(std::move(backing));

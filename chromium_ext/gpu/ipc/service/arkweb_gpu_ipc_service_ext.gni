@@ -4,8 +4,10 @@
 
 import("//arkweb/build/features/features.gni")
 arkweb_gpu_ipc_service_sources = [
-  "//arkweb/chromium_ext/gpu/ipc/service/image_decode_accelerator_stub_ext.h",
-  "//arkweb/chromium_ext/gpu/ipc/service/image_decode_accelerator_stub_ext.cc",
+# Follow-up Processing:
+# 141彻底删除了image_decode_accelerator_worker相关文件/功能，ohos扩展类无法正常编译，暂时注释
+#  "//arkweb/chromium_ext/gpu/ipc/service/image_decode_accelerator_stub_ext.h",
+#  "//arkweb/chromium_ext/gpu/ipc/service/image_decode_accelerator_stub_ext.cc",
   "//arkweb/chromium_ext/gpu/ipc/service/shared_image_stub_ext.h",
   "//arkweb/chromium_ext/gpu/ipc/service/shared_image_stub_ext.cc",
 ]
@@ -26,6 +28,6 @@ arkweb_gpu_ipc_service_sources += [
 ]
 
 arkweb_gpu_ipc_service_unittest = [
-  "//arkweb/chromium_ext/gpu/ipc/service/new_gpu_channel_unittest.cc",
+#  "//arkweb/chromium_ext/gpu/ipc/service/new_gpu_channel_unittest.cc",
   "//arkweb/chromium_ext/gpu/ipc/service/gpu_hang_adapter_unittest.cc",
 ]

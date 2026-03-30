@@ -30,7 +30,6 @@
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_associated_remote_set.h"
 #include "third_party/blink/renderer/platform/network/mime/mime_type_registry.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
-#include "third_party/blink/renderer/platform/supplementable.h"
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/threading_primitives.h"
@@ -167,7 +166,6 @@ class CORE_EXPORT NativeLoader : public GarbageCollected<NativeLoader>,
       native_bridge_observer_remote_set_;
   Vector<media::mojom::blink::NativeEmbedParamItemPtr> pending_param_changes_;
   bool param_update_task_pending_ = false;
-  base::WeakPtrFactory<NativeLoader> weak_ptr_factory_{this};
 };
 
 }  // namespace blink

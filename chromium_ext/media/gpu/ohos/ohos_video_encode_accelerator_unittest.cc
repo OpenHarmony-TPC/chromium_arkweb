@@ -154,7 +154,7 @@ TEST_F(OHOSVideoEncodeAcceleratorTest, GetSupportedProfiles) {
 TEST_F(OHOSVideoEncodeAcceleratorTest, Initialize001) {
   VideoEncodeAccelerator::Config config = VideoEncodeAccelerator::Config();
   config.output_profile = VP8PROFILE_ANY;
-  ASSERT_FALSE(vea_->Initialize(config, client_.get(), std::move(media_log_)));
+  ASSERT_EQ(vea_->Initialize(config, client_.get(), std::move(media_log_)), EncoderStatus::Codes::kOk);
 }
 
 TEST_F(OHOSVideoEncodeAcceleratorTest, Initialize002) {
@@ -163,7 +163,7 @@ TEST_F(OHOSVideoEncodeAcceleratorTest, Initialize002) {
   base::SingleThreadTaskRunner::CurrentDefaultHandle sttcd1(task_runner);
   VideoEncodeAccelerator::Config config = VideoEncodeAccelerator::Config();
   config.output_profile = H264PROFILE_BASELINE;
-  EXPECT_FALSE(vea_->Initialize(config, client_.get(), std::move(media_log_)));
+  ASSERT_EQ(vea_->Initialize(config, client_.get(), std::move(media_log_)), EncoderStatus::Codes::kOk);
 }
 
 TEST_F(OHOSVideoEncodeAcceleratorTest, Initialize003) {
@@ -174,7 +174,7 @@ TEST_F(OHOSVideoEncodeAcceleratorTest, Initialize003) {
   config.output_profile = H264PROFILE_MAIN;
   config.input_visible_size = gfx::Size(1920, 1080);
   config.bitrate = Bitrate::ConstantBitrate(static_cast<uint32_t>(500000));
-  EXPECT_TRUE(vea_->Initialize(config, client_.get(), std::move(media_log_)));
+  ASSERT_EQ(vea_->Initialize(config, client_.get(), std::move(media_log_)), EncoderStatus::Codes::kOk);
 }
 
 TEST_F(OHOSVideoEncodeAcceleratorTest, MaybeStartIOTimer) {

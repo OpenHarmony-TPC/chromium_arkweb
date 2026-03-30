@@ -15,7 +15,7 @@
  
 #ifndef COMPONENTS_INPUT_TAP_SUPPRESSION_CONTROLLER_FOR_INCLUDE_H_
 #define COMPONENTS_INPUT_TAP_SUPPRESSION_CONTROLLER_FOR_INCLUDE_H_
- 
+
 #if BUILDFLAG(IS_ARKWEB)
 void SetScrollable(bool enable) {
   if (scroll_enabled_ == enable || !tapSuppressionEnabled_) {
@@ -25,5 +25,5 @@ void SetScrollable(bool enable) {
   state_ = scroll_enabled_ ? NOTHING : DISABLED;
 }
 #endif
- 
+
 #endif

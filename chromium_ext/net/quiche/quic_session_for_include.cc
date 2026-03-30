@@ -12,18 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef QUICHE_QUIC_CORE_QUIC_SESSION_H_
 #error "must be in include form QUICHE_QUIC_CORE_QUIC_SESSION_H_"
 #endif
-
+ 
 #include "net/third_party/quiche/src/quiche/quic/core/quic_session.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "arkweb/chromium_ext/net/quiche/quic_stream_frame_detector.h"
-
+ 
 namespace quic {
-
+ 
 std::string QuicSession::GetStreamsInfoForQuicBroken() const {
   std::string info = base::StrCat({
       "connection_id: ",
@@ -52,9 +52,9 @@ std::string QuicSession::GetStreamsInfoForQuicBroken() const {
   }
   return info;
 }
-
+ 
 size_t QuicSession::GetNumActiveStreamsForInterface() const {
   return GetNumActiveStreams();
 }
-
+ 
 }  // namespace quic

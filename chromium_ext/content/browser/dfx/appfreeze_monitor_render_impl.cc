@@ -14,33 +14,23 @@
  */
 
 #include "appfreeze_monitor_render_impl.h"
-
-#include <fstream>
-
-#include "arkweb/chromium_ext/base/process/process_handle_posix_ex.h"
-#include "base/command_line.h"
 #include "third_party/blink/public/common/thread_safe_browser_interface_broker_proxy.h"
 #include "third_party/blink/public/platform/platform.h"
 
-std::string GetProcessName() {
-  std::ifstream input_file("/proc/self/cmdline");
-  if (!input_file.is_open()) {
-    LOG(ERROR) << "Error: Could not open /proc/self/cmdline";
-    return "";
-  }
+#if defined(OS_OHOS)
+#include "arkweb/chromium_ext/content/common/hicollie_freeze_reporter/hicollie_freeze_reporter.h"
+#endif
 
-  std::string processName = "";
-  if (!std::getline(input_file, processName)) {
-    LOG(ERROR) << "Error: Failed to read process name from /proc/self/cmdline";
-  }
-  return processName;
-}
-
-void ReportRenderFreeze() {
+void ReportRenderFreeze(int32_t pid, const std::string& processName, const std::string& freezeMsg, int32_t uid) {
   std::shared_ptr<AppfreezeMonitorImpl> instance = AppfreezeMonitorImpl::GetInstance();
   if (instance && !instance->IsReported()) {
-    instance->GetRemoteAndSend();
+    instance->GetRemoteAndSend(pid, processName, freezeMsg, uid);
   }
+
+#if defined(OS_OHOS)
+  HicollieReporter::SetFreezeMessage("process freeze warning");
+  HicollieReporter::ReportFreezeToHicollie();
+#endif
 }
 AppfreezeMonitorImpl::AppfreezeMonitorImpl() {
   Init();
@@ -64,11 +54,10 @@ std::shared_ptr<AppfreezeMonitorImpl> AppfreezeMonitorImpl::GetInstance() {
   return instance;
 }
 
-void AppfreezeMonitorImpl::GetRemoteAndSend() {
+void AppfreezeMonitorImpl::GetRemoteAndSend(int32_t pid, const std::string& processName, const std::string& freezeMsg,
+                                            int32_t uid) {
   if (remote_.is_bound()) {
-    dfx::mojom::FreezeInfoPtr freezeInfoPtr = dfx::mojom::FreezeInfo::New(base::GetCurrentRealPid(), GetProcessName(),
-      "render freeze", static_cast<int32_t>(getuid()));
-    remote_->ReportRenderFreeze(std::move(freezeInfoPtr));
+    remote_->ReportRenderFreeze(pid, processName, freezeMsg, uid);
     reported_ = true;
   }
 }

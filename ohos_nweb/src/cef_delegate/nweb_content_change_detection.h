@@ -25,6 +25,7 @@ class NWebContentChangeDetection {
   explicit NWebContentChangeDetection(base::WeakPtr<NWebDelegateInterface> nweb_delegate);
   void SetContentChangeDetectionEnable(bool enable);
   void SetContentChangeDetectionConfig(int32_t min_report_time, float text_content_ratio);
+  void RequestWebDomJsonString(std::shared_ptr<NWebMessageValueCallback> callback);
 
  private:
   void StartDetection();

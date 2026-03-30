@@ -14,7 +14,6 @@
  */
 
 #include "arkweb/chromium_ext/content/browser/display_cutout/display_cutout_host_ohos.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "base/test/task_environment.h"

@@ -22,7 +22,6 @@
 #include "cc/trees/commit_state.h"
 
 namespace cc {
-// LCOV_EXCL_START
 LayerTreeHostExt::LayerTreeHostExt(InitParams params, CompositorMode mode)
     : LayerTreeHost(std::move(params), mode) {}
 
@@ -35,34 +34,31 @@ void LayerTreeHostExt::SetPinchSmoothMode(bool isEnable) {
   proxy_->SetPinchSmoothMode(isEnable);
 }
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_MENU)
 void LayerTreeHostExt::RegisterClippedVisualViewportSelectionBounds(
     const gfx::Rect& clipped_selection_bounds) {
-  if (pending_commit_state()->clipped_selection_bounds ==
+  if (this->LayerTreeHost::pending_commit_state()->clipped_selection_bounds ==
       clipped_selection_bounds) {
     return;
   }
 
-  pending_commit_state()->clipped_selection_bounds = clipped_selection_bounds;
-  SetNeedsCommit();
+  this->LayerTreeHost::pending_commit_state()->clipped_selection_bounds = clipped_selection_bounds;
+  this->LayerTreeHost::SetNeedsCommit();
 }
 #endif
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
-// LCOV_EXCL_START
 void LayerTreeHostExt::OnLayerRectUpdate(int id, const gfx::Rect& rect) {
-  DCHECK(IsMainThread());
-  if (auto* layer = LayerById(id)) {
+  DCHECK(this->LayerTreeHost::IsMainThread());
+  if (auto* layer = this->LayerTreeHost::LayerById(id)) {
     layer->OnLayerRectUpdate(rect);
   }
 }
-// LCOV_EXCL_STOP
 
 void LayerTreeHostExt::OnLayerRectVisibilityChange(int id, bool visibility) {
-  DCHECK(IsMainThread());
-  if (auto* layer = LayerById(id)) {
+  DCHECK(this->LayerTreeHost::IsMainThread());
+  if (auto* layer = this->LayerTreeHost::LayerById(id)) {
     layer->OnLayerRectVisibilityChange(visibility);
   }
   if (visibility) {
@@ -76,10 +72,10 @@ void LayerTreeHostExt::CleanupVisibilityForRemovedLayer(Layer* layer) {
   if (!layer) {
     return;
   }
-  DCHECK(IsMainThread());
+  DCHECK(this->LayerTreeHost::IsMainThread());
   int id = layer->id();
   if (visible_layer_ids_.find(id) != visible_layer_ids_.end()) {
-    if (auto* current_layer = LayerById(id)) {
+    if (auto* current_layer = this->LayerTreeHost::LayerById(id)) {
       current_layer->CleanupVisibilityForRemovedLayer(false);
     }
     visible_layer_ids_.erase(id);
@@ -87,7 +83,6 @@ void LayerTreeHostExt::CleanupVisibilityForRemovedLayer(Layer* layer) {
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 void LayerTreeHostExt::OnLayerBoundsUpdate(int id, const gfx::Rect& bounds) {
   DCHECK(IsMainThread());
@@ -96,5 +91,4 @@ void LayerTreeHostExt::OnLayerBoundsUpdate(int id, const gfx::Rect& bounds) {
   }
 }
 #endif  // ARKWEB_VIDEO_ASSISTANT
-// LCOV_EXCL_STOP
 }  // namespace cc

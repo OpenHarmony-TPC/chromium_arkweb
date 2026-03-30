@@ -25,7 +25,7 @@ static bool SetUserDataDirForArkweb(const base::FilePath& user_data_dir) {
   const bool cache_web_directory_valid =
       !cache_web_data_dir.empty() &&
       base::PathService::OverrideAndCreateIfNeeded(
-          chrome::DIR_USER_DATA, cache_web_data_dir, false, true);
+        chrome::DIR_USER_DATA, cache_web_data_dir, false, true);
 
   bool specified_directory_was_invalid = false;
   if (!cache_web_directory_valid) {

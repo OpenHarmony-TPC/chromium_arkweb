@@ -12,11 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef MOCK_SYS_INFO_UTIL_EXT_H
+#define MOCK_SYS_INFO_UTIL_EXT_H
+ 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "testing/gtest/include/gtest/gtest.h"
-
+ 
 namespace base::ohos {
 class SysInfoUtilsMock {
 public:
@@ -42,7 +45,7 @@ public:
   static bool mockMajorVersion;
   static bool mockSeniorVersion;
 };
-
+ 
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -66,5 +69,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
+ 
 } // namespace base::ohos
++#endif

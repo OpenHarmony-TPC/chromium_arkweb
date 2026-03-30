@@ -194,7 +194,7 @@ TEST_F(OHOSAudioInputStreamTest, GetNWebIdOnUIThread001) {
 TEST_F(OHOSAudioInputStreamTest, GetNWebIdOnUIThread002) {
   auto frameHost = main_rfh();
   ASSERT_NE(frameHost, nullptr);
-  params_.set_render_process_id(frameHost->GetProcess()->GetID());
+  params_.set_render_process_id(static_cast<int>(frameHost->GetProcess()->GetID()));
   params_.set_render_frame_id(frameHost->GetRoutingID());
 
   EXPECT_NE(audioInputStream_->GetNWebIdOnUIThread(params_), -1);

@@ -23,6 +23,10 @@
 #include "arkweb/build/features/features.h"
 #include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "arkweb/chromium_ext/url/ohos/log_utils.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
+#include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
+#include "arkweb/chromium_ext/third_party/crashpad/crashpad/util/linux/crashpad_dfx.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/task/thread_pool.h"
@@ -35,12 +39,12 @@
 #include "content/browser/gpu/gpu_process_host.h"
 #include "content/public/browser/browser_thread.h"
 #include "libcef/common/arkweb_request_impl_ext.h"
-#include "third_party/bounds_checking_function/include/securec.h"
 #include "net/base/net_errors.h"
 #include "net/cookies/site_for_cookies.h"
 #include "net/cookies/static_cookie_policy.h"
 #include "net/http/http_request_headers.h"
 #include "nweb_access_request_delegate.h"
+#include "nweb_all_ssl_error_info_impl.h"
 #include "nweb_common.h"
 #include "nweb_console_log_impl.h"
 #include "nweb_context_menu_params_impl.h"
@@ -132,7 +136,6 @@
 
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
-#include "third_party/bounds_checking_function/include/securec.h"
 #endif
 #include "cef/ohos_cef_ext/include/arkweb_frame_ext.h"
 
@@ -156,6 +159,7 @@
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
 #include "ohos_nweb_ex/overrides/ohos_nweb/src/cef_delegate/nweb_safe_browsing_detection_handler.h"
+#include "cef/ohos_cef_ext/libcef/browser/ohos_safe_browsing/ohos_sb_snapshot_info.h"
 #endif
 #endif
 #if BUILDFLAG(ARKWEB_PIP)
@@ -178,9 +182,7 @@
 #endif
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
 #include "arkweb/chromium_ext/base/ohos/logger.h"
-#include "cef/ohos_cef_ext/libcef/common/net/ssl_info_util_ex.h"
 #endif
-#include "ohos_nweb/src/cef_delegate/web_navigation_info_converter.h"
 #if BUILDFLAG(ARKWEB_AUTOLAYOUT)
 #include "nweb_autolayout.h"
 #endif
@@ -211,7 +213,9 @@ const int WEB_CAN_SNAPSHOT_DELAY_TIME = 1500;
 #endif
 
 const int VIEW_PORT_DIFF = 5;
-
+const int IMAGE_MAX_SIZE = 8192;
+const int MAX_TASKS = 10;
+const int MAX_IMAGE_NUM = 20;
 #if BUILDFLAG(ARKWEB_LOGGER_REPORT)
 std::shared_ptr<NWebLoggerCallback> g_logger_callback = nullptr;
 #endif
@@ -222,6 +226,56 @@ static std::unordered_map<int, std::shared_ptr<NWebPermissionRequest>>
     g_nweb_request_map;
 static std::shared_mutex g_nweb_request_map_shared_lock;
 #endif  // ARKWEB_EXT_PERMISSION
+
+#if defined(REPORT_SYS_EVENT)
+uint32_t g_access_fail_count = 0;
+uint32_t g_access_sum_count = 0;
+constexpr base::TimeDelta kPageLoadTime = base::Hours(1);
+struct PageLoadErrData {
+  uint32_t err_count = 0;
+  std::string err_desc = "";
+};
+static std::map<int, PageLoadErrData> g_page_load_error_map;
+static std::shared_mutex g_page_load_error_map_lock;
+
+void ReportPageLoadErrorInfoInternal(uint32_t nwebId)
+{
+  std::unique_lock<std::shared_mutex> lock(g_page_load_error_map_lock);
+  if (g_page_load_error_map.empty()) {
+    return;
+  }
+  for (auto it = g_page_load_error_map.begin(); it != g_page_load_error_map.end(); ++it) {
+    std::string err_type = "load error";
+    ReportPageLoadErrorInfo(nwebId, err_type, it->first, it->second.err_count, it->second.err_desc);
+  }
+  g_page_load_error_map.clear();
+}
+
+void ReportPageLoadStatsInternal(uint32_t nwebId)
+{
+  static base::Time last_report_stats_time;
+  if (last_report_stats_time.is_null()) {
+    last_report_stats_time = base::Time::Now();
+  }
+  base::Time now = base::Time::Now();
+  uint32_t access_success_count = g_access_sum_count - g_access_fail_count;
+  if (now - last_report_stats_time < kPageLoadTime) {
+    return;
+  }
+  ReportPageLoadStats(nwebId, g_access_sum_count, access_success_count, g_access_fail_count);
+  g_access_sum_count = 0;
+  g_access_fail_count = 0;
+  last_report_stats_time = std::move(now);
+  ReportPageLoadErrorInfoInternal(nwebId);
+}
+
+void SetPageLoadErrorInfo(uint32_t nwebId, int error_code, const std::string error_desc)
+{
+  std::unique_lock<std::shared_mutex> lock(g_page_load_error_map_lock);
+  g_page_load_error_map[error_code].err_count += 1;
+  g_page_load_error_map[error_code].err_desc = error_desc;
+}
+#endif
 
 ImageColorType TransformColorType(cef_color_type_t color_type) {
   switch (color_type) {
@@ -394,23 +448,27 @@ DateTimeChooserType ConvertDateTimeChooserType(cef_text_input_type_t type) {
 
 double ConvertDateTimeToMs(const DateTime& datetime) {
   double result =
-      WTF::DateToDaysFrom1970(datetime.year, datetime.month, datetime.day) *
-      WTF::kMsPerDay;
-  result += WTF::kMsPerHour * datetime.hour;
-  result += WTF::kMsPerMinute * datetime.minute;
+      blink::DateToDaysFrom1970(datetime.year, datetime.month, datetime.day) *
+      base::Time::kMillisecondsPerDay;
+  result += (base::Time::kMillisecondsPerSecond *
+             base::Time::kSecondsPerMinute *
+             base::Time::kMinutesPerHour) * datetime.hour;
+  result += (base::Time::kMillisecondsPerSecond *
+             base::Time::kSecondsPerMinute) * datetime.minute;
   return result;
 }
 
 DateTime ConvertMsToDateTime(double ms) {
-  int year = WTF::MsToYear(ms);
-  int year_day = WTF::DayInYear(ms, year);
-  int month = WTF::MonthFromDayInYear(year_day, IsLeapYear(year));
-  int day = WTF::DayInMonthFromDayInYear(year_day, IsLeapYear(year));
-  double value = std::floor(fmod(ms, WTF::kMsPerDay) / WTF::kMsPerSecond);
-  int second = static_cast<int>(fmod(value, WTF::kSecondsPerMinute));
-  value = std::floor(value / WTF::kSecondsPerMinute);
-  int minute = static_cast<int>(fmod(value, WTF::kMinutesPerHour));
-  int hour = static_cast<int>(value / WTF::kMinutesPerHour);
+  int year = blink::MsToYear(ms);
+  int year_day = blink::DayInYear(ms, year);
+  int month = blink::MonthFromDayInYear(year_day, blink::IsLeapYear(year));
+  int day = blink::DayInMonthFromDayInYear(year_day, blink::IsLeapYear(year));
+  double value = std::floor(fmod(ms, base::Time::kMillisecondsPerDay) /
+                               base::Time::kMillisecondsPerSecond);
+  int second = static_cast<int>(fmod(value, base::Time::kSecondsPerMinute));
+  value = std::floor(value / base::Time::kSecondsPerMinute);
+  int minute = static_cast<int>(fmod(value, base::Time::kMinutesPerHour));
+  int hour = static_cast<int>(value / base::Time::kMinutesPerHour);
   return {year, month, day, hour, minute, second};
 }
 
@@ -546,6 +604,19 @@ NavigationPolicy ConvertDisPositionToNavigation(
   }
   return NavigationPolicy::NEW_POPUP;
 }
+
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+bool IsTargetResourceTypeValue(int resource_type) {
+  switch (resource_type) {
+    case static_cast<int>(blink::mojom::ResourceType::kMainFrame):
+    case static_cast<int>(blink::mojom::ResourceType::kSubFrame):
+    case static_cast<int>(blink::mojom::ResourceType::kXhr):
+      return true;
+    default:
+      return false;
+  }
+}
+#endif
 }  // namespace
 
 class NWebDateTimeSuggestionImpl : public NWebDateTimeSuggestion {
@@ -871,13 +942,12 @@ void NWebHandlerDelegate::OnNativeEmbedFirstFramePaint(
 // static
 void NWebHandlerDelegate::RegisterLoggerCallback(
     std::shared_ptr<NWebLoggerCallback> logger_callback) {
-  // TODO: Expected to be an instance of a profile
   g_logger_callback = logger_callback;
   ohos::logger::SetLoggerCallback(g_logger_callback);
 }
 
 // static
-void NWebHandlerDelegate::UnRegisterLoggerCallback() {
+void NWebHandlerDelegate::UnregisterLoggerCallback() {
   g_logger_callback = nullptr;
 }
 
@@ -1076,7 +1146,6 @@ void NWebHandlerDelegate::OnFrameDetached(CefRefPtr<CefBrowser> browser,
 
   LOG(DEBUG) << "NWebHandlerDelegate::OnFrameDetached childId:" << frameInfo.id
              << ", parentId:" << frameInfo.parentId;
-
   if (IsNativeApiEnable()) {
     dispatcher_.OnFrameDetached(frameInfo);
   }
@@ -1094,7 +1163,7 @@ void NWebHandlerDelegate::InjectJsToWebInner(
     ScriptItemsByOrder& scriptItemsByOrder) {
   if (!main_browser_ || !main_browser_->GetHost()) {
     return;
-  }
+  } 
   switch (time) {
     case JsRunTime::Start:
       scriptItems = preference_delegate_->GetJavaScriptOnDocumentStart();
@@ -1278,9 +1347,11 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
         if (main_browser_ && main_browser_->GetHost()) {
           if (javascript_sync_permission_map_.find(it->first) !=
               javascript_sync_permission_map_.end()) {
+#if BUILDFLAG(ARKWEB_JAVASCRIPT_BRIDGE)
             main_browser_->GetHost()->RegisterNativeJSProxy(
                 it->second.first, method_vector, it->first, false,
                 javascript_sync_permission_map_[it->first]);
+#endif
           }
         }
       }
@@ -1294,9 +1365,11 @@ void NWebHandlerDelegate::OnAfterCreated(CefRefPtr<CefBrowser> browser) {
         if (main_browser_ && main_browser_->GetHost()) {
           if (javascript_async_permission_map_.find(it->first) !=
               javascript_async_permission_map_.end()) {
+#if BUILDFLAG(ARKWEB_JAVASCRIPT_BRIDGE)
             main_browser_->GetHost()->RegisterNativeJSProxy(
                 it->second.first, async_method_vector, it->first, true,
                 javascript_async_permission_map_[it->first]);
+#endif
           }
         }
       }
@@ -1406,6 +1479,7 @@ bool NWebHandlerDelegate::DoClose(CefRefPtr<CefBrowser> browser) {
   if (nweb_handler_) {
     nweb_handler_->OnWindowExitByJS();
 
+#if BUILDFLAG(ARKWEB_PIP)
     if (pip_status_ >= 0) {
         LOG(INFO) << "Pip exit " << " " << pip_delegate_id_
                   << " " << pip_child_id_ << " " << pip_frame_routing_id_;
@@ -1417,6 +1491,7 @@ bool NWebHandlerDelegate::DoClose(CefRefPtr<CefBrowser> browser) {
         nweb_handler_->OnPip(content::PIP_STATE_PAGE_CLOSE, pip_delegate_id_,
                              pip_child_id_, pip_frame_routing_id_, 0, 0);
     }
+#endif
   }
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   if ((*base::CommandLine::ForCurrentProcess()).HasSwitch(
@@ -1740,6 +1815,7 @@ void NWebHandlerDelegate::OnLoadStart(CefRefPtr<CefBrowser> browser,
                                       CefRefPtr<CefFrame> frame,
                                       const CefString& url,
                                       TransitionType transition_type) {
+  LOG(INFO) << "NWebHandlerDelegate::OnLoadStart";
   if (frame == nullptr || !frame->IsMain()) {
     return;
   }
@@ -1748,17 +1824,9 @@ void NWebHandlerDelegate::OnLoadStart(CefRefPtr<CefBrowser> browser,
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
       ::switches::kEnableNwebEx) &&
       IsPrerendering(frame)) {
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "OnPageBegin transitionType:" << transition_type
-        << " prerenderingUrl:"
-        << url::LogUtils::ConvertUrlWithMask(url.ToString());
     return;
   }
 #endif
-
-  LOG_FEEDBACK(INFO, kNavigation)
-      << "OnPageBegin transitionType:" << transition_type
-      << " url:" << url::LogUtils::ConvertUrlWithMask(url.ToString());
 
 #if BUILDFLAG(ARKWEB_SOFTWARE_COMPOSITOR)
   if (!setWebPaintedTask_.IsCancelled()) {
@@ -1784,22 +1852,15 @@ void NWebHandlerDelegate::OnLoadEnd(CefRefPtr<CefBrowser> browser,
   if (frame == nullptr || !frame->IsMain()) {
     return;
   }
+  LOG(INFO) << "NWebHandlerDelegate:: Mainframe OnLoadEnd";
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
       ::switches::kEnableNwebEx) &&
       IsPrerendering(frame)) {
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "OnPageEnd httpStatusCode:" << http_status_code
-        << " prerenderingUrl:"
-        << url::LogUtils::ConvertUrlWithMask(frame->GetURL().ToString());
     return;
   }
 #endif
-
-  LOG_FEEDBACK(INFO, kNavigation)
-      << "OnPageEnd httpStatusCode:" << http_status_code << " url:"
-      << url::LogUtils::ConvertUrlWithMask(frame->GetURL().ToString());
 
 #if BUILDFLAG(ARKWEB_SOFTWARE_COMPOSITOR)
   setWebPaintedTask_.Reset(
@@ -1896,6 +1957,14 @@ void NWebHandlerDelegate::OnSafeBrowsingCheckResult(int threat_type) {
   }
 }
 
+void NWebHandlerDelegate::OnSafeBrowsingCheckFinish(int threat_type) {
+  LOG(INFO) << "NWebHandlerDelegate::OnSafeBrowsingCheckFinish";
+  if (nweb_handler_ != nullptr) {
+    nweb_handler_->OnSafeBrowsingCheckFinish(threat_type);
+  }
+}
+
+
 void NWebHandlerDelegate::OnDataResubmission(CefRefPtr<CefBrowser> browser,
                                              CefRefPtr<CefCallback> callback) {
   LOG(INFO) << "NWebHandlerDelegate::OnDataResubmission";
@@ -1908,20 +1977,14 @@ void NWebHandlerDelegate::OnDataResubmission(CefRefPtr<CefBrowser> browser,
 
 void NWebHandlerDelegate::OnNavigationEntryCommitted(
     CefRefPtr<CefLoadCommittedDetails> details) {
+  LOG(INFO) << "NWebHandlerDelegate::OnNavigationEntryCommitted";
 #if BUILDFLAG(ARKWEB_NAVIGATION)
   if (nweb_handler_ != nullptr) {
     if (!details) {
-      LOG_FEEDBACK(WARNING, kNavigation)
-          << "NavigationEntryCommitted message:detailsIsNull";
+      LOG(WARNING) << "NWebHandlerDelegate::OnNavigationEntryCommitted failed "
+                      "for details is null";
       return;
     }
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "NavigationEntryCommitted type:" << details->GetNavigationType()
-        << " mainFrame:" << details->IsMainFrame()
-        << " sameDocument:" << details->IsSameDocument()
-        << " didReplaceEntry:" << details->DidReplaceEntry() << " url:"
-        << url::LogUtils::ConvertUrlWithMask(
-               details->GetCurrentURL().ToString());
     auto type = static_cast<NWebLoadCommittedDetails::NavigationType>(
         details->GetNavigationType());
     std::shared_ptr<NWebLoadCommittedDetails> web_details =
@@ -1983,12 +2046,8 @@ void NWebHandlerDelegate::OnLoadError(CefRefPtr<CefBrowser> browser,
                                       ErrorCode error_code,
                                       const CefString& error_text,
                                       const CefString& failed_url) {
+  LOG(INFO) << "NWebHandlerDelegate::OnLoadError";
   CEF_REQUIRE_UI_THREAD();
-
-  LOG_FEEDBACK(INFO, kNavigation)
-      << __func__ << " errorCode:" << net::ErrorToDebugString(error_code)
-      << " mainFrame:" << (frame ? (frame->IsMain() ? "1" : "0") : "-1")
-      << " url:" << url::LogUtils::ConvertUrlWithMask(failed_url.ToString());
 
   // Don't display an error for downloaded files.
   if (error_code == ERR_ABORTED) {
@@ -2076,11 +2135,11 @@ void NWebHandlerDelegate::OnHttpError(CefRefPtr<CefRequest> request,
                                       CefRefPtr<CefResponse> response) {
   if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
     content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE,
-        base::BindOnce(&NWebHandlerDelegate::OnHttpError, weak_this_, request,
-                       is_main_frame, has_user_gesture, response));
+        FROM_HERE, base::BindOnce(&NWebHandlerDelegate::OnHttpError,
+                                  weak_this_, request, is_main_frame, 
+                                  has_user_gesture, response));
     return;
-  }
+  }  
   if (nweb_handler_ != nullptr) {
     CefRequest::HeaderMap cef_request_headers;
     request->GetHeaderMap(cef_request_headers);
@@ -2194,10 +2253,8 @@ bool NWebHandlerDelegate::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
   }
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
-  std::optional<int32_t> nweb_id;
-  if (base::ohos::BlanklessController::CheckGlobalProperty() && GetBrowser() && frame) {
-    nweb_id = GetBrowser()->GetNWebId();
-    base::ohos::BlanklessController::GetInstance().ResetStatus(nweb_id.value(), frame->IsMain(), is_redirect);
+  if (base::ohos::BlanklessController::CheckGlobalProperty() && frame) {
+    base::ohos::BlanklessController::GetInstance().ResetStatus(GetNWebId(), frame->IsMain(), is_redirect);
   }
 #endif
 
@@ -2218,18 +2275,15 @@ bool NWebHandlerDelegate::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
   bool result = false;
   if (nweb_handler_ != nullptr) {
     result = nweb_handler_->OnHandleInterceptUrlLoading(nweb_request);
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "OnLoadIntercept result:" << result
-        << " requestMethod:" << request->GetMethod().ToString()
-        << " userGesture:" << user_gesture << " mainFrame:" << frame->IsMain()
-        << " isServerRedirect:" << is_redirect << " url:"
-        << url::LogUtils::ConvertUrlWithMask(request->GetURL().ToString());
+    LOG(DEBUG) << "NWebHandlerDelegate::OnBeforeBrowse "
+                  "OnHandleInterceptUrlLoading result: "
+               << result;
   } else {
     LOG(DEBUG) << "NWebHandlerDelegate::OnBeforeBrowse result: " << result;
   }
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
-  if (nweb_id.has_value()) {
-    base::ohos::BlanklessController::GetInstance().ResetStatus(nweb_id.value(), true, false);
+  if (base::ohos::BlanklessController::CheckGlobalProperty()) {
+    base::ohos::BlanklessController::GetInstance().ResetStatus(GetNWebId(), true, false);
   }
 #endif
   return result;
@@ -2241,27 +2295,17 @@ bool NWebHandlerDelegate::OnCertificateErrorExt(
     const CefString& request_url,
     CefRefPtr<CefSSLInfo> ssl_info,
     CefRefPtr<ArkWebCefSslCallback> callback) {
+  LOG(INFO) << "NWebHandlerDelegate::OnCertificateError happened";
   SslError error = SslErrorConvert(cert_error);
 
   CEF_REQUIRE_IO_THREAD();
-
-  std::string log_content = base::StringPrintf(
-      "OnSslErrorEventReceive netCode:%s certStatus:%d certIssuer:%s "
-      "certExpiresDate:%s url:%s",
-      net::ErrorToDebugString(cert_error).c_str(),
-      (ssl_info ? ssl_info->GetCertStatus() : -1),
-      ssl_info_util::GetIssuerDisplayName(ssl_info).c_str(),
-      ssl_info_util::GetValidExpiry(ssl_info).c_str(),
-      url::LogUtils::ConvertUrlWithMask(request_url.ToString()).c_str());
 
   std::shared_ptr<NWebJSSslErrorResult> js_result =
       std::make_shared<NWebJSSslErrorResultImpl>(callback);
 
   if (ssl_info == nullptr) {
     if (nweb_handler_ != nullptr) {
-      bool result = nweb_handler_->OnSslErrorRequestByJS(js_result, error);
-      LOG_FEEDBACK(INFO, kNavigation) << log_content << " result:" << result;
-      return result;
+      return nweb_handler_->OnSslErrorRequestByJS(js_result, error);
     }
     return false;
   }
@@ -2271,9 +2315,7 @@ bool NWebHandlerDelegate::OnCertificateErrorExt(
   CefX509Certificate::IssuerChainBinaryList der_chain_list;
   if (cert == nullptr) {
     if (nweb_handler_ != nullptr) {
-      bool result = nweb_handler_->OnSslErrorRequestByJS(js_result, error);
-      LOG_FEEDBACK(INFO, kNavigation) << log_content << " result:" << result;
-      return result;
+      return nweb_handler_->OnSslErrorRequestByJS(js_result, error);
     }
     return false;
   }
@@ -2298,14 +2340,12 @@ bool NWebHandlerDelegate::OnCertificateErrorExt(
   }
 
   if (nweb_handler_ != nullptr) {
+    
     bool flag =
         nweb_handler_->OnSslErrorRequestByJSV2(js_result, error, certChainData);
     if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
-      LOG_FEEDBACK(WARNING, kNavigation)
-          << "OnSslErrorEventReceive message:calledWithCertChainDataFailed";
       flag = nweb_handler_->OnSslErrorRequestByJS(js_result, error);
     }
-    LOG_FEEDBACK(INFO, kNavigation) << log_content << " result:" << flag;
     return flag;
   }
   return false;
@@ -2381,7 +2421,7 @@ void NWebHandlerDelegate::OnRenderProcessTerminated(
   RenderExitReason reason;
   std::string error_desc = "";
   switch (status) {
-    case TS_ABNORMAL_TERMINATION:  
+    case TS_ABNORMAL_TERMINATION:
      /*
       * When the count of render processes exceeds the upper limit,
       * the kernel proactively reclaims inactive render processes and reports this event.
@@ -2414,6 +2454,7 @@ void NWebHandlerDelegate::OnRenderProcessTerminated(
   LOG(ERROR) << "OnRenderExited NWebId: " << nweb_id_
              << " render process exit, reason = " << static_cast<int>(reason)
              << " reason info = " << error_desc;
+  crashpad::CrashpadDfx::ProcessCrashReport("render", "", "", error_desc);
   nweb_handler_->OnRenderExited(reason);
 
 #if BUILDFLAG(ARKWEB_NWEB_EX) && BUILDFLAG(ARKWEB_CRASHPAD)
@@ -2467,13 +2508,9 @@ bool NWebHandlerDelegate::ShouldOverrideUrlLoading(
   bool result = false;
   if (nweb_handler_ != nullptr) {
     result = nweb_handler_->OnHandleOverrideUrlLoading(nweb_request);
-    LOG_FEEDBACK(INFO, kNavigation)
-        << "OnOverrideUrlLoading result:" << result
-        << " method:" << method.ToString()
-        << " mainFrame:" << is_outermost_main_frame
-        << " userGesture:" << user_gesture
-        << " isServerRedirect:" << is_redirect
-        << " url:" << url::LogUtils::ConvertUrlWithMask(url.ToString());
+    LOG(DEBUG) << "NWebHandlerDelegate::ShouldOverrideUrlLoading "
+                  "OnHandleOverrideUrlLoading result: "
+               << result;
     return result;
   }
   LOG(DEBUG) << "NWebHandlerDelegate::ShouldOverrideUrlLoading result: "
@@ -2653,7 +2690,11 @@ void NWebHandlerDelegate::OnTakeFocus(CefRefPtr<CefBrowser> browser,
       "ohoskeycode", static_cast<int32_t>(ui::VKEY_TAB));
   std::shared_ptr<NWebKeyEvent> nwebEvent =
       std::make_shared<NWebKeyEventImpl>(0, keyCode);
-  return nweb_handler_->OnTakeFocus(nwebEvent);
+  nweb_handler_->OnTakeFocus(nwebEvent);
+  if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
+    nweb_handler_->KeyboardReDispatch(nwebEvent, false);
+  }
+  return;
 }
 
 bool NWebHandlerDelegate::IsCurrentFocus() {
@@ -2725,6 +2766,10 @@ void NWebHandlerDelegate::GetResourceHandlerByIO(
   }
   if (!request) {
     LOG(ERROR) << "NWebHandlerDelegate::GetResourceHandlerByIO request is null";
+    return;
+  }
+  if (!nweb_handler_) {
+    LOG(ERROR) << "nweb_handler is null";
     return;
   }
   CefRequest::HeaderMap cef_request_headers;
@@ -2840,7 +2885,6 @@ void NWebHandlerDelegate::OnLoadingProgressChange(CefRefPtr<CefBrowser> browser,
 
   return;
 }
-
 #if BUILDFLAG(ARKWEB_NWEB_EX)
 bool NWebHandlerDelegate::OnAutoResize(CefRefPtr<CefBrowser> browser,
                                        const CefSize& new_size) {
@@ -2873,9 +2917,12 @@ bool NWebHandlerDelegate::OnOpenURLFromTab(
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   if (IsNativeApiEnable()) {
     if (dispatcher_.HasOnOpenURLFromTabV2()) {
-      return dispatcher_.OnOpenURLFromTabV2(target_url.ToString(),
-                                        static_cast<int>(target_disposition),
-                                        user_gesture);
+      NWebExtensionOpenURLFromTabInfo info = {
+        target_url.ToString(),
+        static_cast<int>(target_disposition),
+        user_gesture
+      };
+      return dispatcher_.OnOpenURLFromTabV2(info);
     }
     return dispatcher_.OnOpenURLFromTab(target_url.ToString(),
                                         static_cast<int>(target_disposition),
@@ -3007,7 +3054,6 @@ void NWebHandlerDelegate::OnAdsBlocked(
   }
   LOG(DEBUG) << "[adblock] OnAdsBlocked size: " << adsBlocked_str.size()
              << "  url = ***";
-
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   if (IsNativeApiEnable()) {
     dispatcher_.OnAdsBlocked(url, adsBlocked_str);
@@ -3019,7 +3065,6 @@ void NWebHandlerDelegate::OnAdsBlocked(
     }
   }
 #endif  // ARKWEB_NWEB_EX
-
   if (nweb_handler_ != nullptr) {
     std::vector<std::string> blocked;
     for (auto item : adsBlocked_str) {
@@ -3221,7 +3266,6 @@ void NWebHandlerDelegate::OnReceivedIconUrl(const CefString& image_url,
     LOG(ERROR) << "OnReceivedIconUrl get error";
     return;
   }
-
   char* c_image_url = CopyCefStringToChar(image_url);
   int color_type_temp = TransformColorTypeToInt(TransformColorType(color_type));
   int alpha_type_temp = TransformAlphaTypeToInt(TransformAlphaType(alpha_type));
@@ -3281,6 +3325,22 @@ void NWebHandlerDelegate::OnReceivedTouchIconUrl(CefRefPtr<CefBrowser> browser,
 }
 
 bool NWebHandlerDelegate::OnConsoleMessage(CefRefPtr<CefBrowser> browser,
+                                           cef_log_severity_t level,
+                                           const CefString& message,
+                                           const CefString& source,
+                                           int line) {
+  if (nweb_handler_ != nullptr) {
+    NWebConsoleLog::NWebConsoleLogLevel message_level =
+        ConvertConsoleMessageLevel(level);
+    std::shared_ptr<NWebConsoleLog> console_log =
+        std::make_shared<NWebConsoleLogImpl>(line, message.ToString(),
+                                             message_level, source.ToString());
+    return nweb_handler_->OnConsoleLog(console_log);
+  }
+  return false;
+}
+
+bool NWebHandlerDelegate::OnConsoleMessageV2(CefRefPtr<CefBrowser> browser,
                                            cef_log_severity_t level,
                                            int source_type,
                                            const CefString& message,
@@ -3502,7 +3562,7 @@ void NWebHandlerDelegate::OnPermissionRequest(
     CefRefPtr<CefAccessRequest> request) {
 #if BUILDFLAG(ARKWEB_EXT_PERMISSION)
   if ((*base::CommandLine::ForCurrentProcess())
-          .HasSwitch(switches::kEnableNwebExPermission)) {
+          .HasSwitch(::switches::kEnableNwebExPermission)) {
     if (request->ResourceAcessId() ==
             NWebAccessRequest::Resources::CLIPBOARD_READ_WRITE ||
         request->ResourceAcessId() ==
@@ -3768,7 +3828,6 @@ bool NWebHandlerDelegate::OnFileDialog(
 void NWebHandlerDelegate::OnSelectPopupMenu(
     CefRefPtr<CefBrowser> browser,
     const CefRect& bounds,
-    int item_height,
     double item_font_size,
     int selected_item,
     const std::vector<CefSelectPopupItem>& menu_items,
@@ -3789,10 +3848,10 @@ void NWebHandlerDelegate::OnSelectPopupMenu(
           bounds.x * ratio, bounds.y * ratio, bounds.width * ratio,
           bounds.height * ratio);
   param->SetSelectMenuBound(bound);
-  param->SetItemHeight(item_height);
+// item_height parameter removed to align with Chromium 141 API
   param->SetSelectedItem(selected_item);
   param->SetIsRightAligned(right_aligned);
-  param->SetItemFontSize(item_font_size * GetScale() / 100.0);
+  param->SetItemFontSize(item_font_size);
   param->SetIsAllowMultipleSelection(allow_multiple_selection);
   std::vector<std::shared_ptr<NWebSelectPopupMenuItem>> menu_list;
   for (auto& menu_item : menu_items) {
@@ -3955,7 +4014,7 @@ void NWebHandlerDelegate::OnGetImageForContextNode(
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   if (command_id == MENU_ID_IMAGE_SHARE &&
       base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kEnableNwebEx)) {
+          ::switches::kEnableNwebEx)) {
     if (image != nullptr && image->GetWidth() > 0 && image->GetHeight() > 0) {
       OnGetImageData(image);
     } else {
@@ -3990,6 +4049,322 @@ void NWebHandlerDelegate::OnGetImageFromCache(CefRefPtr<CefImage> image,
   } else {
     LOG(WARNING) << "OnGetImageFromCache image is invalid";
   }
+}
+
+void NWebHandlerDelegate::ImageCopy(int32_t taskid,  CefRefPtr<CefImage> image, int32_t image_id) {
+  LOG(INFO) << "NWebHandlerDelegate::ImageCopy" << image->GetWidth() <<"   " << image->GetHeight();
+  std::shared_ptr<NWebImageInfo> imageInfo = std::make_shared<NWebImageInfoImpl>();
+  if (!imageInfo) {
+    std::lock_guard<std::mutex> lock(image_decode_mutex_by_xpath_);
+    LOG(ERROR) << "ohmedia: new NWebImageInfoImpl failed";
+    DestroyTaskByXPath(taskid);
+    return;
+  }
+  imageInfo->SetWidth(0);
+  imageInfo->SetHeight(0);
+ 
+  if (image == nullptr) {
+    LOG(ERROR) << "ohmedia: GetImagesById get null image";
+    IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+    return;
+  }
+ 
+  int width = image->GetWidth();
+  int height = image->GetHeight();
+ 
+  if (width > 0 && height > 0) {
+    if (width >= IMAGE_MAX_SIZE || height >= IMAGE_MAX_SIZE) {
+      LOG(ERROR) << "ohmedia:image size out of limitation. height: " << height
+        << ", width: " << width;
+      IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+      return;
+    }
+    int pixel_width = 0;
+    int pixel_height = 0;
+    CefRefPtr<CefBinaryValue> bitMap = image->GetAsBitmap(
+      1, CEF_COLOR_TYPE_RGBA_8888, CEF_ALPHA_TYPE_PREMULTIPLIED, pixel_width,
+      pixel_height);
+ 
+    if (!bitMap) {
+      LOG(ERROR) << "ohmedia: GetAsBitmap failed.";
+      IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+      return;
+    }
+ 
+    size_t bitMapSize = bitMap->GetSize();
+    uint8_t* data = (uint8_t*)calloc((size_t)bitMapSize, sizeof(uint8_t));
+    if (data == nullptr) {
+      LOG(ERROR) << "ohmedia: calloc bitmap failed";
+      IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+      return;
+    }
+    bitMap->GetData((void*)data, bitMapSize, 0);
+    imageInfo->SetColorType(static_cast<int>(ClipBoardImageColorType::COLOR_TYPE_RGBA_8888));
+    imageInfo->SetAlphaType(static_cast<int>(ClipBoardImageAlphaType::ALPHA_TYPE_PREMULTIPLIED));
+    imageInfo->SetData((uint32_t*)data);
+    imageInfo->SetDataSize(bitMapSize);
+    imageInfo->SetWidth(pixel_width);
+    imageInfo->SetHeight(pixel_height);
+    IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+    return;
+  } else {
+    LOG(ERROR) << "ohmedia: invalid width or height.";
+    IncrementAndCheckByXPath(taskid, imageInfo, image_id);
+  }
+}
+
+void NWebHandlerDelegate::MediaImageCopy(int32_t taskid, uint8_t* data, int buffer_size) {
+  int32_t image_id = 0;
+  {
+    std::lock_guard<std::mutex> lock(image_decode_mutex_);
+    if (nweb_image_info_callback_.find(taskid) == nweb_image_info_callback_.end()) {
+      DestroyTask(taskid);
+      return;
+    }
+    image_id = image_index_[taskid];
+    image_index_[taskid]++;
+  }
+  std::shared_ptr<NWebImageInfo> image_info = std::make_shared<NWebImageInfoImpl>();
+  if (!image_info) {
+    std::lock_guard<std::mutex> lock(image_decode_mutex_);
+    LOG(ERROR) << "ohmedia: new NWebImageInfoImpl failed";
+    DestroyTask(taskid);
+    return;
+  }
+  image_info->SetWidth(0);
+  image_info->SetHeight(0);
+
+  if (buffer_size <= 0 || data == nullptr) {
+    LOG(ERROR) << "ohmedia: MediaImageCopy no image size.";
+#if BUILDFLAG(IS_ARKWEB_EXT)
+    ReportGetAllImage("GET_DOM_IMAGE_INVALID_SIZE");
+#endif
+    IncrementAndCheckByUrl(taskid, image_id, image_info, nullptr);
+    return;
+  }
+  auto decoder_adapter = DecodeImageData(taskid, data, buffer_size);
+  if (!decoder_adapter) {
+    IncrementAndCheckByUrl(taskid, image_id, image_info, nullptr);
+    return;
+  }
+  FinalizeImageData(taskid, image_id, image_info, std::move(decoder_adapter));
+}
+
+std::unique_ptr<OHOS::NWeb::OhosImageDecoderAdapter>
+NWebHandlerDelegate::DecodeImageData(int32_t taskid, uint8_t* data, int buffer_size) {
+  auto decoder_adapter = OHOS::NWeb::OhosAdapterHelper::GetInstance()
+    .CreateOhosImageDecoderAdapter();
+  if (decoder_adapter == nullptr) {
+    LOG(ERROR) << "ohmedia: MediaImageCopy Fail to get decoder adapter.";
+    return nullptr;
+  }
+
+  bool parse_result = decoder_adapter->ParseImageInfo(data, static_cast<uint32_t>(buffer_size));
+  if (!parse_result) {
+    LOG(ERROR) << "ohmedia: MediaImageCopy ParseImageInfo failed.";
+    decoder_adapter->ReleasePixelMap();
+    return nullptr;
+  }
+
+  if (decoder_adapter->GetImageWidth() > IMAGE_MAX_SIZE ||
+      decoder_adapter->GetImageHeight() > IMAGE_MAX_SIZE) {
+    LOG(ERROR) << "ohmedia: MediaImageCopy image size out of limitation ";
+#if BUILDFLAG(IS_ARKWEB_EXT)
+    ReportGetAllImage("GET_DOM_IMAGE_INVALID_SIZE");
+#endif
+    decoder_adapter->ReleasePixelMap();
+    return nullptr;
+  }
+
+  bool decode_result = decoder_adapter->Decode(data, buffer_size, 
+                                               OHOS::NWeb::AllocatorType::kShareMemAlloc, false);
+  if (!decode_result) {
+    LOG(ERROR) << "ohmedia: MediaImageCopy Decode failed.";
+    decoder_adapter->ReleasePixelMap();
+    return nullptr;
+  }
+  return decoder_adapter;
+}
+
+void NWebHandlerDelegate::FinalizeImageData(int32_t taskid, int32_t image_id,
+                                            std::shared_ptr<NWebImageInfo>& image_info,
+                                            std::unique_ptr<OHOS::NWeb::OhosImageDecoderAdapter> decoder_adapter) {
+  void* pixel = decoder_adapter->GetDecodeData();
+  if (pixel == nullptr) {
+    LOG(ERROR)
+        << "ohmedia: MediaImageCopy Decode GetDecodeData failed.";
+    IncrementAndCheckByUrl(taskid,image_id, image_info, nullptr);
+    return;
+  }
+  int width = decoder_adapter->GetImageWidth();
+  int height = decoder_adapter->GetImageHeight();
+  int stride = decoder_adapter->GetStride();
+  uint32_t bitMapSize = height * stride;
+
+  image_info->SetColorType(static_cast<int>(ClipBoardImageColorType::COLOR_TYPE_RGBA_8888));
+  image_info->SetAlphaType(static_cast<int>(ClipBoardImageAlphaType::ALPHA_TYPE_PREMULTIPLIED));
+  image_info->SetData((uint32_t*)pixel);
+  image_info->SetDataSize(bitMapSize);
+  image_info->SetWidth(width);
+  image_info->SetHeight(height);
+  LOG(INFO) << "ohmedia: MediaImageCopy "
+               "GetDecoderAdapter()->Decode succeed.";
+  IncrementAndCheckByUrl(taskid, image_id, image_info, std::move(decoder_adapter));
+}
+
+void NWebHandlerDelegate::OnGetAllImage(int32_t taskid, uint8_t* data, int buffer_size) {
+  LOG(INFO) << "ohmedia: NWebHandlerDelegate: ongetallimage start";
+  MediaImageCopy(taskid, data, buffer_size);
+}
+
+void NWebHandlerDelegate::OnGetImageByXPath(int32_t taskid, CefRefPtr<CefImage> image, int32_t image_id) {
+  LOG(INFO) << "NWebHandlerDelegate: OnGetImageByXPath start";
+  ImageCopy(taskid, image, image_id);
+}
+ 
+int32_t NWebHandlerDelegate::GetImageId(int32_t taskid) {
+  int image_id = image_index_by_xpath_[taskid];
+  image_index_by_xpath_[taskid]++;
+  return image_id;
+}
+
+void NWebHandlerDelegate::DestroyTask(int32_t taskid) {
+  LOG(INFO) << "ohmedia: GetImagesByIds: end task";
+  total_count_.erase(taskid);
+  current_count_.erase(taskid);
+  nweb_image_info_callback_.erase(taskid);
+  auto imagedatavector = imagedata_vector_[taskid];
+  for (size_t i = 0; i < imagedatavector.size(); i++) {
+    if (imagedata_vector_[taskid][i] == nullptr) {
+      continue;
+    }
+    auto data = imagedatavector[i]->GetData();
+    if (data != nullptr && decoder_[taskid][i]) {
+      decoder_[taskid][i]->ReleasePixelMap();
+      data = nullptr;
+    }
+  }
+  decoder_.erase(taskid);
+  imagedata_vector_.erase(taskid);
+}
+
+void NWebHandlerDelegate::IncrementAndCheckByUrl(int32_t taskid, int32_t imageid,
+    std::shared_ptr<NWebImageInfo> imageInfo,
+    std::unique_ptr<OhosImageDecoderAdapter> decoder) {
+  std::lock_guard<std::mutex> lock(image_decode_mutex_);
+  decoder_[taskid][imageid] = std::move(decoder);
+  LOG(INFO) << "ohmedia: IncrementAndCheck current_count_:" << current_count_[taskid];
+  if (nweb_image_info_callback_.find(taskid) == nweb_image_info_callback_.end()) {
+    DestroyTask(taskid);
+    return;
+  }
+  imagedata_vector_[taskid][imageid] = imageInfo;
+  current_count_[taskid]++;
+  if (current_count_[taskid] >= total_count_[taskid] && nweb_image_info_callback_[taskid] != nullptr) {
+    nweb_image_info_callback_[taskid]->OnReceivedValue(0, imagedata_vector_[taskid]);
+    DestroyTask(taskid);
+  }
+}
+ 
+void NWebHandlerDelegate::IncrementAndCheck(int32_t taskid, std::shared_ptr<NWebImageInfo> imageInfo) {
+  std::lock_guard<std::mutex> lock(image_decode_mutex_);
+  LOG(INFO)<<"ohmedia: IncrementAndCheck current_count_:"<<current_count_[taskid];
+
+  if (nweb_image_info_callback_.find(taskid) == nweb_image_info_callback_.end()) {
+    DestroyTask(taskid);
+    return;
+  }
+  imagedata_vector_[taskid].emplace_back(imageInfo);
+  current_count_[taskid]++;
+  if (current_count_[taskid] >= total_count_[taskid]) {
+    nweb_image_info_callback_[taskid]->OnReceivedValue(0, imagedata_vector_[taskid]);
+    DestroyTask(taskid);
+  }
+}
+
+void NWebHandlerDelegate::DestroyTaskByXPath(int32_t taskid) {
+  LOG(INFO) << "ohmedia: GetImagesByIds: end task";
+  total_count_by_xpath_.erase(taskid);
+  current_count_by_xpath_.erase(taskid);
+  nweb_image_info_callback_by_xpath_.erase(taskid);
+  auto imagedatavector = imagedata_vector_by_xpath_[taskid];
+  for (size_t i = 0; i < imagedatavector.size(); i++) {
+    if (imagedata_vector_by_xpath_[taskid][i] == nullptr) {
+      continue;
+    }
+    auto data = imagedatavector[i]->GetData();
+    if (data != nullptr) {
+      free(data);
+      data = nullptr;
+    }
+  }
+  imagedata_vector_by_xpath_.erase(taskid);
+}
+
+void NWebHandlerDelegate::IncrementAndCheckByXPath(int32_t taskid, 
+                                                   std::shared_ptr<NWebImageInfo> imageInfo, 
+                                                   int32_t image_id) {
+  std::lock_guard<std::mutex> lock(image_decode_mutex_by_xpath_);
+  LOG(INFO) << "ohmedia: IncrementAndCheckByXPath current_count_:" << current_count_by_xpath_[taskid];
+ 
+  if (nweb_image_info_callback_by_xpath_.find(taskid) == nweb_image_info_callback_by_xpath_.end()) {
+    DestroyTaskByXPath(taskid);
+    return;
+  }
+  imagedata_vector_by_xpath_[taskid][image_id] = imageInfo;
+  current_count_by_xpath_[taskid]++;
+  if (current_count_by_xpath_[taskid] >= total_count_by_xpath_[taskid]) {
+    nweb_image_info_callback_by_xpath_[taskid]->OnReceivedValue(0, imagedata_vector_by_xpath_[taskid]);
+    DestroyTaskByXPath(taskid);
+  }
+}
+
+bool NWebHandlerDelegate::RegisterGetAllImageCallback(int32_t taskid,
+    int32_t imagenum, std::shared_ptr<NWebImageInfoCallback> callback) {
+  std::lock_guard<std::mutex> lock(image_decode_mutex_);
+  if (callback == nullptr) {
+    LOG(ERROR) << "ohmedia: RegisterGetAllImageCallback callback is nullptr";
+    return false;
+  }
+  if (imagenum > MAX_IMAGE_NUM) {
+    LOG(ERROR) << "ohmedia: image nums out of limitation";
+    return false;
+  }
+ 
+  if (total_count_.size() > MAX_TASKS) {
+    LOG(ERROR) << "ohmedia: task nums out of limitation";
+    return false;
+  }
+  total_count_[taskid] = imagenum;
+  current_count_[taskid] = 0;
+  image_index_[taskid] = 0;
+  std::vector<std::shared_ptr<NWebImageInfo>> tempImageData(imagenum);
+  std::vector<std::unique_ptr<OhosImageDecoderAdapter>> tempDecoder(imagenum);
+  imagedata_vector_[taskid] = tempImageData;
+  decoder_[taskid] = std::move(tempDecoder);
+  nweb_image_info_callback_[taskid] = callback;
+  return true;
+}
+
+bool NWebHandlerDelegate::RegisterGetAllImageByXPathCallback(int32_t taskid,
+    int32_t imagenum, std::shared_ptr<NWebImageInfoCallback> callback) {
+  std::lock_guard<std::mutex> lock(image_decode_mutex_by_xpath_);
+  if (imagenum > MAX_IMAGE_NUM) {
+    LOG(ERROR) << "ohmedia: image nums out of limitation";
+    return false;
+  }
+
+  if (total_count_by_xpath_.size() > MAX_TASKS) {
+    LOG(ERROR) << "ohmedia: task nums out of limitation";
+    return false;
+  }
+  total_count_by_xpath_[taskid] = imagenum;
+  current_count_by_xpath_[taskid] = 0;
+  image_index_by_xpath_[taskid] = 0;
+  std::vector<std::shared_ptr<NWebImageInfo>> tempImageData(imagenum);
+  imagedata_vector_by_xpath_[taskid] = tempImageData;
+  nweb_image_info_callback_by_xpath_[taskid] = callback;
+  return true;
 }
 
 #if BUILDFLAG(ARKWEB_NWEB_EX)
@@ -4053,6 +4428,7 @@ bool NWebHandlerDelegate::RunContextMenu(
     CefRefPtr<CefContextMenuParams> params,
     CefRefPtr<CefMenuModel> model,
     CefRefPtr<CefRunContextMenuCallback> callback) {
+  LOG(INFO) << "NWebHandlerDelegate::RunContextMenu x: " << params->GetXCoord() << ", y: " << params->GetYCoord();
   if (!nweb_handler_ || !render_handler_) {
     return false;
   }
@@ -4239,7 +4615,7 @@ void NWebHandlerDelegate::ChangeVisibilityOfQuickMenu() {
 
 bool NWebHandlerDelegate::IsQuickMenuShow() {
   if (nweb_handler_) {
-    nweb_handler_->IsQuickMenuShow();
+    return nweb_handler_->IsQuickMenuShow();
   }
   return false;
 }
@@ -4460,7 +4836,7 @@ int NWebHandlerDelegate::ProcessNativeProxyResultThread(
   char** ptr = (char**)malloc(sizeof(char*) * args->GetSize());
   if(ptr == nullptr) {
     // malloc failed
-    return 1;
+    return 1;    
   }
   for (size_t i = 0; i < args->GetSize(); i++) {
     CefValueType type = args->GetType(i);
@@ -4690,7 +5066,7 @@ int NWebHandlerDelegate::NotifyJavaScriptResult(CefRefPtr<CefListValue> args,
     ParseNWebValueToValue(ark_result, result);
     return 0;
   }
-
+ 
   ParseNWebValueToHapValue(hap_result, result);
   return 0;
 }
@@ -4743,7 +5119,7 @@ char* NWebHandlerDelegate::FlowbufStrAtIndex(void* mem,
   }
 
   *strLen = *(header + (i * INDEX_SIZE) + 1) - 1;
-  if ((offset + *strLen) > MAX_FLOWBUF_DATA_SIZE) {
+  if ((offset + *strLen + 1) > MAX_FLOWBUF_DATA_SIZE) {
     LOG(ERROR) << "offset bigger than MAX_FLOWBUF_DATA_SIZE";
     *argIndex = -1;
     return nullptr;
@@ -5016,7 +5392,7 @@ void NWebHandlerDelegate::GetJavaScriptObjectMethods(
                   "nweb_javascript_callback_ is null";
     return;
   }
-
+  
   std::shared_ptr<NWebHapValue> hap_result =
       std::make_shared<NWebCoreValue>(NWebHapValue::Type::NONE);
   nweb_javascript_callback_->GetJavaScriptObjectMethodsV2(object_id,
@@ -5139,25 +5515,52 @@ bool NWebHandlerDelegate::OnAllCertificateError(
   CEF_REQUIRE_IO_THREAD();
   std::shared_ptr<NWebJSAllSslErrorResult> js_result =
       std::make_shared<NWebJSAllSslErrorResultImpl>(callback);
-
-  std::string log_content = base::StringPrintf(
-      "OnSslErrorEvent certError:%s certStatus:%d certIssuer:%s "
-      "certExpiresDate:%s mainFrame:%d isFatalError:%d requestUrl:%s",
-      net::ErrorToDebugString(cert_error).c_str(),
-      (ssl_info ? ssl_info->GetCertStatus() : -1),
-      ssl_info_util::GetIssuerDisplayName(ssl_info).c_str(),
-      ssl_info_util::GetValidExpiry(ssl_info).c_str(),
-      is_main_frame_request, is_fatal_error,
-      url::LogUtils::ConvertUrlWithMask(request_url.ToString()).c_str());
-
-  bool result = false;
+  
+  if (ssl_info == nullptr || ssl_info->GetX509Certificate() == nullptr) {
   if (nweb_handler_ != nullptr) {
-    result = nweb_handler_->OnAllSslErrorRequestByJS(
+    return nweb_handler_->OnAllSslErrorRequestByJS(
         js_result, error, request_url, origin_url, referrer, is_fatal_error,
         is_main_frame_request);
   }
-  LOG_FEEDBACK(INFO, kNavigation) << log_content << " result:" << result;
-  return result;
+  return false;
+}
+
+  std::vector<std::string> certChainData;
+  CefRefPtr<CefX509Certificate> cert = ssl_info->GetX509Certificate();
+  CefX509Certificate::IssuerChainBinaryList der_chain_list;
+
+  cert->GetDEREncodedIssuerChain(der_chain_list);
+  der_chain_list.insert(der_chain_list.begin(), cert->GetDEREncoded());
+
+  for (size_t i = 0U; i < der_chain_list.size(); ++i) {
+    if (!der_chain_list[i].get()) {
+      LOG(ERROR) << "OnCertificateError Get CertChainData failed, der chain "
+                    "data is null, index = "
+                 << i;
+      continue;
+    }
+
+    const size_t cert_data_size = der_chain_list[i]->GetSize();
+    std::string cert_data_item;
+    cert_data_item.resize(cert_data_size);
+    der_chain_list[i]->GetData(const_cast<char*>(cert_data_item.data()),
+                               cert_data_size, 0);
+    certChainData.emplace_back(cert_data_item);
+  }
+
+  if (nweb_handler_ != nullptr) {
+    std::shared_ptr<NWebAllSslErrorInfo> sslErrorInfo = make_shared<NWebAllSslErrorInfoImpl>(error,
+        request_url, origin_url, referrer, is_fatal_error, is_main_frame_request, certChainData);
+    bool flag = nweb_handler_->OnAllSslErrorRequestByJSV2(
+        js_result, sslErrorInfo);
+    if (ArkWebGetErrno() != ArkWebInterfaceResult::RESULT_OK) {
+      flag = nweb_handler_->OnAllSslErrorRequestByJS(js_result, error, request_url,
+        origin_url, referrer, is_fatal_error, is_main_frame_request);
+    }
+    return flag;
+  }
+
+  return false;
 }
 
 void NWebHandlerDelegate::OnLoadStarted(CefRefPtr<CefFrame> frame,
@@ -5177,7 +5580,7 @@ void NWebHandlerDelegate::OnLoadStarted(CefRefPtr<CefFrame> frame,
   }
 #endif
 
-if (nweb_handler_ != nullptr) {
+  if (nweb_handler_ != nullptr) {
     nweb_handler_->OnLoadStarted(url.ToString());
   }
 }
@@ -5285,6 +5688,34 @@ void NWebHandlerDelegate::OnReportStatisticLog(const CefString& content) {
 #endif  // ARKWEB_VIDEO_ASSISTANT
 }
 
+#if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
+void NWebHandlerDelegate::OnShowConfirmInfoBar(
+    const CefString& title,
+    const CefString& infoId,
+    const CefString& message,
+    int buttons,
+    const CefString& buttonLabelOK,
+    const CefString& buttonLabelCancel) {
+  LOG(INFO) << " func:" << __FUNCTION__;
+  NWebImpl::OnShowConfirmInfoBar(
+      title.ToString(), infoId.ToString(), message.ToString(), buttons,
+      buttonLabelOK.ToString(), buttonLabelCancel.ToString());
+}
+
+void NWebHandlerDelegate::OnHideConfirmInfoBar(
+    const CefString& title,
+    const CefString& infoId,
+    const CefString& message,
+    int buttons,
+    const CefString& buttonLabelOK,
+    const CefString& buttonLabelCancel) {
+  LOG(INFO) << " func:" << __FUNCTION__;
+  NWebImpl::OnHideConfirmInfoBar(
+      title.ToString(), infoId.ToString(), message.ToString(), buttons,
+      buttonLabelOK.ToString(), buttonLabelCancel.ToString());
+}
+#endif // ARKWEB_ARKWEB_EXTENSIONS
+
 #if BUILDFLAG(ARKWEB_VIDEO_ASSISTANT)
 CefOwnPtr<CefMediaPlayerListenerForVAST>
 NWebHandlerDelegate::OnFullScreenOverlayEnter(
@@ -5327,7 +5758,6 @@ NWebHandlerDelegate::OnFullScreenOverlayEnter(
   return std::make_unique<NWebMediaPlayerListenerForVAST>(
       std::unique_ptr<NWebMediaPlayerListener>(listener));
 }
-
 void NWebHandlerDelegate::WebMediaPlayerControllerPlay() {
   (nweb_media_player_controller_.get()
        ->*(nweb_media_player_controller_->play))();
@@ -5376,7 +5806,8 @@ void NWebHandlerDelegate::WebMediaPlayerControllerSetVolume(double volume)
        ->*(nweb_media_player_controller_->set_volume))(volume);
 }
 
-double NWebHandlerDelegate::WebMediaPlayerControllerGetVolume() {
+double NWebHandlerDelegate::WebMediaPlayerControllerGetVolume()
+{
   return (nweb_media_player_controller_.get()
       ->*(nweb_media_player_controller_->get_volume))();
 }
@@ -5396,6 +5827,13 @@ void NWebHandlerDelegate::OnRenderProcessNotResponding(
   RenderProcessNotRespondingReason anr_reason =
       static_cast<RenderProcessNotRespondingReason>(reason);
   nweb_handler_->OnRenderProcessNotResponding(js_stack, pid, anr_reason);
+#if defined(REPORT_SYS_EVENT)
+  ReportRenderProcessNotResponding(
+        std::to_string(pid),
+        anr_reason == RenderProcessNotRespondingReason::INPUT_TIMEOUT
+            ? "INPUT_TIMEOUT"
+            : "NAVIGATION_COMMIT_TIMEOUT");
+#endif
 }
 
 void NWebHandlerDelegate::OnRenderProcessResponding(
@@ -5406,6 +5844,9 @@ void NWebHandlerDelegate::OnRenderProcessResponding(
   }
   LOG(INFO) << "OnRenderProcessResponding";
   nweb_handler_->OnRenderProcessResponding();
+#if defined(REPORT_SYS_EVENT)
+  ReportRenderProcessResponding();
+#endif
 }
 
 void NWebHandlerDelegate::SetPopupSurface(void* popup_window) {
@@ -5414,8 +5855,6 @@ void NWebHandlerDelegate::SetPopupSurface(void* popup_window) {
       if (popup_window_ != nullptr && popup_window_ != popup_window) {
         const auto old_popup_widget =
             main_browser_->GetHost()->GetAcceleratedWidget(true);
-        LOG(INFO) << "SetPopupSurface destroying old popup window, widget_id: "
-                  << old_popup_widget;
         NWebNativeWindowTracker::GetInstance()->DestroyNativeWindow(
             old_popup_widget);
         content::GpuProcessHost* host = content::GpuProcessHost::Get();
@@ -5428,13 +5867,8 @@ void NWebHandlerDelegate::SetPopupSurface(void* popup_window) {
       }
       popup_window_ = popup_window;
       main_browser_->GetHost()->SetPopupWindow(popup_window_);
-      const auto new_popup_widget =
-          main_browser_->GetHost()->GetAcceleratedWidget(true);
-      LOG(INFO) << "SetPopupSurface set new popup window done, new widget_id: "
-                << new_popup_widget;
     }
   } else {
-    LOG(INFO) << "SetPopupSurface main_browser or host is null";
     popup_window_ = popup_window;
   }
 }
@@ -5453,7 +5887,7 @@ void NWebHandlerDelegate::OnUpdateTargetURL(CefRefPtr<CefBrowser> browser,
         url.ToString(), web_app_client_extension_listener_->nweb_id);
   }
 }
-#endif
+#endif  // OHOS_NWEB_EX
 
 void NWebHandlerDelegate::OnRequestOpenDevTools() {
 #if BUILDFLAG(ARKWEB_NWEB_EX)
@@ -5461,7 +5895,7 @@ void NWebHandlerDelegate::OnRequestOpenDevTools() {
     dispatcher_.OnRequestOpenDevTools();
     return;
   }
-#endif
+#endif  // OHOS_NWEB_EX
   if (!web_app_client_extension_listener_) {
     LOG(WARNING) << "OnRequestOpenDevTools failed, no listener";
     return;
@@ -5580,10 +6014,19 @@ void NWebHandlerDelegate::HandleSafeBrowsingDetection(int detectMode,
   NWebSafeBrowsingDetectionHandler::GetInstance().HandleSafeBrowsingDetection(
       nweb_id_, detectMode, detectSwitch, url);
 #else
-  OnSafeBrowsingDetectionResult(-1, -1, "", url);
+  GetBrowser()->OnSafeBrowsingDetectionResult(SafeBrowsingDetectionResult(-1, -1, "", url,
+    false, "", ""));
 #endif
 #endif
 }
+
+#if BUILDFLAG(ARKWEB_EX_SCREEN_CAPTURE)
+void NWebHandlerDelegate::RegisterScreenCaptureDelegateListener(
+    CefRefPtr<CefScreenCaptureCallback> screen_capture_cb) {
+  LOG(INFO) << "NWebHandlerDelegate RegisterScreenCaptureDelegateListener enter";
+  screen_capture_cb_ = screen_capture_cb;
+}
+#endif // ARKWEB_EX_SCREEN_CAPTURE
 
 #if BUILDFLAG(ARKWEB_PIP)
 bool NWebHandlerDelegate::OnPip(CefRefPtr<CefBrowser> browser,
@@ -5629,14 +6072,6 @@ void NWebHandlerDelegate::OnPipEvent(CefRefPtr<CefBrowser> browser,
   }
 }
 #endif
-
-#if BUILDFLAG(ARKWEB_EX_SCREEN_CAPTURE)
-void NWebHandlerDelegate::RegisterScreenCaptureDelegateListener(
-    CefRefPtr<CefScreenCaptureCallback> screen_capture_cb) {
-  LOG(INFO) << "NWebHandlerDelegate RegisterScreenCaptureDelegateListener enter";
-  screen_capture_cb_ = screen_capture_cb;
-}
-#endif // ARKWEB_EX_SCREEN_CAPTURE
 
 #if BUILDFLAG(ARKWEB_MENU)
 void NWebHandlerDelegate::OnVisibleChanged(bool isVisible) {
@@ -5719,20 +6154,24 @@ bool NWebHandlerDelegate::OnStartBackgroundTask(int32_t type,
 #endif  // RKWEB_PERFORMANCE_PERSISTENT_TASK
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
-std::string NWebHandlerDelegate::OnRewriteUrlForNavigation(const std::string& original_url,
-                                                           const std::string& referrer,
-                                                           int transition_type,
-                                                           bool is_key_request) {
+std::string NWebHandlerDelegate::OnRewriteUrlForNavigation(
+    const std::string& original_url,
+    const std::string& referrer,
+    int transition_type,
+    bool is_key_request) {
   if (!CefCurrentlyOn(TID_UI)) {
     return "";
   }
 #if BUILDFLAG(ARKWEB_NWEB_EX)
   if (IsNativeApiEnable()) {
     const char* raw_url = dispatcher_.OnRewriteUrlForNavigation(
-        original_url.c_str(), referrer.c_str(), transition_type, is_key_request);
+        original_url.c_str(),
+        referrer.c_str(),
+        transition_type,
+        is_key_request);
 
     if (!raw_url) {
-      return "";
+        return "";
     }
 
     std::string result(raw_url);
@@ -5763,6 +6202,360 @@ void NWebHandlerDelegate::OnRewriteUrlForNavigationAsync(
                                   transition_type, is_key_request);
     callback->OnComplete(CefString(rewrited_url));
   }
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
+
+static std::atomic<int> nweb_resource_request_new_key = 0;
+static std::unordered_map<int, std::shared_ptr<NWebResourceRequest>>
+    g_nweb_resource_request_map;
+static std::shared_mutex g_nweb_resource_request_map_shared_lock;
+ 
+static std::atomic<int> nweb_resource_response_new_key = 0;
+static std::unordered_map<int, std::shared_ptr<NWebResourceResponse>>
+    g_nweb_resource_response_map;
+static std::shared_mutex g_nweb_resource_response_map_shared_lock;
+
+
+// static
+int NWebHandlerDelegate::InsertResourceRequest(
+    std::shared_ptr<NWebResourceRequest> nweb_request) {
+  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
+  g_nweb_resource_request_map[++nweb_resource_request_new_key] = nweb_request;
+  return nweb_resource_request_new_key;
+}
+
+// static
+std::shared_ptr<NWebResourceRequest>
+NWebHandlerDelegate::GetResourceRequestByKey(int key) {
+  std::shared_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
+  if (auto it = g_nweb_resource_request_map.find(key); it != g_nweb_resource_request_map.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
+// static
+int NWebHandlerDelegate::InsertResourceResponse(
+    std::shared_ptr<NWebResourceResponse> nweb_response) {
+  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
+  g_nweb_resource_response_map[++nweb_resource_response_new_key] = nweb_response;
+  return nweb_resource_response_new_key;
+}
+
+// static
+std::shared_ptr<NWebResourceResponse>
+NWebHandlerDelegate::GetResourceResponseByKey(int key) {
+  std::shared_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
+  if (auto it = g_nweb_resource_response_map.find(key); it != g_nweb_resource_response_map.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
+void NWebHandlerDelegate::ResourceRequestDelete(int nweb_request_key) {
+  LOG(DEBUG) << "delete request by key is " << nweb_request_key;
+  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
+  if (g_nweb_resource_request_map.find(nweb_request_key) != g_nweb_resource_request_map.end()) {
+    g_nweb_resource_request_map.erase(nweb_request_key);
+  }
+}
+
+void NWebHandlerDelegate::ResourceResponseDelete(int nweb_response_key) {
+  LOG(DEBUG) << "delete request by key is " << nweb_response_key;
+  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
+  if (g_nweb_resource_response_map.find(nweb_response_key) != g_nweb_resource_response_map.end()) {
+    g_nweb_resource_response_map.erase(nweb_response_key);
+  }
+}
+
+std::map<std::string, std::string> NWebHandlerDelegate::ResourceRequestGetRequestHeader(
+  int32_t nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestHeaders";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestGetRequestHeaders, nweb_request is null";
+    return {};
+  }
+  return nweb_request->GetRequestHeader();
+}
+
+std::string NWebHandlerDelegate::ResourceRequestGetRequestUrl(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestUrl";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestGetRequestUrl, nweb_request is null";
+    return std::string();
+  }
+  return nweb_request->GetRequestUrl();
+}
+
+bool NWebHandlerDelegate::ResourceRequestIsRequestGesture(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsRequestGesture";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestIsRequestGesture, nweb_request is null";
+    return false;
+  }
+  return nweb_request->IsRequestGesture();
+}
+
+bool NWebHandlerDelegate::ResourceRequestIsMainFrame(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsMainFrame";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestIsMainFrame, nweb_request is null";
+    return false;
+  }
+  return nweb_request->IsMainFrame();
+}
+
+bool NWebHandlerDelegate::ResourceRequestIsRedirect(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsRedirect";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestIsRedirect, nweb_request is null";
+    return false;
+  }
+  return nweb_request->IsRedirect();
+}
+
+std::string NWebHandlerDelegate::ResourceRequestGetRequestMethod(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestMethod";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestGetRequestMethod, nweb_request is null";
+    return std::string();
+  }
+  return nweb_request->GetRequestMethod();
+}
+
+int32_t NWebHandlerDelegate::ResourceRequestGetPageTransition(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetPageTransition";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestGetPageTransition, nweb_request is null";
+    return -1;
+  }
+  return nweb_request->GetPageTransition();
+}
+
+int32_t NWebHandlerDelegate::ResourceRequestGetRequestType(
+    int nweb_request_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestType";
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+      GetResourceRequestByKey(nweb_request_key);
+  if (!nweb_request) {
+    LOG(ERROR) << "failed to ResourceRequestGetRequestType, nweb_request is null";
+    return -1;
+  }
+  return nweb_request->GetRequestType();
+}
+
+std::string NWebHandlerDelegate::ResourceResponseGetMimeType(
+    int nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetMimeType";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetMimeType, nweb_response is null";
+    return std::string();
+  }
+  return nweb_response->GetMimeType();
+}
+
+std::string NWebHandlerDelegate::ResourceResponseGetEncoding(int nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetEncoding";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetMimeType, nweb_response is null";
+    return std::string();
+  }
+  return nweb_response->GetEncoding();
+}
+
+int32_t NWebHandlerDelegate::ResourceResponseGetStatusCode(int nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetStatusCode";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetStatusCode, nweb_response is null";
+    return -1;
+  }
+  return nweb_response->GetStatusCode();
+}
+
+std::string NWebHandlerDelegate::ResourceResponseGetReasonPhrase(int nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetReasonPhrase";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetReasonPhrase, nweb_request is null";
+    return std::string();
+  }
+  return nweb_response->GetReasonPhrase();
+}
+
+std::map<std::string, std::string> NWebHandlerDelegate::ResourceResponseGetResponseHeader(
+  int32_t nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetResponseHeaders";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetResponseHeaders, nweb_request is null";
+    return {};
+  }
+  return nweb_response->GetResponseHeader();
+}
+
+bool NWebHandlerDelegate::ResourceResponseGetIsFromNetwork(int nweb_response_key) {
+  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetIsFromNetwork";
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      GetResourceResponseByKey(nweb_response_key);
+  if (!nweb_response) {
+    LOG(ERROR) << "failed to ResourceResponseGetIsFromNetwork, nweb_response is null";
+    return false;
+  }
+  return nweb_response->GetIsFromNetwork();
+}
+
+int32_t NWebHandlerDelegate::GetLastCommittedEntryPageTransition() {
+  if (GetBrowser() && GetBrowser()->GetHost()) {
+    return GetBrowser()->GetHost()->GetLastCommittedEntryPageTransition();
+  }
+  return -1;
+}
+
+void NWebHandlerDelegate::OnReceiveResponse(CefRefPtr<CefRequest> request,
+                                              bool is_request_gesture,
+                                              int transition_type,
+                                              bool is_main_frame,
+                                              bool is_redirect,
+                                              int resource_type,
+                                              CefRefPtr<CefResponse> response_info,
+                                              bool is_from_network) {
+
+  if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
+    content::GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(&NWebHandlerDelegate::OnReceiveResponse,
+                                  weak_factory_.GetWeakPtr(), request, is_request_gesture, transition_type, 
+                                  is_main_frame, is_redirect,
+                                  resource_type, response_info, is_from_network));
+    return;
+  }
+
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+  bool isDispatcherCalledForResponseReceived = false;
+  if (IsNativeApiEnable() && dispatcher_.HasOnReceiveResponseV2()
+      && IsTargetResourceTypeValue(resource_type)) {
+    CefRequest::HeaderMap cef_request_headers;
+    request->GetHeaderMap(cef_request_headers);
+    std::map<std::string, std::string> request_headers;
+    ConvertMapToHeaderMap(cef_request_headers, request_headers);
+
+    WebUrlResourceRequest resource_request = {
+        is_request_gesture, is_main_frame, is_redirect, 
+        resource_type, transition_type, 
+        request->GetURL().ToString(), 
+        request->GetMethod().ToString(), request_headers};
+
+    CefResponse::HeaderMap cef_response_headers;
+    response_info->GetHeaderMap(cef_response_headers);
+    std::map<std::string, std::string> response_headers;
+    ConvertMapToHeaderMap(cef_response_headers, response_headers);
+
+    WebUrlResourceResponse resource_response = {
+        is_from_network, response_info->GetStatus(), response_info->GetMimeType(),
+        response_info->GetCharset(), response_info->GetStatusText(), response_headers};
+
+    dispatcher_.OnReceiveResponseByPb(resource_request, resource_response);
+    isDispatcherCalledForResponseReceived = true;
+  }
+
+  if (IsNativeApiEnable() && dispatcher_.HasOnReceiveResponseForAllResources()) {
+    CefRequest::HeaderMap cef_request_headers;
+    request->GetHeaderMap(cef_request_headers);
+    std::map<std::string, std::string> request_headers;
+    ConvertMapToHeaderMap(cef_request_headers, request_headers);
+ 
+    WebUrlResourceRequest resource_request = {
+        is_request_gesture, is_main_frame, is_redirect, 
+        resource_type, transition_type, 
+        request->GetURL().ToString(), 
+        request->GetMethod().ToString(), request_headers};
+ 
+    CefResponse::HeaderMap cef_response_headers;
+    response_info->GetHeaderMap(cef_response_headers);
+    std::map<std::string, std::string> response_headers;
+    ConvertMapToHeaderMap(cef_response_headers, response_headers);
+ 
+
+    WebUrlResourceResponse resource_response = {
+        is_from_network, response_info->GetStatus(), response_info->GetMimeType(),
+        response_info->GetCharset(), response_info->GetStatusText(), response_headers};
+ 
+    dispatcher_.OnReceiveResponseForAllResources(resource_request, resource_response);
+    isDispatcherCalledForResponseReceived = true;
+  }
+ 
+  if (isDispatcherCalledForResponseReceived) {
+    return;
+  }
+#endif
+
+  CefRequest::HeaderMap cef_request_headers;
+  request->GetHeaderMap(cef_request_headers);
+  std::map<std::string, std::string> request_headers;
+  ConvertMapToHeaderMap(cef_request_headers, request_headers);
+
+  std::shared_ptr<NWebUrlResourceRequestImpl> web_request =
+      std::make_shared<NWebUrlResourceRequestImpl>(
+          request->GetMethod().ToString(), request_headers,
+          request->GetURL().ToString(), is_request_gesture, is_main_frame);
+  web_request->SetRequestType(resource_type);
+  web_request->SetPageTransition(transition_type);
+  std::shared_ptr<NWebResourceRequest> nweb_request =
+        std::make_shared<NWebResourceRequest>(GetNWebId(), web_request);
+
+  std::string data;
+  CefResponse::HeaderMap cef_response_headers;
+  response_info->GetHeaderMap(cef_response_headers);
+  std::map<std::string, std::string> response_headers;
+  ConvertMapToHeaderMap(cef_response_headers, response_headers);
+
+  std::shared_ptr<NWebUrlResourceResponseImpl> web_response =
+      std::make_shared<NWebUrlResourceResponseImpl>(
+          response_info->GetMimeType(), response_info->GetCharset(),
+          response_info->GetStatus(), response_info->GetStatusText(), response_headers,
+          data);
+  web_response->PutResponseIsFromNetwork(is_from_network);
+  std::shared_ptr<NWebResourceResponse> nweb_response =
+      std::make_shared<NWebResourceResponse>(GetNWebId(), web_response);
+  int nweb_request_key = InsertResourceRequest(nweb_request);
+  int nweb_response_key = InsertResourceResponse(nweb_response);
+#if BUILDFLAG(ARKWEB_NWEB_EX)
+  if (IsNativeApiEnable()) {
+    dispatcher_.OnReceiveResponse(nweb_request_key, nweb_response_key);
+    return;
+  }
+  ResourceRequestDelete(nweb_request_key);
+  ResourceResponseDelete(nweb_response_key);
+#endif
 }
 #endif
 
@@ -5823,368 +6616,5 @@ void NWebHandlerDelegate::OnSafeBrowsingCheckDetail(int code,
   }
 #endif
 }
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
- 
-static std::atomic<int> nweb_resource_request_new_key = 0;
-static std::unordered_map<int, std::shared_ptr<NWebResourceRequest>>
-    g_nweb_resource_request_map;
-static std::shared_mutex g_nweb_resource_request_map_shared_lock;
- 
-static std::atomic<int> nweb_resource_response_new_key = 0;
-static std::unordered_map<int, std::shared_ptr<NWebResourceResponse>>
-    g_nweb_resource_response_map;
-static std::shared_mutex g_nweb_resource_response_map_shared_lock;
- 
- 
-// static
-int NWebHandlerDelegate::InsertResourceRequest(
-    std::shared_ptr<NWebResourceRequest> nweb_request) {
-  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
-  g_nweb_resource_request_map[++nweb_resource_request_new_key] = nweb_request;
-  return nweb_resource_request_new_key;
-}
- 
-// static
-std::shared_ptr<NWebResourceRequest>
-NWebHandlerDelegate::GetResourceRequestByKey(int key) {
-  std::shared_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
-  if (auto it = g_nweb_resource_request_map.find(key); it != g_nweb_resource_request_map.end()) {
-    return it->second;
-  }
-  return nullptr;
-}
- 
-// static
-int NWebHandlerDelegate::InsertResourceResponse(
-    std::shared_ptr<NWebResourceResponse> nweb_response) {
-  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
-  g_nweb_resource_response_map[++nweb_resource_response_new_key] = nweb_response;
-  return nweb_resource_response_new_key;
-}
- 
-// static
-std::shared_ptr<NWebResourceResponse>
-NWebHandlerDelegate::GetResourceResponseByKey(int key) {
-  std::shared_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
-  if (auto it = g_nweb_resource_response_map.find(key); it != g_nweb_resource_response_map.end()) {
-    return it->second;
-  }
-  return nullptr;
-}
- 
-void NWebHandlerDelegate::ResourceRequestDelete(int nweb_request_key) {
-  LOG(DEBUG) << "delete request by key is " << nweb_request_key;
-  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_request_map_shared_lock);
-  if (g_nweb_resource_request_map.find(nweb_request_key) != g_nweb_resource_request_map.end()) {
-    g_nweb_resource_request_map.erase(nweb_request_key);
-  }
-}
- 
-void NWebHandlerDelegate::ResourceResponseDelete(int nweb_response_key) {
-  LOG(DEBUG) << "delete request by key is " << nweb_response_key;
-  std::unique_lock<std::shared_mutex> lock(g_nweb_resource_response_map_shared_lock);
-  if (g_nweb_resource_response_map.find(nweb_response_key) != g_nweb_resource_response_map.end()) {
-    g_nweb_resource_response_map.erase(nweb_response_key);
-  }
-}
- 
-std::map<std::string, std::string> NWebHandlerDelegate::ResourceRequestGetRequestHeader(
-  int32_t nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestHeaders";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestGetRequestHeaders, nweb_request is null";
-    return {};
-  }
-  return nweb_request->GetRequestHeader();
-}
- 
-std::string NWebHandlerDelegate::ResourceRequestGetRequestUrl(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestUrl";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestGetRequestUrl, nweb_request is null";
-    return std::string();
-  }
-  return nweb_request->GetRequestUrl();
-}
- 
-bool NWebHandlerDelegate::ResourceRequestIsRequestGesture(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsRequestGesture";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestIsRequestGesture, nweb_request is null";
-    return false;
-  }
-  return nweb_request->IsRequestGesture();
-}
- 
-bool NWebHandlerDelegate::ResourceRequestIsMainFrame(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsMainFrame";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestIsMainFrame, nweb_request is null";
-    return false;
-  }
-  return nweb_request->IsMainFrame();
-}
- 
-bool NWebHandlerDelegate::ResourceRequestIsRedirect(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestIsRedirect";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestIsRedirect, nweb_request is null";
-    return false;
-  }
-  return nweb_request->IsRedirect();
-}
- 
-std::string NWebHandlerDelegate::ResourceRequestGetRequestMethod(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestMethod";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestGetRequestMethod, nweb_request is null";
-    return std::string();
-  }
-  return nweb_request->GetRequestMethod();
-}
- 
-int32_t NWebHandlerDelegate::ResourceRequestGetPageTransition(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetPageTransition";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestGetPageTransition, nweb_request is null";
-    return -1;
-  }
-  return nweb_request->GetPageTransition();
-}
- 
-int32_t NWebHandlerDelegate::ResourceRequestGetRequestType(
-    int nweb_request_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceRequestGetRequestType";
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-      GetResourceRequestByKey(nweb_request_key);
-  if (!nweb_request) {
-    LOG(ERROR) << "failed to ResourceRequestGetRequestType, nweb_request is null";
-    return -1;
-  }
-  return nweb_request->GetRequestType();
-}
- 
-std::string NWebHandlerDelegate::ResourceResponseGetMimeType(
-    int nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetMimeType";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetMimeType, nweb_response is null";
-    return std::string();
-  }
-  return nweb_response->GetMimeType();
-}
- 
-std::string NWebHandlerDelegate::ResourceResponseGetEncoding(int nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetEncoding";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetMimeType, nweb_response is null";
-    return std::string();
-  }
-  return nweb_response->GetEncoding();
-}
- 
-int32_t NWebHandlerDelegate::ResourceResponseGetStatusCode(int nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetStatusCode";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetStatusCode, nweb_response is null";
-    return -1;
-  }
-  return nweb_response->GetStatusCode();
-}
- 
-std::string NWebHandlerDelegate::ResourceResponseGetReasonPhrase(int nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetReasonPhrase";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetReasonPhrase, nweb_request is null";
-    return std::string();
-  }
-  return nweb_response->GetReasonPhrase();
-}
- 
-std::map<std::string, std::string> NWebHandlerDelegate::ResourceResponseGetResponseHeader(
-  int32_t nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetResponseHeaders";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetResponseHeaders, nweb_request is null";
-    return {};
-  }
-  return nweb_response->GetResponseHeader();
-}
- 
-bool NWebHandlerDelegate::ResourceResponseGetIsFromNetwork(int nweb_response_key) {
-  LOG(INFO) << "NWebHandlerDelegate::ResourceResponseGetIsFromNetwork";
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      GetResourceResponseByKey(nweb_response_key);
-  if (!nweb_response) {
-    LOG(ERROR) << "failed to ResourceResponseGetIsFromNetwork, nweb_response is null";
-    return false;
-  }
-  return nweb_response->GetIsFromNetwork();
-}
- 
-int32_t NWebHandlerDelegate::GetLastCommittedEntryPageTransition() {
-  if (GetBrowser() && GetBrowser()->GetHost()) {
-    return GetBrowser()->GetHost()->GetLastCommittedEntryPageTransition();
-  }
-  return -1;
-}
- 
-void NWebHandlerDelegate::OnReceiveResponse(CefRefPtr<CefRequest> request,
-                                              bool is_request_gesture,
-                                              int transition_type,
-                                              bool is_main_frame,
-                                              bool is_redirect,
-                                              int resource_type,
-                                              CefRefPtr<CefResponse> response_info,
-                                              bool is_from_network) {
- 
-  if (!content::BrowserThread::CurrentlyOn(content::BrowserThread::UI)) {
-    content::GetUIThreadTaskRunner({})->PostTask(
-        FROM_HERE, base::BindOnce(&NWebHandlerDelegate::OnReceiveResponse,
-                                  weak_factory_.GetWeakPtr(), request, is_request_gesture, transition_type, 
-                                  is_main_frame, is_redirect,
-                                  resource_type, response_info, is_from_network));
-    return;
-  }
-  
-#if BUILDFLAG(ARKWEB_NWEB_EX)
-  if (IsNativeApiEnable() && dispatcher_.HasOnReceiveResponseV2()) {
-    CefRequest::HeaderMap cef_request_headers;
-    request->GetHeaderMap(cef_request_headers);
-    std::map<std::string, std::string> request_headers;
-    ConvertMapToHeaderMap(cef_request_headers, request_headers);
- 
-    WebUrlResourceRequest resource_request = {
-        is_request_gesture, is_main_frame, is_redirect, 
-        resource_type, transition_type, 
-        request->GetURL().ToString(), 
-        request->GetMethod().ToString(), request_headers};
- 
-    CefResponse::HeaderMap cef_response_headers;
-    response_info->GetHeaderMap(cef_response_headers);
-    std::map<std::string, std::string> response_headers;
-    ConvertMapToHeaderMap(cef_response_headers, response_headers);
- 
-    WebUrlResourceResponse resource_response = {
-        is_from_network, response_info->GetStatus(), response_info->GetMimeType(),
-        response_info->GetCharset(), response_info->GetStatusText(), response_headers};
- 
-    return dispatcher_.OnReceiveResponseByPb(resource_request, resource_response);
-  }
-#endif
-
-  CefRequest::HeaderMap cef_request_headers;
-  request->GetHeaderMap(cef_request_headers);
-  std::map<std::string, std::string> request_headers;
-  ConvertMapToHeaderMap(cef_request_headers, request_headers);
-  std::shared_ptr<NWebUrlResourceRequestImpl> web_request =
-      std::make_shared<NWebUrlResourceRequestImpl>(
-          request->GetMethod().ToString(), request_headers,
-          request->GetURL().ToString(), is_request_gesture, is_main_frame);
-  web_request->SetRequestType(resource_type);
-  web_request->SetPageTransition(transition_type);
-  std::shared_ptr<NWebResourceRequest> nweb_request =
-        std::make_shared<NWebResourceRequest>(GetNWebId(), web_request);
- 
-  std::string data;
-  CefResponse::HeaderMap cef_response_headers;
-  response_info->GetHeaderMap(cef_response_headers);
-  std::map<std::string, std::string> response_headers;
-  ConvertMapToHeaderMap(cef_response_headers, response_headers);
-  std::shared_ptr<NWebUrlResourceResponseImpl> web_response =
-      std::make_shared<NWebUrlResourceResponseImpl>(
-          response_info->GetMimeType(), response_info->GetCharset(),
-          response_info->GetStatus(), response_info->GetStatusText(), response_headers,
-          data);
-  web_response->PutResponseIsFromNetwork(is_from_network);
-  std::shared_ptr<NWebResourceResponse> nweb_response =
-      std::make_shared<NWebResourceResponse>(GetNWebId(), web_response);
-  int nweb_request_key = InsertResourceRequest(nweb_request);
-  int nweb_response_key = InsertResourceResponse(nweb_response);
-#if BUILDFLAG(ARKWEB_NWEB_EX)
-  if (IsNativeApiEnable()) {
-    dispatcher_.OnReceiveResponse(nweb_request_key, nweb_response_key);
-    return;
-  }
-  ResourceRequestDelete(nweb_request_key);
-  ResourceResponseDelete(nweb_response_key);
-#endif
-}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-void NWebHandlerDelegate::OnReportNewNavigationInfo(
-    CefRefPtr<CefWebNavigationInfo> navigation_info) {
-  if (!navigation_info) {
-    return;
-  }
-
-  NWebNavigationInfo nweb_info = ConvertToNWebNavigationInfo(navigation_info);
-
-  LOG_FEEDBACK(INFO, kNetwork)
-      << "OnReportNewNavigationInfo requestTraceId:"
-      << nweb_info.request_trace_id
-      << " pageTraceId:" << nweb_info.page_trace_id
-      << " timeStamp:" << nweb_info.time_stamp
-      << " originalErrorCode:" << nweb_info.original_error_code
-      << " errorCode:" << nweb_info.error_code
-      << " isAutoReload:" << nweb_info.is_auto_reload
-      << " autoReloadReason:" << nweb_info.auto_reload_reason
-      << " hwCode:" << nweb_info.hw_code
-      << " websitePolicy:" << nweb_info.website_policy
-      << " connectionType:" << nweb_info.connection_type
-      << " isHttpsDnsEnabled:" << nweb_info.is_https_dns_enabled
-      << " didUseHttpsDns:" << nweb_info.did_use_https_dns
-      << " isFallbackProxyEnabled:" << nweb_info.is_fallback_proxy_enabled
-      << " didUseFallbackProxy:" << nweb_info.did_use_fallback_proxy
-      << " isCaptivePortal:" << nweb_info.is_captive_portal
-      << " hasIgnoreCertificateError:" << nweb_info.has_ignore_certificate_error
-      << " requestAttemptSize:" << nweb_info.request_attempts.size()
-      << " originalUrl:"
-      << url::LogUtils::ConvertUrlWithMask(nweb_info.original_url)
-      << " url:" << url::LogUtils::ConvertUrlWithMask(nweb_info.url);
-
-#if BUILDFLAG(ARKWEB_NWEB_EX)
-  if (IsNativeApiEnable()) {
-    dispatcher_.OnReportNewNavigationInfo(nweb_info);
-    return;
-  }
-#endif
-}
-#else
-void NWebHandlerDelegate::OnReportNewNavigationInfo(
-    CefRefPtr<CefWebNavigationInfo> navigation_info) {}
 #endif
 }  // namespace OHOS::NWeb

@@ -17,7 +17,6 @@
 #include "base/check_op.h"
 #include "base/notreached.h"
 #include "base/numerics/checked_math.h"
-#include "base/ranges/algorithm.h"
 #include "base/strings/string_util.h"
 #include "components/url_pattern_index/flat/url_pattern_index_generated.h"
 #include "components/url_pattern_index/fuzzy_pattern_matching.h"
@@ -32,7 +31,7 @@
 namespace url_pattern_index {
 
 namespace {
-/*
+
 proto::UrlPatternType ConvertUrlPatternType(flat::UrlPatternType type) {
   switch (type) {
     case flat::UrlPatternType_SUBSTRING:
@@ -63,10 +62,9 @@ std::string_view ConvertString(const flatbuffers::String* string) {
   return string ? std::string_view(string->data(), string->size())
                 : std::string_view();
 }
-*/
 
 bool HasAnyUpperAscii(std::string_view string) {
-  return base::ranges::any_of(string, base::IsAsciiUpper<char>);
+  return std::ranges::any_of(string, base::IsAsciiUpper<char>);
 }
 
 }  // namespace
@@ -103,7 +101,7 @@ CssPattern::UrlInfo::~UrlInfo() = default;
 CssPattern::CssPattern() = default;
 
 CssPattern::CssPattern(const flat::CssRule& rule)
-    : match_case_(rule.options() & flat::OptionFlag_IS_CASE_INSENSITIVE
+    : match_case_(rule.options() & flat::OptionFlag_IS_MATCH_CASE
                       ? MatchCase::kFalse
                       : MatchCase::kTrue) {}
 

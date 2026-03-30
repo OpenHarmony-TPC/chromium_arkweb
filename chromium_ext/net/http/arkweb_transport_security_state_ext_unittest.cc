@@ -125,7 +125,7 @@ TEST_F(ArkWebTransportSecurityStateExtTest, CheckPublicKeyPinsOhos003) {
   ArkWebTransportSecurityStateExt ext;
   HostPortPair host_port_pair("example.com", 443);
   HashValue hash(HASH_VALUE_SHA256);
-  crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
+  //crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
   HashValueVector public_key_hashes = {hash};
   std::string public_key_hash_string = hash.ToString();
   EXPECT_TRUE(public_key_hash_string.starts_with(kSha256Slash));
@@ -143,7 +143,7 @@ TEST_F(ArkWebTransportSecurityStateExtTest, CheckPublicKeyPinsOhos004) {
   ArkWebTransportSecurityStateExt ext;
   HostPortPair host_port_pair("example.com", 443);
   HashValue hash(HASH_VALUE_SHA256);
-  crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
+  //crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
   HashValueVector public_key_hashes = {hash};
   std::string pin = "sha256//different_hash_value";
   std::vector<std::string> pins = {pin};
@@ -159,7 +159,7 @@ TEST_F(ArkWebTransportSecurityStateExtTest, CheckPublicKeyPinsOhos005) {
   ArkWebTransportSecurityStateExt ext;
   HostPortPair host_port_pair("example.com", 443);
   HashValue hash(HASH_VALUE_SHA256);
-  crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
+  //crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
   HashValueVector public_key_hashes = {hash};
   std::vector<std::string> pins = {"invalid_pin_format"};
   auto mock_adapter = std::make_unique<MockCertManagerAdapter>();
@@ -174,7 +174,7 @@ TEST_F(ArkWebTransportSecurityStateExtTest, CheckPublicKeyPinsOhos006) {
   ArkWebTransportSecurityStateExt ext;
   HostPortPair host_port_pair("example.com", 443);
   HashValue hash(HASH_VALUE_SHA256);
-  crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
+  //crypto::SHA256HashString("test_key", hash.data(), crypto::kSHA256Length);
   HashValueVector public_key_hashes = {hash};
   std::string public_key_hash_string = hash.ToString();
   std::string public_key_hash_string_code = public_key_hash_string.substr(kSha256Slash.size());

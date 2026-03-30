@@ -40,12 +40,29 @@ fi
 
 if [ -f "$OUT_DIR/NWeb-musl_64.hmp" ]; then
     mv "$OUT_DIR/NWeb-musl_64.hmp" "$OUT_DIR/ModuleUpdatePackage.hmp"
-    md5=$(md5sum "$OUT_DIR/ModuleUpdatePackage.hmp" | awk '{print $1}')
-    echo "MD5: $md5"
-    sha1=$(sha1sum "$OUT_DIR/ModuleUpdatePackage.hmp" | awk '{print $1}')
-    echo "SHA-1: $sha1"
-    sha256=$(sha256sum "$OUT_DIR/ModuleUpdatePackage.hmp" | awk '{print $1}')
-    echo "SHA-256: $sha256"
+fi
+
+if [ -f "$ROOT_DIR/out/x86_64/NWeb-x86_64.hap" ]; then
+    cp "$ROOT_DIR/out/x86_64/NWeb-x86_64.hap" "$ROOT_DIR/out/x86_64/ArkWebCore.hap"
+fi
+
+if [ -f "$ROOT_DIR/arkweb/ohos_nweb_ex/signature_nweb/NWeb-musl_64.hap" ]; then
+    mv "$ROOT_DIR/arkweb/ohos_nweb_ex/signature_nweb/NWeb-musl_64.hap" "$ROOT_DIR/arkweb/ohos_nweb_ex/signature_nweb/NWeb_HWASAN.hap"
+fi
+
+if [ -f "$OUT_DIR/NWeb-musl_64.hap" ]; then
+    md5=$(md5sum "$OUT_DIR/NWeb-musl_64.hap" | awk '{print $1}')
+    echo "hap MD5: $md5"
+    sha1=$(sha1sum "$OUT_DIR/NWeb-musl_64.hap" | awk '{print $1}')
+    echo "hap SHA-1: $sha1"
+    sha256=$(sha256sum "$OUT_DIR/NWeb-musl_64.hap" | awk '{print $1}')
+    echo "hap SHA-256: $sha256"
+    mv "$OUT_DIR/NWeb-musl_64.hap" "$OUT_DIR/NWeb.hap"
+    cp "$OUT_DIR/NWeb.hap" "$OUT_DIR/ArkWebCore.hap"
+fi
+if [ -f "$OUT_DIR/libarkweb_engine.so" ]; then
+    md5=$(md5sum "$OUT_DIR/libarkweb_engine.so" | awk '{print $1}')
+    echo "libarkweb_engine.so MD5: $md5"    
 fi
 
 set -e

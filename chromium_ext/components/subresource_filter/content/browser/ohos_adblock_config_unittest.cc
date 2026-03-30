@@ -88,7 +88,6 @@ class MockPrefService : public PrefService {
             std::make_unique<MockPrefNotifierImpl>(),
             nullptr,
             base::MakeRefCounted<::testing::NiceMock<MockPrefStore>>(),
-            base::MakeRefCounted<::testing::NiceMock<MockPrefStore>>(),
             base::MakeRefCounted<PrefRegistry>(),
             base::BindRepeating([](PersistentPrefStore::PrefReadError) {}),
             false) {}

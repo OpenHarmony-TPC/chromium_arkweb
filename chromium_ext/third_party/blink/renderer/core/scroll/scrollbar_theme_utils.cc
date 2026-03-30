@@ -61,12 +61,10 @@ void ScrollbarThemeUtils::OffsetPointForHitTest(
   } else if (scrollbar.Orientation() == kHorizontalScrollbar) {
     RadiusBottomRight = setting->GetBorderRadiusBottomRight() * scaleFromDIP;
   }
-
   in_out_test_position = gfx::Point(
       in_out_test_position.x() - RadiusBottomRight,
       in_out_test_position.y() - avoidAreaTopMargin - RadiusTopRight);
 }
-
 ScrollbarPart ScrollbarThemeUtils::HitTestUtils(
     const Scrollbar& scrollbar,
     const gfx::Point& test_position_original)

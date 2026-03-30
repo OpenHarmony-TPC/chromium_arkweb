@@ -20,7 +20,6 @@
 
 namespace cc {
 
-// LCOV_EXCL_START
 SchedulerUtils::SchedulerUtils(Scheduler* scheduler)
     : scheduler_(scheduler) {
   DCHECK(scheduler);
@@ -53,5 +52,4 @@ void SchedulerUtils::SetDeferInvalidationForFastMainFrame(
       defer_invalidation_for_fast_main_frame);
 }
 #endif
-// LCOV_EXCL_STOP
 }

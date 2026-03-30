@@ -21,10 +21,18 @@
 #include "ohos_nweb/src/capi/browser_service/nweb_extension_common_types.h"
 #include "ohos_nweb/src/capi/browser_service/nweb_extension_tab_groups_types.h"
 
-using GetTabGroupsCallback = base::RepeatingCallback<void(const NWebExtensionTabGroup&, std::optional<std::string>&)>;
-using MoveTabGroupsCallback = base::RepeatingCallback<void(const NWebExtensionTabGroup&, std::optional<std::string>&)>;
-using QueryTabGroupsCallback = base::RepeatingCallback<void(const std::vector<NWebExtensionTabGroup>&, std::optional<std::string>&)>;
-using UpdateTabGroupsCallback = base::RepeatingCallback<void(const NWebExtensionTabGroup&, std::optional<std::string>&)>;
+using GetTabGroupsCallback =
+    base::RepeatingCallback<void(const NWebExtensionTabGroup&,
+                                 std::optional<std::string>&)>;
+using MoveTabGroupsCallback =
+    base::RepeatingCallback<void(const NWebExtensionTabGroup&,
+                                 std::optional<std::string>&)>;
+using QueryTabGroupsCallback =
+    base::RepeatingCallback<void(const std::vector<NWebExtensionTabGroup>&,
+                                 std::optional<std::string>&)>;
+using UpdateTabGroupsCallback =
+    base::RepeatingCallback<void(const NWebExtensionTabGroup&,
+                                 std::optional<std::string>&)>;
 
 namespace OHOS::NWeb {
 

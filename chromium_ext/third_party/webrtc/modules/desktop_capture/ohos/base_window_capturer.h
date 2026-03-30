@@ -34,10 +34,14 @@ using namespace OHOS::NWeb;
 using namespace media;
 
 using OnReadDataCallback = base::RepeatingCallback<void(void)>;
+using OnStateChangedCallback = base::RepeatingCallback<void(OHOS::NWeb::ScreenCaptureStateCodeAdapter)>;
+using OnUserSelectedCallback = base::OnceCallback<void(void)>;
 
 class WindowCapturerReadCallback : public BaseScreenCaptureReadCallback {
  public:
-  WindowCapturerReadCallback(const OnReadDataCallback& readDataCallback);
+  WindowCapturerReadCallback(const OnReadDataCallback& readDataCallback,
+    const OnStateChangedCallback& stateChangedCallback,
+    OnUserSelectedCallback userSelectedCallback);
 
   ~WindowCapturerReadCallback();
 
@@ -45,8 +49,16 @@ class WindowCapturerReadCallback : public BaseScreenCaptureReadCallback {
 
   void OnReadData(OHOS::NWeb::AudioCaptureSourceTypeAdapter type) override {}
 
+  void OnStateChanged(OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode) override;
+
+  void OnUserSelected() override;
+
  private:
   OnReadDataCallback readDataCallback_;
+
+  OnStateChangedCallback stateChangedCallback_;
+
+  OnUserSelectedCallback userSelectedCallback_;
 };
 
 class BaseWindowCapturer : public DesktopCapturer {
@@ -69,11 +81,7 @@ class BaseWindowCapturer : public DesktopCapturer {
     int micro = 0;
   };
 
-  explicit BaseWindowCapturer(
-      CaptureSourceType source_type,
-      bool is_picker_show, 
-      int nweb_id);
-
+  explicit BaseWindowCapturer(CaptureSourceType source_type, bool is_picker_show, int nweb_id);
   ~BaseWindowCapturer() override;
 
   static std::unique_ptr<DesktopCapturer> CreateRawCapturer(
@@ -94,6 +102,10 @@ class BaseWindowCapturer : public DesktopCapturer {
   // OHOSScreenCaptureCallback interface.
   void HandleStateChange(OH_AVScreenCaptureStateCode stateCode, void* userData);
   void HandleError(int32_t errorCode, void* userData);
+
+  void HandleStateChanged(OHOS::NWeb::ScreenCaptureStateCodeAdapter stateCode);
+
+  void HandleUserSelected();
 
   void HandleBuffer();
 

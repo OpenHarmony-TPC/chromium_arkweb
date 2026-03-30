@@ -22,7 +22,7 @@
 namespace blink {
 class SchemeRegistry;
 
-class SchemeRegistryUtils {
+class PLATFORM_EXPORT SchemeRegistryUtils {
  public:
   raw_ptr<SchemeRegistry> scheme_registry_;
 

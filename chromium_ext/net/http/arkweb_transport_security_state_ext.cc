@@ -63,6 +63,8 @@ ArkWebTransportSecurityStateExt::ArkWebTransportSecurityStateExt(
     std::vector<std::string> hsts_host_bypass_list)
     : TransportSecurityState(hsts_host_bypass_list) {}
 
+ArkWebTransportSecurityStateExt::~ArkWebTransportSecurityStateExt() = default;
+
 #if BUILDFLAG(ARKWEB_NETWORK_BASE)
 TransportSecurityState::PKPStatus
 ArkWebTransportSecurityStateExt::CheckPublicKeyPinsOhos(

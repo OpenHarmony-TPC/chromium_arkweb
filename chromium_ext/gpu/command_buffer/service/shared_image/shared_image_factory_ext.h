@@ -17,13 +17,13 @@
 #include "gpu/config/gpu_driver_bug_workarounds.h"
 #include "gpu/config/gpu_preferences.h"
 #include "gpu/gpu_gles2_export.h"
-#include "gpu/ipc/common/gpu_memory_buffer_support.h"
 #include "gpu/ipc/common/surface_handle.h"
 #include "ui/gfx/buffer_types.h"
 #include "ui/gfx/gpu_extra_info.h"
-#include "ui/gfx/gpu_memory_buffer.h"
+#include "ui/gfx/gpu_memory_buffer_handle.h"
 #include "ui/gl/gl_bindings.h"
 
+#include "gpu/gpu_gles2_export.h"
 #include "gpu/command_buffer/service/shared_image/shared_image_factory.h"
 
 namespace gpu {
@@ -35,7 +35,7 @@ struct GpuFeatureInfo;
 struct GpuPreferences;
 class SharedImageFactory;
 
-class SharedImageFactoryExt : public SharedImageFactory {
+class GPU_GLES2_EXPORT SharedImageFactoryExt : public SharedImageFactory {
 public:
   SharedImageFactoryExt(const GpuPreferences& gpu_preferences,
                         const GpuDriverBugWorkarounds& workarounds,

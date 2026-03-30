@@ -147,8 +147,8 @@ void DynamicFrameLossMonitor::ReportToHiAppEvent() {
           DOMAIN, EVENT_NAME, EventType::STATISTIC, dynamicFrameDropInfo));
   std::ostringstream log_stream;
   log_stream << "StartTime: " << start_time_
-            <<", Duration: " << (stop_time_ - start_time_)
-            << ", MaxAppFrametime: " << max_app_frametime_;
+             << ", Duration: " << (stop_time_ - start_time_)
+             << ", MaxAppFrametime: " << max_app_frametime_;
   LOG(DEBUG) << log_stream.str();
 }
 

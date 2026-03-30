@@ -57,7 +57,12 @@ TEST_F(FirstScreenCalculatorTest, NotifyImagePaint) {
   gfx::Rect root_rect(0, 0, 10, 10);
   ImageResourceContent* content = ImageResourceContent::CreateNotStarted();
   ASSERT_NE(content, nullptr);
-  ImageRecord record(1, content, 20, rect, root_rectF, 1);
+  const char* body_content =
+      "<a id=one href='http://www.msn.com'>one</a><b id=two>two</b>";
+  SetBodyContent(body_content);
+  Node* one = GetDocument().getElementById(AtomicString("one"));
+  ASSERT_NE(one, nullptr);
+  ImageRecord record(one, content, 20, rect, root_rectF, 1, 0, nullptr);
   calculator_->NotifyImagePaint(0, &record, 10, false);
   EXPECT_EQ(calculator_->viewport_rect_.size().GetArea(), 0);
   calculator_->user_scrolled_ = false;
@@ -81,12 +86,12 @@ TEST_F(FirstScreenCalculatorTest, NotifyTextPaint) {
   calculator_->user_scrolled_ = true;
   gfx::Rect rect(0, 0, 10, 10);
   gfx::RectF root_rect(0, 0, 10, 10);
-   const char* body_content =
+  const char* body_content =
       "<a id=one href='http://www.msn.com'>one</a><b id=two>two</b>";
   SetBodyContent(body_content);
   Node* one = GetDocument().getElementById(AtomicString("one"));
   ASSERT_NE(one, nullptr);
-  TextRecord record(*one, 10, root_rect, rect, root_rect, 0);
+  TextRecord record(one, 10, root_rect, rect, root_rect, 0, nullptr);
   calculator_->NotifyTextPaint(&record, timestamp);
   EXPECT_EQ(calculator_->viewport_rect_.size().GetArea(), 0);
 

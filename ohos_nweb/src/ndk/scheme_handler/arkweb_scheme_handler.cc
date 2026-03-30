@@ -26,6 +26,7 @@
 #include "ohos_nweb/src/ndk/scheme_handler/resource_request.h"
 #include "ohos_nweb/src/ndk/scheme_handler/response.h"
 #include "ohos_nweb/src/ndk/scheme_handler/scheme_handler.h"
+#include "ohos_nweb/src/ndk/common/mem_hook.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +46,8 @@ ARKWEB_EXPORT void OH_ArkWebRequestHeaderList_Create(
     LOG(ERROR) << "scheme_handler request header list is nullptr";
     return;
   }
-  *request_header_list = new ArkWeb_RequestHeaderList_(resource_request);
+  *request_header_list = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_RequestHeaderList_),
+    sizeof(ArkWeb_RequestHeaderList_))) ArkWeb_RequestHeaderList_(resource_request);
 }
 
 ARKWEB_EXPORT void OH_ArkWebRequestHeaderList_Destroy(
@@ -168,7 +170,6 @@ ARKWEB_EXPORT void OH_ArkWebResourceRequest_DestroyHttpBodyStream(
   }
 
   http_body_stream->Reset();
-  http_body_stream = nullptr;
 }
 
 ARKWEB_EXPORT int32_t OH_ArkWebResourceRequest_GetResourceType(
@@ -375,7 +376,8 @@ ARKWEB_EXPORT void OH_ArkWebResourceRequest_GetRequestHeaders(
     LOG(ERROR) << "scheme_handler request header list is nullptr";
     return;
   }
-  *request_header_list = new ArkWeb_RequestHeaderList(resource_request);
+  *request_header_list = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_RequestHeaderList),
+    sizeof(ArkWeb_RequestHeaderList))) ArkWeb_RequestHeaderList(resource_request);
 }
 
 ARKWEB_EXPORT bool OH_ArkWebResourceRequest_IsRedirect(
@@ -506,7 +508,8 @@ ARKWEB_EXPORT void OH_ArkWeb_CreateSchemeHandler(
     LOG(ERROR) << "scheme_handler scheme handler is nullptr.";
     return;
   }
-  *scheme_handler = new ArkWeb_SchemeHandler();
+  *scheme_handler = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_SchemeHandler),
+    sizeof(ArkWeb_SchemeHandler))) ArkWeb_SchemeHandler();
 }
 
 ARKWEB_EXPORT void OH_ArkWeb_DestroySchemeHandler(
@@ -584,7 +587,8 @@ ARKWEB_EXPORT void OH_ArkWeb_CreateResponse(ArkWeb_Response** response) {
     LOG(ERROR) << "scheme_handler response is nullptr.";
     return;
   }
-  *response = new ArkWeb_Response();
+  *response = new (OHOS::NWeb::memalign_wrapper(alignof(ArkWeb_Response),
+    sizeof(ArkWeb_Response))) ArkWeb_Response();
 }
 
 ARKWEB_EXPORT void OH_ArkWeb_DestroyResponse(ArkWeb_Response* response) {

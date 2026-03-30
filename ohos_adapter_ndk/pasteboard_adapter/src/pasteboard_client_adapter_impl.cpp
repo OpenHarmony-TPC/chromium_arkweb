@@ -16,6 +16,7 @@
 #include "arkweb/ohos_adapter_ndk/pasteboard_adapter/include/pasteboard_client_adapter_impl.h"
 
 #include <mutex>
+#include <string>
 #include <set>
 #include <database/udmf/udmf_err_code.h>
 #include <database/udmf/udmf_meta.h>
@@ -59,8 +60,8 @@ PasteDataRecordAdapterImpl::~PasteDataRecordAdapterImpl()
 {
     // Destroy local record only when no owner_data_ is bound
     if (owner_data_ == nullptr && record_ != nullptr) {
-        OH_UdmfRecord_Destroy(record_);
-    }
+    OH_UdmfRecord_Destroy(record_);
+}
 }
 
 std::shared_ptr<PasteDataRecordAdapter> PasteDataRecordAdapter::NewRecord(
@@ -213,7 +214,7 @@ void PasteDataRecordAdapterImpl::ReleaseMemory(
   }
   if (imageInfo != nullptr) {
     int pixelmapImageInfoDestroy_res = OH_PixelmapImageInfo_Release(imageInfo);
-    if (pixelmapImageInfoDestroy_res != IMAGE_SUCCESS) {
+    if (pixelmapImageInfoDestroy_res != UDMF_E_OK) {
       WVLOG_E("imageInfo destroy failed. error code is : %{public}d",
               pixelmapImageInfoDestroy_res);
     }
@@ -387,8 +388,8 @@ std::vector<std::string> PasteDataRecordAdapterImpl::GetMimeTypes()
     stringVector.reserve(count);
     for (unsigned int i = 0; i < count; i++) {
         if (types[i] != nullptr) {
-            stringVector.push_back(std::string(types[i]));
-        }
+        stringVector.push_back(std::string(types[i]));
+    }
     }
     return stringVector;
 }
@@ -827,8 +828,8 @@ std::vector<std::string> PasteDataAdapterImpl::GetMimeTypes()
     stringVector.reserve(count);
     for (unsigned int i = 0; i < count; i++) {
         if (types[i] != nullptr) {
-            stringVector.push_back(std::string(types[i]));
-        }
+        stringVector.push_back(std::string(types[i]));
+    }
     }
     return stringVector;
 }
@@ -969,6 +970,7 @@ Udmf_ShareOption PasteBoardClientAdapterImpl::TransitionCopyOption(CopyOptionMod
             shareOption = Udmf_ShareOption::SHARE_OPTIONS_IN_APP;
             break;
         case CopyOptionMode::LOCAL_DEVICE:
+        case CopyOptionMode::CROSS_DEVICE:
             shareOption = Udmf_ShareOption::SHARE_OPTIONS_CROSS_APP;
             break;
         default:
@@ -1039,7 +1041,7 @@ bool PasteBoardClientAdapterImpl::GetPasteData(PasteRecordVector& data)
         // Bind OH_UdmfData to shared_ptr with custom deleter; records share its lifetime
         auto owner = std::shared_ptr<OH_UdmfData>(getData, OH_UdmfData_Destroy);
         data.reserve(count);
-        for (unsigned int i = 0; i < count; i++) {
+    for (unsigned int i = 0; i < count; i++) {
             data.push_back(std::make_shared<PasteDataRecordAdapterImpl>(records[i], owner));
         }
     }
@@ -1070,11 +1072,19 @@ void PasteBoardClientAdapterImpl::SetPasteData(const PasteRecordVector& data, Co
         }
     }
 
+    OH_UdmfProperty* uProp = OH_UdmfProperty_Create(uData);
+    auto shareOption = TransitionCopyOption(copyOption);
+    auto res = OH_UdmfProperty_SetShareOption(uProp, shareOption);
+    if (res != UDMF_E_OK) {
+        WVLOG_E("property set share-option failed. error code is : %{public}d", res);
+    }
+
     auto ret = OH_Pasteboard_SetData(pasteboard_, uData);
     if (ret != ERR_OK) {
         WVLOG_E("set paste data failed. error code is : %{public}d", ret);
     }
     OH_UdmfData_Destroy(uData);
+    OH_UdmfProperty_Destroy(uProp);
 }
 
 bool PasteBoardClientAdapterImpl::HasPasteData()
@@ -1133,7 +1143,7 @@ void PasteBoardNotify(void* context, Pasteboard_NotifyType type)
     std::shared_ptr<PasteBoardCallback> pasteBoardCallback =
         PasteBoardClientAdapterImpl::callbackWrapper_.GetCallback(callbackIndex);
     if (pasteBoardCallback && pasteBoardCallback->callback)
-        pasteBoardCallback->callback->OnPasteboardChanged();
+    pasteBoardCallback->callback->OnPasteboardChanged();
 }
 
 void PasteBoardFinalize(void* context)
@@ -1186,12 +1196,12 @@ int32_t PasteBoardClientAdapterImpl::AddPasteboardChangedObserver(
             OH_PasteboardObserver* observerToDestroy = nullptr;
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                ObserverMap::iterator iter = reg_.find(id);
-                if (iter != reg_.end()) {
+            ObserverMap::iterator iter = reg_.find(id);
+            if (iter != reg_.end()) {
                     observerToDestroy = iter->second;
-                    reg_.erase(iter);
-                }
+                reg_.erase(iter);
             }
+        }
             if (observerToDestroy != nullptr) {
                 int des_ret = OH_PasteboardObserver_Destroy(observerToDestroy);
                 if (des_ret != ERR_OK) {

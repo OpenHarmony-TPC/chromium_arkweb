@@ -9,7 +9,6 @@
 #define NET_URL_REQUEST_URL_REQUEST_CONTEXT_EXT_H_
 
 #include "net/url_request/url_request_context.h"
-
 #if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
 #endif
@@ -38,10 +37,10 @@ public:
   URLRequestContextExt* AsURLRequestContextExt() override {
     return this;
   }
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
   handles::NetworkHandle bound_network_for_dns_;
 #endif
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
   handles::NetworkHandle bound_network_for_dns() const {
     return bound_network_for_dns_;
   }

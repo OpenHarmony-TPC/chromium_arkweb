@@ -724,7 +724,10 @@ void VideoDecoderCallbackManager::OnStreamChanged(OH_AVCodec *codec, OH_AVFormat
     impl->OnOutputFormatChanged(format);
 }
 
-void VideoDecoderCallbackManager::OnNeedInputBuffer(OH_AVCodec *codec, uint32_t index, OH_AVBuffer *buffer, void *userData) {
+void VideoDecoderCallbackManager::OnNeedInputBuffer(OH_AVCodec *codec,
+                                                    uint32_t index,
+                                                    OH_AVBuffer *buffer,
+                                                    void *userData) {
     (void)userData;
     WVLOG_D("VideoDecoderCallbackManager %{public}s.", __FUNCTION__);
     if (!codec) {
@@ -742,7 +745,10 @@ void VideoDecoderCallbackManager::OnNeedInputBuffer(OH_AVCodec *codec, uint32_t 
     impl->OnInputBufferAvailable(index, buffer);
 }
 
-void VideoDecoderCallbackManager::OnNewOutputBuffer(OH_AVCodec *codec, uint32_t index, OH_AVBuffer *buffer, void *userData) {
+void VideoDecoderCallbackManager::OnNewOutputBuffer(OH_AVCodec *codec,
+                                                    uint32_t index,
+                                                    OH_AVBuffer *buffer,
+                                                    void *userData) {
     (void)userData;
     WVLOG_D("VideoDecoderCallbackManager %{public}s.", __FUNCTION__);
     if (!codec) {

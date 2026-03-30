@@ -19,6 +19,7 @@
 #include "base/memory/raw_ptr.h"
 #include "cc/layers/video_layer.h"
 #include "media/base/video_transformation.h"
+#include "cc/cc_export.h"
 
 namespace media {
 class VideoFrame;
@@ -27,7 +28,7 @@ class VideoFrame;
 namespace cc {
 class VideoLayer;
 
-class VideoLayerExt : public VideoLayer {
+class CC_EXPORT VideoLayerExt : public VideoLayer {
  public:
   VideoLayerExt(const VideoLayerExt&) = delete;
   VideoLayerExt& operator=(const VideoLayerExt&) = delete;

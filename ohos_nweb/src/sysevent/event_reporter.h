@@ -26,6 +26,11 @@ enum class CrashType {
     MAILBOX_NONEXISTENT
 };
 
+enum RenderError {
+    RENDER_START_TIMEOUT = 0x11223301,
+};
+
+void ReportChildProcessInitFail(bool is_gpu, int err);
 void ReportRenderJsFreeze(int32_t pid, const std::string& packageName, const std::string& processName,
                           const std::string& freezeMsg, int32_t uid);
 
@@ -90,6 +95,12 @@ void ReportSlideJankStats(int64_t startTime,
 
 void ReportSiteIsolationMode(const std::string site_isolation_status);
 
+void ReportWebMediaPlayErrorInfo(const std::string& errorType,
+                              int errorCode,
+                              const std::string& errorDesc);
+ 
+void ReportAvSessionStatus(const std::string& disable_web_av_session_status);
+
 void ReportDrmEncryptedPlayback(const std::string& mediaType,
                                 const std::string& drmSystem,
                                 const std::string& encryptedAlgo);
@@ -111,18 +122,21 @@ void ReportRendererMem(const std::string& type,
                        const std::string& gpu_mem,
                        const std::string& url);
 
-void ReportWebMediaPlayErrorInfo(const std::string& errorType,
-                              int errorCode,
-                              const std::string& errorDesc);
-
-void ReportAvSessionStatus(const std::string& disable_web_av_session_status);
+void ReportGpuProcessEvent(CrashType type, std::string eventContent);
 
 void ReportDragBlank(int64_t duration);
 
 void ReportFirstMeaningfulPaintDone(OhWebPerformanceTiming loadPageTime);
 
-void ReportGpuProcessEvent(CrashType type, std::string eventContent);
-
 void ReportAppfreeze(int32_t pid, const std::string& packageName, const std::string& processName,
                      const std::string& freezeMsg, int32_t uid);
+
+void ReportSkiaOOMError(const std::string errorDesc);
+
+void ReportGetAllImage(const std::string& error_code);
+
+void ReportRenderProcessNotResponding(const std::string& pid, const std::string& reason);
+
+void ReportRenderProcessResponding();
+
 #endif

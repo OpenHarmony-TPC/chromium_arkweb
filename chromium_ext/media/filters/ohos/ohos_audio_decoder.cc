@@ -547,9 +547,9 @@ void OHOSAudioDecoder::Decode(scoped_refptr<DecoderBuffer> buffer, DecodeCB deco
 #if BUILDFLAG(ARKWEB_REPORT_SYS_EVENT)
 void OHOSAudioDecoder::ReportDrmAudioPlayErrorInfo(const std::string& errorDesc) {
   if (ohos_crypto_context_) {
-    std::string errorType = "drm audio play error";
-    int errorCode = DEFAULT_DRM_AUDIO_ERROR_CODE;
-    ReportWebMediaPlayErrorInfo(errorType, errorCode, errorDesc);
+      std::string errorType = "drm audio play error";
+      int errorCode = DEFAULT_DRM_AUDIO_ERROR_CODE;
+      ReportWebMediaPlayErrorInfo(errorType, errorCode, errorDesc);
   }
 }
 
@@ -704,12 +704,14 @@ OHOSAudioDecoderLoop::InputData OHOSAudioDecoder::ProvideInputData() {
 
   if (decoder_buffer->end_of_stream()) {
     LOG(DEBUG) << "OHOSAudioDecoder::ProvideInputData get eos";
-    data.memory = const_cast<uint8_t*>(decoder_buffer->data());
+    auto decoder_buffer_span = base::span(*decoder_buffer);
+    data.memory = const_cast<uint8_t*>(decoder_buffer_span.data());
     data.is_eos = true;
     data.length = 0;
     data.presentation_time = decoder_buffer->timestamp();
   } else {
-    data.memory = const_cast<uint8_t*>(decoder_buffer->data());
+    auto decoder_buffer_span = base::span(*decoder_buffer);
+    data.memory = const_cast<uint8_t*>(decoder_buffer_span.data());
     data.length = decoder_buffer->size();
     LOG(DEBUG) << "OHOSAudioDecoder::ProvideInputData get normal data length: " << data.length;
 

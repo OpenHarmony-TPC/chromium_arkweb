@@ -108,7 +108,7 @@ if (!enable_arkweb) {
   arkweb_asan = false
   arkweb_autofill = false
   arkweb_background_color = true
-  arkweb_bfcache = false
+  arkweb_bfcache = true
   arkweb_bugfix_crash = true
   arkweb_ca = false
   arkweb_cache = false
@@ -133,6 +133,7 @@ if (!enable_arkweb) {
   arkweb_dfx_tracing = false
   arkweb_disable_services = false
   arkweb_dispatch_before_unload = true
+  arkweb_save_page = true
   arkweb_display_cutout = false
   arkweb_download = false
   arkweb_drag_drop = false
@@ -144,7 +145,7 @@ if (!enable_arkweb) {
   arkweb_enable_wiseplay = false
   arkweb_encrypt = false
   arkweb_ex_download = false
-  arkweb_ex_network_connection = true
+  arkweb_ex_network_connection = false
   arkweb_favicon = false
   arkweb_fcp = false
   arkweb_file_upload = false
@@ -204,7 +205,7 @@ if (!enable_arkweb) {
   arkweb_post_url = false
   arkweb_prefs = false
   arkweb_print = false
-  arkweb_prp_preload = true
+  arkweb_prp_preload = false
   arkweb_render_remove_binder = true
   arkweb_renderer_anr_dump = false
   arkweb_render_process_mode = true
@@ -246,7 +247,6 @@ if (!enable_arkweb) {
   arkweb_ndk = false
   arkweb_cert_authentication = false
   arkweb_fling = false
-  arkweb_throttle_frame = false
   arkweb_occluded_opt = false
   arkweb_performance_trace = false
   arkweb_report_loss_frame = false
@@ -274,6 +274,7 @@ if (!enable_arkweb) {
   arkweb_dss = false
   arkweb_gpu_service = false
   arkweb_same_layer = false
+  arkweb_partial_draw = false
   arkweb_js_on_document_end = false
   arkweb_touchpad_fling = false
   arkweb_media_codec = false
@@ -293,6 +294,7 @@ if (!enable_arkweb) {
   arkweb_resource_intercept = false
   arkweb_logger_report = false
   arkweb_maximize_resize = false
+  arkweb_rotate_resize = false
   arkweb_swap_buffer_trace = false
   arkweb_safebrowsing = false
   arkweb_heif_support = false
@@ -302,6 +304,7 @@ if (!enable_arkweb) {
   arkweb_ex_refresh_iframe = false
   arkweb_notification = false
   arkweb_vulkan = false
+  arkweb_vulkan_inc_present = false
   arkweb_angle = false
   arkweb_gpu = false
   arkweb_pull_to_refresh = false
@@ -313,30 +316,56 @@ if (!enable_arkweb) {
   arkweb_pip = true
   arkweb_immediate_destory = false
   arkweb_cwnd = false
-  arkweb_viewport_avoid = false
   arkweb_blank_optimize = true
-  arkweb_error_page = false
-  arkweb_gwp_asan = false
-  arkweb_bgtask = false
-  arkweb_privacy_compliance = true
   arkweb_blank_screen_detection = false
   arkweb_first_screen_paint = false
+  arkweb_bgtask = false
+  arkweb_privacy_compliance = true
+  arkweb_v8_compile = false
+  arkweb_viewport_avoid = false
+  arkweb_gwp_asan = false
+  arkweb_error_page = false
   arkweb_blank_prop_config = true
   arkweb_autolayout = false
   arkweb_ex_fallback_proxy = false
-  arkweb_ext_video_load_optimization = false
-  arkweb_console_logging=false
+  arkweb_console_logging = false
   arkweb_offline_web_evict_back_buffers = false
   arkweb_ohos_mem_usage_report = false
   arkweb_media_cast = false
-  arkweb_ext_http_dns_fallback_on_dns_hijacking = false
   arkweb_custom_viewport_width = false
-  arkweb_evict_unlock_frames = false
+  arkweb_ext_blank_target_popup_intercept = false
+  arkweb_ext_cookie_js_settings = false
+  arkweb_ext_download = false
+  arkweb_ext_error_page = false
+  arkweb_ext_exception_list = false
+  arkweb_ext_force_zoom = false
+  arkweb_ext_free_copy = false
+  arkweb_ext_get_zoom_level = false
+  arkweb_ext_http_dns_fallback = false
+  arkweb_ext_http_dns_fallback_on_dns_hijacking = false
+  arkweb_ext_password = false
+  arkweb_ext_permission = false
+  arkweb_ext_topcontrols = false
+  arkweb_ext_ua = false
+  arkweb_ext_url_formatter = false
+  arkweb_ext_log_message = false
+  arkweb_nweb_ex = false
+  arkweb_ext_navigation = false
+  arkweb_ext_network_connection = false
+  arkweb_ext_security_state = false
+  arkweb_ext_pull_to_refresh = false
+  arkweb_ext_file_access = false
+  arkweb_ext_https_upgrades = false
+  arkweb_reader_mode = false
+  arkweb_ext_receive_response = false
+  arkweb_ext_video_load_optimization = false
+  arkweb_clean_buffers_when_invisible = false
   arkweb_not_load_iframe = false
 }
 
 buildflag_header("features") {
   header = "features.h"
+  for_arkweb = true
 
   flags = [
     "ARKWEB_ACCESSIBILITY=$arkweb_accessibility",
@@ -375,6 +404,7 @@ buildflag_header("features") {
     "ARKWEB_DFX_TRACING=$arkweb_dfx_tracing",
     "ARKWEB_DISABLE_SERVICES=$arkweb_disable_services",
     "ARKWEB_DISATCH_BEFORE_UNLOAD=$arkweb_dispatch_before_unload",
+    "ARKWEB_SAVE_PAGE=$arkweb_save_page",
     "ARKWEB_DISPLAY_CUTOUT=$arkweb_display_cutout",
     "ARKWEB_DOWNLOAD=$arkweb_download",
     "ARKWEB_DRAG_DROP=$arkweb_drag_drop",
@@ -386,7 +416,6 @@ buildflag_header("features") {
     "ARKWEB_ENABLE_WISEPLAY=$arkweb_enable_wiseplay",
     "ARKWEB_ENCRYPT=$arkweb_encrypt",
     "ARKWEB_EX_DOWNLOAD=$arkweb_ex_download",
-    "ARKWEB_EXT_DOWNLOAD=$arkweb_ext_download",
     "ARKWEB_EX_NETWORK_CONNECTION=$arkweb_ex_network_connection",
     "ARKWEB_FAVICON=$arkweb_favicon",
     "ARKWEB_FCP=$arkweb_fcp",
@@ -432,7 +461,7 @@ buildflag_header("features") {
     "ARKWEB_NETWORK_PROXY=$arkweb_network_proxy",
     "ARKWEB_NETWORK_BASE=$arkweb_network_base",
     "ARKWEB_NETWORK_SERVICE=$arkweb_network_service",
-    "ARKWEB_NETWORK_DFX=$arkweb_network_dfx && $arkweb_report_sys_event",
+    "ARKWEB_NETWORK_DFX=$arkweb_network_dfx",
     "ARKWEB_NO_STATE_PREFETCH=$arkweb_no_state_prefetch",
     "ARKWEB_PAGE_UP_DOWN=$arkweb_page_up_down",
     "ARKWEB_PASSWORD_AUTOFILL=$arkweb_password_autofill",
@@ -489,7 +518,6 @@ buildflag_header("features") {
     "ARKWEB_NDK=$arkweb_ndk",
     "ARKWEB_CERT_AUTHENTICATION=$arkweb_cert_authentication",
     "ARKWEB_FLING=$arkweb_fling",
-    "ARKWEB_THROTTLE_FRAME=$arkweb_throttle_frame",
     "ARKWEB_SKIA_CACHE=$arkweb_skia_cache",
     "ARKWEB_OCCLUDED_OPT=$arkweb_occluded_opt",
     "ARKWEB_OPTIMIZE_PARSER_BUDGET=$arkweb_optimize_parser_budget",
@@ -511,14 +539,15 @@ buildflag_header("features") {
     "ARKWEB_PINCH_SMOOTH=$arkweb_pinch_smooth",
     "ARKWEB_FIT_CONTENT=$arkweb_fit_content",
     "ARKWEB_SYNC_RENDER=$arkweb_sync_render",
+    "ARKWEB_THROTTLE_FRAME=$arkweb_throttle_frame",
     "ARKWEB_TERMINATE_RENDER=$arkweb_terminate_render",
     "ARKWEB_OOP_GPU_PROCESS=$arkweb_oop_gpu_process",
     "ARKWEB_EX_TOPCONTROLS=$arkweb_ex_topcontrols",
-    "ARKWEB_CODECACHE_ENHANCE=$arkweb_codecache_enhance",
     "ARKWEB_DSS=$arkweb_dss",
     "ARKWEB_GPU_SERVICE=$arkweb_gpu_service",
     "ARKWEB_ACTIVE_POLICY=$arkweb_active_policy",
     "ARKWEB_SAME_LAYER=$arkweb_same_layer",
+    "ARKWEB_PARTIAL_DRAW=$arkweb_partial_draw",
     "ARKWEB_JS_ON_DOCUMENT_END=$arkweb_js_on_document_end",
     "ARKWEB_TOUCHPAD_FLING=$arkweb_touchpad_fling",
     "ARKWEB_MEDIA_CODEC=$arkweb_media_codec",
@@ -540,6 +569,7 @@ buildflag_header("features") {
     "ARKWEB_DISABLE_MOJO_JS=$arkweb_disable_mojo_js",
     "ARKWEB_LOGGER_REPORT=$arkweb_logger_report",
     "ARKWEB_MAXIMIZE_RESIZE=$arkweb_maximize_resize",
+    "ARKWEB_ROTATE_RESIZE=$arkweb_rotate_resize",
     "ARKWEB_SLIDE_LTPO=$arkweb_slide_ltpo",
     "ARKWEB_SWAP_BUFFER_TRACE=$arkweb_swap_buffer_trace",
     "ARKWEB_SAFEBROWSING=$arkweb_safebrowsing",
@@ -550,6 +580,7 @@ buildflag_header("features") {
     "ARKWEB_EX_SCREEN_CAPTURE=$arkweb_ex_screen_capture",
     "ARKWEB_EX_REFRESH_IFRAME=$arkweb_ex_refresh_iframe",
     "ARKWEB_VULKAN=$arkweb_vulkan",
+    "ARKWEB_VULKAN_INC_PRESENT=$arkweb_vulkan_inc_present",
     "ARKWEB_ANGLE=$arkweb_angle",
     "ARKWEB_GPU=$arkweb_gpu",
     "ARKWEB_D_VSYNC=$arkweb_d_vsync",
@@ -562,20 +593,17 @@ buildflag_header("features") {
     "ARKWEB_CWND=$arkweb_cwnd",
     "ARKWEB_PULL_TO_REFRESH=$arkweb_pull_to_refresh",
     "ARKWEB_EX_HTTP_DNS_FALLBACK=$arkweb_ex_http_dns_fallback",
-    "ARKWEB_EXT_FILE_ACCESS=$arkweb_ext_file_access",
-    "ARKWEB_EXT_NETWORK_CONNECTION=$arkweb_ext_network_connection",
-    "ARKWEB_EXT_HTTP_DNS_FALLBACK=$arkweb_ext_http_dns_fallback",
-    "ARKWEB_EXT_PASSWORD=$arkweb_ext_password",
-    "ARKWEB_EX_FREE_COPY=$arkweb_ex_free_copy",
     "ARKWEB_BLANK_OPTIMIZE=$arkweb_blank_optimize",
-    "ARKWEB_VIEWPORT_AVOID=$arkweb_viewport_avoid",
-    "ARKWEB_ERROR_PAGE=$arkweb_error_page",
-    "ARKWEB_GWP_ASAN=$arkweb_gwp_asan",
-    "ARKWEB_HWASAN=$is_hwasan",
-    "ARKWEB_PRIVACY_COMPLIANCE=$arkweb_privacy_compliance",
-    "ARKWEB_BGTASK=$arkweb_bgtask",
     "ARKWEB_BLANK_SCREEN_DETECTION=$arkweb_blank_screen_detection",
     "ARKWEB_FIRST_SCREEN_PAINT=$arkweb_first_screen_paint",
+    "ARKWEB_BGTASK=$arkweb_bgtask",
+    "ARKWEB_HWASAN=$is_hwasan",
+    "ARKWEB_PRIVACY_COMPLIANCE=$arkweb_privacy_compliance",
+    "ARKWEB_V8_COMPILE=$arkweb_v8_compile",
+    "ARKWEB_ENABLE_PAC=$build_pac_cfi",
+    "ARKWEB_VIEWPORT_AVOID=$arkweb_viewport_avoid",
+    "ARKWEB_GWP_ASAN=$arkweb_gwp_asan",
+    "ARKWEB_ERROR_PAGE=$arkweb_error_page",
     "ARKWEB_BLANK_PROP_CONFIG=$arkweb_blank_prop_config",
     "ARKWEB_AUTOLAYOUT=$arkweb_autolayout",
     "ARKWEB_EX_FALLBACK_PROXY=$arkweb_ex_fallback_proxy",
@@ -584,32 +612,42 @@ buildflag_header("features") {
     "ARKWEB_OHOS_MEM_USAGE_REPORT=$arkweb_ohos_mem_usage_report",
     "ARKWEB_MEDIA_CAST=$arkweb_media_cast",
     "ARKWEB_CUSTOM_VIEWPORT_WIDTH=$arkweb_custom_viewport_width",
-    "ARKWEB_EVICT_UNLOCK_FRAMES=$arkweb_evict_unlock_frames",
+    "ARKWEB_JSHEAP_DUMP=$arkweb_jsheap_dump",
+    "ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE=$arkweb_clean_buffers_when_invisible",
     "ARKWEB_NOT_LOAD_IFRAME=$arkweb_not_load_iframe",
-
-    # ARKWEB_EXT dafault value
-    "ARKWEB_EXT_BLANK_TARGET_POPUP_INTERCEPT=false",
-    "ARKWEB_EXT_COOKIE_JS_SETTINGS=false",
-    "ARKWEB_EXT_ERROR_PAGE=false",
-    "ARKWEB_EXT_EXCEPTION_LIST=false",
-    "ARKWEB_EXT_FORCE_ZOOM=false",
-    "ARKWEB_EXT_FREE_COPY=false",
-    "ARKWEB_EXT_GET_ZOOM_LEVEL=false",
-    "ARKWEB_EXT_PERMISSION=false",
-    "ARKWEB_EXT_TOPCONTROLS=false",
-    "ARKWEB_EXT_UA=false",
-    "ARKWEB_EXT_URL_FORMATTER=false",
-    "ARKWEB_EXT_LOG_MESSAGE=false",
-    "ARKWEB_NWEB_EX=false",
-    "ARKWEB_EXT_NAVIGATION=false",
-    "ARKWEB_EXT_SECURITY_STATE=false",
-    "ARKWEB_EXT_PULL_TO_REFRESH=false",
-    "ARKWEB_READER_MODE=false",
-    "ARKWEB_EXT_HTTPS_UPGRADES=$arkweb_ext_https_upgrades",
-    "ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION=false",
-    "ARKWEB_EXT_HTTP_DNS_FALLBACK_ON_DNS_HIJACKING=$arkweb_ext_http_dns_fallback_on_dns_hijacking",
-    "ARKWEB_EXT_RECEIVE_RESPONSE=$arkweb_ext_receive_response",
   ]
+
+
+  if (!enable_arkweb_ext) {
+    flags += [
+      "ARKWEB_EXT_FILE_ACCESS=$arkweb_ext_file_access",
+      "ARKWEB_EXT_NETWORK_CONNECTION=$arkweb_ext_network_connection",
+      "ARKWEB_EXT_HTTP_DNS_FALLBACK=$arkweb_ext_http_dns_fallback",
+      "ARKWEB_EXT_HTTP_DNS_FALLBACK_ON_DNS_HIJACKING=$arkweb_ext_http_dns_fallback_on_dns_hijacking",
+      "ARKWEB_EXT_PASSWORD=$arkweb_ext_password",
+      "ARKWEB_EXT_DOWNLOAD=$arkweb_ext_download",
+      "ARKWEB_EXT_BLANK_TARGET_POPUP_INTERCEPT=false",
+      "ARKWEB_EXT_COOKIE_JS_SETTINGS=false",
+      "ARKWEB_EXT_ERROR_PAGE=false",
+      "ARKWEB_EXT_EXCEPTION_LIST=false",
+      "ARKWEB_EXT_FORCE_ZOOM=false",
+      "ARKWEB_EXT_FREE_COPY=false",
+      "ARKWEB_EXT_GET_ZOOM_LEVEL=false",
+      "ARKWEB_EXT_PERMISSION=false",
+      "ARKWEB_EXT_TOPCONTROLS=false",
+      "ARKWEB_EXT_UA=false",
+      "ARKWEB_EXT_URL_FORMATTER=false",
+      "ARKWEB_EXT_LOG_MESSAGE=false",
+      "ARKWEB_NWEB_EX=false",
+      "ARKWEB_EXT_NAVIGATION=false",
+      "ARKWEB_EXT_SECURITY_STATE=false",
+      "ARKWEB_EXT_PULL_TO_REFRESH=false",
+      "ARKWEB_READER_MODE=false",
+      "ARKWEB_EXT_HTTPS_UPGRADES=$arkweb_ext_https_upgrades",
+      "ARKWEB_EXT_VIDEO_LOAD_OPTIMIZATION=false",
+      "ARKWEB_EXT_RECEIVE_RESPONSE=false",
+    ]
+  }
 
   public_configs = [ ":arkweb_global_config" ]
   if (arkweb_ext_dir != "") {

@@ -19,10 +19,6 @@
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
 #endif
 
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-#include "base/uuid.h"
-#endif
-
 namespace net {
 
 #if BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
@@ -45,33 +41,9 @@ void URLRequest::HandleFallbackProxyResult() {
   if (fallback_proxy_error_code_ == OK &&
       isolation_info().request_type() ==
           IsolationInfo::RequestType::kMainFrame) {
-    proxy_delegate()->AddSuccessMainFrameHosts(url().host());
+    proxy_delegate()->AddSuccessMainFrameHosts(url().GetHost());
   }
 }
 #endif  // BUILDFLAG(ARKWEB_EX_FALLBACK_PROXY)
-
-#if BUILDFLAG(ARKWEB_EXT_NAVIGATION)
-int URLRequest::GetOriginalNetErrorCode() const {
-  if (job_) {
-    return job_->GetOriginalNetErrorCode();
-  }
-  return 0;
-}
-
-ConnectionAttempts URLRequest::GetExtraConnectionAttempts() const {
-  if (job_) {
-    return job_->GetExtraConnectionAttempts();
-  }
-  return {};
-}
-
-std::vector<net::RequestAttempt> URLRequest::GetRequestAttempts() const {
-  if (job_) {
-    return job_->GetRequestAttempts();
-  }
-  return {};
-}
-
-#endif  // BUILDFLAG(ARKWEB_EXT_NAVIGATION)
 
 }  // namespace net

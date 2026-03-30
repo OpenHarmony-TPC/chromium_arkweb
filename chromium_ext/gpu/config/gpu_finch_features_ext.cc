@@ -16,6 +16,7 @@
 #include "gpu/config/gpu_finch_features.h"
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
 #include "arkweb/chromium_ext/gpu/config/gpu_finch_features_ext.h"
+#include "base/logging.h"
 
 namespace features {
 #if BUILDFLAG(ARKWEB_VULKAN)
@@ -44,6 +45,10 @@ bool IsEnableVulkan()
 #if BUILDFLAG(ARKWEB_VULKAN)
 BASE_FEATURE(kInsertVKEndSemaphore,
              "InsertVKEndSemaphore",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kVulkanVideoZeroCopy,
+             "VulkanVideoZeroCopy",
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
@@ -74,6 +79,12 @@ BASE_FEATURE(kPreferDrawToCopy,
 #if BUILDFLAG(ARKWEB_ANGLE)
 BASE_FEATURE(kDefaultANGLE,
              "DefaultANGLE",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
+#if BUILDFLAG(ARKWEB_PARTIAL_DRAW)
+BASE_FEATURE(kDefaultPartialDraw,
+             "DefaultPartialDraw",
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 

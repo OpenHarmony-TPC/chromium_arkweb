@@ -182,4 +182,4 @@ void PDFDocumentHelper::SetSelectionBoundsVisibility(gfx::SelectionBound& start,
 }
 #endif  // BUILDFLAG(ARKWEB_PDF)
 
-}  // namespace chrome_pdf
+}  // namespace pdf

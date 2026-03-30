@@ -15,7 +15,6 @@
 #include "arkweb/chromium_ext/third_party/blink/renderer/platform/weborigin/scheme_registry_utils.h"
 
 namespace blink {
-// LCOV_EXCL_START
 
 SchemeRegistryUtils::SchemeRegistryUtils(SchemeRegistry* scheme_registry)
 {
@@ -42,5 +41,4 @@ bool SchemeRegistryUtils::SchemeSupportsCodeCacheWithResponseTime(
       scheme);
 }
 #endif
-// LCOV_EXCL_STOP
 }

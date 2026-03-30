@@ -4,6 +4,7 @@
 
 #include "third_party/blink/renderer/core/layout/layout_theme_ohos.h"
 
+#include "third_party/blink/public/mojom/frame/color_scheme.mojom-shared.h"
 #include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #include "arkweb/chromium_ext/content/public/common/content_switches_ext.h"
 #include "base/command_line.h"
@@ -12,7 +13,6 @@
 
 namespace blink {
   
-// LCOV_EXCL_START
 scoped_refptr<LayoutTheme> LayoutThemeOhos::Create() {
   return base::AdoptRef(new LayoutThemeOhos());
 }
@@ -67,6 +67,5 @@ Color LayoutThemeOhos::PlatformTapHighlightColor() const {
   }
   return LayoutThemeMobile::PlatformTapHighlightColor();
 }
-// LCOV_EXCL_STOP
 
 }  // namespace blink

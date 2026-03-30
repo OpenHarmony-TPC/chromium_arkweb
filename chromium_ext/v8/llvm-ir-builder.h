@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -63,7 +63,7 @@ using Rep = turboshaft::RegisterRepresentation;
   V(Unreachable, (OpIndex node))                    \
   V(StackPointerGreaterThan, (OpIndex node))        \
   V(FrameConstant, (OpIndex node))                  \
-  V(Return, (OpIndex node))                         
+  V(Return, (OpIndex node))
 
 class LLVMModule {
 public:
@@ -243,7 +243,7 @@ private:
   {
     return ptr_compr_cage_base_;
   }
-   LLVMValueRef GetPureRoot()
+  LLVMValueRef GetPureRoot()
   {
     return root_reg_;
   }
@@ -276,7 +276,7 @@ private:
   std::unordered_map<std::string, std::vector<LLVMCallConv>> decscriptor2cc_;
   std::unordered_map<uint32_t, LLVMValueRef> node2LValue_;
   std::map<BlockIndex, LLVMBasicBlockRef> block2LBB_;
-  // if a block was split to [ LBB1 ... LBB3], this map records the last LBB (LBB3).
+  // if a block was split to [ LBB1 ... LBB3 ], this map records the last LBB (LBB3).
   // if not, this map records the only LBB.
   std::map<BlockIndex, LLVMBasicBlockRef> block2EndLBB_;
   std::set<std::pair<OpIndex, Block*>> pending_phis_;
@@ -289,4 +289,4 @@ private:
 }  // namespace internal
 }  // namespace v8
 
-#endif // V8_CODEGEN_LLVM_LLVM_IR_BUILDER_H
+#endif  // V8_CODEGEN_LLVM_LLVM_IR_BUILDER_H

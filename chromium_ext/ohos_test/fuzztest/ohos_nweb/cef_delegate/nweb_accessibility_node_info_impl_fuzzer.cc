@@ -51,13 +51,6 @@ void NwebAccessibilityNodeInfoImpl001FuzzTest(const uint8_t* data, size_t size) 
     bool checkable = dataProvider.ConsumeBool();
     bool clickable = dataProvider.ConsumeBool();
     bool focusable = dataProvider.ConsumeBool();
-    bool scrollable = dataProvider.ConsumeBool();
-    bool deletable = dataProvider.ConsumeBool();
-    bool popup_supported = dataProvider.ConsumeBool();
-    bool content_invalid = dataProvider.ConsumeBool();
-    bool accessibility_focus = dataProvider.ConsumeBool();
-    bool plural_line_supported = dataProvider.ConsumeBool();
-    bool accessibility_group = dataProvider.ConsumeBool();
 
     nodeInfo_->SetHint(hint);
     nodeInfo_->SetError(error);
@@ -77,13 +70,6 @@ void NwebAccessibilityNodeInfoImpl001FuzzTest(const uint8_t* data, size_t size) 
     nodeInfo_->SetIsCheckable(checkable);
     nodeInfo_->SetIsClickable(clickable);
     nodeInfo_->SetIsFocusable(focusable);
-    nodeInfo_->SetIsScrollable(scrollable);
-    nodeInfo_->SetIsDeletable(deletable);
-    nodeInfo_->SetIsPopupSupported(popup_supported);
-    nodeInfo_->SetIsContentInvalid(content_invalid);
-    nodeInfo_->SetIsAccessibilityFocus(accessibility_focus);
-    nodeInfo_->SetIsPluralLineSupported(plural_line_supported);
-    nodeInfo_->SetIsAccessibilityGroup(accessibility_group);
     
     std::vector<uint32_t> actions;
     int vec_size = dataProvider.ConsumeIntegralInRange<int>(0, MAX_VECTOR_SIZE);
@@ -238,6 +224,30 @@ void NwebAccessibilityNodeInfoImpl004FuzzTest(const uint8_t* data, size_t size) 
     nodeInfo_->GetSelectionEnd();
     nodeInfo_->GetSelectionStart();
     nodeInfo_->GetRangeInfoMin();
+}
+
+void NwebAccessibilityNodeInfoImpl005FuzzTest(const uint8_t* data, size_t size) {
+    if ((data == nullptr) || (size == 0)) {
+        return false;
+    }
+    FuzzedDataProvider dataProvider(data, size);
+    std::shared_ptr<NWebAccessibilityNodeInfoImpl> nodeInfo_ = std::make_shared<NWebAccessibilityNodeInfoImpl>();
+    bool scrollable = dataProvider.ConsumeBool();
+    bool deletable = dataProvider.ConsumeBool();
+    bool popup_supported = dataProvider.ConsumeBool();
+    bool content_invalid = dataProvider.ConsumeBool();
+    bool accessibility_focus = dataProvider.ConsumeBool();
+    bool plural_line_supported = dataProvider.ConsumeBool();
+    bool accessibility_group = dataProvider.ConsumeBool();
+
+    nodeInfo_->SetIsScrollable(scrollable);
+    nodeInfo_->SetIsDeletable(deletable);
+    nodeInfo_->SetIsPopupSupported(popup_supported);
+    nodeInfo_->SetIsContentInvalid(content_invalid);
+    nodeInfo_->SetIsAccessibilityFocus(accessibility_focus);
+    nodeInfo_->SetIsPluralLineSupported(plural_line_supported);
+    nodeInfo_->SetIsAccessibilityGroup(accessibility_group);
+
     nodeInfo_->GetRangeInfoMax();
     nodeInfo_->GetRangeInfoCurrent();
     nodeInfo_->GetInputType();
@@ -263,6 +273,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     OHOS::NwebAccessibilityNodeInfoImpl002FuzzTest(data, size);
     OHOS::NwebAccessibilityNodeInfoImpl003FuzzTest(data, size);
     OHOS::NwebAccessibilityNodeInfoImpl004FuzzTest(data, size);
+    OHOS::NwebAccessibilityNodeInfoImpl005FuzzTest(data, size);
     return 0;
 }
 }  // namespace OHOS

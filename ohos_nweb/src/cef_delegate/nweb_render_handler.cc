@@ -18,6 +18,7 @@
 #include <sys/time.h>
 
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 
 #include "arkweb/build/features/features.h"
@@ -56,29 +57,57 @@ namespace {
 constexpr size_t kWordSelectionOffsetSize = 2;
 #endif  // ARKWEB_AI
 
+#if BUILDFLAG(ARKWEB_DRAG_DROP)
+constexpr int drag_image_sandbox_count_limit = 3;
+#endif
+
 #if BUILDFLAG(ARKWEB_SCREEN_SIZE)
 constexpr int32_t APPLICATION_API_20 = 20;
 #endif  // #if BUILDFLAG(ARKWEB_SCREEN_SIZE)
 
 cef_screen_orientation_type_t ConvertOrientationType(
-    OHOS::NWeb::DisplayOrientation type,
-    bool default_portrait) {
+    OHOS::NWeb::DisplayOrientation type) {
   switch (type) {
     case OHOS::NWeb::DisplayOrientation::PORTRAIT:
-      return default_portrait
-                 ? cef_screen_orientation_type_t::PORTRAIT_PRIMARY
-                 : cef_screen_orientation_type_t::LANDSCAPE_PRIMARY;
+      return cef_screen_orientation_type_t::PORTRAIT_PRIMARY;
     case OHOS::NWeb::DisplayOrientation::LANDSCAPE:
-      return default_portrait ? cef_screen_orientation_type_t::LANDSCAPE_PRIMARY
-                              : cef_screen_orientation_type_t::PORTRAIT_PRIMARY;
+      return cef_screen_orientation_type_t::LANDSCAPE_PRIMARY;
     case OHOS::NWeb::DisplayOrientation::PORTRAIT_INVERTED:
-      return default_portrait
-                 ? cef_screen_orientation_type_t::PORTRAIT_SECONDARY
-                 : cef_screen_orientation_type_t::LANDSCAPE_SECONDARY;
+      return cef_screen_orientation_type_t::PORTRAIT_SECONDARY;
     case OHOS::NWeb::DisplayOrientation::LANDSCAPE_INVERTED:
-      return default_portrait
-                 ? cef_screen_orientation_type_t::LANDSCAPE_SECONDARY
-                 : cef_screen_orientation_type_t::PORTRAIT_SECONDARY;
+      return cef_screen_orientation_type_t::LANDSCAPE_SECONDARY;
+    default:
+      return cef_screen_orientation_type_t::UNDEFINED;
+  }
+}
+
+cef_screen_orientation_type_t SwapPortraitAndLandscape(
+    cef_screen_orientation_type_t type) {
+  switch (type) {
+    case cef_screen_orientation_type_t::PORTRAIT_PRIMARY:
+      return cef_screen_orientation_type_t::LANDSCAPE_PRIMARY;
+    case cef_screen_orientation_type_t::PORTRAIT_SECONDARY:
+      return cef_screen_orientation_type_t::LANDSCAPE_SECONDARY;
+    case cef_screen_orientation_type_t::LANDSCAPE_PRIMARY:
+      return cef_screen_orientation_type_t::PORTRAIT_PRIMARY;
+    case cef_screen_orientation_type_t::LANDSCAPE_SECONDARY:
+      return cef_screen_orientation_type_t::PORTRAIT_SECONDARY;
+    default:
+      return cef_screen_orientation_type_t::UNDEFINED;
+  }
+}
+
+cef_screen_orientation_type_t SwapPrimaryAndSecondary(
+    cef_screen_orientation_type_t type) {
+  switch (type) {
+    case cef_screen_orientation_type_t::PORTRAIT_PRIMARY:
+      return cef_screen_orientation_type_t::PORTRAIT_SECONDARY;
+    case cef_screen_orientation_type_t::PORTRAIT_SECONDARY:
+      return cef_screen_orientation_type_t::PORTRAIT_PRIMARY;
+    case cef_screen_orientation_type_t::LANDSCAPE_PRIMARY:
+      return cef_screen_orientation_type_t::LANDSCAPE_SECONDARY;
+    case cef_screen_orientation_type_t::LANDSCAPE_SECONDARY:
+      return cef_screen_orientation_type_t::LANDSCAPE_PRIMARY;
     default:
       return cef_screen_orientation_type_t::UNDEFINED;
   }
@@ -93,16 +122,20 @@ enum RotationAngels {
 
 uint16_t ConvertRotationAngel(OHOS::NWeb::RotationType type) {
   // Notice: 90 and 270 is reverse.
-
+  // The DMS system returns angles in a clockwise direction,
+  // while the W3C standard uses a counterclockwise direction.
+  bool use_counter_clockwise = true;
   switch (type) {
     case OHOS::NWeb::RotationType::ROTATION_0:
       return RotationAngels::ROTATION_0;
     case OHOS::NWeb::RotationType::ROTATION_90:
-      return RotationAngels::ROTATION_90;
+      return use_counter_clockwise ? RotationAngels::ROTATION_270
+                                   : RotationAngels::ROTATION_90;
     case OHOS::NWeb::RotationType::ROTATION_180:
       return RotationAngels::ROTATION_180;
     case OHOS::NWeb::RotationType::ROTATION_270:
-      return RotationAngels::ROTATION_270;
+      return use_counter_clockwise ? RotationAngels::ROTATION_90
+                                   : RotationAngels::ROTATION_270;
     default:
       return RotationAngels::ROTATION_0;
   }
@@ -282,13 +315,21 @@ class NWebNativeEmbedMouseEventImpl : public NWebNativeEmbedMouseEvent {
   NWebNativeEmbedMouseEventImpl() = default;
   ~NWebNativeEmbedMouseEventImpl() = default;
 
-  float GetX() override { return x_; }
+  float GetX() override {
+    return x_;
+  }
 
-  void SetX(float x) { x_ = x; }
+  void SetX(float x) {
+    x_ = x;
+  }
 
-  float GetY() override { return y_; }
+  float GetY() override {
+    return y_;
+  }
 
-  void SetY(float y) { y_ = y; }
+  void SetY(float y) {
+    y_ = y;
+  }
 
   bool IsHitNativeArea() override {
     return isHitNativeArea_;
@@ -298,37 +339,63 @@ class NWebNativeEmbedMouseEventImpl : public NWebNativeEmbedMouseEvent {
     isHitNativeArea_ = isHitNativeArea;
   }
 
-  MouseType GetType() override { return type_; }
-
-  void SetType(MouseType type) { type_ = type; }
-
-  MouseButton GetButton() override { return button_; }
-
-  void SetButton(MouseButton button) { button_ = button; }
-
-  float GetOffsetX() override { return offsetX_; }
-
-  void SetOffsetX(float offsetX) { offsetX_ = offsetX; }
-
-  float GetOffsetY() override { return offsetY_; }
-
-  void SetOffsetY(float offsetY) { offsetY_ = offsetY; }
-
-  float GetScreenX() override { return screenX_; }
-
-  void SetScreenX(float screenX) { screenX_ = screenX; }
-
-  float GetScreenY() override { return screenY_; }
-
-  void SetScreenY(float screenY) { screenY_ = screenY; }
-
-  std::string GetEmbedId() override { return embedId_; }
-
-  void SetEmbedId(const std::string& embedId) { embedId_ = embedId; }
-
-  std::shared_ptr<NWebMouseEventResult> GetResult() override {
-    return result_;
+  MouseType GetType() override {
+    return type_;
   }
+
+  void SetType(MouseType type) {
+    type_ = type;
+  }
+
+  MouseButton GetButton() override {
+    return button_;
+  }
+
+  void SetButton(MouseButton button) {
+    button_ = button;
+  }
+
+  float GetOffsetX() override {
+    return offsetX_;
+  }
+
+  void SetOffsetX(float offsetX) {
+    offsetX_ = offsetX;
+  }
+
+  float GetOffsetY() override {
+    return offsetY_;
+  }
+
+  void SetOffsetY(float offsetY) {
+    offsetY_ = offsetY;
+  }
+
+  float GetScreenX() override {
+    return screenX_;
+  }
+
+  void SetScreenX(float screenX) {
+    screenX_ = screenX;
+  }
+
+  float GetScreenY() override {
+    return screenY_;
+  }
+
+  void SetScreenY(float screenY) {
+    screenY_ = screenY;
+  }
+
+  std::string GetEmbedId() override {
+    return embedId_;
+  }
+
+  void SetEmbedId(const std::string &embedId) {
+    embedId_ = embedId;
+  }
+
+  std::shared_ptr<NWebMouseEventResult> GetResult() override { return result_;}
   void SetResult(const std::shared_ptr<NWebMouseEventResult> result) {
     result_ = result;
   }
@@ -336,12 +403,12 @@ class NWebNativeEmbedMouseEventImpl : public NWebNativeEmbedMouseEvent {
  private:
   std::string embedId_;
   bool isHitNativeArea_ = false;
-  float x_ = 0.0;
-  float y_ = 0.0;
-  float offsetX_ = 0.0;
-  float offsetY_ = 0.0;
-  float screenX_ = 0.0;
-  float screenY_ = 0.0;
+  float x_ = 0;
+  float y_ = 0;
+  float offsetX_ = 0;
+  float offsetY_ = 0;
+  float screenX_ = 0;
+  float screenY_ = 0;
   MouseType type_ = MouseType::PRESS;
   MouseButton button_ = MouseButton::NONE_BUTTON;
   std::shared_ptr<NWebMouseEventResult> result_;
@@ -401,6 +468,11 @@ class NWebNativeEmbedParamDataInfoImpl : public NWebNativeEmbedParamDataInfo {
   std::string objectAttributeId_;
   std::vector<std::shared_ptr<NWebNativeEmbedParamItem>> paramItems_;
 };
+
+// static
+#if BUILDFLAG(ARKWEB_DRAG_DROP)
+std::map<int64_t, std::string> NWebRenderHandler::image_sandbox_files_{};
+#endif
 
 // static
 CefRefPtr<NWebRenderHandler> NWebRenderHandler::Create() {
@@ -629,7 +701,7 @@ void NWebRenderHandler::OnResizeScrollableViewport(
 #if BUILDFLAG(ARKWEB_VIEWPORT_AVOID)
   if (viewportAvoidScrollOffset_ != 0) {
     LOG(INFO) << "AvoidVisibleViewportBottom set: " << viewportAvoidHeight_
-              << " viewportAvoidScrollOffset_" << viewportAvoidScrollOffset_;
+              << " viewportAvoidScrollOffset_: " << viewportAvoidScrollOffset_;
     browser->GetHost()->ScrollBy(0, viewportAvoidScrollOffset_);
   } else if (inputmethod_client_ && inputmethod_client_->IsAttached()) {
 #else
@@ -689,6 +761,7 @@ void NWebRenderHandler::SetViewportAvoidHeight(int32_t viewportAvoidHeight) {
   if (viewportAvoidHeight > viewportAvoidHeight_) {
     viewportAvoidScrollOffset_ = viewportAvoidHeight - viewportAvoidHeight_;
   } else {
+    // No scrolling when the visible viewport resized height is increased
     viewportAvoidScrollOffset_ = 0;
   }
   viewportAvoidHeight_ = viewportAvoidHeight;
@@ -715,8 +788,18 @@ void NWebRenderHandler::SetScreenInfo(const NWebScreenInfo& screen_info) {
 
 bool NWebRenderHandler::GetScreenInfo(CefRefPtr<CefBrowser> browser,
                                       CefScreenInfo& screen_info) {
-  screen_info.orientation = ConvertOrientationType(
-      screen_info_.orientation, screen_info_.default_portrait);
+  screen_info.orientation = ConvertOrientationType(screen_info_.orientation);
+  bool is_portrait = screen_info_.orientation == OHOS::NWeb::DisplayOrientation::PORTRAIT
+                     || screen_info_.orientation == OHOS::NWeb::DisplayOrientation::PORTRAIT_INVERTED;
+  bool need_swap_portrait_and_landscape = (is_portrait && screen_info_.width > screen_info_.height)
+                                          || (!is_portrait && screen_info_.width <= screen_info_.height);
+  if (need_swap_portrait_and_landscape) {
+    screen_info.orientation = SwapPortraitAndLandscape(screen_info.orientation);
+  }
+  if (screen_info_.rotation == OHOS::NWeb::RotationType::ROTATION_90
+        || screen_info_.rotation == OHOS::NWeb::RotationType::ROTATION_270) {
+    screen_info.orientation = SwapPrimaryAndSecondary(screen_info.orientation);
+  }
   screen_info.angle = ConvertRotationAngel(screen_info_.rotation);
   screen_info.rect.width = screen_info_.width;
   screen_info.rect.height = screen_info_.height;
@@ -1137,16 +1220,40 @@ void NWebRenderHandler::ImageDragForFileUri(CefRefPtr<CefDragData> drag_data) {
     tempPath = delegete->GetAppTempDir() + "/dragdrop/";
   }
 
+  CefString fileName = drag_data->GetFileName();
+  std::string cur_filename = fileName.ToString();
   if (base::DirectoryExists(base::FilePath(tempPath))) {
     if (!base::IsDirectoryEmpty(base::FilePath(tempPath))) {
-      base::DeletePathRecursively(base::FilePath(tempPath));
+      LOG(INFO) << "DragDrop, exist sandbox image files count "
+                << image_sandbox_files_.size();
+      // when sandbox dir exist and not empty, and file map empty, remove dir
+      if (image_sandbox_files_.size() == 0) {
+        base::DeletePathRecursively(base::FilePath(tempPath));
+      } else {
+        // when filename exist same one, remove the exist one
+        for (auto it = image_sandbox_files_.begin();
+             it != image_sandbox_files_.end(); ++it) {
+          if (it->second == cur_filename) {
+            CefString remove_file(tempPath.ToString() + cur_filename);
+            base::DeletePathRecursively(base::FilePath(remove_file));
+            image_sandbox_files_.erase(it);
+            break;
+          }
+        }
+        // when file count reach limit, remove the earliest one
+        if (image_sandbox_files_.size() >= drag_image_sandbox_count_limit) {
+          auto first = image_sandbox_files_.begin();
+          CefString remove_file(tempPath.ToString() + first->second);
+          base::DeletePathRecursively(base::FilePath(remove_file));
+          image_sandbox_files_.erase(first);
+        }
+      }
     }
   } else {
     LOG(INFO) << "DragDrop temp dir not exist, create it";
   }
   base::CreateDirectory(base::FilePath(tempPath));
 
-  CefString fileName = drag_data->GetFileName();
   if (!fileName.ToString().empty()) {
     CefString fullName(tempPath.ToString() + fileName.ToString());
     if (base::PathExists(base::FilePath(fullName))) {
@@ -1164,6 +1271,11 @@ void NWebRenderHandler::ImageDragForFileUri(CefRefPtr<CefDragData> drag_data) {
     size_t size = drag_data->GetFileContents(stream);
     if (size == drag_data->GetImageFileSize()) {
       LOG(INFO) << "DragDrop image file write success, size:" << size;
+      // use time milliseconds as key, for map auto sort
+      auto now = std::chrono::system_clock::now();
+      auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          now.time_since_epoch());
+      image_sandbox_files_.emplace(now_ms.count(), fileName.ToString());
     } else {
       LOG(ERROR) << "DragDrop image file write failed";
     }
@@ -1428,8 +1540,7 @@ void NWebRenderHandler::OnNativeEmbedMouseEvent(
     info->SetScreenY(mouseEvent.screenY);
     info->SetType(static_cast<OHOS::NWeb::MouseType>(mouseEvent.type));
     info->SetButton(static_cast<OHOS::NWeb::MouseButton>(mouseEvent.button));
-    std::shared_ptr<NWebMouseEventResult> result =
-        std::make_shared<NWebMouseEventResultImpl>(callback);
+    std::shared_ptr<NWebMouseEventResult> result = std::make_shared<NWebMouseEventResultImpl>(callback);
 
     info->SetResult(result);
     handler->OnNativeEmbedMouseEvent(info);
@@ -1550,6 +1661,7 @@ void NWebRenderHandler::CreateOverlay(CefRefPtr<CefBrowser> browser,
         static_cast<CefImageImpl*>(cef_image.get())->AsImageSkia();
     int width = cef_image->GetWidth();
     int height = cef_image->GetHeight();
+    LOG(INFO) << "NWebRenderHandler::CreateOverlay, image w x h: " << width << " x " << height;
     auto bitmap = cef_image->GetAsBitmap(1, CEF_COLOR_TYPE_BGRA_8888,
                                          CEF_ALPHA_TYPE_OPAQUE, width, height);
     if (!bitmap) {
@@ -1647,7 +1759,6 @@ void NWebRenderHandler::OnFirstScreenPaint(const std::string& url,
       << " duration: " << (firstScreenPaintTime - navigationStartTime)
       << " navigationStartTime: " << navigationStartTime
       << " firstScreenPaintTime: " << firstScreenPaintTime;
-  
   if (auto handler = handler_.lock()) {
     handler->OnFirstScreenPaint(url, navigationStartTime, firstScreenPaintTime);
   }
@@ -1664,4 +1775,16 @@ void NWebRenderHandler::OnAccessibilityEvent(int64_t accessibilityId,
   }
 }
 #endif
+
+#if BUILDFLAG(ARKWEB_ROTATE_RESIZE)
+void NWebRenderHandler::ModifyRenderFit(int32_t fitType) {
+  auto handler = handler_.lock();
+  if (handler == nullptr) {
+    LOG(ERROR) << "can't get strong ptr with handler";
+    return;
+  }
+  LOG(DEBUG) << "NWebRenderHandler::ModifyRenderFit fitType = " << fitType;
+  handler->ModifyRenderFit(fitType);
+}
+#endif  // ARKWEB_ROTATE_RESIZE
 }  // namespace OHOS::NWeb

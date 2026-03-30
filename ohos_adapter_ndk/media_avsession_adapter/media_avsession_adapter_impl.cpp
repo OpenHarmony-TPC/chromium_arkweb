@@ -281,6 +281,7 @@ bool MediaAVSessionAdapterImpl::RegistCallback(
         }
         if (callback_index_ > 0) {
             callback_wrapper_.Clear(callback_index_);
+            callback_index_ = 0;
         }
         callback_index_ = callback_wrapper_.AddCallback(callback_adapter);
         for (AVSession_ControlCommand command = CONTROL_CMD_PLAY;
@@ -429,22 +430,26 @@ bool MediaAVSessionAdapterImpl::UpdateMetaData(const std::shared_ptr<MediaAVSess
     if (title_ != metadata->GetTitle()) {
         title_ = metadata->GetTitle();
         ret = OH_AVMetadataBuilder_SetTitle(builder_, metadata->GetTitle().c_str());
-        if (ret == AVMETADATA_SUCCESS)
+        if (ret == AVMETADATA_SUCCESS) {
             updated = true;
+    }
+
     }
 
     if (artist_ != metadata->GetArtist()) {
         artist_ = metadata->GetArtist();
         ret = OH_AVMetadataBuilder_SetArtist(builder_, metadata->GetArtist().c_str());
-        if (ret == AVMETADATA_SUCCESS)
+        if (ret == AVMETADATA_SUCCESS) {
             updated = true;
+    }
     }
 
     if (album_ != metadata->GetAlbum()) {
         album_ = metadata->GetAlbum();
         ret = OH_AVMetadataBuilder_SetAlbum(builder_, metadata->GetAlbum().c_str());
-        if (ret == AVMETADATA_SUCCESS)
+        if (ret == AVMETADATA_SUCCESS) {
             updated = true;
+    }
     }
 
     if (poster_url_ != metadata->GetImageUrl()) {
@@ -685,6 +690,7 @@ void MediaAVSessionAdapterImpl::ProcessPosterQueue() {
             if (ret != AVMETADATA_SUCCESS) {
                 WVLOG_E("destory avmetadata failed. ret: %{public}d", ret);
             }
+            avMetadata = nullptr;
             continue;
         }
            
@@ -695,6 +701,7 @@ void MediaAVSessionAdapterImpl::ProcessPosterQueue() {
                 if (ret != AVMETADATA_SUCCESS) {
                     WVLOG_E("destory avmetadata failed. ret: %{public}d", ret);
                 }
+                avMetadata = nullptr;
                 continue;
             }
             Activate();
@@ -705,6 +712,7 @@ void MediaAVSessionAdapterImpl::ProcessPosterQueue() {
                 if (ret != AVMETADATA_SUCCESS) {
                     WVLOG_E("destory avmetadata failed. ret: %{public}d", ret);
                 }
+                avMetadata = nullptr;
                 continue;
             }
         }
@@ -712,6 +720,7 @@ void MediaAVSessionAdapterImpl::ProcessPosterQueue() {
         if (ret != AVMETADATA_SUCCESS) {
             WVLOG_E("destory avmetadata failed. ret: %{public}d", ret);
         }
+        avMetadata = nullptr;
     }
 }
 
@@ -774,8 +783,8 @@ void MediaAVSessionAdapterImpl::AVCastStateConnect(OH_AVSession *session,
             return;
         }
         adapter->UpdateAVCastDevice(outputDeviceInfo);
-        std::string LOCAL_DEVICE = "LocalDevice";
-        if (adapter->GetAVCastDevice() != LOCAL_DEVICE) {
+        std::string localDevice = "LocalDevice";
+        if (adapter->GetAVCastDevice() != localDevice) {
             WVLOG_I("AVCastStateConnect, not LocalDevice");
             if (!adapter->PrepareAndStartCast()) {
                 WVLOG_E("AVCastStateConnect, PrepareAndStartCast failed");
@@ -1006,6 +1015,7 @@ void MediaAVSessionAdapterImpl::SeekNative(const int64_t millis) {
     auto media = callback_wrapper_.GetCallback(callback_index_);
     if (!media) {
         WVLOG_E("SeekNative, ohmedia: media is null");
+        return;
     }
     media->SeekTo(millis);
 }

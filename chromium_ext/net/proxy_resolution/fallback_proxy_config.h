@@ -38,7 +38,7 @@ enum class ProxyUnusedReason {
   AUTH_FAILED,
   MAX_VALUE = 0xFF,
 };
-
+ 
 class NET_EXPORT_PRIVATE FallbackProxyConfigStatus {
  public:
   static void SetStatus(bool enable, bool has_token);
@@ -49,7 +49,7 @@ class NET_EXPORT_PRIVATE FallbackProxyConfigStatus {
   static bool proxy_config_enable_;
   static bool has_token_;
 };
-
+ 
 }  // namespace net
  
 #endif  // HUAWEI_NET_PROXY_RESOLUTION_FALLBACK_PROXY_CONFIG_H_

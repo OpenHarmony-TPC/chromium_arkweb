@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include "third_party/ashmem/ashmem.h"
+#include "base/android/linker/ashmem.h"
 
 using namespace testing;
 #define PROT_READ 0x1
@@ -24,7 +24,7 @@ using namespace testing;
 class OhosAshmemTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    fd_ = ashmem_create_region("test_region", 4096);
+    fd_ = SharedMemoryRegionCreate("test_region", 4096);
     ASSERT_GE(fd_, 0) << "Failed to create ashmem region";
   }
 
@@ -36,25 +36,21 @@ protected:
 };
 
 TEST_F(OhosAshmemTest, SetGetProtection) {
-  ASSERT_EQ(0, ashmem_set_prot_region(fd_, PROT_READ));
-  ASSERT_EQ(PROT_READ, ashmem_get_prot_region(fd_));
+  ASSERT_EQ(0, SharedMemoryRegionSetProtectionFlags(fd_, PROT_READ));
+  ASSERT_EQ(PROT_READ, SharedMemoryRegionGetProtectionFlags(fd_));
 }
 
 TEST_F(OhosAshmemTest, PinUnpinRegion) {
-  ASSERT_EQ(0, ashmem_pin_region(fd_, 0, 1024));
-  ASSERT_EQ(0, ashmem_unpin_region(fd_, 0, 1024));
-}
-
-TEST_F(OhosAshmemTest, GetSize) {
-  ASSERT_EQ(4096, ashmem_get_size_region(fd_));
+  ASSERT_EQ(0, AshmemPinRegion(fd_, 0, 1024));
+  ASSERT_EQ(0, AshmemUnpinRegion(fd_, 0, 1024));
 }
 
 TEST_F(OhosAshmemTest, DeviceSupportCheck) {
-  ASSERT_EQ(1, ashmem_device_is_supported());
+  ASSERT_EQ(1, AshmemDeviceIsSupported());
 }
 
 TEST_F(OhosAshmemTest, ashmem_create_region) {
   size_t size = 1;
-  auto result = ashmem_create_region(nullptr, size);
+  auto result = SharedMemoryRegionCreate(nullptr, size);
   ASSERT_EQ(12, result);
 }

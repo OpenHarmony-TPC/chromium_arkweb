@@ -75,4 +75,5 @@ void GpuChannelMessageFilter::SetBlanklessDumpInfo(uint32_t nweb_id, uint64_t bl
   gpu_channel_->AsGpuChannelExt()->SetBlanklessDumpInfo(frame_sink_id, std::move(info));
 }
 #endif
+
 } // namespace gpu

@@ -71,8 +71,6 @@ class ResourceURLLoader : public network::mojom::URLLoader {
       const std::optional<GURL>& new_url) override {}
   void SetPriority(net::RequestPriority priority,
                    int32_t intra_priority_value) override {}
-  void PauseReadingBodyFromNet() override {}
-  void ResumeReadingBodyFromNet() override {}
 
  private:
   ResourceURLLoader() = default;
@@ -103,8 +101,9 @@ class ResourceURLLoader : public network::mojom::URLLoader {
     std::string resourcesPath;
     if (request.url.SchemeIs(url::kResourcesScheme)) {
       resourcesPath = "resources/";
-      resourcesPath += request.url.host() +
-                       net::UnescapePercentEncodedUrl(request.url.path());
+      resourcesPath += base::StrCat({
+        request.url.host(), net::UnescapePercentEncodedUrl(request.url.path())
+      });
     } else {
       LOG(ERROR) << "url scheme error";
       OnClientComplete(net::ERR_FAILED, std::move(observer));
@@ -121,8 +120,8 @@ class ResourceURLLoader : public network::mojom::URLLoader {
     mojo::ScopedDataPipeConsumerHandle consumer_handle;
     // Request the larger size data pipe for resource:// URL loading.
     uint32_t data_pipe_size =
-        network::features::GetDataPipeDefaultAllocationSize(
-            network::features::DataPipeAllocationSize::kLargerSizeIfPossible);
+        network::GetDataPipeDefaultAllocationSize(
+            network::DataPipeAllocationSize::kLargerSizeIfPossible);
     // This should already be static_asserted in network::features, but good
     // to double-check.
     DCHECK(data_pipe_size >= net::kMaxBytesToSniff)

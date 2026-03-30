@@ -12,6 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifndef CERT_VERIFY_PROC_OHOS_TEST_H
+#define CERT_VERIFY_PROC_OHOS_TEST_H
+
 #include <network/netstack/net_ssl/net_ssl_c.h>
 
 struct CertVerifyProcStub {
@@ -106,3 +110,5 @@ int CertChainRootVerify(X509* server_cert[],
                         int32_t index,
                         X509_STORE* ca_store);
 }  // namespace net
+
+#endif

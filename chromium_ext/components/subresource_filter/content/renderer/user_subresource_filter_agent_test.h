@@ -41,6 +41,7 @@
 #include "third_party/blink/public/platform/web_document_subresource_filter.h"
 #include "third_party/blink/public/platform/web_url.h"
 #include "third_party/blink/public/platform/web_worker_fetch_context.h"
+#include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
 #include "third_party/blink/public/web/web_document.h"
 #include "third_party/blink/public/web/web_document_loader.h"
 #include "third_party/blink/public/web/web_performance_metrics_for_nested_contexts.h"
@@ -93,8 +94,6 @@ class MockWebDocumentLoader final : public blink::WebDocumentLoader {
   std::unique_ptr<ExtraData> CloneExtraData() override { return nullptr; }
   void SetExtraData(std::unique_ptr<ExtraData>) override {}
   void SetSubresourceFilter(blink::WebDocumentSubresourceFilter*) override {}
-  void SetServiceWorkerNetworkProvider(
-      std::unique_ptr<blink::WebServiceWorkerNetworkProvider>) override {}
   blink::WebServiceWorkerNetworkProvider* GetServiceWorkerNetworkProvider()
       override {
     return nullptr;
@@ -113,13 +112,13 @@ class MockWebDocumentLoader final : public blink::WebDocumentLoader {
           code_cache_host,
       blink::CrossVariantMojoRemote<blink::mojom::CodeCacheHostInterfaceBase>
           code_cache_host_for_background) override {}
-  blink::WebString OriginCalculationDebugInfo() const override {
-    return blink::WebString();
-  }
   bool HasLoadedNonInitialEmptyDocument() const override { return false; }
   blink::WebDocumentSubresourceFilter* GetWebSubresourceFilter() override {
     return nullptr;
   }
+  void SetServiceWorkerNetworkProvider(
+      std::unique_ptr<blink::WebServiceWorkerNetworkProvider>) override {}
+  bool IsForDiscard() const override { return false; }
 };
 
 struct TestWebLocalFrameCondition {
@@ -144,7 +143,7 @@ struct TestRenderFrameCondition {
 
 class MockRenderFrame : public content::RenderFrame {
  public:
-  MockRenderFrame(TestRenderFrameCondition condition) : condition_(condition) {
+  explicit MockRenderFrame(TestRenderFrameCondition condition) : condition_(condition) {
   }
   ~MockRenderFrame() {}
 
@@ -186,11 +185,16 @@ class MockRenderFrame : public content::RenderFrame {
   }
   const blink::web_pref::WebPreferences& GetBlinkPreferences() override {}
   void ShowVirtualKeyboard() override {}
-  blink::WebPlugin* CreatePlugin(
-      const content::WebPluginInfo& info,
-      const blink::WebPluginParams& params) override {
-    return nullptr;
-  }
+  void SetNewFeatureUsageCallback(NewFeatureUsageCallback callback) override {}
+  void SetSubresourceLoadCallback(SubresourceLoadCallback callback) override {}
+  void SetLoadFromMemoryCacheCallback(
+      LoadFromMemoryCacheCallback callback) override {}
+  void SetDidStartResponseCallback(
+      DidStartResponseCallback callback) override {}
+  void SetDidCompleteResponseCallback(
+      DidCompleteResponseCallback callback) override {}
+  void SetDidCancelResponseCallback(
+      DidCancelResponseCallback callback) override {}
   void ExecuteJavaScript(const std::u16string& javascript) override {}
   void BindLocalInterface(
       const std::string& interface_name,
@@ -227,8 +231,9 @@ class MockRenderFrame : public content::RenderFrame {
       const content::RenderFrameMediaPlaybackOptions& opts) override {}
   void SetAllowsCrossBrowsingInstanceFrameLookup() override {}
   gfx::RectF ElementBoundsInWindow(const blink::WebElement& element) override {}
-  [[nodiscard]] gfx::Rect ConvertViewportToWindow(
-      const gfx::Rect& rect) override {}
+  // [[nodiscard]] gfx::Rect ConvertViewportToWindow(
+  //     const gfx::Rect& rect) override {}
+  MOCK_METHOD(gfx::Rect, ConvertViewportToWindow, (const gfx::Rect&), (override));
   float GetDeviceScaleFactor() override {}
   blink::scheduler::WebAgentGroupScheduler& GetAgentGroupScheduler() override {}
 
@@ -240,8 +245,6 @@ class MockRenderFrame : public content::RenderFrame {
 #if BUILDFLAG(ARKWEB_ADBLOCK)
   bool GetGlobalAdblockEnabled() override {}
 #endif
-   bool OnMessageReceived(const IPC::Message& message) override {}
-   bool Send(IPC::Message* msg) override {}
    gfx::Vector2dF GetOverScrollOffset() override {}
 
 #if BUILDFLAG(ARKWEB_JS_ON_DOCUMENT_END)
@@ -371,14 +374,26 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
     return blink::WebString();
   }
   void SetName(const blink::WebString&) override {}
-  ui::AXTreeID GetAXTreeID() const override {}
+  const WebLocalFrame* LocalRoot() const override {}
+  void SendAttributionSrc(const std::optional<blink::Impression>&,
+                                  bool did_navigate) override {}
+  void SetIsCaretBrowsingOverridden(bool should_update) override {}
+  const blink::mojom::RendererContentSettingsPtr& GetContentSettings() const override {}
+  void PostIdleTask(
+      const base::Location&,
+      base::OnceCallback<void(base::TimeTicks deadline)>) override {}
+  void RequestNetworkIdleCallback(base::OnceClosure callback) override {}
+  void AddUserReidentificationIssueImpl(
+      std::optional<std::string> devtools_request_id,
+      const blink::WebURL& affected_request_url) override {}
+  MOCK_METHOD(ui::AXTreeID, GetAXTreeID, (), (const, override));
   void SetNotRestoredReasons(
       const blink::mojom::BackForwardCacheNotRestoredReasonsPtr&) override {}
   void SetLCPPHint(
       const blink::mojom::LCPCriticalPathPredictorNavigationTimeHintPtr&)
       override {}
   bool IsFeatureEnabled(
-      const blink::mojom::PermissionsPolicyFeature&) const override {
+      const network::mojom::PermissionsPolicyFeature&) const override {
     return false;
   }
   blink::WebLocalFrame* LocalRoot() override {
@@ -531,7 +546,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
     return false;
   }
   bool AddImeTextSpansToExistingText(
-      const blink::WebVector<ui::ImeTextSpan>& ime_text_spans,
+      const std::vector<ui::ImeTextSpan>& ime_text_spans,
       unsigned text_start,
       unsigned text_end) override {}
   bool ClearImeTextSpansByType(ui::ImeTextSpan::Type type,
@@ -542,7 +557,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   bool SetCompositionFromExistingText(
       int composition_start,
       int composition_end,
-      const blink::WebVector<ui::ImeTextSpan>& ime_text_spans) override {
+      const std::vector<ui::ImeTextSpan>& ime_text_spans) override {
     return false;
   }
   void ExtendSelectionAndDelete(int before, int after) override {}
@@ -564,7 +579,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   void ReplaceMisspelledRange(const blink::WebString&) override {}
   void RemoveSpellingMarkers() override {}
   void RemoveSpellingMarkersUnderWords(
-      const blink::WebVector<blink::WebString>& words) override {}
+      const std::vector<blink::WebString>& words) override {}
   blink::WebContentSettingsClient* GetContentSettingsClient() const override {
     return nullptr;
   }
@@ -587,7 +602,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
     return false;
   }
   void SetTickmarks(const blink::WebElement& target,
-                    const blink::WebVector<gfx::Rect>& tickmarks) override {}
+                    const std::vector<gfx::Rect>& tickmarks) override {}
   blink::WebNode ContextMenuImageNode() const override {
     return blink::WebNode();
   }
@@ -635,7 +650,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   gfx::PointF GetScrollOffset() const override {
     return gfx::PointF(0, 0);
   }
-  void SetScrollOffset(const gfx::PointF&) override {}
+  bool SetScrollOffset(const gfx::PointF&) override {}
   gfx::Size DocumentSize() const override {}
   bool HasVisibleContent() const override {
     return false;
@@ -666,10 +681,8 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   bool CapturePaintPreview(const gfx::Rect& bounds,
                            cc::PaintCanvas* canvas,
                            bool include_linked_destinations,
-                           bool skip_accelerated_content) override {
-    return false;
-  }
-  bool ShouldSuppressKeyboardForFocusedElement() override {
+                           bool skip_accelerated_content,
+                           bool allow_scrollbars) override {
     return false;
   }
   blink::WebPerformanceMetricsForReporting PerformanceMetricsForReporting()
@@ -702,7 +715,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   }
 #endif
   gfx::Size SpoolSizeInPixelsForTesting(
-      const blink::WebVector<uint32_t>& pages) override {
+      const std::vector<uint32_t>& pages) override {
     return gfx::Size();
   }
   gfx::Size SpoolSizeInPixelsForTesting(uint32_t page_count) override {
@@ -711,7 +724,7 @@ class MockWebLocalFrame : public blink::WebLocalFrame {
   void PrintPagesForTesting(
       cc::PaintCanvas*,
       const gfx::Size& spool_size_in_pixels,
-      const blink::WebVector<uint32_t>* pages = nullptr) override {}
+      const std::vector<uint32_t>* pages = nullptr) override {}
   gfx::Rect GetSelectionBoundsRectForTesting() const override {
     return gfx::Rect(0, 0);
   }
@@ -791,12 +804,19 @@ class MockWebDocumentSubresourceFilter
     : public blink::WebDocumentSubresourceFilter {
  public:
 #if BUILDFLAG(ARKWEB_ADBLOCK)
-  bool HasDocumentTypeOption(const blink::WebURL&, const url::Origin&) {}
-  bool HasElemHideTypeOption(const blink::WebURL&, const url::Origin&) {}
-  bool HasGenericHideTypeOption(const blink::WebURL&, const url::Origin&) {}
+  bool HasDocumentTypeOption(const blink::WebURL&, const url::Origin&) {
+    return false;
+  }
+  bool HasElemHideTypeOption(const blink::WebURL&, const url::Origin&) {
+    return false;
+  }
+  bool HasGenericHideTypeOption(const blink::WebURL&, const url::Origin&) {
+    return false;
+  }
 #endif
   LoadPolicy GetLoadPolicy(const blink::WebURL& resource_url,
-                           network::mojom::RequestDestination) override {
+                           network::mojom::RequestDestination,
+                           subresource_filter::ScopedRule* out_rule) override {
     return LoadPolicy::kAllow;
   }
   LoadPolicy GetLoadPolicyForWebSocketConnect(const blink::WebURL&) override {
@@ -850,18 +870,18 @@ class MockWebWorkerFetchContext : public blink::WebWorkerFetchContext {
     return nullptr;
   }
   void FinalizeRequest(blink::WebURLRequest&) override {}
-  // void DidStartRequest(const blink::WebURLRequest&) override {}
-  // void DidReceiveResponse(const blink::WebURLRequest&,
-  //                        const blink::WebURLResponse&) override {}
-  net::SiteForCookies SiteForCookies() const {}
-  std::optional<blink::WebSecurityOrigin> TopFrameOrigin() const {}
+  net::SiteForCookies SiteForCookies() const {
+    return net::SiteForCookies();
+  }
+  std::optional<blink::WebSecurityOrigin> TopFrameOrigin() const {
+    return std::nullopt;
+  }
   blink::WebString GetAcceptLanguages() const override {
     return blink::WebString();
   }
-  void SetIsOfflineMode(bool is_offline_mode) override {}
-  blink::WebVector<std::unique_ptr<blink::URLLoaderThrottle>> CreateThrottles(
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> CreateThrottles(
       const network::ResourceRequest& request) override {
-    return blink::WebVector<std::unique_ptr<blink::URLLoaderThrottle>>();
+    return std::vector<std::unique_ptr<blink::URLLoaderThrottle>>();
   }
   blink::mojom::ControllerServiceWorkerMode GetControllerServiceWorkerMode()
       const override {
@@ -1020,14 +1040,14 @@ class TestWebDocumentSubresourceFilterImpl {
     base::OnceClosure first_disallowed_load_callback(
         base::BindOnce([]() { /* Do nothing */ }));
     return std::make_unique<WebDocumentSubresourceFilterImpl>(
-        url::Origin::Create(GURL(url)), activation_state_, std::move(ruleset_),
+        url::Origin::Create(GURL(url)), activation_state_, ruleset_,
         std::move(first_disallowed_load_callback));
   }
 
   std::unique_ptr<MockDocumentSubresourceFilterExt> CreateFilter(
       const std::string_view& url = kTestAlphaURL,
       const std::string_view& tag = "test") {
-    std::make_unique<MockDocumentSubresourceFilterExt>(
+    return std::make_unique<MockDocumentSubresourceFilterExt>(
         url::Origin::Create(GURL(url)), activation_state_, std::move(ruleset_),
         tag);
   }

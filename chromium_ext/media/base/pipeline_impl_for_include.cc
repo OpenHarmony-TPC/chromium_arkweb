@@ -65,7 +65,6 @@ void PipelineImpl::SetPlaybackRateWithReason(
 #if BUILDFLAG(ARKWEB_PIP)
 void PipelineImpl::RendererWrapper::PipEnable(bool enable) {
   DCHECK(media_task_runner_->RunsTasksInCurrentSequence());
-  DVLOG(2) << __func__  << "PIC PipelineImpl::RendererWrapper:: enable:" << enable;
 
   if (shared_state_.renderer) {
     shared_state_.renderer->PipEnable(enable);
@@ -74,7 +73,6 @@ void PipelineImpl::RendererWrapper::PipEnable(bool enable) {
 
 void PipelineImpl::PipEnable(bool enable) {
   DCHECK(thread_checker_.CalledOnValidThread());
-  DVLOG(2) << __func__  << "PIC PipelineImpl::PipEnable enable:" << enable;
   media_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&RendererWrapper::PipEnable,
                                 renderer_wrapper_->AsWeakPtr(),
@@ -116,7 +114,7 @@ void PipelineImpl::RecycleDmaBuffer() {
   DCHECK(thread_checker_.CalledOnValidThread());
   LOG(INFO) << "DMABUF::PipelineImpl, RecycleDmaBuffer";
 
-  media_task_runner_->PostTask(
+ media_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&RendererWrapper::RecycleDmaBuffer,
                                 renderer_wrapper_->AsWeakPtr()));
 }

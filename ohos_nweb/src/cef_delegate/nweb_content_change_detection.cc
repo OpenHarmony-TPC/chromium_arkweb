@@ -19,11 +19,14 @@
 #include "base/strings/string_util.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ohos_resources/content_change_detection/grit/content_change_detection_resources.h"
+#include "ohos_resources/dom_tree_extractor/grit/dom_tree_extractor_resources.h"
 
 namespace OHOS::NWeb {
 
 constexpr std::string_view kStartTemplate = "(function(window) { window.viewportFontMonitor.start($1, $2); })(window);";
 constexpr std::string_view kStopTemplate = "(function(window) { window.viewportFontMonitor.stop(); })(window);";
+constexpr std::string_view kRequestWebDomTemplate = "window.__arkWebDomTree.getWebDom();";
+constexpr std::string_view kWebDomReportedTemplate = "window.__arkWebDomTree.addDomTreeReported();";
 
 NWebContentChangeDetection::NWebContentChangeDetection(
     base::WeakPtr<NWebDelegateInterface> nweb_delegate)
@@ -77,6 +80,17 @@ void NWebContentChangeDetection::StartDetection() {
 
   std::string final_js = std::string(script_data) + start_js;
   nweb_delegate_->ExecuteJavaScript(final_js);
+
+  LOG(INFO) << "NWebContentChangeDetection::start run dom tree extractor";
+  std::string_view js_dom_extrator = rb.GetRawDataResource(IDR_DOM_TREE_EXTRACTOR_JS);
+  if (js_dom_extrator.empty()) {
+    LOG(ERROR) << "get dom tree extractor script failed";
+    return;
+  }
+  
+  std::string dom_script_extractor(js_dom_extrator);
+  std::string dom_final_js = dom_script_extractor + std::string(kWebDomReportedTemplate);
+  nweb_delegate_->ExecuteJavaScript(dom_final_js);
 }
 
 void NWebContentChangeDetection::StopDetection() {
@@ -86,6 +100,19 @@ void NWebContentChangeDetection::StopDetection() {
   LOG(INFO) << "NWebContentChangeDetection::StopDetection";
   std::string final_js = std::string(kStopTemplate);
   nweb_delegate_->ExecuteJavaScript(final_js);
+}
+
+void NWebContentChangeDetection::RequestWebDomJsonString(std::shared_ptr<NWebMessageValueCallback> callback) {
+  LOG(INFO) << "NWebContentChangeDetection::RequestWebDomJsonString";
+  const auto& rb = ui::ResourceBundle::GetSharedInstance();
+  std::string_view js_dom_extrator = rb.GetRawDataResource(IDR_DOM_TREE_EXTRACTOR_JS);
+  if (js_dom_extrator.empty()) {
+    LOG(ERROR) << "get dom tree extractor script failed";
+    return;
+  }
+  std::string dom_script_extractor(js_dom_extrator);
+  std::string dom_final_js = dom_script_extractor + std::string(kRequestWebDomTemplate);
+  nweb_delegate_->ExecuteJavaScript(dom_final_js, callback, false);
 }
 
 } // namespace OHOS::NWeb

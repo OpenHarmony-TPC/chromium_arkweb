@@ -26,7 +26,7 @@ namespace {
 
 class DummyWebDocumentSubresourceFilter : public blink::WebDocumentSubresourceFilter {
  public:
-  LoadPolicy GetLoadPolicy(const WebURL&, network::mojom::RequestDestination) override { return kAllow; }
+  LoadPolicy GetLoadPolicy(const WebURL&, network::mojom::RequestDestination, subresource_filter::ScopedRule* out_rule) override { return kAllow; }
   LoadPolicy GetLoadPolicyForWebSocketConnect(const WebURL&) override { return kAllow; }
   LoadPolicy GetLoadPolicyForWebTransportConnect(const WebURL&) override { return kAllow; }
 #if BUILDFLAG(ARKWEB_ADBLOCK)
@@ -323,7 +323,7 @@ TEST_F(StyleCascadeTest, LookupAndApplyDeclarationExt_UserAdblock_AllTrue) {
 
 TEST_F(StyleCascadeTest, GetEnvironmentVariableExt) {
   AtomicString var_name("--test-var");
-  WTF::Vector<unsigned> indices;
+  Vector<unsigned> indices;
   bool is_ua_scope = false;
   TestCascade cascade(GetDocument());
   raw_ptr<StyleCascade> StyleCascadeObj = &cascade.InnerCascade();
@@ -336,7 +336,7 @@ TEST_F(StyleCascadeTest, GetEnvironmentVariableExt) {
 
 TEST_F(StyleCascadeTest, GetUAScopeEnvironmentVariable) {
   AtomicString var_name("--ua-var");
-  WTF::Vector<unsigned> indices;
+  Vector<unsigned> indices;
   bool is_ua_scope = true;
   TestCascade cascade(GetDocument());
   raw_ptr<StyleCascade> StyleCascadeObj = &cascade.InnerCascade();
@@ -349,10 +349,10 @@ TEST_F(StyleCascadeTest, GetUAScopeEnvironmentVariable) {
 
 TEST_F(StyleCascadeTest, GetEnvironmentVariableExt_ReturnValue) {
   AtomicString var_name("safe-area-inset-top");
-  auto variable_data = CSSVariableData::Create("10px", false, true);
+  auto variable_data = CSSVariableData::Create("10px", false, true, false, false, false, false, false);
   DocumentStyleEnvironmentVariables& env_vars = GetDocument().GetStyleEngine().EnsureEnvironmentVariables();
-  env_vars.ResolveVariable(var_name, WTF::Vector<unsigned>(), true);
-  WTF::Vector<unsigned> indices;
+  env_vars.ResolveVariable(var_name, Vector<unsigned>(), true);
+  Vector<unsigned> indices;
   bool is_ua_scope = false;
   TestCascade cascade(GetDocument());
   raw_ptr<StyleCascade> StyleCascadeObj = &cascade.InnerCascade();

@@ -14,6 +14,7 @@
  */
 #include "arkweb/chromium_ext/content/browser/renderer_host/arkweb_render_process_host_impl_utils.h"
 #include "arkweb/ohos_nweb/src/sysevent/event_reporter.h"
+#include "arkweb/ohos_nweb/src/nweb_common.h"
 #include "arkweb/ohos_nweb/src/nweb_resize_helper.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/renderer_host/render_process_host_impl.h"
@@ -37,6 +38,8 @@
 #if BUILDFLAG(ARKWEB_CRASHPAD)
 #include "../dfx/dfx_reporter_browser_impl.h"
 #endif
+#include "base/trace_event/trace_event.h"
+
 // VLOG additional statements in Fuchsia release builds.
 #if BUILDFLAG(IS_FUCHSIA)
 #define MAYBEVLOG VLOG
@@ -134,7 +137,7 @@ size_t ArkwebRenderProcessHostImplUtils::GetMaxRendererProcessCountEx() {
 #else
         60;  // In MB
 #endif
-    max_count = base::SysInfo::AmountOfPhysicalMemoryMB() / 2;
+    max_count = base::SysInfo::AmountOfPhysicalMemory().InMiB() / 2;
     max_count /= kEstimatedWebContentsMemoryUsage;
 
     static constexpr size_t kMinRendererProcessCount = 3;
@@ -310,11 +313,12 @@ RenderProcessMode RenderProcessHost::render_process_mode() {
 // static
 #if BUILDFLAG(ARKWEB_OOP_GPU_PROCESS)
 void ArkwebRenderProcessHostImplUtils::Refresh() {
+  TRACE_EVENT2("base", __FILE__, "func", __func__, "line", __LINE__);
   RenderProcessHost::iterator it = RenderProcessHost::AllHostsIterator();
   if (it.IsAtEnd()) {
     return;
   }
-  do {
+  for (; !it.IsAtEnd(); it.Advance()) {
     RenderProcessHostImpl* host =
         static_cast<RenderProcessHostImpl*>(it.GetCurrentValue());
     if (!host) {
@@ -325,10 +329,13 @@ void ArkwebRenderProcessHostImplUtils::Refresh() {
     for (auto rfh_id : temp_set) {
       auto rfh = RenderFrameHostImpl::FromID(rfh_id);
       if (rfh && rfh->IsActive()) {
+        TRACE_EVENT2("base", __FILE__, "func", __func__, "line", __LINE__);
+        LOG(INFO) << "[NativeEmbed]child_id = " << rfh->GetGlobalId().child_id
+                  << "frame_routing_id=" << rfh->GetGlobalId().frame_routing_id;
         rfh->Reload();
       }
     }
-  } while (0);
+  }
 }
 #endif
 // LCOV_EXCL_STOP
@@ -454,6 +461,7 @@ ThemeFont* ArkwebRenderProcessHostImplUtils::EnsureThemeFont() {
 
   base::FilePath theme_path(kAppThemePathA);
   base::FilePath theme_font_path = theme_path.Append(kAppThemeFontsDirName);
+  ScopedAllowBlockingForNwebInit allow_blocking_for_using_path;
   if (!base::PathExists(
           base::FilePath(kAppThemePathA).Append(kAppThemeFlagFileName))) {
     if (!base::PathExists(
@@ -474,7 +482,8 @@ ThemeFont* ArkwebRenderProcessHostImplUtils::EnsureThemeFont() {
     return nullptr;
   }
 
-  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(input_json);
+  auto parsed_json = base::JSONReader::ReadAndReturnValueWithError(
+      input_json, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
   if (!parsed_json.has_value()) {
     LOG(ERROR) << "[themefont] manifest file occurs error:"
                << parsed_json.error().message;
@@ -493,8 +502,8 @@ ThemeFont* ArkwebRenderProcessHostImplUtils::EnsureThemeFont() {
     absolte_font_path = dict.FindString(kTtfFileSrc);
     if (!absolte_font_path || absolte_font_path->empty()) {
       LOG(ERROR) << "[themefont] manifest file has no src or ttfFileSrc tag";
-      return nullptr;
-    }
+    return nullptr;
+  }
   }
   base::FilePath theme_font_path_ext = theme_font_path;
   base::FilePath font_path =
@@ -554,6 +563,7 @@ void ArkwebRenderProcessHostImplUtils::UpdateThemeFontFile(
 }
 #endif
 
+#if BUILDFLAG(ARKWEB_PERFORMANCE_SCHEDULING)
 void ArkwebRenderProcessHostImplUtils::ReportKeyThreadEx(int32_t status,
                                                          int32_t process_id,
                                                          int32_t thread_id,
@@ -588,6 +598,7 @@ void ArkwebRenderProcessHostImplUtils::ReportHisyevent(int64_t block_time, const
     ReportDragBlank(block_time);
   }
 }
+#endif
 #endif
 
 void ArkwebRenderProcessHostImplUtils::AddHostUIThreadInterface(

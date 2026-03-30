@@ -297,6 +297,8 @@ public:
     virtual void OnVideoBufferAvailableV2(bool isReady, int32_t nweb_id) {}
 
     virtual void OnStateChangeV2(ScreenCaptureStateCodeAdapter stateCode, int32_t nweb_id) {}
+
+    virtual void OnUserSelected(int32_t nweb_id) {}
 };
 
 class ScreenCaptureAdapter {

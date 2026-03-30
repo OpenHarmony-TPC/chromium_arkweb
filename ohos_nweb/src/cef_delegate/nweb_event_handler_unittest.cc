@@ -25,6 +25,7 @@
 #include "ohos_cef_ext/libcef/common/cef_open_devtools_ext_opt.h"
 #include "ui/events/keycodes/keyboard_code_conversion_x.h"
 #include "ui/events/keycodes/keysym_to_unicode.h"
+#include "arkweb/ohos_nweb/src/capi/nweb_prefetch_options.h"
 
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
 #include "ohos_nweb/include/nweb_errors.h"
@@ -105,7 +106,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
 
   bool TryCloseBrowser() override { return false; }
 
-#if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
+  #if BUILDFLAG(ARKWEB_BLANK_SCREEN_DETECTION)
   void SetBlankScreenDetectionConfig( 
       bool enable,
       const std::vector<double>& detectionTiming,
@@ -155,7 +156,12 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void Find(const CefString& searchText,
             bool forward,
             bool matchCase,
-            bool findNext) override {}
+            bool findNext
+#if BUILDFLAG(ARKWEB_FIND_IN_PAGE)
+            ,
+            bool newSession
+#endif            
+            ) override {}
 
   void StopFinding(bool clearSelection) override {}
 
@@ -753,6 +759,11 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
+  int InsertBackForwardEntry(int index, const CefString& url) override { return 0; }
+  int UpdateNavigationEntryUrl(int index, const CefString& url) override { return 0; }
+  void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
@@ -782,6 +793,9 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void PutWebMediaAVSessionEnabled(bool enable) override {}
   void SetEnableHalfFrameRate(bool enabled) override {}
   bool SetFocusByPosition(float x, float y) override { return false; }
+  bool IsElementExist(CefString& xPath) override { return false; }
+  void SetImeShow(bool visible) override {}
+
 #if BUILDFLAG(ARKWEB_PIP)
   void SetPipNativeWindow(int delegate_id,
                           int child_id,
@@ -810,6 +824,13 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void EnableAppLinking(bool enable) override {}
   bool IsAppLinkingEnabled() const override { return false; }
 #endif
+#if BUILDFLAG(ARKWEB_SAVE_PAGE)
+  bool SavePage(int32_t type,
+                CefString& filePath,
+                CefRefPtr<CefSavePageResultCallback> callback) override {
+    return false;
+  }
+#endif // ARKWEB_SAVE_PAGE
 #if BUILDFLAG(ARKWEB_ARKWEB_EXTENSIONS)
   void GetFocusedFrameInfo(int32_t& frame_id, CefString& frame_url) override {}
 #endif  // ARKWEB_ARKWEB_EXTENSIONS
@@ -819,7 +840,6 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
   void AbortDistill() override {}
 #endif  // BUILDFLAG(ARKWEB_READER_MODE)
 #endif  // BUILDFLAG(IS_OHOS)
-#if BUILDFLAG(ARKWEB_EXT_HTTPS_UPGRADES)
   void LoadUrlWithParams(const std::string& url,
                          const LoadUrlType& load_type,
                          const std::string& refer,
@@ -828,15 +848,7 @@ class MockCefBrowserHost : public ArkWebBrowserHostExt {
                          const bool& allow_https_upgrade,
                          int32_t transition_type) override {}
   void EnableHttpsUpgrades(bool enable) override {}
-#endif
-
-#if BUILDFLAG(ARKWEB_EXT_RECEIVE_RESPONSE)
   int32_t GetLastCommittedEntryPageTransition() override { return 0; }
-#endif
-
-#if BUILDFLAG(ARKWEB_UNITTESTS)
-  void SetImeShow(bool visible) override {}
-#endif // ARKWEB_UNITTESTS
 };
 
 class MockCefBrowser : public ArkWebBrowserExt {
@@ -918,10 +930,16 @@ class MockCefBrowser : public ArkWebBrowserExt {
   void ShowFreeCopyMenu() override {}
   bool ShouldShowFreeCopyMenu() override { return false; }
   void EnableSafeBrowsingDetection(bool enable, bool strictMode) override {}
+  void OnSafeBrowsingDetectionResult(
+        const SafeBrowsingDetectionResult& safeBrowsingDetectionResult) override {}
+  int InsertBackForwardEntry(int index, const CefString& url) override { return 0; }
+  int UpdateNavigationEntryUrl(int index, const CefString& url) override { return 0; }
+  void ClearForwardList() override {}
   void ExtensionSetTabId(int tab_id) override {}
   int ExtensionGetTabId() override { return 0; }
   uint32_t GetAcceleratedWidget(bool isPopup) { return 0; }
   void SetAdBlockEnabledForSite(bool is_adblock_enabled, int main_frame_tree_node_id) override {}
+  void UpdateAdblockEasyListRules(long adBlockEasyListVersion) override {}
   CefRefPtr<CefFrame> GetFrameByIdentifier(
       const CefString& identifier) override {  return nullptr; }
 #if BUILDFLAG(ARKWEB_NETWORK_LOAD)
@@ -1730,3 +1748,4 @@ TEST_F(NWebEventHandlerTest, NotifyForNextTouchEvent_TEST001) {
   ASSERT_NE(handler, nullptr);
 }
 }  // namespace OHOS::NWeb
+

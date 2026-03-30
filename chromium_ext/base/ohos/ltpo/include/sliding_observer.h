@@ -47,7 +47,6 @@ class SlidingObserver {
   void SetIsPdf(bool is_pdf);
   bool IsPdf();
 #endif
-
  private:
   float GetVelocity(float velocity_x, float velocity_y);
   int32_t GetPreferedFrameRate(

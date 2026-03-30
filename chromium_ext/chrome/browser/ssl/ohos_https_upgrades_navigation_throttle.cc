@@ -25,7 +25,9 @@
 #include "content/public/browser/web_contents.h"
 #include "net/base/net_errors.h"
 #include "ui/base/page_transition_types.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/build/features/features.h"
+#endif
 
 namespace {
 
@@ -36,19 +38,19 @@ base::TimeDelta g_fallback_delay = base::Seconds(3);
 }  // namespace
 
 // static
-std::unique_ptr<OhosHttpsUpgradesNavigationThrottle>
-OhosHttpsUpgradesNavigationThrottle::MaybeCreateThrottleFor(
-    content::NavigationHandle* handle) {
+void OhosHttpsUpgradesNavigationThrottle::MaybeCreateAndAdd(
+    content::NavigationThrottleRegistry& registry) {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   // HTTPS-First Mode is only relevant for primary main-frame HTTP(S)
   // navigations.
-  if (!handle->GetURL().SchemeIsHTTPOrHTTPS() ||
-      !handle->IsInPrimaryMainFrame() || handle->IsSameDocument()) {
-    return nullptr;
+  content::NavigationHandle& handle = registry.GetNavigationHandle();
+  if (!handle.GetURL().SchemeIsHTTPOrHTTPS() ||
+      !handle.IsInPrimaryMainFrame() || handle.IsSameDocument()) {
+    return;
   }
-  auto* https_helper = OhosHttpsUpgradesHelper::FromWebContents(handle->GetWebContents());
+  auto* https_helper = OhosHttpsUpgradesHelper::FromWebContents(handle.GetWebContents());
   if ((!https_helper || !(https_helper->should_upgrade_to_https()))) {
-    return nullptr;
+    return;
   }
 
   // Ensure that the HttpsOnlyModeTabHelper has been created (this does nothing
@@ -56,13 +58,12 @@ OhosHttpsUpgradesNavigationThrottle::MaybeCreateThrottleFor(
   // the tab helper won't get created by the initialization in
   // chrome/browser/ui/tab_helpers.cc but the criteria for adding the throttle
   // are still met (see crbug.com/1233889 for one example).
-  HttpsOnlyModeTabHelper::CreateForWebContents(handle->GetWebContents());
-  return std::make_unique<OhosHttpsUpgradesNavigationThrottle>(handle);
+  HttpsOnlyModeTabHelper::CreateForWebContents(handle.GetWebContents());
 }
 
 OhosHttpsUpgradesNavigationThrottle::OhosHttpsUpgradesNavigationThrottle(
-    content::NavigationHandle* handle)
-    : content::NavigationThrottle(handle) {}
+    content::NavigationThrottleRegistry& registry)
+    : content::NavigationThrottle(registry) {}
 
 OhosHttpsUpgradesNavigationThrottle::~OhosHttpsUpgradesNavigationThrottle() = default;
 

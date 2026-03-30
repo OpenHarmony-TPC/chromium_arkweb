@@ -43,11 +43,12 @@ void ClipboardHostImpl::HandlePasswordVault(HandlePasswordVaultCallback callback
     std::move(callback).Run(false);
     return;
   }
-
+ 
   bool result = ui::Clipboard::GetForCurrentThread()->HandlePasswordVault(
       contents->GetVaultPlainTextCallback());
   std::move(callback).Run(result);
 }
 #endif  // BUILDFLAG(ARKWEB_PASSWORD_AUTOFILL)
 }  // namespace content
+
 

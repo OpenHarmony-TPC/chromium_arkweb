@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef NET_QUICHE_QUIC_STREAM_FRAME_DETECTOR_H_
 #define NET_QUICHE_QUIC_STREAM_FRAME_DETECTOR_H_
  
@@ -24,7 +24,7 @@
 #include "net/third_party/quiche/src/quiche/quic/platform/api/quic_export.h"
  
 namespace quic {
-
+ 
 namespace test {
 class QuicConnectionPeer;
 class QuicStreamFrameDetectorTestPeer;
@@ -59,7 +59,7 @@ class QUICHE_EXPORT QuicStreamFrameDetector {
  private:
   friend class test::QuicConnectionPeer;
   friend class test::QuicStreamFrameDetectorTestPeer;
-
+ 
   void SetAlarm();
  
   Delegate* delegate_;  // Not owned.

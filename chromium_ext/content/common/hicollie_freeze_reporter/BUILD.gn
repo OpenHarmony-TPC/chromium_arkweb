@@ -1,0 +1,11 @@
+source_set("hicollie_freeze_reporter") {
+  sources = [
+    "hicollie_freeze_reporter.cc",
+    "hicollie_freeze_reporter.h",
+  ]
+
+  deps = [
+    "//base",
+    "//arkweb/ohos_adapter_ndk:adapter_ndk",
+  ]
+}

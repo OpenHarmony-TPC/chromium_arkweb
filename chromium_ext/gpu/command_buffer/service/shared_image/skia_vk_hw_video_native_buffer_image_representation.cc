@@ -5,6 +5,7 @@
 #include "gpu/command_buffer/service/shared_image/skia_vk_hw_video_native_buffer_image_representation.h"
 #include <utility>
 
+#include "base/trace_event/trace_event.h"
 #include "components/viz/common/gpu/vulkan_context_provider.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
@@ -96,8 +97,7 @@ std::vector<sk_sp<SkSurface>> SkiaVkHWVideoNBImageRepresentation::BeginWriteAcce
 
   if (!surface_ || final_msaa_count != surface_msaa_count_ ||
       surface_props != surface_->props()) {
-    SkColorType sk_color_type = viz::ToClosestSkColorType(
-        true /*gpu_compositing=*/, format());
+    SkColorType sk_color_type = viz::ToClosestSkColorType(format());
     surface_ = SkSurfaces::WrapBackendTexture(
         gr_context, promise_texture_->backendTexture(), surface_origin(),
         final_msaa_count, sk_color_type, color_space().ToSkColorSpace(),
@@ -323,17 +323,16 @@ std::unique_ptr<skgpu::MutableTextureState> SkiaVkHWVideoNBImageRepresentation::
     return nullptr;
   }
 
-  const uint32_t kSingleDeviceUsage =
+  const uint32_t kSingleDeviceUsage = static_cast<uint32_t>(
       SHARED_IMAGE_USAGE_DISPLAY_READ | SHARED_IMAGE_USAGE_DISPLAY_WRITE |
-      SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE |
-      SHARED_IMAGE_USAGE_OOP_RASTERIZATION;
+      SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE);
 
   // If SharedImage is used outside of current VkDeviceQueue we need to transfer
   // image back to its original queue. Note, that for multithreading we use
   // same vkDevice, so technically we could transfer between queues instead of
   // jumping to external queue. But currently it's not possible because we
   // create new vkImage each time.
-  if ((hw_ohos_backing()->usage() & ~kSingleDeviceUsage) ||
+  if ((static_cast<uint32_t>(hw_ohos_backing()->usage()) & ~kSingleDeviceUsage) ||
       hw_ohos_backing()->is_thread_safe()) {
     return std::make_unique<skgpu::MutableTextureState>(
         skgpu::MutableTextureStates::MakeVulkan(

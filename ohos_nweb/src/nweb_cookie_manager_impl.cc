@@ -70,7 +70,7 @@ NWebCookieManagerImpl::NWebCookieManagerImpl() {
     (void)NWebImpl::InitializeICUStatic(init_args);
     PostCreateMainMessageLoop();
   } else {
-    (void)NWebImpl::InitializeICUStatic(init_args);
+  (void)NWebImpl::InitializeICUStatic(init_args);
   }
 #endif  // BUILDFLAG(ARKWEB_COOKIE)
 }

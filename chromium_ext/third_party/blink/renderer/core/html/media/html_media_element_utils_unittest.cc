@@ -30,6 +30,7 @@
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
+#include "third_party/blink/renderer/core/html/media/media_error.h"
 #include "third_party/blink/renderer/core/loader/empty_clients.h"
 #include "third_party/blink/renderer/core/testing/dummy_page_holder.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
@@ -38,7 +39,6 @@
 #include "third_party/blink/renderer/platform/testing/task_environment.h"
 #include "third_party/blink/public/platform/web_media_player_source.h"
 #include "third_party/blink/renderer/platform/testing/unit_test_helpers.h"
-#include "third_party/blink/renderer/core/html/media/media_error.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -92,7 +92,7 @@ class MockWebMediaPlayer : public EmptyWebMediaPlayer {
   MOCK_METHOD1(SetLatencyHint, void(double));
   MOCK_METHOD1(SetWasPlayedWithUserActivationAndHighMediaEngagement,
                void(bool));
-  MOCK_METHOD1(EnabledAudioTracksChanged, void(const WebVector<TrackId>&));
+  MOCK_METHOD1(EnabledAudioTracksChanged, void(std::optional<TrackId>));
   MOCK_METHOD1(SelectedVideoTrackChanged, void(std::optional<TrackId>));
   MOCK_METHOD4(
       Load,
@@ -157,8 +157,8 @@ class TestMediaPlayerObserver final
   void UpdateLayerRect(const ::gfx::Rect& rect) override {}
   void FullscreenChanged(bool is_fullscreen) override {}
 #if BUILDFLAG(ARKWEB_MEDIA_AVSESSION)
-  void OnGetMediaTitle(const WTF::String& data) override {}
-  void OnGetVideoPoster(const WTF::String& data) override {}
+  void OnGetMediaTitle(const String& data) override {}
+  void OnGetVideoPoster(const String& data) override {}
   void OnInitMediaTitle() override {}
   void OnInitVideoPoster() override {}
 #endif
@@ -196,7 +196,7 @@ class TestMediaPlayerObserver final
     run_loop_->Quit();
   }
   void OnPictureInPictureAvailabilityChanged(bool available) override {}
-  void OnAudioOutputSinkChanged(const WTF::String& hashed_device_id) override {}
+  void OnAudioOutputSinkChanged(const String& hashed_device_id) override {}
   void OnUseAudioServiceChanged(bool uses_audio_service) override {
     received_uses_audio_service_ = uses_audio_service;
     run_loop_->Quit();
@@ -227,11 +227,11 @@ class TestMediaPlayerObserver final
   void FullscreenChangedOverlay(bool fullscreen) override {}
   void SeekingOverlay() override {}
   void SeekingFinishedOverlay() override {}
-  void ErrorOverlay(int32_t error_code, const WTF::String& error_msg) override {
+  void ErrorOverlay(int32_t error_code, const String& error_msg) override {
   }
   void VideoSizeChangedOverlay(int32_t width, int32_t height) override {}
   void FullscreenOverlayChanged(bool fullscreen_overlay,
-                                const WTF::String& decoder_name) override {}
+                                const String& decoder_name) override {}
   void OnVolumeChanged(double volume) override {}
 #endif  // ARKWEB_VIDEO_ASSISTANT
   bool received_media_playing() const { return received_media_playing_; }
@@ -255,9 +255,9 @@ class TestMediaPlayerObserver final
     return received_remote_playback_metadata_ == remote_playback_metadata;
   }
 #if defined(ARKWEB_MEDIA_AVSESSION)
-  void OnGetMediaTitle(const WTF::String& data) override {}
+  void OnGetMediaTitle(const String& data) override {}
 
-  void OnGetVideoPoster(const WTF::String& data) override {}
+  void OnGetVideoPoster(const String& data) override {}
 #endif  // ARKWEB_MEDIA_AVSESSION
 #if BUILDFLAG(ARKWEB_PIP)
   void OnPictureInPictureStateChanged(uint32_t state,
@@ -266,7 +266,7 @@ class TestMediaPlayerObserver final
 #endif
 #if BUILDFLAG(ARKWEB_MEDIA_CAST)
   void OnMediaCastEnter() override {}
-  void OnNotifyMeidaCastUri(const WTF::String& media_uri) override {}
+  void OnNotifyMeidaCastUri(const String& media_uri) override {}
   void HandleStopMediaCast() override {}
   void SetPauseByAvcast(bool pause_avcast) override {}
   void UpdateRemotePlayState(bool is_playing) override {}
@@ -386,7 +386,7 @@ class MockWebMediaPlayerClient : public MediaPlayerClient {
   MOCK_METHOD0(GetSelectedVideoTrackId, WebMediaPlayer::TrackId());
   MOCK_METHOD0(HasNativeControls, bool());
   MOCK_METHOD0(IsAudioElement, bool());
-  MOCK_CONST_METHOD0(GetDisplayType, DisplayType());
+  MOCK_CONST_METHOD0(GetDisplayType, WebMediaPlayer::DisplayType());
   MOCK_CONST_METHOD0(IsInAutoPIP, bool());
   MOCK_METHOD1(MediaRemotingStarted, void(const WebString&));
   MOCK_METHOD1(MediaRemotingStopped, void(int));
@@ -397,7 +397,7 @@ class MockWebMediaPlayerClient : public MediaPlayerClient {
 #endif
   MOCK_CONST_METHOD0(CouldPlayIfEnoughData, bool());
   MOCK_METHOD0(ResumePlayback, void());
-  MOCK_METHOD1(PausePlayback, void(MediaPlayerClient::PauseReason));
+  MOCK_METHOD1(PausePlayback, void(WebMediaPlayer::PauseReason));
   MOCK_METHOD0(DidPlayerStartPlaying, void());
 #if BUILDFLAG(ARKWEB_MEDIA_AVSESSION)
   MOCK_METHOD1(DidEndAVSession, void(bool));
@@ -487,6 +487,7 @@ TEST_F(HTMLMediaElementUtilsTest, TestResetMediaPlayerAndMediaSourceUtils) {
 }
 #endif // ARKWEB_MEDIA_CAPABILITIES_ENHANCE
 
+
 #if BUILDFLAG(ARKWEB_MEDIA_CAPABILITIES_ENHANCE)
 TEST_F(HTMLMediaElementUtilsTest, TestStartRecord) {
   HTMLMediaElementUtils::Recorder* recorder_ =
@@ -509,7 +510,7 @@ TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience001) {
   auto report_param = element_utils_.ReportVideoExperienceToBI();
   EXPECT_EQ(report_param.get(), nullptr);
 }
-
+ 
 TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience002) {
   media_ =
     MakeGarbageCollected<HTMLVideoElement>(dummy_page_holder_->GetDocument());
@@ -519,7 +520,7 @@ TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience002) {
   auto report_param = element_utils_.ReportVideoExperienceToBI();
   EXPECT_EQ(report_param.get(), nullptr);
 }
-
+ 
 TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience003) {
   media_ =
     MakeGarbageCollected<HTMLVideoElement>(dummy_page_holder_->GetDocument());
@@ -530,7 +531,7 @@ TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience003) {
   auto report_param = element_utils_.ReportVideoExperienceToBI();
   EXPECT_EQ(report_param.get(), nullptr);
 }
-
+ 
 TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience004) {
   media_ =
     MakeGarbageCollected<HTMLVideoElement>(dummy_page_holder_->GetDocument());
@@ -538,7 +539,7 @@ TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience004) {
   int32_t usage_scenario = 1;
   Media()->GetDocument().GetSettings()->SetUsageScenario(usage_scenario);
   element_utils_.has_reported_experience_ = false;
-
+ 
   auto report_param = element_utils_.ReportVideoExperienceToBI();
   EXPECT_EQ(report_param.get(), nullptr);
 }
@@ -550,12 +551,12 @@ TEST_F(HTMLMediaElementUtilsTest, DFX_TESTReportVideoExperience005) {
   int32_t usage_scenario = 1;
   Media()->GetDocument().GetSettings()->SetUsageScenario(usage_scenario);
   element_utils_.has_reported_experience_ = false;
-
+ 
   Media()->SetError(MakeGarbageCollected<MediaError>(MediaError::kMediaErrDecode, ""));
   auto report_param = element_utils_.ReportVideoExperienceToBI();
   EXPECT_NE(report_param.get(), nullptr);
 }
-
+ 
 TEST_F(HTMLMediaElementUtilsTest, DFX_TestGetMainUrl) {
   media_ =
       MakeGarbageCollected<HTMLVideoElement>(dummy_page_holder_->GetDocument());

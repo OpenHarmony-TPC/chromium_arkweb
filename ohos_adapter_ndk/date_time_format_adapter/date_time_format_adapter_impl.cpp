@@ -36,6 +36,7 @@ bool WebTimezoneInfoImpl::GetIsValid()
 {
     return isValid_;
 }
+//LCOV_EXCL_STOP
 
 std::set<std::shared_ptr<TimezoneEventCallbackAdapter>> DateTimeFormatAdapterImpl::cbSet_;
 CommonEvent_SubscribeInfo *DateTimeFormatAdapterImpl::commonEventSubscriberInfo_ = nullptr;
@@ -46,7 +47,6 @@ DateTimeFormatAdapterImpl::~DateTimeFormatAdapterImpl()
 {
     StopListen();
 }
-//LCOV_EXCL_STOP
 
 void DateTimeFormatAdapterImpl::RegTimezoneEvent(std::shared_ptr<TimezoneEventCallbackAdapter> eventCallback)
 {

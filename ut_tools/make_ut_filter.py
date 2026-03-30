@@ -68,8 +68,10 @@ class TestFinder:
                     candidates.extend(sub_path.glob("*.cpp"))
 
             for candidate in candidates:
-                if not any(str(candidate).endswith(s) for s in self.suffixes): continue
-                if candidate.name == source_path_obj.name: continue
+                if not any(str(candidate).endswith(s) for s in self.suffixes): 
+                    continue
+                if candidate.name == source_path_obj.name: 
+                    continue
 
                 try:
                     content = candidate.read_text(encoding='utf-8', errors='ignore')

@@ -34,16 +34,16 @@ class PLATFORM_EXPORT ElasticOverscrollControllerUtils {
 
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
   gfx::Vector2dF GetOverScrollOffset() {
-    return elastic_overscroll_controller_->stretch_scroll_force_;
+    return elastic_overscroll_controller_->StretchAmount(cc::ElementId());
   }
   void SetInputHandlerProxyClient(InputHandlerProxyClient* client) {
     client_ = client;
   }
-  void OnOverScrollOffsetChanged() {
+  void OnOverScrollOffsetChanged(gfx::Vector2dF stretch_scroll_force) {
     if (client_) {
       client_->OnOverScrollOffsetChanged(
-          elastic_overscroll_controller_->stretch_scroll_force_.x(),
-          elastic_overscroll_controller_->stretch_scroll_force_.y());
+          stretch_scroll_force.x(),
+          stretch_scroll_force.y());
     }
   }
 #endif

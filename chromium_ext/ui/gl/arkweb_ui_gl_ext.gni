@@ -19,6 +19,7 @@ public_configs = [ "//third_party/khronos:khronos_headers" ]
 
 arkweb_ui_gl_ext_deps = [
   "//ohos_glue:ohos_adapter_glue_source",
+  "//arkweb/chromium_ext/gpu/ipc/common:ohos_nweb_native_window_tracker",
 ]
 
 if (arkweb_same_layer) {

@@ -42,3 +42,4 @@ fuzzer_test("hilog_adapter_fuzzer") {
     "//ohos_nweb:nweb_sources",
   ]
 }
+

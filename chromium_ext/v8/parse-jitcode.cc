@@ -26,119 +26,24 @@
 
 namespace v8 {
 namespace jitparse {
-namespace elf {
-static uint8_t* shared_mem_base = nullptr;
-
-bool GetHeader(uint32_t processID, uint8_t*& shared_mem) {
-  internal::PerfJitHeader* header =
-      reinterpret_cast<internal::PerfJitHeader*>(shared_mem);
-  if (header->process_id_ != processID) {
+static bool IsPidMatch(uint32_t storedPid, uint32_t dfxPid) {
+  if (storedPid != dfxPid) {
+#ifdef USING_OHOS
     return false;
+#endif
+#ifdef USING_OHOS_WEB
+    // arkweb render pid stored is always 1
+    if (storedPid != 1) {
+        return false;
+    }
+#endif
   }
-  shared_mem += header->size_;
   return true;
 }
 
-bool GetJitCode(uint32_t processID,
-                uint64_t& codeID,
-                uint8_t*& shared_mem,
-                std::vector<JITCodeBlock>& jitCodeBlocks) {
-  // Get load-header
-  while (true) {
-    internal::PerfJitCodeLoad* codeLoad =
-        reinterpret_cast<internal::PerfJitCodeLoad*>(shared_mem);
-    if (codeLoad->process_id_ != processID || codeLoad->code_id_ != codeID) {
-      HilogPrint(ERROR, "codeLoad check failed!");
-      return false;
-    }
-    codeID++;
-    char* code_name =
-        reinterpret_cast<char*>(shared_mem + sizeof(internal::PerfJitCodeLoad));
-    uint8_t* code_pointer = reinterpret_cast<uint8_t*>(
-        shared_mem + sizeof(internal::PerfJitCodeLoad) + strlen(code_name) +
-        sizeof(internal::kStringTerminator));
-
-    jitCodeBlocks.emplace_back(
-        reinterpret_cast<uint64_t>(codeLoad->code_address_),
-        std::vector<uint8_t>(codeLoad->code_size_), code_name);
-    std::copy(code_pointer, code_pointer + codeLoad->code_size_,
-              jitCodeBlocks.back().code.begin());
-    shared_mem += codeLoad->size_;
-
-    char* maybeKJitCodeTerminator = reinterpret_cast<char*>(shared_mem);
-    if (strcmp(maybeKJitCodeTerminator, internal::kJitCodeTerminator) == 0) {
-      HilogPrint(INFO, "last jit code block");
-      return true;
-    }
-    if (shared_mem - shared_mem_base > SHM_SIZE) {
-      HilogPrint(ERROR, "Reach max shared memory size!");
-      return false;
-    }
-  }
-}
-
-void GenerateELF(const std::vector<JITCodeBlock>& jitCodeBlocks,
-                 std::string& output) {
-  ELFGenerator generator(jitCodeBlocks);
-  generator.generateELF(output);
-}
-}  // namespace elf
-
-uint32_t JSVMSymbolExtractor::process_id_ = 0;
-JSVMSymbolExtractor::JSVMSymbolExtractor(uint32_t pid) {
-  process_id_ = pid;
-  void* dfxAddress = FindJITSymbolAddress();
-  if (dfxAddress == nullptr) {
-    return;
-  }
-  void* address = mmap(nullptr, SHM_SIZE, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-  if (address == MAP_FAILED) {
-    HilogPrint(ERROR, "failed mmap symbol memory!");
-    return;
-  }
-
-  if (!ReadMem(reinterpret_cast<uint64_t>(dfxAddress), address, SHM_SIZE)) {
-    HilogPrint(ERROR, "failed read dfxAddress to local address.");
-    munmap(address, SHM_SIZE);
-    return;
-  }
-
-  uint8_t* shared_mem = reinterpret_cast<uint8_t*>(address);
-  elf::shared_mem_base = shared_mem;
-  uint64_t codeID = 0;
-  std::vector<JITCodeBlock> jitCodeBlocks;
-  if (!elf::GetHeader(process_id_, shared_mem)) {
-    munmap(address, SHM_SIZE);
-    return;
-  }
-
-  if (!elf::GetJitCode(process_id_, codeID, shared_mem, jitCodeBlocks)) {
-    HilogPrint(ERROR, "GetJitCode error!");
-    munmap(address, SHM_SIZE);
-    return;
-  }
-
-  munmap(address, SHM_SIZE);
-  std::string elfFile;
-  elf::GenerateELF(jitCodeBlocks, elfFile);
-  parser = new ELFParser();
-  if (!parser->Load(jitCodeBlocks, elfFile)) {
-    delete parser;
-    parser = nullptr;
-  }
-}
-
-JSVMSymbolExtractor::~JSVMSymbolExtractor() {
-  if (parser != nullptr) {
-    delete parser;
-  }
-}
-
-bool JSVMSymbolExtractor::ReadMem(const uint64_t addr,
-                                  void* data,
-                                  size_t size) const {
+static bool ReadProcessMemory(uint32_t pid, const uint64_t addr,
+                                                  void* data,
+                                                  size_t size) {
   uint64_t currentAddr = addr;
   if (__builtin_add_overflow(currentAddr, size, &currentAddr)) {
     return false;
@@ -152,119 +57,208 @@ bool JSVMSymbolExtractor::ReadMem(const uint64_t addr,
       .iov_len = size,
   };
   ssize_t readCount =
-      process_vm_readv(process_id_, &dataIov, 1, &remoteIov, 1, 0);
+      process_vm_readv(pid, &dataIov, 1, &remoteIov, 1, 0);
   return static_cast<size_t>(readCount) == size;
 }
 
-void* JSVMSymbolExtractor::FindJITSymbolAddress() {
-  std::string maps_path = "/proc/" + std::to_string(process_id_) + "/maps";
+static std::pair<uintptr_t, uintptr_t> FindVMAInProcMaps(uint32_t pid,
+                                                        const std::string &vmaName) {
+  std::string maps_path = "/proc/" + std::to_string(pid) + "/maps";
   std::ifstream maps_file(maps_path);
+  std::pair<uintptr_t, uintptr_t> res(0, 0);
   if (!maps_file.is_open()) {
     HilogPrint(ERROR, "can not open map file!");
-    return nullptr;
+    return res;
   }
   std::string line;
-  std::string memTagName = internal::JitSymbolMemTagName(process_id_);
   while (std::getline(maps_file, line)) {
-    if (line.find(memTagName) != std::string::npos) {
+    if (line.find(vmaName) != std::string::npos) {
       // parse start address
       size_t dash_pos = line.find('-');
       if (dash_pos == std::string::npos) {
         continue;
       }
+      size_t end_pos = line.find(' ');
       std::string start_addr_str = line.substr(0, dash_pos);
+      std::string end_addr_str = line.substr(dash_pos + 1, end_pos);
       // convert address string to uint64_t
       constexpr int kNumberBase = 16;
-      return reinterpret_cast<void*>(
+      res.first = static_cast<uintptr_t>(
           std::stoull(start_addr_str, nullptr, kNumberBase));
+      res.second = static_cast<uintptr_t>(
+          std::stoull(end_addr_str, nullptr, kNumberBase));
+      return res;
     }
   }
   HilogPrint(ERROR, "cant find JSVM JIT symbol");
-  return nullptr;
+  return res;
 }
 
-ELFParser* JSVMSymbolExtractor::GetParser() const {
+JitSymbolVMA::JitSymbolVMA(uint32_t pid) : isCurrentProcess(
+                                        static_cast<uint32_t>(getpid()) == pid) {
+  std::pair<uintptr_t, uintptr_t> addressRange = FindVMAInProcMaps(pid,
+                                                            internal::kJitSymbolMapName);
+  uintptr_t startMapAddress = addressRange.first;
+  uintptr_t endMapAddress = addressRange.second;
+  if (startMapAddress == 0 || endMapAddress == 0) {
+    return;
+  }
+  memorySize = endMapAddress - startMapAddress;
+  if (memorySize < 0) {
+    return;
+  }
+  void* address = nullptr;
+  if (isCurrentProcess) {
+    startAddress = startMapAddress;
+    endAddress = endMapAddress;
+  } else {
+    address = mmap(nullptr, memorySize, PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+    if (address == MAP_FAILED) {
+      HilogPrint(ERROR, "failed mmap symbol memory!");
+      return;
+    }
+
+    if (!ReadProcessMemory(pid, static_cast<uint64_t>(startMapAddress), address,
+                                                                              memorySize)) {
+      HilogPrint(ERROR, "failed read dfxAddress to local address.");
+      return;
+    }
+    startAddress = reinterpret_cast<uintptr_t>(address);
+    endAddress = reinterpret_cast<uintptr_t>(address) + memorySize;
+  }
+  hasPrepared = true;
+}
+
+JitSymbolVMA::~JitSymbolVMA() {
+  if (!isCurrentProcess) {
+    munmap(reinterpret_cast<void*>(startAddress), memorySize);
+  }
+}
+
+uintptr_t JitSymbolVMA::GetStartAddress() const {
+  return startAddress;
+}
+
+bool JitSymbolVMA::Contains(uintptr_t address) const {
+  if (address >= startAddress && address < endAddress) {
+    return true;
+  }
+  return false;
+}
+
+bool JitSymbolVMA::HasPrepared() const {
+  return hasPrepared;
+}
+
+bool JsSymbolExtractor::GetHeader(uintptr_t& memoryPointer) const {
+  internal::PerfJitHeader* header =
+      reinterpret_cast<internal::PerfJitHeader*>(memoryPointer);
+  if (!IsPidMatch(header->process_id_, targetPid)) {
+    return false;
+  }
+  memoryPointer += header->size_;
+  return true;
+}
+
+bool JsSymbolExtractor::GetJitSymbols(uint32_t& codeID, uintptr_t& memoryPointer,
+                                      std::vector<JitSymbol>& jitSymbols) const {
+  // Get load-header
+  while (true) {
+    if (!jitSymbolVMA->Contains(memoryPointer + sizeof(internal::PerfJitCodeLoad))) {
+      // Some cases do not have an end tag.
+      return true;
+    }
+    internal::PerfJitCodeLoad* codeLoad =
+        reinterpret_cast<internal::PerfJitCodeLoad*>(memoryPointer);
+    if (!jitSymbolVMA->Contains(memoryPointer + codeLoad->size_)) {
+      // Some cases do not have an end tag.
+      return true;
+    }
+    if (!IsPidMatch(codeLoad->process_id_, targetPid) || codeLoad->code_id_ != codeID) {
+      HilogPrint(ERROR, "codeLoad check failed!");
+      return false;
+    }
+
+    codeID++;
+    char* code_name =
+        reinterpret_cast<char*>(memoryPointer + sizeof(internal::PerfJitCodeLoad));
+    uint8_t* code_pointer = reinterpret_cast<uint8_t*>(
+        memoryPointer + sizeof(internal::PerfJitCodeLoad) + strlen(code_name) +
+        sizeof(internal::kStringTerminator));
+
+    jitSymbols.emplace_back(codeLoad->code_address_, codeLoad->code_size_,
+                                code_name);
+    memoryPointer += codeLoad->size_;
+
+    char* maybeKJitCodeTerminator = reinterpret_cast<char*>(memoryPointer);
+    if (strcmp(maybeKJitCodeTerminator, internal::kJitCodeTerminator) == 0) {
+      HilogPrint(INFO, "last jit code block");
+      return true;
+    }
+    if (!jitSymbolVMA->Contains(memoryPointer)) {
+      HilogPrint(ERROR, "Reach max shared memory size!");
+      return false;
+    }
+  }
+}
+
+JsSymbolExtractor::JsSymbolExtractor(uint32_t pid) : targetPid(pid) {
+  jitSymbolVMA = new JitSymbolVMA(pid);
+  if (!jitSymbolVMA->HasPrepared()) {
+    return;
+  }
+  uintptr_t memoryPointer = jitSymbolVMA->GetStartAddress();
+  uint32_t codeID = 0;
+  std::vector<JitSymbol> jitSymbols;
+  if (!GetHeader(memoryPointer)) {
+    return;
+  }
+  parser = new ELFParser();
+  if (!GetJitSymbols(codeID, memoryPointer, parser->jitSymbols)) {
+    HilogPrint(ERROR, "GetJitSymbols error!");
+    delete parser;
+    return;
+  }
+}
+
+JsSymbolExtractor::~JsSymbolExtractor() {
+  if (parser != nullptr) {
+    delete parser;
+  }
+  if (jitSymbolVMA != nullptr) {
+    delete jitSymbolVMA;
+  }
+}
+
+ELFParser* JsSymbolExtractor::GetParser() const {
   return parser;
 }
 
-bool JSVMSymbolExtractor::GetInstruction(uintptr_t pc, std::string& codeName) {
+bool JsSymbolExtractor::GetInstruction(uintptr_t pc, std::string& codeName) const {
   return parser->getInstruction(pc, codeName);
 }
 
-bool ELFGenerator::generateELF(std::string& output) {
-  std::ostringstream out(std::ios::binary);
-
-  const size_t ehdr_size = sizeof(Elf64_Ehdr);
-  const size_t phdr_size = sizeof(Elf64_Phdr) * codeBlocks.size();
-  size_t file_offset = ehdr_size + phdr_size;
-
-  Elf64_Ehdr ehdr = {};
-  ehdr.e_ident[0] = ELFMAG0;      // 0x7f ELF magic number
-  ehdr.e_ident[1] = ELFMAG1;      // 'E'
-  ehdr.e_ident[2] = ELFMAG2;      // 'L'
-  ehdr.e_ident[3] = ELFMAG3;      // 'F'
-  ehdr.e_ident[4] = ELFCLASS64;   // 64-bit architecture
-  ehdr.e_ident[5] = ELFDATA2LSB;  // Little-endian
-  ehdr.e_ident[6] = EI_VERSION;   // ELF version
-  ehdr.e_type = ET_EXEC;
-  ehdr.e_machine = EM_ARM;
-  ehdr.e_version = EV_CURRENT;
-  ehdr.e_entry = codeBlocks.empty() ? 0 : codeBlocks[0].vaddr;
-  ehdr.e_phoff = ehdr_size;
-  ehdr.e_shoff = 0;
-  ehdr.e_ehsize = ehdr_size;
-  ehdr.e_phentsize = sizeof(Elf64_Phdr);
-  ehdr.e_phnum = codeBlocks.size();
-  ehdr.e_shentsize = 0;
-  ehdr.e_shnum = 0;
-  out.write(reinterpret_cast<char*>(&ehdr), ehdr_size);
-  for (const auto& block : codeBlocks) {
-    Elf64_Phdr phdr = {};
-    phdr.p_type = PT_LOAD;
-    phdr.p_flags = PF_X | PF_R;
-    phdr.p_offset = file_offset;
-    phdr.p_vaddr = block.vaddr;
-    phdr.p_paddr = block.vaddr;
-    phdr.p_filesz = block.code.size();
-    phdr.p_memsz = block.code.size();
-    phdr.p_align = 0x1000;
-    out.write(reinterpret_cast<char*>(&phdr), sizeof(phdr));
-    file_offset += block.code.size();
-  }
-  for (const auto& block : codeBlocks) {
-    out.write(reinterpret_cast<const char*>(block.code.data()),
-              block.code.size());
-  }
-  output = out.str();
-  return true;
-}
-
-bool ELFParser::Load(const std::vector<JITCodeBlock>& codeBlocks,
-                     const std::string& inputData) {
-  const Elf64_Ehdr* ehdr =
-      reinterpret_cast<const Elf64_Ehdr*>(inputData.data());
-  const Elf64_Phdr* phdr =
-      reinterpret_cast<const Elf64_Phdr*>(inputData.data() + ehdr->e_phoff);
-
-  if (ehdr->e_phnum != codeBlocks.size()) {
-    return false;
-  }
-
-  for (size_t i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type == PT_LOAD && (phdr[i].p_flags & PF_X)) {
-      codeSegments[phdr[i].p_vaddr] = {.start = phdr[i].p_vaddr,
-                                       .end = phdr[i].p_vaddr + phdr[i].p_memsz,
-                                       .file_offset = phdr[i].p_offset,
-                                       .name = codeBlocks[i].name};
-    }
-  }
-  return true;
+bool JsSymbolExtractor::GetInstruction(uintptr_t pc, std::string& codeName, uint32_t& offset) const {
+  return parser->getInstruction(pc, codeName, offset);
 }
 
 bool ELFParser::getInstruction(uint64_t pc, std::string& codeName) const {
-  for (const auto& seg : codeSegments) {
-    if (pc >= seg.second.start && pc < seg.second.end) {
-      codeName = seg.second.name;
+  for (const auto& jitSymbol : jitSymbols) {
+    if (pc >= jitSymbol.vaddr && pc < jitSymbol.vaddr + jitSymbol.codeSize) {
+      codeName = jitSymbol.name;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ELFParser::getInstruction(uint64_t pc, std::string& codeName, uint32_t& offset) const {
+  for (const auto& jitSymbol : jitSymbols) {
+    if (pc >= jitSymbol.vaddr && pc < jitSymbol.vaddr + jitSymbol.codeSize) {
+      codeName = jitSymbol.name;
+      offset = pc - jitSymbol.vaddr;
       return true;
     }
   }

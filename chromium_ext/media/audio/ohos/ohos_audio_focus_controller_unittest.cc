@@ -96,7 +96,7 @@ class OHOSAudioFocusControllerTest : public content::RenderViewHostTestHarness {
       return nullptr;
     }
     params.set_render_process_id(
-        frameHost->GetProcess()->GetID());
+        static_cast<int>(frameHost->GetProcess()->GetID()));
     params.set_render_frame_id(frameHost->GetRoutingID());
   }
 };

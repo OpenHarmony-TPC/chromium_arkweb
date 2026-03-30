@@ -454,6 +454,7 @@ void OHOSMediaAVSessionCallback::SeekTo(int64_t millisTime) {
                                 millisTime));
 }
 
+
 int32_t OHOSMediaAVSessionCallback::GetMediaCastCurrentTime() {
   if (!media_session_ohos_) {
     return 0;
@@ -521,7 +522,8 @@ void OHOSMediaAVSessionCallback::UpdateUiPlayPosition(int64_t position) {
 }
 
 void OHOSMediaAVSessionCallback::NotifyCastControlShow(bool is_show) {
-  if (!media_session_ohos_) {
+  if (!media_session_ohos_ || !task_runner_) {
+    LOG(ERROR) << "NotifyCastControlShow media_session_ohos_ task_runner_ is nullptr";
     return;
   }
   task_runner_->PostTask(

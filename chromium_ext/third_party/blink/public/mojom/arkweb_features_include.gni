@@ -53,6 +53,10 @@ if (arkweb_ai) {
   mojom_platform_enabled_features += [ "arkweb_ai" ]
 }
 
+if (arkweb_composite_render) {
+  mojom_platform_enabled_features += [ "arkweb_composite_render" ]
+}
+
 if (arkweb_zoom) {
   mojom_platform_enabled_features += [ "arkweb_zoom" ]
 }
@@ -125,6 +129,10 @@ if (arkweb_ai) {
   mojom_core_enabled_features += [ "arkweb_ai" ]
 }
 
+if (arkweb_composite_render) {
+  mojom_core_enabled_features += [ "arkweb_composite_render" ]
+}
+
 if (arkweb_network_base) {
   mojom_core_enabled_features += [ "arkweb_network_base" ]
 }
@@ -135,6 +143,7 @@ if (arkweb_drag_drop) {
 
 if (defined(arkweb_adblock) && arkweb_adblock) {
   mojom_core_enabled_features += [ "arkweb_adblock" ]
+  mojom_platform_enabled_features += [ "arkweb_adblock" ]
 }
 
 if (arkweb_custom_video_player) {

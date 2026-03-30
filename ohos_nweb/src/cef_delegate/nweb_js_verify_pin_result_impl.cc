@@ -12,17 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include "nweb_js_verify_pin_result_impl.h"
- 
+
 #include "base/logging.h"
- 
+
 using namespace OHOS::NWeb;
- 
+
 NWebJSVerifyPinResultImpl::NWebJSVerifyPinResultImpl(
     CefRefPtr<CefVerifyPinCallback> callback)
     : callback_(callback) {}
- 
+
 void NWebJSVerifyPinResultImpl::Confirm(int32_t verifyResult) {
   if (callback_ != nullptr) {
     return callback_->Confirm(verifyResult);

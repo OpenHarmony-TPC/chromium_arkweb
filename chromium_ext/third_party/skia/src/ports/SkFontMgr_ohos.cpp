@@ -117,7 +117,7 @@ sk_sp<SkTypeface> SkFontMgr_OHOS::onMatchFamilyStyle(
   if (styleIndex < 0 && !themeFontTypefaceSet.empty()) {
     for (auto themeTypeface : themeFontTypefaceSet) {
       const FontInfo* fontInfo = themeTypeface->getFontInfo();
-      if (fontInfo && SkString(familyName) == fontInfo->familyName) {
+    if (fontInfo && SkString(familyName) == fontInfo->familyName) {
         return sk_ref_sp(themeTypeface.get());
       }
     }
@@ -457,16 +457,18 @@ sk_sp<SkTypeface> SkFontMgr_OHOS::makeTypeface(
   }
 
   AxisDefinitions axisDef;
+  VariationPosition current;
   if (!fontScanner.scanInstance(stream.get(), ttcIndex, 0, &fontInfo.familyName,
                                 &fontInfo.style, &fontInfo.isFixedWidth,
-                                &axisDef)) {
+                                &axisDef, &current)) {
     LOGE("%s\n", FontConfig_OHOS::errToString(ERROR_FONT_INVALID_STREAM));
     return nullptr;
   }
   int axisDefCount = axisDef.size();
   if (axisDefCount > 0) {
     SkFixed axis[axisDefCount];
-    fontScanner.computeAxisValues(axisDef, args.getVariationDesignPosition(),
+    const SkFontArguments::VariationPosition currentPos{current.data(), current.size()};
+    fontScanner.computeAxisValues(axisDef, currentPos, args.getVariationDesignPosition(),
                                   axis, fontInfo.familyName, &fontInfo.style);
     fontInfo.setAxisSet(axisDefCount, axis, axisDef.data());
   }
@@ -489,16 +491,17 @@ sk_sp<SkTypeface> SkFontMgr_OHOS::makeTypeface(SkFontData* fontData) const {
   if (axisCount <= 0) {
     if (!fontScanner.scanInstance(stream, ttcIndex, 0, &fontInfo.familyName,
                                   &fontInfo.style, &fontInfo.isFixedWidth,
-                                  nullptr)) {
+                                  nullptr, nullptr)) {
       LOGE("%s\n", FontConfig_OHOS::errToString(ERROR_FONT_INVALID_STREAM));
       return nullptr;
     }
   } else {
     const SkFixed* axis = fontData->getAxis();
     AxisDefinitions axisDefs;
+    VariationPosition current;
     if (!fontScanner.scanInstance(stream, ttcIndex, 0, &fontInfo.familyName,
                                   &fontInfo.style, &fontInfo.isFixedWidth,
-                                  &axisDefs)) {
+                                  &axisDefs, &current)) {
       LOGE("%s\n", FontConfig_OHOS::errToString(ERROR_FONT_INVALID_STREAM));
       return nullptr;
     }

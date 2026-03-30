@@ -20,6 +20,9 @@
 #if BUILDFLAG(IS_ARKWEB)
 #include "base/ohos/nweb_engine_event_logger.h"
 #endif
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+#include "base/ohos/logger.h"
+#endif // ARKWEB_LOGGER_REPORT
 
 #if BUILDFLAG(ARKWEB_READER_MODE)
 #include "arkweb/chromium_ext/third_party/blink/public/mojom/dom_distiller/reader_mode_config.mojom.h"
@@ -39,6 +42,7 @@ using blink::mojom::ReaderModeConfig;
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_MODE)
 #include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
+#include "arkweb/ohos_nweb/src/sysevent/event_reporter.h"
 #endif
 
 namespace content {
@@ -58,8 +62,10 @@ constexpr int kFeatureCatalogIndex =
 ArkwebRenderProcessHostImplExt::ArkwebRenderProcessHostImplExt(
     BrowserContext* browser_context,
     StoragePartitionImpl* storage_partition_impl,
-    int flags)
-    : RenderProcessHostImpl(browser_context, storage_partition_impl, flags) {}
+    int flags,
+    bool is_spare_renderer)
+    : RenderProcessHostImpl(browser_context, storage_partition_impl, flags,
+                            is_spare_renderer) {}
 
 #if BUILDFLAG(ARKWEB_RENDER_PROCESS_MODE)
 bool ArkwebRenderProcessHostImplExt::IsProcessBackgrounded() {
@@ -91,8 +97,8 @@ void ArkwebRenderProcessHostImplExt::RenderProcessChannelConnectCheck() {
 
 void ArkwebRenderProcessHostImplExt::StartChannelConnectedCheckTask(ArkwebRenderProcessHostImplExt* host) {
   if (host->channel_connected_check_callback_.callback().is_null()) {
-    LOG(WARNING) << "RenderProcessHost: " << host->GetProcess().Handle()
-                 << " Wait 6-second to monitoring channel connection status.";
+    LOG(INFO) << "RenderProcessHost: " << host->GetProcess().Handle()
+              << " Wait 6-second to monitoring channel connection status.";
     host->channel_connected_check_callback_.Reset(
       base::BindOnce(&ArkwebRenderProcessHostImplExt::RenderProcessChannelConnectCheck,
                      host->instance_weak_factory_.GetWeakPtr()));
@@ -177,7 +183,11 @@ void OnUidRetrieved(int32_t pid, int32_t uid) {
 
 void ArkwebRenderProcessHostImplExt::ReportRenderUnresponsive(int32_t pid) {
   child_process_->GetUid(base::BindOnce(&OnUidRetrieved, pid));
+#if defined(OS_OHOS)
+  child_process_->ReportHicollie();
+#endif
 }
+#endif
 
 #if BUILDFLAG(IS_ARKWEB)
 void ArkwebRenderProcessHostImplExt::ReportEngineEvent(const std::string& module,
@@ -187,8 +197,13 @@ void ArkwebRenderProcessHostImplExt::ReportEngineEvent(const std::string& module
   base::ohos::ReportEngineEvent(module, resource, error_code, error_msg);
 }
 #endif
+
+#if BUILDFLAG(ARKWEB_LOGGER_REPORT)
+void ArkwebRenderProcessHostImplExt::ReportRendererLog(int policy,
+                                                       const std::string& msg) {
+  ohos::logger::ReportRendererLog(policy, msg);
+}
 #endif
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_READER_MODE)
 void ArkwebRenderProcessHostImplExt::UpdateCloudControlReaderModeConfigData(

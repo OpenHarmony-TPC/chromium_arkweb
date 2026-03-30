@@ -14,6 +14,7 @@
  */
 
 #include "arkweb/chromium_ext/components/viz/service/display/arkweb_display_utils.h"
+#include "arkweb/chromium_ext/base/ohos/render_uid_define.h"
 #include "base/time/time.h"
 #include "base/timer/elapsed_timer.h"
 #include "base/trace_event/trace_event.h"
@@ -30,7 +31,6 @@
 
 #if BUILDFLAG(ARKWEB_VULKAN)
 #include "gpu/config/gpu_finch_features.h"
-#include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
 #endif
 
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
@@ -40,6 +40,18 @@
 #include "arkweb/chromium_ext/gpu/ipc/service/gpu_channel_ext.h"
 #include "gpu/ipc/service/gpu_channel.h"
 #include "gpu/ipc/service/gpu_channel_manager.h"
+#endif
+
+
+#if BUILDFLAG(ARKWEB_VULKAN)
+#include "arkweb/chromium_ext/base/ohos/sys_info_utils_ext.h"
+#endif
+
+#if BUILDFLAG(ARKWEB_SAFEBROWSING)
+#include "arkweb/chromium_ext/components/viz/service/display/afd_frame_snapshot_copy_output_request.h"
+#include "arkweb/ohos_adapter_ndk/ohos_image_adapter/ohos_image_encoder_adapter.h"
+#include "arkweb/ohos_nweb_ex/overrides/ohos_nweb/src/cef_delegate/nweb_anti_fraud_detection_handler.h"
+#include "cef/ohos_cef_ext/libcef/browser/ohos_safe_browsing/ohos_sb_snapshot_info.h"
 #endif
 
 namespace viz {
@@ -127,6 +139,7 @@ constexpr base::TimeDelta reenable_draw_delay = base::Milliseconds(3000);
 #if BUILDFLAG(ARKWEB_BLANK_OPTIMIZE)
 const int kRectNumthreshold = 5;
 #endif
+
 }  // namespace
 
 //LCOV_EXCL_START
@@ -137,12 +150,7 @@ ArkwebDisplayUtils::ArkwebDisplayUtils(Display* display) : display_(display) {
   // by uid, uid for browser is bigger than MAIN_PROCESS_ID_MIN, and gpu will
   // not come here.
   uid_t uid = getuid();
-  auto app_mgr_client_adapter =
-      OHOS::NWeb::OhosAdapterHelper::GetInstance().CreateAafwkAdapter();
-  if (app_mgr_client_adapter == nullptr) {
-    return;
-  }
-  if (app_mgr_client_adapter->IsRenderProcessByUid(static_cast<int>(uid))) {
+  if (OHOS::NWeb::IsRenderProcessByUid(uid)) {
     blink::SysPropRenderObserverClientRep sysproprender_;
     sysproprender_.AttachSysPropObserver(1, dump_frame_observer_.get());
   } else {
@@ -169,12 +177,7 @@ ArkwebDisplayUtils::ArkwebDisplayUtils(Display* display) : display_(display) {
 ArkwebDisplayUtils::~ArkwebDisplayUtils() {
 #if BUILDFLAG(ARKWEB_DFX_DUMP)
   uid_t uid = getuid();
-  auto app_mgr_client_adapter =
-      OHOS::NWeb::OhosAdapterHelper::GetInstance().CreateAafwkAdapter();
-  if (app_mgr_client_adapter == nullptr) {
-    return;
-  }
-  if (app_mgr_client_adapter->IsRenderProcessByUid(static_cast<int>(uid))) {
+  if (OHOS::NWeb::IsRenderProcessByUid(uid)) {
     blink::SysPropRenderObserverClientRep sysproprender_;
     sysproprender_.DetachSysPropObserver(1, dump_frame_observer_.get());
   } else {
@@ -216,7 +219,7 @@ void ArkwebDisplayUtils::SetDrawRect(const gfx::Rect& new_rect) {
   TRACE_EVENT1("viz", "Display::SetDrawRect", "new_rect", new_rect.ToString());
   draw_rect_ = new_rect;
   display_->current_surface_size_ = draw_rect_.size();
-  display_->scheduler_->SetNeedsOneBeginFrame(true);
+  display_->scheduler_->SetNeedsOneBeginFrame(BeginFrameArgs(), true);
   LOG(INFO) << "SetDrawRect new_rect=" << new_rect.ToString();
 }
 
@@ -224,12 +227,17 @@ void ArkwebDisplayUtils::SetDrawRect(const gfx::Rect& new_rect) {
 void ArkwebDisplayUtils::SetDrawMode(const int32_t mode) {
   LOG(INFO) << "SetDrawMode mode=" << mode;
   draw_mode_ = mode;
+  display_->SetRendererDrawMode(mode);
+}
+
+int32_t ArkwebDisplayUtils::GetDrawMode() {
+  return draw_mode_;
 }
 //LCOV_EXCL_STOP
 #endif  // BUILDFLAG(ARKWEB_COMPOSITE_RENDER)
 
-#if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
 //LCOV_EXCL_START
+#if BUILDFLAG(ARKWEB_MAXIMIZE_RESIZE)
 void ArkwebDisplayUtils::DisableSwapUntilMaximized() {
   temp_idle_state_ = TempIdleState::INIT;
   if (reset_init_timer_) {
@@ -274,6 +282,12 @@ void ArkwebDisplayUtils::RestoreRenderFit() {
               << display_->frame_sink_id_.ToString();
     temp_idle_state_ = TempIdleState::RESTORE_RENDERFIT;
     display_->client_->RestoreRenderFit(display_->frame_sink_id_);
+  }
+}
+
+void ArkwebDisplayUtils::ModifyRenderFit(int32_t fitType) {
+  if (display_ && display_->client_) {
+    display_->client_->ModifyRenderFit(fitType, display_->frame_sink_id_);
   }
 }
 
@@ -339,12 +353,16 @@ void ArkwebDisplayUtils::Resize(const gfx::Size& size) {
 #endif
 }
 
-#if BUILDFLAG(ARKWEB_VULKAN)
+#if BUILDFLAG(ARKWEB_VULKAN_INC_PRESENT)
 void ArkwebDisplayUtils::JudgePartialSwap() {
   if (features::IsUsingVulkan() && display_ && display_->renderer_) {
-    if (base::ohos::IsPageScale()) {
+    if (base::ohos::IsPageScale() || (draw_mode_ != 0)) {
       display_->renderer_->disable_partial_swap();
-    } else {
+      return;
+    }
+
+    if (!base::ohos::IsPageScale() && (draw_mode_ == 0) &&
+        display_->renderer_->GetInitPartialSwap()) {
       display_->renderer_->enable_partial_swap();
     }
   }
@@ -354,7 +372,7 @@ void ArkwebDisplayUtils::JudgePartialSwap() {
 void ArkwebDisplayUtils::DrawAndSwap(AggregatedRenderPass& last_render_pass,
                                      gfx::Size current_surface_size,
                                      AggregatedFrame& frame) {
-#if BUILDFLAG(ARKWEB_VULKAN)
+#if BUILDFLAG(ARKWEB_VULKAN_INC_PRESENT)
   JudgePartialSwap();
 #endif
   if (draw_mode_ ||
@@ -364,13 +382,7 @@ void ArkwebDisplayUtils::DrawAndSwap(AggregatedRenderPass& last_render_pass,
        !current_surface_size.IsEmpty())) {
     LOG(INFO) << "resize_output_surface = " << current_surface_size.ToString();
     LOG(INFO) << "output_rect = " << last_render_pass.output_rect.ToString();
-    // Resize the |output_rect| to the |current_surface_size| so that we won't
-    // skip the draw and so that the GL swap won't stretch the output.
-#if BUILDFLAG(ARKWEB_VULKAN)
-    if (features::IsUsingVulkan()) {
-      display_->renderer_->disable_partial_swap();
-    }
-#endif
+
     last_render_pass.output_rect.set_size(current_surface_size);
     last_render_pass.output_rect.set_y(draw_rect_.y());
     last_render_pass.output_rect.set_x(draw_rect_.x());
@@ -390,8 +402,13 @@ void ArkwebDisplayUtils::DumpSnapshotForBlankLess(AggregatedFrame& frame) {
   }
   uint64_t id = display_->frame_sink_id_.hash();
   base::ohos::BlanklessDumpInfo info;
-  if (!gpu::GpuChannelExt::GetBlanklessDumpInfoAndDisableDump(client_id_, id, info) || !info.dump_enabled) {
-    LOG(DEBUG) << "blankless dump disable or no blankless info";
+  bool ret = gpu::GpuChannelExt::GetBlanklessDumpInfoAndDisableDump(client_id_, id, info);
+  bool blank_enable = (info.info.blankless_key != UINT64_MAX);
+  if (display_ && display_->renderer_) {
+    display_->renderer_->SetIsBlankLessMode(blank_enable);
+  }
+
+  if (!ret || !info.dump_enabled) {
     return;
   }
 
@@ -425,6 +442,33 @@ void ArkwebDisplayUtils::SetGpuServiceImpl(GpuServiceImpl* gpu_service_impl) {
 }
 //LCOV_EXCL_STOP
 #endif
+
+#if BUILDFLAG(IS_ARKWEB_EXT) && BUILDFLAG(ARKWEB_SAFEBROWSING)
+void ArkwebDisplayUtils::HandleAntiFraudDetection(std::unique_ptr<CopyOutputResult> result) {
+  OHOS::NWeb::NWebAntiFraudDetectionHandler::GetInstance().HandleAntiFraudDetection(
+      OHOS::NWeb::OhosImageEncoderAdapter::GetInstance().CreatePixelmap(
+          result->ScopedAccessSkBitmap().bitmap()),
+      safe_browsing_detection_result_);
+}
+ 
+void ArkwebDisplayUtils::DumpSnapshotForSBS(AggregatedFrame& frame) {
+  if(!ohos_safe_browsing::SafeBrowsingSnapshotManager::GetInstance().IsAllowSnapshot()){
+    return;
+  }
+  OHOS::NWeb::NWebAntiFraudDetectionHandler::GetInstance().SetFmpUrl(
+      ohos_safe_browsing::SafeBrowsingSnapshotManager::GetInstance().GetPendingFmpUrl());
+  safe_browsing_detection_result_ = ohos_safe_browsing::SafeBrowsingSnapshotManager::
+      GetInstance().GetAntiFraudDetectingResult();
+  ohos_safe_browsing::SafeBrowsingSnapshotManager::GetInstance().ResetFmp();
+  auto request = std::make_unique<AfdFrameSnapshotCopyOutputRequest>(
+      base::BindOnce(&ArkwebDisplayUtils::HandleAntiFraudDetection, weak_factory_.GetWeakPtr()));
+  auto& root_render_pass = frame.render_pass_list.back();
+  if (root_render_pass) {
+    root_render_pass->copy_requests.push_back(std::move(request));
+  }
+}
+#endif
+
 #if BUILDFLAG(ARKWEB_OCCLUDED_OPT)
 void ArkwebDisplayUtils::DiscardBackbuffer() {
 #if BUILDFLAG(ARKWEB_VULKAN)
@@ -434,6 +478,16 @@ void ArkwebDisplayUtils::DiscardBackbuffer() {
 #endif
   if (display_->output_surface_) {
     display_->output_surface_->DiscardBackbuffer();
+  }
+}
+#endif
+
+#if BUILDFLAG(ARKWEB_CLEAN_BUFFERS_WHEN_INVISIBLE)
+void ArkwebDisplayUtils::SetIfNeedCleanBuffers(bool need_clean_buffers)
+{
+  TRACE_EVENT1("viz", "ArkwebDisplayUtils::SetIfNeedCleanBuffers ", "need_clean_buffers:", need_clean_buffers);
+  if (display_ && display_->output_surface_) {
+    display_->output_surface_->SetIfNeedCleanBuffers(need_clean_buffers);
   }
 }
 #endif

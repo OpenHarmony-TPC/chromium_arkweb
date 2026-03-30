@@ -13,7 +13,6 @@
  * limitations under the License.
  */
  
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_AI)
 void RenderFrameImpl::CloseImageOverlaySelection() {
   if (GetFrameHost()) {
@@ -21,7 +20,6 @@ void RenderFrameImpl::CloseImageOverlaySelection() {
   }
 }
 #endif  // BUILDFLAG(ARKWEB_AI)
-// LCOV_EXCL_STOP
 
 #if BUILDFLAG(ARKWEB_SAME_LAYER)
 blink::WebNativeBridge* RenderFrameImpl::CreateWebNativeBridge(
@@ -52,7 +50,7 @@ gfx::RectF RenderFrameImpl::ElementBoundsInWindow(
 #if BUILDFLAG(ARKWEB_MULTI_WINDOW)
 bool RenderFrameImpl::GetNewWindowWebView(
     const GURL& target_url,
-    blink::WebNavigationPolicy policy,
+                                          blink::WebNavigationPolicy policy,
     bool allow_popup,
     const blink::WebWindowFeatures& features) {
   mojom::CreateNewWindowStatus status = mojom::CreateNewWindowStatus::kBlocked;
@@ -70,7 +68,6 @@ bool RenderFrameImpl::GetNewWindowWebView(
 }
 #endif
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_DRAG_DROP)
 void RenderFrameImpl::ClearContextMenu() {
   // It does not postTask here because contextmenu popup windows should be
@@ -95,6 +92,14 @@ void RenderFrameImpl::SetOverscrollMode(int mode) {
     return;
   }
   web_frame_widget->SetOverscrollMode(mode);
+}
+
+bool RenderFrameImpl::IsElementExist(std::string xPath) {
+  auto web_frame_widget = GetLocalRootWebFrameWidget();
+  if (!web_frame_widget) {
+    return false;
+  }
+  return web_frame_widget->IsElementExist(xPath);
 }
 
 #if BUILDFLAG(ARKWEB_GET_SCROLL_OFFSET)
@@ -208,5 +213,3 @@ void RenderFrameImpl::OnDocumentEndReady() {
   }
 }
 #endif
-
-// LCOV_EXCL_STOP

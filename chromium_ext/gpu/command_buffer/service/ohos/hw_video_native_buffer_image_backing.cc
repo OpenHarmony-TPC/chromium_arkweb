@@ -12,7 +12,9 @@
 #include <sys/poll.h>
 
 #include "base/logging.h"
+#include "base/notimplemented.h"
 #include "base/task/bind_post_task.h"
+#include "base/trace_event/trace_event.h"
 #include "components/viz/common/gpu/vulkan_context_provider.h"
 #include "gpu/command_buffer/common/shared_image_usage.h"
 #include "gpu/command_buffer/service/abstract_texture_ohos.h"
@@ -58,7 +60,7 @@ std::unique_ptr<VulkanImage> CreateVkImageFromNativeBufferHandle(
   gfx::GpuMemoryBufferHandle gmb_handle(std::move(nb_handle));
 
   return VulkanImage::CreateFromGpuMemoryBufferHandle(
-      device_queue, std::move(gmb_handle), size, ToVkFormatSinglePlanar(format),
+      nullptr, device_queue, std::move(gmb_handle), size, ToVkFormatSinglePlanar(format),
       0 /*usage=*/, 0 /*flags=*/, VK_IMAGE_TILING_OPTIMAL /*image_tiling=*/,
       queue_family_index /*queue_family_index=*/);
 }
@@ -211,9 +213,9 @@ void CreateAndBindEglImageFromNativeBuffer(OHOSNativeBuffer buffer,
                "HwVideoNativeBufferImageBacking::"
                "BeginAccess::CreateAndBindEglImageFromNativeBuffer");
   DCHECK(buffer);
-
+ 
   EGLClientBuffer egl_client_buffer;
-
+ 
   // Trace time taken for GetEGLClientBufferFromNativeBuffer
   {
     TRACE_EVENT0("gpu",
@@ -231,7 +233,7 @@ void CreateAndBindEglImageFromNativeBuffer(OHOSNativeBuffer buffer,
                  "HwVideoNativeBufferImageBacking::"
                  "BeginAccess::CreateEGLImage");
     auto egl_image = gl::ohos::CreateEGLImageForVideo(egl_client_buffer);
-
+ 
     // Trace time taken for FreeEGLClientBuffer
     {
       TRACE_EVENT0("gpu",
@@ -239,12 +241,12 @@ void CreateAndBindEglImageFromNativeBuffer(OHOSNativeBuffer buffer,
                    "BeginAccess::FreeEGLClientBuffer");
       gl::ohos::FreeEGLClientBuffer(egl_client_buffer);
     }
-
+ 
     if (egl_image == EGL_NO_IMAGE_KHR) {
       LOG(ERROR) << "Failed to create EGLImage! ";
       return;
     }
-
+ 
     {
       TRACE_EVENT0("gpu",
                    "HwVideoNativeBufferImageBacking::"
@@ -581,12 +583,26 @@ class HwVideoNativeBufferImageBacking::SkiaVkNBRepresentation
 gpu::ScopedNativeBufferHandle HwVideoNativeBufferImageBacking::GetNativeBufferHandle() const
 {
   TRACE_EVENT0("gpu", __PRETTY_FUNCTION__);
+  if (!stream_texture_sii_) {
+    LOG(ERROR) << "stream_texture_sii_ is null.";
+    return gpu::ScopedNativeBufferHandle();
+  }
   // Get the raw native buffer from the stream texture.
   // Retrieve the unique_ptr holding the native buffer fence sync.
   auto native_buffer_sync = stream_texture_sii_->GetNativeBuffer();
 
+  if (!native_buffer_sync) {
+    LOG(ERROR) << "Failed to get native buffer sync.";
+    return gpu::ScopedNativeBufferHandle();
+  }
+
   // Extract the raw native buffer pointer from the unique_ptr.
   OHOSNativeBuffer raw_native_buffer = native_buffer_sync->buffer();
+
+  if (!raw_native_buffer) {
+    LOG(ERROR) << "Native buffer is null.";
+    return gpu::ScopedNativeBufferHandle();
+  }
 
   // Adopt the raw pointer into a ScopedNativeBufferHandle.
   return gpu::ScopedNativeBufferHandle::Create(raw_native_buffer);

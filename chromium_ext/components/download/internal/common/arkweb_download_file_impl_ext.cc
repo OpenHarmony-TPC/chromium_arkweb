@@ -22,7 +22,6 @@
 #include <string>
 #include <utility>
 
-#include "components/download/public/common/arkweb_download_file_impl_ext.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/task/sequenced_task_runner.h"
@@ -43,6 +42,10 @@
 #include "crypto/sha2.h"
 #include "mojo/public/c/system/types.h"
 #include "net/base/io_buffer.h"
+
+#if !BUILDFLAG(IS_ARKWEB_EXT)
+#include "components/download/public/common/arkweb_download_file_impl_ext.h"
+#endif
 
 #if BUILDFLAG(ARKWEB_EXT_DOWNLOAD)
 #include "components/download/public/common/download_utils.h"

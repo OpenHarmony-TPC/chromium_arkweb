@@ -15,7 +15,6 @@
 
 namespace blink {
 
-// LCOV_EXCL_START
 #if BUILDFLAG(ARKWEB_NETWORK_DFX)
 double WebPerformanceMetricsForReporting::RedirectStart() const {
   return base::Milliseconds(private_->timing()->redirectStart()).InSecondsF();
@@ -37,6 +36,5 @@ double WebPerformanceMetricsForReporting::DomInteractive() const {
   return base::Milliseconds(private_->timing()->domInteractive()).InSecondsF();
 }
 #endif
-// LCOV_EXCL_STOP
 
 }  // namespace blink

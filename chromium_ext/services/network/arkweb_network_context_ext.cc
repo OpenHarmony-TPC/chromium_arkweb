@@ -29,7 +29,6 @@
 #include "base/memory/ref_counted.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/not_fatal_until.h"
-#include "base/ranges/algorithm.h"
 #include "base/sequence_checker.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -46,8 +45,6 @@
 #include "build/chromeos_buildflags.h"
 #include "components/cookie_config/cookie_store_util.h"
 #include "components/domain_reliability/monitor.h"
-#include "components/ip_protection/common/ip_protection_config_getter_mojo_impl.h"
-#include "components/ip_protection/common/ip_protection_control_mojo.h"
 #include "components/ip_protection/common/ip_protection_core_impl.h"
 #include "components/ip_protection/common/ip_protection_proxy_delegate.h"
 #include "components/network_session_configurator/browser/network_session_configurator.h"
@@ -106,7 +103,7 @@
 #include "services/network/data_remover_util.h"
 #include "services/network/disk_cache/mojo_backend_file_operations_factory.h"
 #include "services/network/host_resolver.h"
-#include "services/network/http_auth_cache_copier.h"
+#include "services/network/http_auth_cache_proxy_copier.h"
 #include "services/network/http_server_properties_pref_delegate.h"
 #include "services/network/ignore_errors_cert_verifier.h"
 #include "services/network/is_browser_initiated.h"
@@ -202,7 +199,7 @@
 
 #if BUILDFLAG(ARKWEB_PRP_PRELOAD)
 #include "arkweb/chromium_ext/services/network/prp_preload/include/page_res_parallel_preload_mgr.h"
-#include "cef/ohos_cef_ext/libcef/browser/net_service/net_helpers.h"
+#include "arkweb/chromium_ext/net/base/net_helpers.h"
 #endif // BUILDFLAG(ARKWEB_PRP_PRELOAD)
 
 namespace network {

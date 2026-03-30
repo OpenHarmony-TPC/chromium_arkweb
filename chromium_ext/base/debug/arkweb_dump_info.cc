@@ -31,7 +31,7 @@ ArkWebDumpInfo::ArkWebDumpInfo() {
 bool ArkWebDumpInfo::IsDumpEnabled() const {
   return dump_enable_;
 }
-
+ 
 size_t ArkWebDumpInfo::GetBufferSize() {
   std::shared_lock<std::shared_mutex> lockGuard(dumpMutex_);
   return buffer_.size();
@@ -54,12 +54,11 @@ void ArkWebDumpInfo::ParseCmdParamAndDump(const std::string& param, std::string&
 
 void ArkWebDumpInfo::DumpArkWebAllInfo(std::string& result) {
   std::vector<std::pair<std::string, std::string>> localBuffer;
-
   {
     std::shared_lock<std::shared_mutex> lockGuard(dumpMutex_);
     localBuffer.assign(buffer_.begin(), buffer_.end());
   }
-  
+ 
   for (const auto& [key, value] : localBuffer) {
     result.append(key).append(":").append(value);
   }
@@ -67,7 +66,6 @@ void ArkWebDumpInfo::DumpArkWebAllInfo(std::string& result) {
 
 void ArkWebDumpInfo::DumpArkWebNWebInfo(std::string& result) {
   std::vector<std::pair<std::string, std::string>> localBuffer;
-
   {
     std::shared_lock<std::shared_mutex> lockGuard(dumpMutex_);
     localBuffer.assign(buffer_.begin(), buffer_.end());
@@ -93,8 +91,8 @@ std::string ArkWebDumpInfo::GetCurrentTimeInfo() const {
 
 std::string ArkWebDumpInfo::GetProcessAndThreadIdInfo() const {
   base::ProcessId pid = base::GetCurrentProcId();
-  int tid = base::PlatformThread::CurrentId();
-  return base::StringPrintf("[P%d-T%d]", pid, tid);
+  base::PlatformThreadId tid = base::PlatformThread::CurrentId();
+  return base::StringPrintf("[P%d-T%d]", pid, static_cast<int>(tid.raw()));
 }
 
 void ArkWebDumpInfo::WriteArkWebDumpInfo(const std::string& info, DumpInfoType type) {

@@ -61,10 +61,10 @@ namespace gpu {
 namespace {
 const size_t bitsPerPixel = 32;
 
-constexpr viz::SharedImageFormat kSupportedFormats[6]{
-    viz::SinglePlaneFormat::kRGBA_8888, viz::SinglePlaneFormat::kRGB_565,
-    viz::SinglePlaneFormat::kBGR_565,   viz::SinglePlaneFormat::kRGBA_F16,
-    viz::SinglePlaneFormat::kRGBX_8888, viz::SinglePlaneFormat::kRGBA_1010102};
+constexpr viz::SharedImageFormat kSupportedFormats[5]{
+    viz::SinglePlaneFormat::kRGBA_8888, viz::SinglePlaneFormat::kBGR_565,
+    viz::SinglePlaneFormat::kRGBA_F16, viz::SinglePlaneFormat::kRGBX_8888,
+    viz::SinglePlaneFormat::kRGBA_1010102};
 
 // Returns whether the format is supported by NativeBuffer.
 //LCOV_EXCL_START
@@ -76,8 +76,6 @@ bool NativeBufferSupportedFormat(viz::SharedImageFormat format) {
 int ConvertToNativeBufferFormat(viz::SharedImageFormat format) {
   if (format == viz::SinglePlaneFormat::kRGBA_8888) {
     return NATIVEBUFFER_PIXEL_FMT_RGBA_8888;
-  } else if (format == viz::SinglePlaneFormat::kRGB_565) {
-    return NATIVEBUFFER_PIXEL_FMT_RGB_565;
   } else if (format == viz::SinglePlaneFormat::kBGR_565) {
     return NATIVEBUFFER_PIXEL_FMT_BGR_565;
   } else if (format == viz::SinglePlaneFormat::kRGBA_F16) {
@@ -93,11 +91,9 @@ int ConvertToNativeBufferFormat(viz::SharedImageFormat format) {
 
 constexpr SharedImageUsageSet kSupportedUsage =
     SHARED_IMAGE_USAGE_GLES2_READ | SHARED_IMAGE_USAGE_GLES2_WRITE |
-    SHARED_IMAGE_USAGE_GLES2_FOR_RASTER_ONLY |
     SHARED_IMAGE_USAGE_DISPLAY_WRITE | SHARED_IMAGE_USAGE_DISPLAY_READ |
     SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE |
-    SHARED_IMAGE_USAGE_RASTER_OVER_GLES2_ONLY |
-    SHARED_IMAGE_USAGE_OOP_RASTERIZATION | SHARED_IMAGE_USAGE_SCANOUT |
+    SHARED_IMAGE_USAGE_SCANOUT |
     SHARED_IMAGE_USAGE_WEBGPU_READ | SHARED_IMAGE_USAGE_WEBGPU_WRITE |
     SHARED_IMAGE_USAGE_VIDEO_DECODE |
     SHARED_IMAGE_USAGE_WEBGPU_SWAP_CHAIN_TEXTURE |
@@ -157,8 +153,7 @@ OHOSNativeBufferImageBackingFactory::OHOSNativeBufferImageBackingFactory(
     const gles2::FeatureInfo* feature_info,
     const GpuPreferences& gpu_preferences)
     : SharedImageBackingFactory(kSupportedUsage),
-      use_passthrough_(gpu_preferences.use_passthrough_cmd_decoder &&
-                       gl::PassthroughCommandDecoderSupported()),
+      use_passthrough_(gpu_preferences.use_passthrough_cmd_decoder),
       gl_format_caps_(GLFormatCaps(feature_info)) {
   // Build the feature info for all the supported formats.
   for (auto format : kSupportedFormats) {
@@ -329,7 +324,7 @@ OHOSNativeBufferImageBackingFactory::MakeBackingWithValidateConfig(
       return nullptr;
     }
 
-    int bytes_per_pixel = format.BitsPerPixel() / 8;
+    int bytes_per_pixel = format.BytesPerPixel();
 
     // NOTE: hwb_info.stride is in pixels
     int dst_stride = configAdapterTmp->GetBufferStride();
@@ -376,7 +371,8 @@ OHOSNativeBufferImageBackingFactory::MakeBackingWithValidateConfig(
   }
 
   if (backing) {
-    LOG(INFO) << "NativeBuffer backing created:(OhosNativeBufferImageBacking), and mailbox is: " << mailbox.ToDebugString();
+    LOG(INFO) << "NativeBuffer backing created:(OhosNativeBufferImageBacking), and mailbox is: "
+              << mailbox.ToDebugString();
   }
 
   return backing;
@@ -433,7 +429,7 @@ bool OHOSNativeBufferImageBackingFactory::IsSupported(
     base::span<const uint8_t> pixel_data) {
   LOG(DEBUG)
       << "CreateSharedImage OHOSNativeBufferImageBackingFactory::IsSupported ";
-  LOG(DEBUG) << "usage: " << usage;
+  LOG(DEBUG) << "usage: " << usage.ToString();
   LOG(DEBUG) << "format: " << format.ToString();
   LOG(DEBUG) << "size: " << size.width() << "x" << size.height();
   LOG(DEBUG) << "thread_safe: " << thread_safe;
@@ -475,6 +471,7 @@ OHOSNativeBufferImageBackingFactory::CreateSharedImage(
     SkAlphaType alpha_type,
     SharedImageUsageSet usage,
     std::string debug_label,
+    bool is_thread_safe,
     gfx::GpuMemoryBufferHandle handle) {
   if (!ValidateUsage(usage, size, format)) {
     return nullptr;

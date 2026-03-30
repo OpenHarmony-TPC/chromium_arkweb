@@ -135,5 +135,4 @@ extern "C" {
 
 }  // namespace NWeb
 }  // namespace OHOS
-
 #endif // MOCK_CODEC_DECODER_ADAPTER_H

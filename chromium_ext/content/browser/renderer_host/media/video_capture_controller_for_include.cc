@@ -13,7 +13,7 @@ void VideoCaptureController::PauseClientBySessionId(
     const base::UnguessableToken& session_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
 
-  ControllerClient* client = FindClient(session_id, controller_clients_);
+  ControllerClient* client = FindClient(session_id);
   if (!client) {
     DVLOG(1) << "Client not found";
     return;
@@ -34,7 +34,7 @@ void VideoCaptureController::ResumeClientBySessionId(
     const base::UnguessableToken& session_id) {
   DCHECK_CURRENTLY_ON(BrowserThread::IO);
 
-  ControllerClient* client = FindClient(session_id, controller_clients_);
+  ControllerClient* client = FindClient(session_id);
   if (!client) {
     DVLOG(1) << "Client not found";
     return;
