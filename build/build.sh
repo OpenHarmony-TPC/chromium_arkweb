@@ -451,6 +451,7 @@ else
   buildargs="${buildargs}
     ohos_nweb_ex_config_name=\"\"
     arkweb_ext_dir=\"\"
+  "
 fi
 
 echo "Copying NDK stub files..."
