@@ -380,6 +380,10 @@ if [ -f "${ROOT_DIR}/third_party/ohos_nweb_hap/BUILD.gn" ]; then
   enable_ohos_nweb_hap=true"
 fi
 
+if [[ "${build_type}" == "rk3568" ]] || [[ "${build_type}" == "rk3568_64" ]]; then
+  with_nweb_ex=0
+fi
+
 # if [ ${with_nweb_ex} -eq 1 -a ${artifact_mode} -eq 1 ]; then
 if [ ${with_nweb_ex} -eq 1 ]; then
   if ! [ -d "${ROOT_DIR}"/"${build_dir}" ]; then
@@ -407,6 +411,8 @@ if [ ${with_nweb_ex} -eq 1 ]; then
     echo -e "Failed to execute build/config_to_gn.py, see errors above."
     exit 1
   fi
+  rm -rf ./src/third_party/ohos_nweb_hap/hvigor ./src/third_party/ohos_nweb_hap/signature
+  cp -r ./src/third_party/ohos_nweb_hap/dependencies/musl/* ./src/third_party/ohos_nweb_hap/
   buildargs="${buildargs}
     ohos_nweb_ex_config_name=\"//${build_dir}${BUILD_CONFIG_NAME}\"
     arkweb_ext_dir=\"//arkweb/ohos_nweb_ex\"
@@ -440,6 +446,12 @@ else
     echo -e "Failed to execute build/config_to_gn.py, see errors above."
     exit 1
   fi
+  rm -rf ./src/third_party/ohos_nweb_hap/hvigor ./src/third_party/ohos_nweb_hap/signature
+  cp -r ./src/third_party/ohos_nweb_hap/dependencies/rk/* ./src/third_party/ohos_nweb_hap/
+  buildargs="${buildargs}
+    ohos_nweb_ex_config_name=\"\"
+    arkweb_ext_dir=\"\"
+  "
 fi
 
 echo "Copying NDK stub files..."
