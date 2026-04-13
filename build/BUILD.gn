@@ -13,7 +13,6 @@
 
 import("//arkweb/build/features/features.gni")
 
-
 group("arkweb_test_targets") {
     testonly = true
 
