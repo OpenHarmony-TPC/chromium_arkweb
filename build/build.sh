@@ -539,6 +539,21 @@ if [[ $build_hmp =~ 1 ]] ; then
   export ohos_mr_build_type="$build_type"
 
   bash -c "${BUILD_HMP_TOOL_DIR}/build_hmp.sh"
+elif [[ $build_hap =~ 1 ]] && [[ ${with_nweb_ex} -eq 0 ]]; then
+  export HW_HARMONY_ENGINE_ROOT="${CUR_DIR}"
+  bash -c "bash ${ROOT_DIR}/arkweb/build/sign.sh ${build_type}"
+elif [[ $build_hap =~ 1 ]] && [[ ${build_hwasan} -eq 1 ]]; then
+  export HW_HARMONY_ENGINE_ROOT="${CUR_DIR}"
+  export HW_HARMONY_ENGINE_OUT_RELEASE="${ROOT_DIR}/${build_dir}/"
+  if [[ -n "$ONLINE_USERNAME" ]] && [[ -n "$ONLINE_PASSWD" ]] ; then
+    export SIGN_NEW_USERNAME="${ONLINE_USERNAME}"
+    export SIGN_NEW_PASSWORD="${ONLINE_PASSWD}"
+  else
+    export SIGN_NEW_USERNAME="${usernameForSignHmp}"
+    export SIGN_NEW_PASSWORD="${passwordForSignHmp}"
+  fi
+  export ohos_mr_build_type="$build_type"
+  bash -c "bash ${ROOT_DIR}/ohos_nweb_ex/signature_nweb/sign_asan.sh"
 fi
 
 time_end_for_build=$(date +%s)
