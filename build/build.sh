@@ -93,6 +93,7 @@ build_fuzz=0
 use_thin_lto=0
 additional_gn_args=""
 build_hmp=0
+build_hap=0
 build_type="$1"
 build_component=0
 is_official_build=1
@@ -238,6 +239,7 @@ exec > >(tee "$log_file") 2>&1
 case "${build_target}" in
   "w"|"${BUILD_TARGET_WEBVIEW}")
     build_target="${BUILD_TARGET_WEBVIEW}"
+    build_hap=1
     ;;
   "p")
     build_target="${BUILD_TARGET_WEBVIEW}"
