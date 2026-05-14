@@ -172,7 +172,6 @@ int32_t NetConnectAdapterImpl::RegisterNetConnCallback(std::shared_ptr<NetConnCa
 
 int32_t NetConnectAdapterImpl::UnregisterNetConnCallback(int32_t id)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
     auto it = netConnCallbackMap_.find(id);
     if (it == netConnCallbackMap_.end()) {
         WVLOG_E("unregister NetConnCallback, not find the NetConnCallback.");
