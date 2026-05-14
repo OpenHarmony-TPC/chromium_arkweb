@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <string>
+#include <mutex>
 #include <unordered_map>
 
 #include "net_connect_adapter.h"
