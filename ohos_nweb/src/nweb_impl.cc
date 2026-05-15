@@ -5694,7 +5694,7 @@ bool NWebImpl::GetAccessibilityNodeRectById(int64_t accessibilityId,
 }
 
 // static
-#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
 void NWebImpl::BindToNetwork(int network) {
   net_service::NetHelpers::network = network;
   if (g_nweb_count != 0) {
