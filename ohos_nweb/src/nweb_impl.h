@@ -747,8 +747,8 @@ class NWebImpl : public NWeb {
 #if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
   static void SetConnectTimeout(int32_t seconds);
   static void BindToNetwork(int network_id);
-  static void SetConnectionTimeout(int32_t timeout);
 #endif
+  static void SetConnectionTimeout(int32_t timeout);
 
 #if BUILDFLAG(ARKWEB_EXT_UA)
   static void UpdateCloudUAConfig(const std::string& file_path,
