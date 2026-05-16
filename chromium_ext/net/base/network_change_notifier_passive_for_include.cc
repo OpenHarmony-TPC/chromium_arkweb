@@ -89,8 +89,6 @@ class NetConnCallbackImpl : public OHOS::NWeb::NetConnCallback {
       OHOS::NWeb::NetConnectType::CONNECTION_UNKNOWN;
   OHOS::NWeb::NetConnectSubtype subtype_ =
       OHOS::NWeb::NetConnectSubtype::SUBTYPE_UNKNOWN;
-  bool IsSameAddrList(const std::vector<std::string>& newList,
-                      const std::vector<std::string>& oldList);
 };
 
 int32_t NetConnCallbackImpl::NetAvailable() {
@@ -172,30 +170,6 @@ void NetConnCallbackImpl::BindDnsToNetwork(int32_t network_for_dns) {
   LOG(INFO) << "NetConnCallbackImpl::BindDnsToNetwork, network_for_dns "
             << network_for_dns;
   network_for_dns_ = network_for_dns;
-#if BUILDFLAG(IS_ARKWEB_EXT) && BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
-  if (!network_change_notifier_posix_) {
-      return;
-  }
-
-  if (network_for_dns_ == - 1) {
-    network_change_notifier_posix_->SetNetAddrList(std::vector<std::string>());
-    return;
-  }
-  auto new_addr_list = network_change_notifier_posix_->GetNetAddrListByNetId(network_for_dns_);
-  network_change_notifier_posix_->SetNetAddrList(new_addr_list);
-#endif
-}
-
-bool NetConnCallbackImpl::IsSameAddrList(const std::vector<std::string>& newList,
-                                         const std::vector<std::string>& oldList) {
-  if (newList.size() != oldList.size()) {
-    return false;
-  }
-  std::vector<std::string> sortedNewList = newList;
-  std::vector<std::string> sortedOldList = oldList;
-  std::sort(sortedNewList.begin(), sortedNewList.end());
-  std::sort(sortedOldList.begin(), sortedOldList.end());
-  return sortedNewList == sortedOldList;
 }
 
 void NetConnCallbackImpl::ConnectionTypeChangedTo(
@@ -218,29 +192,9 @@ void NetConnCallbackImpl::ConnectionTypeChangedTo(
               << (int)type << ", network_for_dns_ " << network_for_dns_;
     net_id_ = net_id;
     type_ = type;
-#if BUILDFLAG(IS_ARKWEB_EXT) && BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
-    if (network_for_dns_ != -1) {
-      auto new_addr_list = network_change_notifier_posix_->GetNetAddrListByNetId(net_id_);
-      auto cur_addr_list = network_change_notifier_posix_->GetCurrentNetAddrList();
-      if (!IsSameAddrList(new_addr_list, cur_addr_list)) {
-        LOG(INFO) << "The current net_addr_list is different from the new net_addr_list, "
-                  << "which will trigger OnIPAddressChanged event.";
-    network_change_notifier_posix_->OnIPAddressChanged(
-        net::NetworkChangeNotifier::IP_ADDRESS_CHANGE_NORMAL);
-      } else {
-        LOG(INFO) << "The current net_addr_list is same with the new net_addr_list, "
-                  << "which will not trigger OnIPAddressChanged event.";
-      }
-    } else {
-      network_change_notifier_posix_->OnIPAddressChanged(net::NetworkChangeNotifier::IP_ADDRESS_CHANGE_NORMAL);
-    }
-    network_change_notifier_posix_->OnConnectionChanged(
-        ConvertOhosConnTypeToNetBaseConnType(type));
-#else
     network_change_notifier_posix_->OnIPAddressChanged(net::NetworkChangeNotifier::IP_ADDRESS_CHANGE_NORMAL);
     network_change_notifier_posix_->OnConnectionChanged(
-                                    ConvertOhosConnTypeToNetBaseConnType(type));
-#endif
+        ConvertOhosConnTypeToNetBaseConnType(type));
   }
 
   if (subtype_ != subtype) {
@@ -323,18 +277,6 @@ class NetworkChangeNotifierPassiveUtils {
     }
   }
 #endif
-
-#if BUILDFLAG(IS_ARKWEB_EXT) && BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
-  static std::vector<std::string> GetNetAddrListByNetId(raw_ptr<NetworkChangeNotifierPassive> obj, int32_t netId) {
-    std::vector<std::string> net_addr_list;
-      if (obj->ohos_net_conn_adapter_) {
-        LOG(INFO) << "OnConnectionChanged, GetNetAddrListByNetId, netId "
-                  << netId;
-        net_addr_list = obj->ohos_net_conn_adapter_->GetNetAddrListByNetId(netId);
-    }
-   return net_addr_list;
-  }
-#endif
 };
 
 #ifndef BIND_DNS_TEST
@@ -364,42 +306,15 @@ void NetworkChangeNotifierPassive::OnVpnLost()
 }
 #endif
 
-#if BUILDFLAG(ARKWEB_EXT_NETWORK_CONNECTION)
+#if BUILDFLAG(ARKWEB_EX_NETWORK_CONNECTION)
 void NetworkChangeNotifierPassive::BindDnsToNetwork(int32_t network_for_dns) {
   if (*g_net_connect_callback) {
     (*g_net_connect_callback)->BindDnsToNetwork(network_for_dns);
   }
-#if BUILDFLAG(ARKWEB_EXT_HTTP_DNS_FALLBACK)
+#if BUILDFLAG(ARKWEB_EX_HTTP_DNS_FALLBACK)
   network_for_dns_ = network_for_dns;
 #endif
 }
-
-#if BUILDFLAG(IS_ARKWEB_EXT)
-const std::vector<std::string> NetworkChangeNotifierPassive::GetNetAddrListByNetId(int32_t netId) {
-  std::vector<std::string> net_addr_list = NetworkChangeNotifierPassiveUtils::GetNetAddrListByNetId(this, netId);
-  if (net_addr_list.empty()) {
-    LOG(INFO) << "Get net addrList by netId failed, net_addr_list is empty.";
-  }
-    return net_addr_list;
-}
- 
-const std::vector<std::string>
-NetworkChangeNotifierPassive::GetCurrentNetAddrList() {
-  base::AutoLock scoped_lock(lock_);
-  return net_addr_list_;
-}
- 
-void NetworkChangeNotifierPassive::SetNetAddrList(std::vector<std::string> new_addr_list) {
-  base::AutoLock scoped_lock(lock_);
-  if (!new_addr_list.empty()) {
-    net_addr_list_ = std::move(new_addr_list);
-    LOG(INFO) << "set new NetAddrList, size is " << net_addr_list_.size();
-  } else {
-    net_addr_list_.clear();
-    LOG(INFO) << "clear NetAddrList_";
-  }
-}
-#endif
 #endif
 #endif // BIND_DNS_TEST
 }  // namespace net
