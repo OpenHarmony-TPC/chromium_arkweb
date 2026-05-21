@@ -92,8 +92,8 @@ scoped_refptr<NativeImageTextureOwner> NativeImageTextureOwner::Create(
     scoped_refptr<SharedContextState> context_state,
     gl::ohos::TextureOwnerMode mode,
     scoped_refptr<RefCountedLock> drdc_lock) {
-  LOG(INFO) << "NativeImageTextureOwner::Create";
   auto texture = CreateTexture(context_state.get());
+  LOG(INFO) << "NativeImageTextureOwner::Create";
   switch (mode) {
     case gl::ohos::TextureOwnerMode::kSameLayerNativeBuffer:
       LOG(INFO) << __FUNCTION__ << " Mode: kSameLayerNativeBuffer";
