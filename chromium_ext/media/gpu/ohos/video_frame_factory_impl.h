@@ -107,11 +107,11 @@ class MEDIA_GPU_EXPORT VideoFrameFactoryImpl
 #endif
   scoped_refptr<CodecBufferWaitCoordinator> codec_buffer_wait_coordinator_;
 
-  bool video_frame_copy_required_ = base::ohos::IsEmulator() ||
+  bool video_frame_copy_required_ =
 #if BUILDFLAG(ARKWEB_PIP)
                                     IsPipEnable() ||
 #endif
-                                    base::SysInfo::IsLowEndDevice();
+                                    false;
 
   std::unique_ptr<FrameInfoHelper> frame_info_helper_;
 
