@@ -150,6 +150,14 @@ struct NWebDownloadItem {
     std::string referrer_url_ =
         download_item->AsArkDownloadItem()->GetReferrerUrl().ToString();
     referrer_url = strdup(referrer_url_.c_str());
+    auto url_chain_vec = download_item->AsArkDownloadItem()->GetUrlChain();
+    url_chain_size = url_chain_vec.size();
+    if (url_chain_size > 0) {
+      url_chain = (char**)malloc(url_chain_size * sizeof(char*));
+      for (int i = 0; i < url_chain_size; i++) {
+        url_chain[i] = strdup(url_chain_vec[i].ToString().c_str());
+      }
+    }
   }
 
   static NWebDownloadItemState GetNWebState(
