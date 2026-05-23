@@ -226,11 +226,7 @@ declare_args() {
   arkweb_logger_report = true
   arkweb_slide_ltpo = !is_component_build
   arkweb_swap_buffer_trace = true
-if (defined(enable_arkweb_ext) && enable_arkweb_ext) {
   arkweb_safebrowsing = true
-} else {
-  arkweb_safebrowsing = false
-}
   arkweb_heif_support = !is_component_build
   arkweb_advanced_security_mode = !is_component_build
   arkweb_permission = true
