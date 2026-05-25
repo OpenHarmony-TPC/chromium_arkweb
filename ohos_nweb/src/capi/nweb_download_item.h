@@ -50,6 +50,9 @@ struct NWebDownloadItem {
   char* method = nullptr;
   char* received_slices = nullptr;
   NWebDownloadItemState state;
+  char* referrer_url = nullptr;
+  char** url_chain = nullptr;
+  int64_t url_chain_size = 0;
 
   NWebDownloadItem() { WVLOG_I("NWebDownloadItem() is called"); }
 
@@ -99,6 +102,11 @@ struct NWebDownloadItem {
       free(received_slices);
       received_slices = nullptr;
     }
+    if (referrer_url) {
+      free(referrer_url);
+      referrer_url = nullptr;
+    }
+    ClearUrlChain();
   }
 
   NWebDownloadItem(CefRefPtr<CefDownloadItem> download_item) {
@@ -139,6 +147,17 @@ struct NWebDownloadItem {
     last_modified = strdup(last_modified_.c_str());
     std::string etag_ = download_item->AsArkDownloadItem()->GetETag();
     etag = strdup(etag_.c_str());
+    std::string referrer_url_ =
+        download_item->AsArkDownloadItem()->GetReferrerUrl().ToString();
+    referrer_url = strdup(referrer_url_.c_str());
+    auto url_chain_vec = download_item->AsArkDownloadItem()->GetUrlChain();
+    url_chain_size = url_chain_vec.size();
+    if (url_chain_size > 0) {
+      url_chain = (char**)malloc(url_chain_size * sizeof(char*));
+      for (int i = 0; i < url_chain_size; i++) {
+        url_chain[i] = strdup(url_chain_vec[i].ToString().c_str());
+      }
+    }
   }
 
   static NWebDownloadItemState GetNWebState(
@@ -171,6 +190,19 @@ struct NWebDownloadItem {
       }
     }
     return nweb_state;
+  }
+
+  void ClearUrlChain() {
+    if (url_chain) {
+      for (int i = 0; i < url_chain_size; i++) {
+        if (url_chain[i]) {
+          free(url_chain[i]);
+        }
+      }
+      free(url_chain);
+      url_chain = nullptr;
+    }
+    url_chain_size = 0;
   }
 };
 
