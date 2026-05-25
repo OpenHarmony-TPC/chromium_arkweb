@@ -9,7 +9,7 @@
 主要关注以下目录：
 
 - `chromium_ext/`：Chromium 侵入式修改的解耦层，按 Chromium 模块组织扩展代码
-- `ohos_nweb/`：nweb 内核侧实现，通过 CEF delegate 将 Chromium 能力暴露给系统侧
+- `ohos_nweb/`：ArkWeb 侧 NWeb 接口实现层，通过 CEF delegate 将 Chromium 能力暴露给系统侧
 - `ohos_adapter_ndk/`：系统适配层 NDK 封装，40 适配器对接 OpenHarmony 系统服务
 - `build/`：构建系统，含特性开关（features.gni）、构建脚本、工具链配置
 - `patch/`：对上游 Chromium 源码的补丁，最小化侵入
@@ -48,7 +48,7 @@
 |------|------|
 | chromium_ext 目录组织、侵入式修改规范、新增扩展文件 | `docs/knowledge/chromium-ext-architecture.md` |
 | 特性开关（features.gni）、条件编译、新增特性 | `docs/knowledge/chromium-ext-architecture.md` 的"特性开关"章节 |
-| nweb 内核侧实现、CEF delegate、delegate 接口 | `docs/knowledge/chromium-ext-architecture.md` 的"nweb 内核侧"章节 |
+| NWeb 接口实现、CEF delegate、delegate 接口 | `docs/knowledge/chromium-ext-architecture.md` 的"NWeb 接口实现层"章节 |
 
 ## 核心架构
 
@@ -88,7 +88,7 @@ chromium_ext/
 
 **设计原则**：所有对 Chromium 的侵入式扩展代码放在 `chromium_ext/` 下对应的模块子目录中，通过 `chromium_ext.gni` 统一注册源文件。Chromium 原始代码通过补丁（`patch/`）最小化修改，保持与上游的可同步性。
 
-### ohos_nweb：内核侧 nweb 实现
+### ohos_nweb：ArkWeb 侧 NWeb 接口实现
 
 ```
 ohos_nweb/
@@ -112,7 +112,7 @@ ohos_nweb/
 └── BUILD.gn
 ```
 
-**核心机制**：`cef_delegate/` 下的文件实现了 `web_webview` 中 `ohos_interface/include/ohos_nweb/` 定义的接口，是胶水层 nweb 方向的"内核侧实现"。
+**核心机制**：`cef_delegate/` 下的文件实现了 `web_webview` 中 `ohos_interface/include/ohos_nweb/` 定义的接口，是胶水层 NWeb 方向在 ArkWebCore 侧的实现。
 
 ### ohos_adapter_ndk：系统适配 NDK 封装
 
@@ -134,14 +134,14 @@ ohos_adapter_ndk/
 └── ... (40 适配器)
 ```
 
-**与 web_webview 的关系**：这里实现的是 `web_webview` 中 `ohos_interface/include/ohos_adapter/` 定义的接口，是胶水层 adapter 方向的"内核侧实现"（在 Chromium 进程内调用 OpenHarmony 系统服务）。
+**与 web_webview 的关系**：这里实现的是 `web_webview` 中 `ohos_interface/include/ohos_adapter/` 定义的接口，是胶水层 adapter 方向在 ArkWebCore 侧的实现（在 Chromium 进程内调用 OpenHarmony 系统服务）。
 
 ## 项目约束
 
 - chromium_ext 中的代码按 Chromium 模块组织，每个子目录对应 Chromium 源码中的一个模块
 - 新增扩展文件必须在 `chromium_ext.gni` 中注册，否则不会参与编译
 - 补丁（patch/）应最小化，仅包含无法通过 chromium_ext 解耦的必要修改
-- ohos_nweb/cef_delegate 中的 delegate 类实现 ohos_interface 定义的接口，新增功能需先在 ohos_interface 中定义
+- ohos_nweb/cef_delegate 中的 delegate 类实现 ohos_interface 定义的 NWeb 接口，新增功能需先在 ohos_interface 中定义
 - 特性开关在 `build/features/features.gni` 中声明，通过 `arkweb_<feature>` 命名，构建时可通过 args.gn 覆盖
 - 提交须带 DCO 签名（`git commit -s`）
 - Code Owner：@ringking0

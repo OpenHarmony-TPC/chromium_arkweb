@@ -109,11 +109,11 @@ if (arkweb_custom_video_player) {
 2. 在 `build/features/BUILD.gn` 中添加对应的 `enable_<feature>` 定义
 3. 在 chromium_ext.gni 中用条件包裹相关源文件
 
-## nweb 内核侧实现
+## NWeb 接口实现层
 
 ### CEF Delegate 模式
 
-`ohos_nweb/src/cef_delegate/` 是内核侧最核心的目录（200+ 文件），实现了 CEF（Chromium Embedded Framework）的 delegate 接口：
+`ohos_nweb/src/cef_delegate/` 是 ArkWeb 侧承接 NWeb 接口的核心目录（200+ 文件），实现了 CEF（Chromium Embedded Framework）的 delegate 接口：
 
 ```
 ohos_nweb/src/cef_delegate/
@@ -132,7 +132,7 @@ ohos_nweb/src/cef_delegate/
 
 **数据流**：
 ```
-web_webview (系统侧)                    chromium_arkweb (内核侧)
+web_webview (系统侧)                    chromium_arkweb (ArkWebCore 侧)
   ohos_nweb/                              ohos_nweb/
     ↓ NWebHelper::CreateNWeb()              ↓ cef_delegate/
   ohos_interface/ ← C ABI → glue/         ← C ABI 桥接
@@ -213,12 +213,12 @@ HarmonyOS 应用，作为 WebView 的测试容器，使用 hvigor 构建系统�
 - [ ] 在 `chromium_ext.gni` 中注册到对应的 sources 变量
 - [ ] 是否需要特性开关？在 `features.gni` 中声明
 - [ ] 是否需要修改 Chromium 原始 BUILD.gn？创建补丁放在 `patch/`
-- [ ] 如果涉及 nweb 接口实现，在 `ohos_nweb/src/cef_delegate/` 中创建 delegate
+- [ ] 如果涉及 NWeb 接口实现，在 `ohos_nweb/src/cef_delegate/` 中创建 delegate
 - [ ] 如果涉及系统服务调用，在 `ohos_adapter_ndk/` 对应适配器中添加
 - [ ] 添加对应的单元测试（含 `_unittest.cc` 后缀）
 
 ## 相关文档
 
 - [glue/README.md](../../glue/README.md) — 胶水层说明
-- [ohos_nweb/README.md](../../ohos_nweb/README.md) — nweb 编译和运行说明
+- [ohos_nweb/README.md](../../ohos_nweb/README.md) — NWeb 编译和运行说明
 - [AGENTS.md](../AGENTS.md) — 代码仓指引
