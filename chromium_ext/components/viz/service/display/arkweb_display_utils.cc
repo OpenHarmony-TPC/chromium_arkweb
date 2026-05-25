@@ -50,7 +50,9 @@
 #if BUILDFLAG(ARKWEB_SAFEBROWSING)
 #include "arkweb/chromium_ext/components/viz/service/display/afd_frame_snapshot_copy_output_request.h"
 #include "arkweb/ohos_adapter_ndk/ohos_image_adapter/ohos_image_encoder_adapter.h"
+#if BUILDFLAG(IS_ARKWEB_EXT)
 #include "arkweb/ohos_nweb_ex/overrides/ohos_nweb/src/cef_delegate/nweb_anti_fraud_detection_handler.h"
+#endif
 #include "cef/ohos_cef_ext/libcef/browser/ohos_safe_browsing/ohos_sb_snapshot_info.h"
 #endif
 
@@ -445,13 +447,16 @@ void ArkwebDisplayUtils::SetGpuServiceImpl(GpuServiceImpl* gpu_service_impl) {
 
 #if BUILDFLAG(IS_ARKWEB_EXT) && BUILDFLAG(ARKWEB_SAFEBROWSING)
 void ArkwebDisplayUtils::HandleAntiFraudDetection(std::unique_ptr<CopyOutputResult> result) {
+#if BUILDFLAG(IS_ARKWEB_EXT)
   OHOS::NWeb::NWebAntiFraudDetectionHandler::GetInstance().HandleAntiFraudDetection(
       OHOS::NWeb::OhosImageEncoderAdapter::GetInstance().CreatePixelmap(
           result->ScopedAccessSkBitmap().bitmap()),
       safe_browsing_detection_result_);
+#endif
 }
  
 void ArkwebDisplayUtils::DumpSnapshotForSBS(AggregatedFrame& frame) {
+#if BUILDFLAG(IS_ARKWEB_EXT)
   if(!ohos_safe_browsing::SafeBrowsingSnapshotManager::GetInstance().IsAllowSnapshot()){
     return;
   }
@@ -466,6 +471,7 @@ void ArkwebDisplayUtils::DumpSnapshotForSBS(AggregatedFrame& frame) {
   if (root_render_pass) {
     root_render_pass->copy_requests.push_back(std::move(request));
   }
+#endif
 }
 #endif
 
