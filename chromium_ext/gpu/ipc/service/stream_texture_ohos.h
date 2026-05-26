@@ -89,7 +89,7 @@ class StreamTexture : public RefCountedLockHelperDrDc,
   std::unique_ptr<ScopedNativeBufferFenceSync> GetNativeBuffer() override;
 
   // OHOS-specific methods (not in base class).
-  TextureBase* GetTextureBase() const;
+  TextureBase* GetTextureBase() const override;
   bool TextureOwnerBindsTextureOnUpdate();
 
   gpu::Mailbox CreateSharedImage(const gfx::Size& coded_size);

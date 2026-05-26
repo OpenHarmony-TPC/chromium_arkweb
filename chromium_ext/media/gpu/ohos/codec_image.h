@@ -47,7 +47,7 @@ class MEDIA_GPU_EXPORT CodecImage
   bool IsUsingGpuMemory() const override;
   void UpdateAndBindTexImage(GLuint service_id) override;
   bool HasTextureOwner() const override;
-  gpu::TextureBase* GetTextureBase() const;
+  gpu::TextureBase* GetTextureBase() const override;
   void NotifyOverlayPromotion(bool promotion, const gfx::Rect& bounds) override;
   bool RenderToOverlay() override;
   bool TextureOwnerBindsTextureOnUpdate();

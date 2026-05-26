@@ -235,6 +235,7 @@ NativeImageImageBacking::ProduceSkiaGanesh(
   if (!texture) {
     return nullptr;
   }
+  texture->BindToServiceId(stream_texture_sii_->GetTextureBase()->service_id());
 
   std::unique_ptr<gpu::GLTextureImageRepresentationBase> gl_representation;
   if (passthrough) {
