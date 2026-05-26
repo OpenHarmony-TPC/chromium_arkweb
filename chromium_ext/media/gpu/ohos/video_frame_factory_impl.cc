@@ -46,7 +46,9 @@ static void AllocateTextureOwnerOnGpuThread(
   }
 
   gl::ohos::TextureOwnerMode texture_owner_mode =
-      gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer;
+      base::ohos::IsEmulator() || base::SysInfo::IsLowEndDevice()
+          ? gl::ohos::TextureOwnerMode::kNativeImageTexture
+          : gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer;
 
   TRACE_EVENT1("base", "AllocateTextureOwnerOnGpuThread", "texture_owner_mode", texture_owner_mode);
 
