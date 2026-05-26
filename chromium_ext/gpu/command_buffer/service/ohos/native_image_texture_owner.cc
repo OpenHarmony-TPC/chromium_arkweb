@@ -93,22 +93,21 @@ scoped_refptr<NativeImageTextureOwner> NativeImageTextureOwner::Create(
     gl::ohos::TextureOwnerMode mode,
     scoped_refptr<RefCountedLock> drdc_lock) {
   auto texture = CreateTexture(context_state.get());
-  LOG(INFO) << "NativeImageTextureOwner::Create";
   switch (mode) {
     case gl::ohos::TextureOwnerMode::kSameLayerNativeBuffer:
-      LOG(INFO) << __FUNCTION__ << " Mode: kSameLayerNativeBuffer";
+      LOG(DEBUG) << __FUNCTION__ << " Mode: kSameLayerNativeBuffer";
       return new SameLayerNativeBufferGLOwner(
           std::move(texture), std::move(context_state), std::move(drdc_lock));
     case gl::ohos::TextureOwnerMode::kNativeImageTexture:
-      LOG(INFO) << __FUNCTION__ << " Mode: kNativeImageTexture";
+      LOG(DEBUG) << __FUNCTION__ << " Mode: kNativeImageTexture";
       return new NativeImageTextureGlOwner(std::move(texture),
                                            std::move(context_state));
     case gl::ohos::TextureOwnerMode::kHwVideoZeroCopyNativeBuffer:
-      LOG(INFO) << __FUNCTION__ << " Mode: kHwVideoZeroCopyNativeBuffer";
+      LOG(DEBUG) << __FUNCTION__ << " Mode: kHwVideoZeroCopyNativeBuffer";
       return new HwVideoNativeBufferGLOwner(
           std::move(texture), std::move(context_state), std::move(drdc_lock));
     default:
-      LOG(INFO) << __FUNCTION__ << " Mode: default";
+      LOG(DEBUG) << __FUNCTION__ << " Mode: default";
       return nullptr;
   }
 }
